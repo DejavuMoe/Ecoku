@@ -1,0 +1,82 @@
+package model
+
+import (
+	"ecoku-server/config"
+	"fmt"
+	"log"
+	"strings"
+
+	"github.com/glebarez/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
+)
+
+var DB *gorm.DB
+
+// InitDatabase opens the configured SQLite3 database and only bootstraps a
+// truly empty database. Existing unversioned or outdated databases are rejected
+// and must be backed up before an explicitly authorized rebuild.
+func InitDatabase() {
+	database, err := OpenConfiguredDatabase()
+	if err != nil {
+		log.Fatalf("数据库初始化失败: %v", err)
+	}
+	if err := PrepareDatabaseForStartup(database); err != nil {
+		log.Fatalf("数据库 schema 校验失败: %v", err)
+	}
+	DB = database
+	log.Printf("数据库初始化成功，使用 SQLite3")
+}
+
+// OpenConfiguredDatabase opens only SQLite3. P2 intentionally removed the
+// former MySQL configuration and driver.
+func OpenConfiguredDatabase() (*gorm.DB, error) {
+	sqliteConfig := config.GetSQLiteConfig()
+	if sqliteConfig == nil || strings.TrimSpace(sqliteConfig.Path) == "" {
+		return nil, fmt.Errorf("SQLite 配置不完整")
+	}
+	return OpenSQLiteDatabase(sqliteConfig.Path)
+}
+
+// OpenSQLiteDatabase is exported for import commands and isolated tests.
+func OpenSQLiteDatabase(path string) (*gorm.DB, error) {
+	if strings.TrimSpace(path) == "" {
+		return nil, fmt.Errorf("SQLite 数据库路径不能为空")
+	}
+	database, err := gorm.Open(sqlite.Open(path), databaseGORMConfig())
+	if err != nil {
+		return nil, err
+	}
+	if err := configureSQLiteConnection(database); err != nil {
+		return nil, err
+	}
+	return database, nil
+}
+
+func configureSQLiteConnection(database *gorm.DB) error {
+	sqlDatabase, err := database.DB()
+	if err != nil {
+		return fmt.Errorf("读取 SQLite 连接: %w", err)
+	}
+	// SQLite PRAGMA settings are connection-local. Keeping one connection makes
+	// foreign-key enforcement deterministic for every request and import.
+	sqlDatabase.SetMaxOpenConns(1)
+	sqlDatabase.SetMaxIdleConns(1)
+	if err := database.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
+		return fmt.Errorf("启用 SQLite 外键: %w", err)
+	}
+	var enabled int
+	if err := database.Raw("PRAGMA foreign_keys").Scan(&enabled).Error; err != nil {
+		return fmt.Errorf("验证 SQLite 外键: %w", err)
+	}
+	if enabled != 1 {
+		return fmt.Errorf("SQLite 外键未启用")
+	}
+	return nil
+}
+
+func databaseGORMConfig() *gorm.Config {
+	// SQL errors can contain bound comment bodies or email addresses. API
+	// handlers return generic errors, so SQL logging stays disabled by default.
+	return &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)}
+}

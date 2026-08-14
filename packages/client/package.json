@@ -1,0 +1,64 @@
+{
+  "name": "ecoku",
+  "version": "3.0.0",
+  "description": "A lightweight browser client for the Ecoku self-hosted comment system",
+  "keywords": [
+    "comment",
+    "self-hosted",
+    "threaded",
+    "web",
+    "frontend",
+    "javascript",
+    "typescript"
+  ],
+  "author": "Veen Zhao",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/ecoku.cjs",
+  "module": "./dist/ecoku.es.js",
+  "types": "./dist/ecoku.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/ecoku.d.ts",
+      "import": "./dist/ecoku.es.js",
+      "require": "./dist/ecoku.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": "^20.19.0 || ^22.12.0 || >=24.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run build:lib",
+    "build:lib": "vite build --mode lib && node scripts/sync-cjs.mjs && npm run build:types",
+    "build:types": "tsc --project tsconfig.build.json",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "type-check": "tsc --noEmit",
+    "clean": "rimraf dist",
+    "validate": "node scripts/pre-publish.cjs",
+    "test:package": "node scripts/test-package-contract.mjs",
+    "prepublishOnly": "npm run clean && npm run test && npm run type-check && npm run build:lib && npm run test:package && npm run validate",
+    "publish:npm": "npm publish --access public",
+    "publish:official": "npm publish --access public --registry=https://registry.npmjs.org/",
+    "publish:dry": "npm publish --dry-run"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.5",
+    "happy-dom": "^20.11.2",
+    "rimraf": "^6.1.3",
+    "typescript": "~6.0.3",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  }
+}

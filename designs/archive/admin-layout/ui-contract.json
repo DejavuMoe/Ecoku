@@ -1,0 +1,207 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "name": "Ecoku admin workspace and notifications",
+    "slug": "ecoku-admin-workspace",
+    "surfaceType": "web"
+  },
+  "prototypeOnly": {
+    "selectors": [
+      ".preview-controller",
+      ".preview-header",
+      ".variant-tabs"
+    ],
+    "notes": [
+      "场景切换器、模板预览外壳和 mock 数据不得进入生产构件。"
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "admin-moderation-workspace-v2",
+      "prototype": {
+        "entry": "admin-layout-v2.html",
+        "screenLabel": "评论审核",
+        "states": [
+          "moderation-pending",
+          "moderation-approved",
+          "moderation-deleted",
+          "moderation-deleted-leaf",
+          "moderation-none",
+          "moderation-extreme",
+          "batch-selection",
+          "batch-approve",
+          "batch-reject-and-delete",
+          "tombstone-confirmation",
+          "permanent-delete-confirmation",
+          "desktop-split-view",
+          "mobile-list",
+          "mobile-detail"
+        ]
+      },
+      "production": {
+        "routeOrWindow": "/admin/",
+        "status": "implemented",
+        "referenceFiles": [
+          "packages/admin/src/App.vue",
+          "packages/admin/src/components/ModerationView.vue",
+          "packages/admin/src/api.ts",
+          "packages/admin/src/stores/admin.ts",
+          "server/routes/routes.go",
+          "server/handle/admin/moderation.go",
+          "server/handle/admin/deletion.go"
+        ],
+        "existingInterfaces": [
+          "GET /api/admin/sites",
+          "GET /api/admin/sites/:siteId/comments",
+          "GET /api/admin/sites/:siteId/comments/:commentId",
+          "PATCH /api/admin/sites/:siteId/comments/:commentId",
+          "PATCH /api/admin/sites/:siteId/comments/batch",
+          "POST /api/admin/sites/:siteId/comments/:commentId/reject",
+          "POST /api/admin/sites/:siteId/comments/batch/reject",
+          "DELETE /api/admin/sites/:siteId/comments/:commentId",
+          "DELETE /api/admin/sites/:siteId/comments/:commentId/permanent"
+        ]
+      },
+      "status": "approved"
+    },
+    {
+      "id": "admin-site-management",
+      "prototype": {
+        "entry": "admin-layout-v2.html",
+        "screenLabel": "站点管理",
+        "states": [
+          "sites-list",
+          "sites-new"
+        ]
+      },
+      "production": {
+        "routeOrWindow": "/admin/",
+        "status": "implemented",
+        "referenceFiles": [
+          "packages/admin/src/App.vue",
+          "packages/admin/src/components/SiteManagementView.vue",
+          "packages/admin/src/api.ts",
+          "server/config/config.go",
+          "server/model/migrations.go",
+          "server/model/site.go",
+          "server/handle/admin/sites.go"
+        ],
+        "interfaces": [
+          "GET /api/admin/sites",
+          "POST /api/admin/sites",
+          "GET /api/admin/sites/:siteId",
+          "PUT /api/admin/sites/:siteId"
+        ]
+      },
+      "status": "approved"
+    },
+    {
+      "id": "admin-global-notification-settings",
+      "prototype": {
+        "entry": "admin-layout-v2.html",
+        "screenLabel": "通知设置",
+        "states": [
+          "notifications-empty",
+          "notifications-configured",
+          "notifications-validation",
+          "channel-disabled",
+          "secret-configured-placeholder",
+          "chip-multiple-values",
+          "test-success",
+          "test-failure"
+        ]
+      },
+      "production": {
+        "routeOrWindow": "/admin/",
+        "status": "implemented",
+        "referenceFiles": [
+          "packages/admin/src/App.vue",
+          "packages/admin/src/components/NotificationSettingsView.vue",
+          "packages/admin/src/components/ChipInput.vue",
+          "packages/admin/src/api.ts",
+          "server/routes/routes.go",
+          "server/model/migrations.go",
+          "server/notifications/settings.go",
+          "server/notifications/outbox.go"
+        ],
+        "interfaces": [
+          "GET /api/admin/notifications",
+          "PUT /api/admin/notifications/email",
+          "POST /api/admin/notifications/email/test",
+          "PUT /api/admin/notifications/telegram",
+          "POST /api/admin/notifications/telegram/test"
+        ]
+      },
+      "status": "approved"
+    },
+    {
+      "id": "email-admin-comment-notification",
+      "prototype": {
+        "entry": "email-admin-notification.html",
+        "screenLabel": "新评论待审核邮件",
+        "states": [
+          "pending-comment",
+          "long-content",
+          "safe-escaped-content",
+          "email-client-600px"
+        ]
+      },
+      "production": {
+        "routeOrWindow": "outbound-email",
+        "status": "implemented",
+        "referenceFiles": [
+          "server/notifications/email_templates/admin.html",
+          "server/notifications/templates.go",
+          "server/notifications/outbox.go"
+        ]
+      },
+      "status": "approved"
+    },
+    {
+      "id": "email-visitor-reply-notification",
+      "prototype": {
+        "entry": "email-reply-notification.html",
+        "screenLabel": "评论回复通知邮件",
+        "states": [
+          "approved-reply",
+          "long-content",
+          "safe-escaped-content",
+          "email-client-600px"
+        ]
+      },
+      "production": {
+        "routeOrWindow": "outbound-email",
+        "status": "implemented",
+        "referenceFiles": [
+          "server/notifications/email_templates/reply.html",
+          "server/notifications/templates.go",
+          "server/notifications/outbox.go"
+        ]
+      },
+      "status": "approved"
+    },
+    {
+      "id": "telegram-admin-comment-notification",
+      "prototype": {
+        "entry": "telegram-notification.html",
+        "screenLabel": "Telegram 消息模板",
+        "states": [
+          "pending",
+          "published",
+          "long-content",
+          "safe-escaped-content"
+        ]
+      },
+      "production": {
+        "routeOrWindow": "outbound-telegram",
+        "status": "implemented",
+        "referenceFiles": [
+          "server/notifications/templates.go",
+          "server/notifications/delivery.go",
+          "server/notifications/outbox.go"
+        ]
+      },
+      "status": "approved"
+    }
+  ]
+}

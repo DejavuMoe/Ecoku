@@ -1,0 +1,27 @@
+{{- $ecoku := site.Params.ecoku -}}
+{{- if and $ecoku $ecoku.server_url $ecoku.site_id -}}
+{{- $sdkVersion := crypto.SHA256 (readFile "static/vendor/ecoku.umd.js") -}}
+{{- $loaderVersion := crypto.SHA256 (readFile "static/js/ecoku-comments.js") -}}
+<section
+    id="ecoku-comment-shell"
+    class="comment-shell"
+    aria-label="评论区"
+    aria-busy="false"
+    data-server-url="{{ $ecoku.server_url }}"
+    data-site-id="{{ $ecoku.site_id }}"
+    data-page-key="{{ .RelPermalink }}"
+    data-page-title="{{ .Title }}"
+    data-sdk-version="{{ $sdkVersion }}"
+>
+    <div class="comment-loader" role="status" aria-live="polite">
+        <p class="comment-status">评论区将在滚动到附近时加载。</p>
+        <button class="comment-retry" type="button" hidden>重新加载评论</button>
+    </div>
+    <div id="tcomment"></div>
+</section>
+<script src="/js/ecoku-comments.js?v={{ $loaderVersion }}" defer></script>
+{{- else -}}
+<section class="comment-shell" aria-label="评论区">
+    <p class="comment-status" role="status">评论服务尚未配置。</p>
+</section>
+{{- end -}}

@@ -1,0 +1,36 @@
+labels:
+  platform: linux/amd64
+  backend: docker
+  role: forgejo-local
+  server: netcup-rs1000
+
+when:
+  event: tag
+  ref: refs/tags/v*
+
+steps:
+  - name: publish-multiarch-manifest
+    image: docker:29.6.1-cli-alpine3.24
+    environment:
+      REGISTRY:
+        from_secret: forgejo_registry
+      IMAGE:
+        from_secret: forgejo_image
+      REGISTRY_USER:
+        from_secret: forgejo_registry_user
+      REGISTRY_TOKEN:
+        from_secret: forgejo_registry_token
+    commands:
+      - 'echo "$${REGISTRY_TOKEN}" | docker login "$${REGISTRY}" --username "$${REGISTRY_USER}" --password-stdin'
+      - 'docker buildx imagetools create --tag "$${IMAGE}:$${CI_COMMIT_TAG}" "$${IMAGE}:$${CI_COMMIT_TAG}-amd64" "$${IMAGE}:$${CI_COMMIT_TAG}-arm64"'
+      - 'docker buildx imagetools inspect "$${IMAGE}:$${CI_COMMIT_TAG}"'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+depends_on:
+  - image-amd64
+  - image-arm64
+
+concurrency:
+  limit: 1
+  group: ecoku-publish-manifest

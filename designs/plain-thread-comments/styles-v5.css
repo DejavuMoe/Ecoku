@@ -1,0 +1,31 @@
+@import url("./styles-v4.css");
+
+.sort-picker {
+  gap: 0;
+}
+
+.collapse-button {
+  display: grid;
+  width: 29px;
+  height: 29px;
+  min-width: 29px;
+  min-height: 29px;
+  place-items: center;
+  padding: 0;
+  overflow: hidden;
+  font-size: 0;
+}
+
+.collapse-button::before {
+  width: 29px;
+  content: "[−]";
+  font-family: ui-monospace, "Maple Mono Normal", "Cascadia Mono", monospace;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 29px;
+  text-align: center;
+}
+
+.collapse-button[aria-expanded="false"]::before {
+  content: "[+]";
+}

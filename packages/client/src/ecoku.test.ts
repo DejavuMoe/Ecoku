@@ -1,0 +1,550 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import Ecoku from './ecoku'
+import { resolveConfig } from './config'
+import { zhCN } from './messages'
+
+type RawComment = Record<string, unknown>
+
+const activeClients: Ecoku[] = []
+
+function comment(id: number, parent: number, content: string, extra: RawComment = {}): RawComment {
+  return {
+    id,
+    site_id: 'site-a',
+    mark: 'article-a',
+    parent,
+    username: `Author ${id}`,
+    content,
+    deleted: false,
+    created_at: `2026-08-12T0${Math.min(id, 9)}:00:00Z`,
+    updated_at: `2026-08-12T0${Math.min(id, 9)}:00:00Z`,
+    ...extra,
+  }
+}
+
+function jsonResponse(status: number, data: unknown, message = 'ok'): Response {
+  return new Response(JSON.stringify({ code: status, message, data }), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  })
+}
+
+function listResponse(
+  comments: RawComment[],
+  options: {
+    page?: number
+    pageCount?: number
+    total?: number
+    commentTotal?: number
+    formConfig?: {
+      emailRequired: boolean
+      websiteRequired: boolean
+      placeholder: string
+      defaultSort?: 'oldest' | 'newest'
+      lengthLimit?: number
+      emptyMessage?: string
+    }
+  } = {},
+): Response {
+  return jsonResponse(200, {
+    data: comments,
+    total: options.total ?? comments.filter((item) => item.parent === 0).length,
+    commentTotal: options.commentTotal ?? comments.length,
+    page: options.page ?? 1,
+    pageSize: 3,
+    pageCount: options.pageCount ?? (comments.length > 0 ? 1 : 0),
+    formConfig: options.formConfig ?? {
+      emailRequired: true,
+      websiteRequired: false,
+      placeholder: zhCN.commentPlaceholder,
+      defaultSort: 'newest',
+      lengthLimit: 1000,
+      emptyMessage: '还没有评论\n成为第一个留下评论的人。',
+    },
+  })
+}
+
+function createClient(fetchMock: typeof fetch, pageKey = 'article-a'): { client: Ecoku; container: HTMLElement } {
+  vi.stubGlobal('fetch', fetchMock)
+  const container = document.createElement('div')
+  document.body.append(container)
+  const client = new Ecoku({
+    container,
+    serverURL: 'https://comments.example/base/',
+    siteId: 'site-a',
+    pageKey,
+    pageTitle: '测试文章',
+    pageSize: 3,
+    theme: 'light',
+  })
+  activeClients.push(client)
+  return { client, container }
+}
+
+function setValue(control: HTMLInputElement | HTMLTextAreaElement, value: string): void {
+  control.value = value
+  control.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+function fillIdentityAndContent(container: HTMLElement, content = 'Root submission'): HTMLFormElement {
+  setValue(container.querySelector<HTMLInputElement>('input[type="text"]')!, 'Guest')
+  setValue(container.querySelector<HTMLInputElement>('input[type="email"]')!, 'guest@example.com')
+  setValue(container.querySelector<HTMLInputElement>('input[type="url"]')!, 'https://guest.example/profile')
+  setValue(container.querySelector<HTMLTextAreaElement>('.ecoku-composer .ecoku-textarea')!, content)
+  return container.querySelector<HTMLFormElement>('.ecoku-composer')!
+}
+
+async function submitForm(form: HTMLFormElement): Promise<void> {
+  form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }))
+  await Promise.resolve()
+}
+
+beforeEach(() => {
+  document.body.replaceChildren()
+})
+
+afterEach(() => {
+  for (const client of activeClients.splice(0)) client.destroy()
+  vi.unstubAllGlobals()
+})
+
+describe('approved production comment surface', () => {
+  it('validates the explicit container, server, site, page, page size, and theme contract', () => {
+    const container = document.createElement('div')
+    document.body.append(container)
+    const valid = {
+      container,
+      serverURL: 'https://comments.example/',
+      siteId: 'site-a',
+      pageKey: 'article-a',
+    }
+    expect(resolveConfig(valid).serverURL).toBe('https://comments.example/')
+    expect(resolveConfig({ ...valid, serverURL: undefined, apiBaseUrl: 'https://legacy.example' }).serverURL).toBe('https://legacy.example/')
+    expect(() => resolveConfig({ ...valid, container: '#missing' })).toThrow(/container/)
+    expect(() => resolveConfig({ ...valid, serverURL: 'ftp://comments.example' })).toThrow(/serverURL/)
+    expect(() => resolveConfig({ ...valid, siteId: 'bad site' })).toThrow(/siteId/)
+    expect(() => resolveConfig({ ...valid, pageKey: '  ' })).toThrow(/pageKey/)
+    expect(() => resolveConfig({ ...valid, pageSize: 101 })).toThrow(/pageSize/)
+    expect(() => resolveConfig({ ...valid, theme: 'neon' as 'light' })).toThrow(/theme/)
+  })
+
+  it('renders the approved form without explanatory prompt copy', async () => {
+    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse([])))
+    await client.init()
+
+    expect(Array.from(container.querySelectorAll('.ecoku-field-label')).map((label) => label.textContent))
+      .toEqual(['昵称', '邮箱', '网址'])
+    expect(container.querySelector<HTMLInputElement>('input[type="text"]')?.required).toBe(true)
+    expect(container.querySelector<HTMLInputElement>('input[type="email"]')?.required).toBe(true)
+    expect(container.querySelector<HTMLInputElement>('input[type="url"]')?.required).toBe(false)
+    expect(container.querySelector<HTMLInputElement>('input[type="url"]')?.placeholder).toBe('')
+    expect(container.querySelector('.ecoku-identity-requirements')).toBeNull()
+    expect(container.querySelector<HTMLTextAreaElement>('.ecoku-composer textarea')?.placeholder)
+      .toBe(zhCN.commentPlaceholder)
+    expect(container.querySelector('.ecoku-composer-guidance')).toBeNull()
+  })
+
+  it('applies site-configured optional email, required website, and custom placeholder to validation and submission', async () => {
+    const posts: Record<string, unknown>[] = []
+    const formConfig = {
+      emailRequired: false,
+      websiteRequired: true,
+      placeholder: '说说你对这篇文章的看法',
+      defaultSort: 'oldest' as const,
+      lengthLimit: 321,
+      emptyMessage: '暂时没有评论',
+    }
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      const url = new URL(String(input))
+      if (url.pathname.endsWith('/api/comment/submit')) {
+        posts.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
+        return jsonResponse(201, { id: 41 }, 'submitted')
+      }
+      return listResponse([], { formConfig })
+    })
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+
+    const nickname = container.querySelector<HTMLInputElement>('input[type="text"]')!
+    const email = container.querySelector<HTMLInputElement>('input[type="email"]')!
+    const website = container.querySelector<HTMLInputElement>('input[type="url"]')!
+    const content = container.querySelector<HTMLTextAreaElement>('.ecoku-composer textarea')!
+    const form = container.querySelector<HTMLFormElement>('.ecoku-composer')!
+    expect(email.required).toBe(false)
+    expect(website.required).toBe(true)
+    expect(content.placeholder).toBe(formConfig.placeholder)
+    expect(container.querySelector('.ecoku-identity-requirements')).toBeNull()
+    expect(content.maxLength).toBe(321)
+    expect(container.textContent).toContain('暂时没有评论')
+
+    setValue(nickname, 'Guest')
+    setValue(content, 'Configured submission')
+    setValue(email, 'not-an-email')
+    setValue(website, 'https://guest.example/profile')
+    await submitForm(form)
+    expect(container.querySelector('.ecoku-form-error')?.textContent).toBe(zhCN.emailInvalid)
+
+    setValue(email, '')
+    setValue(website, '')
+    await submitForm(form)
+    expect(container.querySelector('.ecoku-form-error')?.textContent).toBe(zhCN.websiteRequiredInvalid)
+
+    setValue(website, 'https://guest.example/profile')
+    await submitForm(form)
+    await vi.waitFor(() => expect(posts).toHaveLength(1))
+    expect(posts[0]).toEqual({
+      siteId: 'site-a',
+      mark: 'article-a',
+      pageTitle: '测试文章',
+      username: 'Guest',
+      url: 'https://guest.example/profile',
+      content: 'Configured submission',
+      parent: 0,
+    })
+  })
+
+  it('falls back to the approved comment placeholder when a response contains an empty or oversized value', async () => {
+    for (const placeholder of ['   ', '字'.repeat(81)]) {
+      const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse([], {
+        formConfig: { emailRequired: true, websiteRequired: false, placeholder },
+      })))
+      await client.init()
+      expect(container.querySelector<HTMLTextAreaElement>('.ecoku-composer textarea')?.placeholder)
+        .toBe(zhCN.commentPlaceholder)
+      client.destroy()
+    }
+  })
+
+  it('renders approved roots and descendants beyond three levels with capped visual indentation', async () => {
+    const comments = [
+      comment(1, 0, 'root'),
+      comment(2, 1, 'child'),
+      comment(3, 2, 'grandchild'),
+      comment(4, 3, 'great-grandchild'),
+      comment(5, 4, 'semantic level five'),
+      comment(6, 5, 'semantic level six'),
+    ]
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(listResponse(comments))
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+
+    const rows = container.querySelectorAll<HTMLElement>('.ecoku-comment-row')
+    expect(rows).toHaveLength(6)
+    expect(container.textContent).toContain('semantic level six')
+    expect(rows[5]?.parentElement?.getAttribute('aria-level')).toBe('6')
+    expect(rows[5]?.style.getPropertyValue('--ecoku-depth')).toBe('3')
+    const replyTarget = rows[5]?.parentElement?.querySelector<HTMLAnchorElement>('.ecoku-reply-context')
+    expect(replyTarget?.textContent).toBe('@Author 5')
+    expect(replyTarget?.getAttribute('href')).toBe('#ecoku-comment-5')
+    expect(replyTarget?.title).toBe(zhCN.replyTarget)
+    expect(rows[5]?.querySelectorAll('.ecoku-text-action')).toHaveLength(1)
+    expect(rows[5]?.querySelector('.ecoku-comment-meta .ecoku-text-action')).toBeNull()
+    expect(rows[5]?.querySelector('.ecoku-comment-actions .ecoku-text-action')?.textContent).toBe(zhCN.reply)
+    const requestURL = new URL(String(fetchMock.mock.calls[0]?.[0]))
+    expect(requestURL.searchParams.has('sort')).toBe(false)
+  })
+
+  it('keeps fold controls aligned with leaf markers and exposes stable collapse state', async () => {
+    const comments = [
+      comment(1, 0, 'root'),
+      comment(2, 1, 'child'),
+      comment(3, 0, 'leaf root'),
+    ]
+    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse(comments)))
+    await client.init()
+
+    const parent = container.querySelector<HTMLElement>('[data-comment-id="1"]')!
+    const leaf = container.querySelector<HTMLElement>('[data-comment-id="3"]')!
+    const collapse = parent.querySelector<HTMLButtonElement>('.ecoku-collapse-button')!
+    expect(parent.querySelector('.ecoku-comment-meta')?.firstElementChild).toBe(collapse)
+    expect(leaf.querySelector('.ecoku-comment-meta')?.firstElementChild?.classList.contains('ecoku-collapse-placeholder')).toBe(true)
+    expect(collapse.getAttribute('aria-expanded')).toBe('true')
+    expect(collapse.getAttribute('aria-label')).toBe(zhCN.collapse)
+    const timeLink = parent.querySelector<HTMLAnchorElement>('.ecoku-comment-time')!
+    expect(timeLink.textContent).toBe('2026/08/12 09:00')
+    expect(timeLink.title).toBe(zhCN.timeZone)
+    expect(timeLink.getAttribute('aria-label')).toBe('2026/08/12 09:00，UTC+8')
+    collapse.click()
+    expect(collapse.getAttribute('aria-expanded')).toBe('false')
+    expect(collapse.getAttribute('aria-label')).toBe(zhCN.expand)
+    expect(parent.parentElement?.querySelector<HTMLElement>('.ecoku-children')?.hidden).toBe(true)
+  })
+
+  it('renders a 52-comment fixture with complete one-to-six-level semantics and the approved count-only heading', async () => {
+    const comments: RawComment[] = [comment(1, 0, 'root level one')]
+    for (let id = 2; id <= 6; id += 1) comments.push(comment(id, id - 1, `nested level ${id}`))
+    for (let id = 7; id <= 52; id += 1) comments.push(comment(id, 0, `root fixture ${id}`))
+    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse(comments, {
+      total: 47,
+      commentTotal: 52,
+    })))
+    await client.init()
+
+    expect(container.querySelectorAll('.ecoku-comment-row')).toHaveLength(52)
+    expect(container.querySelector('.ecoku-section-title')?.textContent).toBe('52 条评论')
+    expect(container.querySelector('.ecoku-section-heading')?.textContent).not.toContain('讨论')
+    expect(container.querySelector('[data-depth="6"]')?.getAttribute('aria-level')).toBe('6')
+  })
+
+  it('uses a themed keyboard-operable sorter with the approved labels and reloads newest comments', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(listResponse([comment(1, 0, 'root')]))
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+
+    expect(container.querySelector('select')).toBeNull()
+    const trigger = container.querySelector<HTMLButtonElement>('.ecoku-sort-trigger')!
+    expect(trigger.textContent).toContain(zhCN.sortNewest)
+    trigger.click()
+    const oldest = Array.from(container.querySelectorAll<HTMLButtonElement>('.ecoku-sort-option'))
+      .find((option) => option.textContent === zhCN.sortOldest)!
+    oldest.click()
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    expect(new URL(String(fetchMock.mock.calls[1]?.[0])).searchParams.get('sort')).toBe('oldest')
+    expect(trigger.textContent).toContain(zhCN.sortOldest)
+    expect(trigger.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('renders hostile content only as text and never renders private response fields', async () => {
+    const hostile = '<script>window.__ecoku_xss = true</script>\n**not markdown**'
+    const comments = [
+      comment(1, 0, hostile, {
+        email: 'private@example.com',
+        management_key: 'private-management-key',
+      }),
+    ]
+    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse(comments, { commentTotal: 1 })))
+    await client.init()
+
+    const copy = container.querySelector('.ecoku-comment-copy p')
+    expect(copy?.textContent).toBe(hostile)
+    expect(copy?.querySelector('script')).toBeNull()
+    expect(container.textContent).not.toContain('private@example.com')
+    expect(container.textContent).not.toContain('private-management-key')
+  })
+
+  it('renders a fixed tombstone with descendants and no reply entry on the tombstone', async () => {
+    const comments = [
+      comment(1, 0, 'deleted secret', {
+        deleted: true,
+        username: 'Deleted Private Author',
+        url: 'https://deleted.example/private',
+      }),
+      comment(2, 1, 'surviving child'),
+    ]
+    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse(comments)))
+    await client.init()
+
+    const tombstone = container.querySelector<HTMLElement>('[data-comment-id="1"]')!
+    const tombstoneRow = tombstone.firstElementChild as HTMLElement
+    expect(tombstoneRow.textContent).toContain(zhCN.deletedBody)
+    expect(tombstoneRow.textContent).not.toContain('deleted secret')
+    expect(tombstoneRow.textContent).not.toContain('Deleted Private Author')
+    expect(tombstoneRow.querySelector('.ecoku-text-action')).toBeNull()
+    expect(container.textContent).toContain('surviving child')
+  })
+
+  it('accepts only safe author websites and applies the approved relationship attributes', async () => {
+    const comments = [
+      comment(1, 0, 'safe link', { url: 'https://author.example/profile' }),
+      comment(2, 0, 'unsafe link', { url: 'javascript:alert(1)' }),
+    ]
+    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse(comments)))
+    await client.init()
+
+    const safeAuthor = container.querySelector<HTMLAnchorElement>('[data-comment-id="1"] .ecoku-comment-author')!
+    expect(safeAuthor.href).toBe('https://author.example/profile')
+    expect(new Set(safeAuthor.rel.split(/\s+/))).toEqual(new Set(['nofollow', 'ugc', 'noopener', 'noreferrer']))
+    expect(safeAuthor.target).toBe('_blank')
+    expect(container.querySelector('[data-comment-id="2"] a.ecoku-comment-author')).toBeNull()
+    expect(container.querySelector('.ecoku-comment-permalink')).toBeNull()
+    expect(container.textContent).not.toContain('链接')
+  })
+
+  it('submits root comments and replies with the exact public API fields', async () => {
+    const posts: Record<string, unknown>[] = []
+    const initialComments = [comment(1, 0, 'existing root')]
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      const url = new URL(String(input))
+      if (url.pathname.endsWith('/api/comment/submit')) {
+        posts.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
+        return jsonResponse(201, { id: posts.length + 10 }, 'submitted')
+      }
+      return listResponse(initialComments)
+    })
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+
+    await submitForm(fillIdentityAndContent(container))
+    await vi.waitFor(() => expect(posts).toHaveLength(1))
+    await vi.waitFor(() => expect(container.querySelector('.ecoku-text-action')).not.toBeNull())
+    expect(posts[0]).toEqual({
+      siteId: 'site-a',
+      mark: 'article-a',
+      pageTitle: '测试文章',
+      username: 'Guest',
+      email: 'guest@example.com',
+      url: 'https://guest.example/profile',
+      content: 'Root submission',
+      parent: 0,
+    })
+
+    await vi.waitFor(() => expect(container.querySelector('.ecoku-status-line')?.textContent).toBe(zhCN.submitted))
+    container.querySelector<HTMLButtonElement>('.ecoku-text-action')!.click()
+    const replyContent = container.querySelector<HTMLTextAreaElement>('.ecoku-reply-composer textarea')!
+    setValue(replyContent, 'Nested reply')
+    await submitForm(container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!)
+    await vi.waitFor(() => expect(posts).toHaveLength(2))
+    expect(posts[1]?.parent).toBe(1)
+    expect(posts[1]?.content).toBe('Nested reply')
+  })
+
+  it('prevents duplicate submissions while the first request is unresolved', async () => {
+    let resolvePost: ((response: Response) => void) | undefined
+    let postCalls = 0
+    const fetchMock = vi.fn<typeof fetch>((input) => {
+      const url = new URL(String(input))
+      if (url.pathname.endsWith('/api/comment/submit')) {
+        postCalls += 1
+        return new Promise<Response>((resolve) => { resolvePost = resolve })
+      }
+      return Promise.resolve(listResponse([]))
+    })
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    const form = fillIdentityAndContent(container)
+    await submitForm(form)
+    expect(container.querySelector<HTMLInputElement>('input[type="email"]')?.disabled).toBe(true)
+    expect(container.querySelector<HTMLTextAreaElement>('.ecoku-composer textarea')?.disabled).toBe(true)
+    await submitForm(form)
+    expect(postCalls).toBe(1)
+    resolvePost?.(jsonResponse(201, { id: 9 }))
+    await vi.waitFor(() => expect(container.querySelector('.ecoku-primary-button')?.textContent).toBe(zhCN.submitComment))
+  })
+
+  it('announces submission success before a slow refresh and keeps duplicate protection active', async () => {
+    let listCalls = 0
+    let resolveRefresh: ((response: Response) => void) | undefined
+    const fetchMock = vi.fn<typeof fetch>((input) => {
+      const url = new URL(String(input))
+      if (url.pathname.endsWith('/api/comment/submit')) return Promise.resolve(jsonResponse(201, { id: 20 }))
+      listCalls += 1
+      if (listCalls === 1) return Promise.resolve(listResponse([]))
+      return new Promise<Response>((resolve) => { resolveRefresh = resolve })
+    })
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    const form = fillIdentityAndContent(container, 'Slow refresh submission')
+    await submitForm(form)
+    await vi.waitFor(() => expect(resolveRefresh).toBeTypeOf('function'))
+    expect(container.querySelector('.ecoku-status-line')?.textContent).toBe(zhCN.submitted)
+    form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }))
+    const postCalls = fetchMock.mock.calls.filter(([input]) => new URL(String(input)).pathname.endsWith('/api/comment/submit'))
+    expect(postCalls).toHaveLength(1)
+    resolveRefresh?.(listResponse([]))
+    await vi.waitFor(() => expect(container.querySelector('.ecoku-primary-button')?.textContent).toBe(zhCN.submitComment))
+  })
+
+  it.each([
+    [400, zhCN.submit400],
+    [403, zhCN.submit403],
+    [413, zhCN.submit413],
+    [429, zhCN.submit429],
+    [500, zhCN.submit500],
+  ])('maps HTTP %i to a safe localized submission error', async (status, expected) => {
+    const fetchMock = vi.fn<typeof fetch>((input) => {
+      const url = new URL(String(input))
+      if (url.pathname.endsWith('/api/comment/submit')) {
+        return Promise.resolve(jsonResponse(status, null, '<img src=x onerror=alert(1)>'))
+      }
+      return Promise.resolve(listResponse([]))
+    })
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    await submitForm(fillIdentityAndContent(container))
+    await vi.waitFor(() => expect(container.querySelector('.ecoku-form-error')?.textContent).toBe(expected))
+    expect(container.querySelector('.ecoku-form-error img')).toBeNull()
+  })
+
+  it('shows a network-specific submission error without clearing the draft', async () => {
+    const fetchMock = vi.fn<typeof fetch>((input) => {
+      const url = new URL(String(input))
+      if (url.pathname.endsWith('/api/comment/submit')) return Promise.reject(new TypeError('offline'))
+      return Promise.resolve(listResponse([]))
+    })
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    await submitForm(fillIdentityAndContent(container, 'Keep this draft'))
+    await vi.waitFor(() => expect(container.querySelector('.ecoku-form-error')?.textContent).toBe(zhCN.submitNetwork))
+    expect(container.querySelector<HTMLTextAreaElement>('.ecoku-composer textarea')?.value).toBe('Keep this draft')
+  })
+
+  it('paginates by complete root threads without retaining the previous page', async () => {
+    const fetchMock = vi.fn<typeof fetch>((input) => {
+      const page = new URL(String(input)).searchParams.get('page')
+      if (page === '2') return Promise.resolve(listResponse([comment(3, 0, 'second root')], { page: 2, pageCount: 2, total: 2, commentTotal: 3 }))
+      return Promise.resolve(listResponse([comment(1, 0, 'first root'), comment(2, 1, 'first child')], { page: 1, pageCount: 2, total: 2, commentTotal: 3 }))
+    })
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    const pagination = container.querySelector<HTMLElement>('.ecoku-pagination')!
+    const previous = pagination.querySelectorAll<HTMLButtonElement>('.ecoku-pager-button')[0]!
+    const next = pagination.querySelectorAll<HTMLButtonElement>('.ecoku-pager-button')[1]!
+    expect(pagination.getAttribute('aria-label')).toBe(zhCN.paginationLabel)
+    expect(container.querySelector('.ecoku-pagination-status')?.textContent).toBe('1/2')
+    expect(previous.disabled).toBe(true)
+    expect(next.disabled).toBe(false)
+    expect(container.querySelector('.ecoku-load-more')).toBeNull()
+
+    next.click()
+    await vi.waitFor(() => expect(container.textContent).toContain('second root'))
+    expect(container.textContent).not.toContain('first child')
+    expect(container.querySelectorAll('.ecoku-comment-row')).toHaveLength(1)
+    expect(container.querySelector('.ecoku-pagination-status')?.textContent).toBe('2/2')
+    expect(previous.disabled).toBe(false)
+    expect(next.disabled).toBe(true)
+
+    previous.click()
+    await vi.waitFor(() => expect(container.textContent).toContain('first child'))
+    expect(container.textContent).not.toContain('second root')
+    expect(container.querySelectorAll('.ecoku-comment-row')).toHaveLength(2)
+    expect(container.querySelector('.ecoku-pagination-status')?.textContent).toBe('1/2')
+    expect(new URL(String(fetchMock.mock.calls[1]?.[0])).searchParams.get('page')).toBe('2')
+    expect(new URL(String(fetchMock.mock.calls[2]?.[0])).searchParams.get('page')).toBe('1')
+  })
+
+  it('does not let an obsolete page request overwrite a newer page key', async () => {
+    let resolveOld: ((response: Response) => void) | undefined
+    let resolveNew: ((response: Response) => void) | undefined
+    const fetchMock = vi.fn<typeof fetch>((input) => {
+      const key = new URL(String(input)).searchParams.get('key')
+      return new Promise<Response>((resolve) => {
+        if (key === 'old-page') resolveOld = resolve
+        else resolveNew = resolve
+      })
+    })
+    const { client, container } = createClient(fetchMock, 'old-page')
+    const initial = client.init()
+    await vi.waitFor(() => expect(resolveOld).toBeTypeOf('function'))
+    const pageChange = client.setPageKey('new-page')
+    await vi.waitFor(() => expect(resolveNew).toBeTypeOf('function'))
+    resolveNew?.(listResponse([comment(2, 0, 'new page comment', { mark: 'new-page' })]))
+    await pageChange
+    resolveOld?.(listResponse([comment(1, 0, 'obsolete comment', { mark: 'old-page' })]))
+    await initial
+    expect(container.textContent).toContain('new page comment')
+    expect(container.textContent).not.toContain('obsolete comment')
+  })
+
+  it('keeps visitor identity in component memory without browser persistence or URL writes', async () => {
+    const storageWrite = vi.spyOn(Storage.prototype, 'setItem')
+    const initialURL = window.location.href
+    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse([])))
+    await client.init()
+    fillIdentityAndContent(container, 'Private in-memory draft')
+    expect(storageWrite).not.toHaveBeenCalled()
+    expect(document.cookie).toBe('')
+    expect(window.location.href).toBe(initialURL)
+    client.destroy()
+    expect(container.textContent).toBe('')
+  })
+})

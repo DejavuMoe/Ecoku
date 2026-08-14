@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "name": "Plain thread comments",
+    "slug": "plain-thread-comments",
+    "surfaceType": "web"
+  },
+  "surfaces": [
+    {
+      "id": "article-plain-thread-comments",
+      "prototype": {
+        "entry": "index-v7.html",
+        "states": [
+          "light",
+          "dark",
+          "desktop",
+          "mobile",
+          "comment-empty",
+          "comment-ready",
+          "comment-posted",
+          "reply-open",
+          "reply-posted",
+          "thread-expanded",
+          "thread-collapsed",
+          "root-only-dividers",
+          "six-level-thread",
+          "safe-author-website",
+          "oldest-sort",
+          "newest-sort",
+          "deleted-tombstone",
+          "compact-inline-reply",
+          "unicode-code-point-limit",
+          "plain-configurable-empty-copy",
+          "service-error",
+          "service-recovered",
+          "equal-size-thread-controls",
+          "leaf-dot-control",
+          "bottom-left-reply-action",
+          "utc8-absolute-timestamps",
+          "root-thread-pagination"
+        ]
+      },
+      "production": {
+        "routeOrWindow": "article comment surface",
+        "status": "implemented",
+        "referenceFiles": [
+          "packages/client/src/ecoku.ts",
+          "packages/client/src/comment.ts",
+          "packages/client/src/style.css",
+          "packages/client/src/fetch.ts",
+          "server/handle/comment/list.go"
+        ]
+      },
+      "status": "implemented"
+    },
+    {
+      "id": "article-comment-form-configuration",
+      "prototype": {
+        "entry": "index-v7.html",
+        "states": [
+          "email-required",
+          "email-optional",
+          "website-required",
+          "website-optional",
+          "custom-placeholder",
+          "empty-placeholder-fallback",
+          "dynamic-requirement-summary",
+          "desktop",
+          "mobile",
+          "keyboard-focus"
+          ,"unicode-code-point-limit"
+          ,"plain-configurable-empty-copy"
+        ]
+      },
+      "production": {
+        "routeOrWindow": "article comment surface",
+        "status": "implemented",
+        "referenceFiles": [
+          "packages/client/src/ecoku.ts",
+          "packages/client/src/config.ts",
+          "packages/client/src/fetch.ts",
+          "packages/client/src/comment.ts",
+          "packages/client/src/messages.ts",
+          "packages/client/src/style.css",
+          "server/config/config.go",
+          "server/handle/comment/list.go",
+          "server/handle/comment/submit.go",
+          "server/config.yaml.example"
+        ]
+      },
+      "status": "implemented"
+    }
+  ]
+}

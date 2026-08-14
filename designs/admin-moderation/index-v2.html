@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Ecoku 评论审核台原型 · 修订版</title>
+  <link rel="stylesheet" href="styles-v2.css">
+</head>
+<body>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+
+  <aside class="prototype-controls" aria-label="原型预览控件" data-prototype-only="true" data-open="false">
+    <button class="prototype-control-toggle" id="prototype-control-toggle" type="button" aria-expanded="false">原型状态</button>
+    <label class="prototype-field" for="scenario-control">
+      <span>预览状态</span>
+      <select id="scenario-control">
+        <option value="normal">正常</option>
+        <option value="empty">空队列</option>
+        <option value="conflict">审核冲突</option>
+        <option value="rate-limit">请求过多</option>
+        <option value="server-error">服务错误</option>
+        <option value="offline">网络中断</option>
+        <option value="expired">会话过期</option>
+      </select>
+    </label>
+    <button class="prototype-button" id="prototype-auth-toggle" type="button">查看登录</button>
+  </aside>
+
+  <main class="auth-screen" id="login-screen" data-screen-label="管理员登录" hidden>
+    <section class="auth-shell" aria-labelledby="login-title">
+      <form class="login-form" id="login-form" novalidate>
+        <div class="login-brand" aria-hidden="true">
+          <span class="brand-mark">E</span>
+          <span class="brand-copy">
+            <strong>Ecoku</strong>
+            <small>评论审核</small>
+          </span>
+        </div>
+
+        <div class="form-heading">
+          <h1 id="login-title">管理员登录</h1>
+        </div>
+
+        <div class="form-error" id="login-error" role="alert" hidden></div>
+
+        <label class="input-group" for="admin-username">
+          <span>用户名</span>
+          <input id="admin-username" name="username" type="text" autocomplete="username" maxlength="80" required>
+        </label>
+
+        <label class="input-group" for="admin-password">
+          <span>密码</span>
+          <input id="admin-password" name="password" type="password" autocomplete="current-password" required>
+        </label>
+
+        <button class="button button-primary button-wide" id="login-button" type="submit">登录</button>
+      </form>
+    </section>
+  </main>
+
+  <div class="admin-shell" id="workspace-screen" data-screen-label="评论审核工作区">
+    <header class="app-header">
+      <div class="header-inner">
+        <a class="brand" href="#main-content" aria-label="Ecoku 评论审核台首页">
+          <span class="brand-mark" aria-hidden="true">E</span>
+          <span class="brand-copy">
+            <strong>Ecoku</strong>
+            <small>评论审核</small>
+          </span>
+        </a>
+
+        <div class="header-context">
+          <div class="site-picker" id="site-picker">
+            <span>当前站点</span>
+            <button class="site-trigger" id="site-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <span id="site-trigger-label"></span>
+              <span class="site-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="site-menu" id="site-menu" role="listbox" aria-label="选择站点" hidden></div>
+          </div>
+          <p class="session-note" id="session-note">会话于 18:42 到期</p>
+          <button class="button button-quiet" id="logout-button" type="button">退出登录</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="admin-main" id="main-content" data-mobile-view="queue" tabindex="-1">
+      <section class="queue-pane" aria-labelledby="queue-title">
+        <div class="queue-heading">
+          <h1 id="queue-title">评论审核</h1>
+          <button class="icon-text-button" id="refresh-button" type="button">刷新</button>
+        </div>
+
+        <nav class="status-tabs" id="status-tabs" aria-label="评论状态筛选"></nav>
+
+        <div class="queue-meta">
+          <span id="queue-summary">最早提交优先</span>
+          <span id="page-summary"></span>
+        </div>
+
+        <div class="batch-toolbar" id="batch-toolbar" aria-label="批量审核" hidden>
+          <label class="batch-select-all">
+            <input class="selection-checkbox" id="select-page" type="checkbox">
+            <span>本页全选</span>
+          </label>
+          <span class="batch-count" id="batch-count">已选 0 条</span>
+          <div class="batch-actions">
+            <button class="button button-secondary button-compact" id="batch-reject" type="button" disabled>拒绝所选</button>
+            <button class="button button-primary button-compact" id="batch-approve" type="button" disabled>批准所选</button>
+          </div>
+        </div>
+
+        <div class="queue-state" id="queue-state" hidden></div>
+        <div class="comment-queue" id="comment-queue" role="list" aria-label="评论列表"></div>
+
+        <nav class="pager" id="pager" aria-label="评论列表分页">
+          <button class="button button-quiet" id="previous-page" type="button">上一页</button>
+          <span id="pager-label"></span>
+          <button class="button button-quiet" id="next-page" type="button">下一页</button>
+        </nav>
+      </section>
+
+      <section class="detail-pane" id="detail-pane" aria-labelledby="detail-title">
+        <div class="detail-empty" id="detail-empty">
+          <span class="empty-rule" aria-hidden="true"></span>
+          <h2>选择评论</h2>
+        </div>
+
+        <article class="review-sheet" id="review-sheet" hidden>
+          <div class="mobile-detail-head">
+            <button class="back-button" id="back-to-queue" type="button">返回队列</button>
+          </div>
+
+          <header class="review-header">
+            <div class="proof-margin">
+              <span class="status-stamp" id="detail-status">待审核</span>
+              <span class="comment-id" id="detail-id">#0000</span>
+            </div>
+            <div class="review-heading-copy">
+              <p class="review-path" id="detail-path"></p>
+              <h2 id="detail-title"></h2>
+              <div class="review-time-row">
+                <time id="detail-time"></time>
+                <span id="detail-parent"></span>
+              </div>
+            </div>
+          </header>
+
+          <div class="review-grid">
+            <aside class="review-facts" aria-label="评论信息">
+              <dl>
+                <div>
+                  <dt>私有邮箱</dt>
+                  <dd id="detail-email"></dd>
+                </div>
+                <div>
+                  <dt>访客网站</dt>
+                  <dd><a id="detail-url" rel="noopener noreferrer nofollow ugc" target="_blank"></a></dd>
+                </div>
+                <div>
+                  <dt>页面 key</dt>
+                  <dd class="data-value" id="detail-mark"></dd>
+                </div>
+                <div>
+                  <dt>站点</dt>
+                  <dd class="data-value" id="detail-site"></dd>
+                </div>
+              </dl>
+            </aside>
+
+            <div class="review-content-column">
+              <div class="comment-copy" id="detail-content"></div>
+
+              <div class="action-feedback" id="action-feedback" role="status" hidden></div>
+
+              <div class="review-actions" id="review-actions">
+                <button class="button button-danger-quiet" id="delete-button" type="button">墓碑删除</button>
+                <div class="decision-actions">
+                  <button class="button button-secondary" id="reject-button" type="button">拒绝</button>
+                  <button class="button button-primary" id="approve-button" type="button">批准</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="delete-dialog" id="delete-dialog" aria-labelledby="delete-title">
+    <form method="dialog">
+      <h2 id="delete-title">将评论替换为墓碑？</h2>
+      <p>昵称、私有邮箱、网站和原正文会被清除。后代回复仍会保留，操作不能在管理端恢复。</p>
+      <div class="dialog-actions">
+        <button class="button button-secondary" id="cancel-delete" value="cancel">取消</button>
+        <button class="button button-danger" id="confirm-delete" value="confirm">确认墓碑删除</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="delete-dialog batch-dialog" id="batch-dialog" aria-labelledby="batch-title">
+    <form method="dialog">
+      <h2 id="batch-title">批量批准所选评论？</h2>
+      <p id="batch-message"></p>
+      <div class="dialog-actions">
+        <button class="button button-secondary" id="cancel-batch" value="cancel">取消</button>
+        <button class="button button-primary" id="confirm-batch" value="confirm">确认批准</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+  <div class="live-region" id="live-region" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="fixtures.js"></script>
+  <script src="prototype-v2.js"></script>
+</body>
+</html>

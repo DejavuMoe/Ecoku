@@ -1,0 +1,1493 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ecoku 评论审核台</title>
+  <style>
+    :root {
+      --paper: rgb(250, 249, 245);
+      --surface: rgb(252, 251, 247);
+      --ink: rgb(20, 20, 19);
+      --ink-soft: rgb(58, 54, 44);
+      --muted: rgb(96, 91, 82);
+      --line: rgb(150, 143, 132);
+      --line-soft: rgba(20, 20, 19, 0.14);
+      --wash: rgb(243, 239, 231);
+      --wash-translucent: rgba(243, 239, 231, 0.76);
+      --accent: rgb(42, 83, 108);
+      --accent-hover: rgb(31, 67, 90);
+      --accent-text: rgb(250, 249, 245);
+      --pending: rgb(133, 83, 28);
+      --pending-bg: rgb(247, 235, 211);
+      --approved: rgb(42, 102, 72);
+      --approved-bg: rgb(225, 240, 229);
+      --rejected: rgb(145, 54, 52);
+      --rejected-bg: rgb(246, 226, 223);
+      --deleted: rgb(91, 87, 82);
+      --deleted-bg: rgb(232, 229, 222);
+      --danger: rgb(139, 48, 45);
+      --danger-hover: rgb(111, 35, 33);
+      --shadow: 0 18px 48px rgba(20, 20, 19, 0.1);
+      --radius: 14px;
+      --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+      --serif: "OPPO Serif SC", "Noto Serif CJK SC", "Songti SC", serif;
+      --mono: ui-monospace, "SFMono-Regular", "Cascadia Code", "Roboto Mono", monospace;
+      color-scheme: light;
+      font-family: var(--serif);
+    }
+
+    *,
+    *::before,
+    *::after { box-sizing: border-box; }
+
+    html {
+      min-width: 320px;
+      min-height: 100%;
+      background: var(--paper);
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      overflow: hidden;
+      color: var(--ink);
+      background: var(--paper);
+      font-size: 15px;
+      line-height: 1.65;
+      text-rendering: optimizeLegibility;
+    }
+
+    button,
+    input,
+    select {
+      color: inherit;
+      font: inherit;
+    }
+
+    button,
+    select { cursor: pointer; }
+    button:disabled,
+    input:disabled,
+    select:disabled { cursor: not-allowed; }
+    [hidden] { display: none !important; }
+
+    :focus-visible {
+      outline: 2px solid color-mix(in srgb, var(--accent) 72%, white);
+      outline-offset: 3px;
+    }
+
+    .skip-link {
+      position: fixed;
+      top: 8px;
+      left: 8px;
+      z-index: 200;
+      padding: 7px 12px;
+      border-radius: 999px;
+      color: var(--accent-text);
+      background: var(--accent);
+      transform: translateY(-160%);
+    }
+
+    .skip-link:focus { transform: translateY(0); }
+
+    .app-shell {
+      display: grid;
+      min-height: 100vh;
+      grid-template-rows: 60px minmax(0, 1fr);
+    }
+
+    .app-header {
+      position: relative;
+      z-index: 40;
+      border-bottom: 1px solid var(--line-soft);
+      background: color-mix(in srgb, var(--paper) 95%, transparent);
+      backdrop-filter: blur(16px);
+    }
+
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 28px;
+      width: min(100% - 40px, 1600px);
+      height: 60px;
+      margin: 0 auto;
+    }
+
+    .header-start,
+    .header-context,
+    .primary-nav {
+      display: flex;
+      align-items: center;
+    }
+
+    .header-start { min-width: 0; gap: 32px; }
+    .header-context { gap: 14px; }
+    .primary-nav { align-self: stretch; gap: 24px; }
+
+    .brand {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 10px;
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border: 1px solid var(--ink);
+      border-radius: 50%;
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .brand-copy { display: grid; line-height: 1.1; }
+    .brand-copy strong { font-size: 19px; }
+    .brand-copy small {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+    }
+
+    .nav-tab {
+      position: relative;
+      display: grid;
+      height: 100%;
+      place-items: center;
+      padding: 0;
+      border: 0;
+      color: var(--muted);
+      background: transparent;
+      font-size: 14px;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .nav-tab::after {
+      position: absolute;
+      right: 0;
+      bottom: -1px;
+      left: 0;
+      height: 2px;
+      background: transparent;
+      content: "";
+    }
+
+    .nav-tab:hover,
+    .nav-tab[aria-current="page"] { color: var(--ink); }
+    .nav-tab[aria-current="page"] { font-weight: 700; }
+    .nav-tab[aria-current="page"]::after { background: var(--accent); }
+
+    .site-picker {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .site-picker > span,
+    .session-note {
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .site-trigger {
+      display: flex;
+      min-width: 176px;
+      min-height: 38px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 0 13px 0 15px;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      background: var(--surface);
+      font-size: 13px;
+    }
+
+    .site-trigger:hover,
+    .site-trigger[aria-expanded="true"] {
+      border-color: var(--line);
+      background: var(--wash-translucent);
+    }
+
+    .chevron {
+      width: 8px;
+      height: 8px;
+      flex: 0 0 auto;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
+      transform: translateY(-2px) rotate(45deg);
+    }
+
+    .site-menu {
+      position: absolute;
+      top: calc(100% + 7px);
+      right: 0;
+      display: grid;
+      width: max(100%, 206px);
+      padding: 6px;
+      border: 1px solid var(--line-soft);
+      border-radius: 12px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .site-option {
+      min-height: 38px;
+      padding: 0 12px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      text-align: left;
+    }
+
+    .site-option:hover,
+    .site-option[aria-selected="true"] { background: var(--wash-translucent); }
+    .site-option[aria-selected="true"] { font-weight: 700; }
+
+    .logout-button,
+    .icon-button,
+    .sort-button,
+    .pager-button,
+    .back-button {
+      border: 0;
+      background: transparent;
+    }
+
+    .logout-button {
+      min-height: 36px;
+      padding: 0 10px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .logout-button:hover,
+    .icon-button:hover,
+    .back-button:hover { color: var(--ink); background: var(--wash); }
+
+    .main-area { min-height: 0; }
+
+    .moderation-layout {
+      display: grid;
+      height: calc(100vh - 60px);
+      grid-template-columns: 400px minmax(0, 1fr);
+    }
+
+    .queue-pane {
+      display: grid;
+      min-width: 0;
+      min-height: 0;
+      grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+      border-right: 1px solid var(--line-soft);
+      background: var(--surface);
+    }
+
+    .queue-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 22px 22px 16px;
+    }
+
+    .queue-heading h1,
+    .notification-heading h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .icon-button {
+      display: grid;
+      width: 36px;
+      height: 36px;
+      place-items: center;
+      border-radius: 999px;
+      color: var(--muted);
+      font-family: var(--sans);
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .status-tabs {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      padding: 0 14px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .status-tab {
+      position: relative;
+      min-width: 0;
+      min-height: 44px;
+      padding: 0 4px;
+      overflow: hidden;
+      border: 0;
+      color: var(--muted);
+      background: transparent;
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .status-tab::after {
+      position: absolute;
+      right: 8px;
+      bottom: -1px;
+      left: 8px;
+      height: 2px;
+      background: transparent;
+      content: "";
+    }
+
+    .status-tab:hover,
+    .status-tab[aria-selected="true"] { color: var(--ink); }
+    .status-tab[aria-selected="true"] { font-weight: 700; }
+    .status-tab[aria-selected="true"]::after { background: var(--accent); }
+
+    .queue-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 38px;
+      padding: 0 22px;
+      border-bottom: 1px solid var(--line-soft);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .sort-button {
+      padding: 4px 0;
+      color: inherit;
+      font-size: inherit;
+      text-decoration: underline;
+      text-decoration-color: transparent;
+      text-underline-offset: 3px;
+    }
+
+    .sort-button:hover { color: var(--ink); text-decoration-color: currentColor; }
+
+    .batch-toolbar {
+      display: flex;
+      min-height: 44px;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 16px;
+      border-bottom: 1px solid var(--line-soft);
+      background: color-mix(in srgb, var(--wash-translucent) 54%, transparent);
+      font-size: 11px;
+    }
+
+    .batch-select {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+    }
+
+    .selection-checkbox {
+      width: 16px;
+      height: 16px;
+      flex: 0 0 auto;
+      margin: 0;
+      accent-color: var(--accent);
+    }
+
+    .batch-count { margin-right: auto; color: var(--muted); }
+
+    .compact-action {
+      min-height: 30px;
+      padding: 0 10px;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      background: var(--surface);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .compact-action:hover { border-color: var(--ink); background: var(--wash); }
+    .compact-action.is-primary { color: var(--accent-text); border-color: var(--accent); background: var(--accent); }
+    .compact-action.is-primary:hover { border-color: var(--accent-hover); background: var(--accent-hover); }
+
+    .queue-scroll {
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    .queue-list { display: grid; }
+
+    .queue-row {
+      position: relative;
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .queue-row.no-select { grid-template-columns: minmax(0, 1fr); }
+
+    .queue-check {
+      display: grid;
+      align-items: start;
+      justify-items: center;
+      padding-top: 17px;
+    }
+
+    .queue-item {
+      position: relative;
+      display: grid;
+      min-width: 0;
+      gap: 7px;
+      padding: 14px 16px 15px 4px;
+      overflow: hidden;
+      border: 0;
+      background: transparent;
+      text-align: left;
+    }
+
+    .queue-row.no-select .queue-item { padding-left: 22px; }
+    .queue-item:hover,
+    .queue-item[aria-selected="true"] { background: var(--wash-translucent); }
+    .queue-item[aria-selected="true"] { box-shadow: inset 3px 0 0 var(--accent); }
+
+    .queue-line {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .queue-line:first-child,
+    .queue-line:last-child { justify-content: space-between; }
+
+    .queue-author,
+    .queue-date,
+    .queue-path,
+    .queue-reference {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .queue-author { font-weight: 600; }
+    .queue-date { flex: 0 0 auto; color: var(--muted); font-size: 11px; }
+    .queue-summary {
+      display: -webkit-box;
+      min-width: 0;
+      overflow: hidden;
+      color: var(--ink-soft);
+      font-size: 13px;
+      line-height: 1.55;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .queue-path {
+      flex: 1 1 auto;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 12px;
+    }
+
+    .queue-reference {
+      flex: 0 1 auto;
+      max-width: 112px;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      width: fit-content;
+      flex: 0 0 auto;
+      align-items: center;
+      min-height: 22px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .is-pending { color: var(--pending); background: var(--pending-bg); }
+    .is-approved { color: var(--approved); background: var(--approved-bg); }
+    .is-rejected { color: var(--rejected); background: var(--rejected-bg); }
+    .is-deleted { color: var(--deleted); background: var(--deleted-bg); }
+
+    .queue-empty {
+      display: grid;
+      min-height: 100%;
+      place-items: center;
+      padding: 28px;
+      color: var(--muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .pager {
+      display: flex;
+      min-height: 48px;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      border-top: 1px solid var(--line-soft);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .pager-button {
+      min-height: 30px;
+      padding: 0 6px;
+      border-radius: 8px;
+      color: inherit;
+      font-size: inherit;
+    }
+
+    .pager-button:not(:disabled):hover { color: var(--ink); background: var(--wash); }
+    .pager-button:disabled { opacity: 0.42; }
+    .pager-divider { color: var(--line); }
+
+    .detail-pane {
+      min-width: 0;
+      min-height: 0;
+      overflow-y: auto;
+      background: var(--paper);
+    }
+
+    .detail-empty {
+      display: grid;
+      min-height: 100%;
+      place-items: center;
+      padding: 48px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .review-sheet {
+      width: min(100%, 816px);
+      margin: 0;
+      padding: 44px 48px 64px;
+    }
+
+    .mobile-detail-head { display: none; }
+
+    .detail-info {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .detail-info .detail-location {
+      min-width: 0;
+      overflow: hidden;
+      font-family: var(--mono);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .detail-heading {
+      display: flex;
+      min-width: 0;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 22px;
+      margin-top: 20px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .detail-heading h2 {
+      min-width: 0;
+      margin: 0;
+      overflow: hidden;
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.35;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .detail-heading time { flex: 0 0 auto; color: var(--muted); font-size: 12px; }
+
+    .comment-body {
+      margin: 0;
+      padding: 26px 0;
+      color: var(--ink-soft);
+      font-size: 16px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .comment-body.is-deleted-copy { color: var(--muted); font-style: italic; }
+
+    .detail-facts {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+      padding: 22px 0;
+      border-top: 1px solid var(--line-soft);
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .fact-row {
+      display: grid;
+      min-width: 0;
+      grid-template-columns: 88px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+
+    .fact-row dt { color: var(--muted); font-size: 12px; }
+    .fact-row dd {
+      min-width: 0;
+      margin: 0;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.65;
+      word-break: break-all;
+    }
+
+    .review-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-top: 22px;
+    }
+
+    .review-actions .danger-button { margin-left: auto; }
+
+    .button {
+      min-height: 38px;
+      padding: 0 16px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--surface);
+      font-size: 13px;
+      font-weight: 700;
+      transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+    }
+
+    .button:hover { border-color: var(--ink); background: var(--wash); }
+    .button-primary { color: var(--accent-text); border-color: var(--accent); background: var(--accent); }
+    .button-primary:hover { border-color: var(--accent-hover); background: var(--accent-hover); }
+    .danger-button { color: var(--danger); border-color: var(--danger); background: var(--surface); }
+    .danger-button:hover { color: var(--accent-text); border-color: var(--danger-hover); background: var(--danger-hover); }
+
+    .notifications-layout {
+      height: calc(100vh - 60px);
+      overflow-y: auto;
+      padding: 42px 24px 96px;
+    }
+
+    .notifications-column { width: min(100%, 680px); margin: 0 auto; }
+    .notification-heading { margin-bottom: 24px; }
+    .notification-heading p { margin: 7px 0 0; color: var(--muted); font-size: 13px; }
+    .channel-stack { display: grid; gap: 24px; }
+
+    .channel-card {
+      overflow: hidden;
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+
+    .channel-head {
+      display: flex;
+      min-height: 58px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .channel-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
+
+    .switch-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--ink-soft);
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .switch-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+
+    .switch-track {
+      position: relative;
+      width: 38px;
+      height: 22px;
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--wash);
+      transition: background-color 160ms ease, border-color 160ms ease;
+    }
+
+    .switch-track::after {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: transform 160ms ease, background-color 160ms ease;
+      content: "";
+    }
+
+    .switch-input:checked + .switch-track { border-color: var(--accent); background: var(--accent); }
+    .switch-input:checked + .switch-track::after { background: var(--accent-text); transform: translateX(16px); }
+    .switch-input:focus-visible + .switch-track { outline: 2px solid color-mix(in srgb, var(--accent) 72%, white); outline-offset: 3px; }
+
+    .channel-content { transition: opacity 160ms ease; }
+    .channel-card[data-enabled="false"] .channel-content { opacity: 0.42; }
+
+    .channel-form {
+      display: grid;
+      gap: 14px;
+      padding: 20px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 120px minmax(0, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+
+    .form-label {
+      padding-top: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .field-stack { display: grid; min-width: 0; gap: 5px; }
+
+    .input,
+    .select,
+    .chip-field {
+      width: 100%;
+      min-height: 36px;
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      outline: 0;
+      background: var(--paper);
+    }
+
+    .input,
+    .select { height: 36px; padding: 0 11px; }
+    .input:hover,
+    .select:hover,
+    .chip-field:hover { border-color: var(--line); }
+    .input:focus,
+    .select:focus,
+    .chip-field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 10%, transparent); }
+
+    .input[aria-invalid="true"],
+    .select[aria-invalid="true"],
+    .chip-field[aria-invalid="true"] { border-color: var(--danger); }
+
+    .input:disabled,
+    .select:disabled { color: var(--muted); }
+
+    .field-help,
+    .field-error { margin: 0; font-size: 12px; line-height: 1.5; }
+    .field-help { color: var(--muted); }
+    .field-error { color: var(--danger); }
+
+    .chip-field {
+      display: flex;
+      min-width: 0;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 7px;
+      cursor: text;
+    }
+
+    .chip-list {
+      display: flex;
+      min-width: 0;
+      max-width: 100%;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip-field input {
+      min-width: 116px;
+      height: 26px;
+      flex: 1 1 116px;
+      padding: 0 3px;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      font-size: 13px;
+    }
+
+    .chip {
+      display: inline-flex;
+      min-width: 0;
+      max-width: 100%;
+      align-items: center;
+      gap: 5px;
+      min-height: 26px;
+      padding: 2px 5px 2px 9px;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      background: var(--wash);
+      font-family: var(--sans);
+      font-size: 12px;
+    }
+
+    .chip.is-invalid { color: var(--danger); border-color: var(--danger); background: var(--rejected-bg); }
+    .chip-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .chip-remove {
+      display: grid;
+      width: 22px;
+      height: 22px;
+      flex: 0 0 auto;
+      place-items: center;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      color: var(--muted);
+      background: transparent;
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .chip-remove:hover { color: var(--ink); background: var(--surface); }
+
+    .radio-row { display: flex; flex-wrap: wrap; gap: 10px 18px; padding-top: 7px; }
+    .radio-label { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; }
+    .radio-label input { margin: 0; accent-color: var(--accent); }
+
+    .channel-actions {
+      display: flex;
+      min-height: 62px;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 20px;
+      border-top: 1px solid var(--line-soft);
+    }
+
+    .channel-actions .save-button { margin-left: auto; }
+    .test-feedback { font-size: 12px; }
+    .test-feedback.is-success { color: var(--approved); }
+    .test-feedback.is-failure { color: var(--danger); }
+
+    .prototype-controls {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      z-index: 120;
+      display: grid;
+      gap: 3px;
+      padding: 8px 10px;
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius);
+      background: color-mix(in srgb, var(--paper) 91%, transparent);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .prototype-controls label { color: var(--muted); font-size: 10px; }
+    .prototype-controls select {
+      min-width: 210px;
+      height: 32px;
+      padding: 0 28px 0 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      font-size: 12px;
+    }
+
+    .back-button {
+      min-height: 36px;
+      padding: 0 11px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (min-width: 1600px) {
+      .moderation-layout { grid-template-columns: 420px minmax(0, 1fr); }
+    }
+
+    @media (max-width: 1180px) {
+      .brand-copy small,
+      .site-picker > span { display: none; }
+      .header-start { gap: 22px; }
+      .header-context { gap: 8px; }
+      .session-note { display: none; }
+      .site-trigger { min-width: 154px; }
+    }
+
+    @media (max-width: 1023px) {
+      body { overflow: hidden; }
+      .header-inner { width: min(100% - 24px, 1600px); gap: 12px; }
+      .header-start { gap: 16px; }
+      .primary-nav { gap: 14px; }
+      .nav-tab { font-size: 13px; }
+      .site-picker { display: none; }
+      .moderation-layout { display: block; height: calc(100vh - 60px); }
+      .queue-pane { height: 100%; border-right: 0; }
+      .detail-pane {
+        position: fixed;
+        inset: 60px 0 0;
+        z-index: 60;
+        display: none;
+        background: var(--paper);
+      }
+      .moderation-layout[data-mobile-detail="true"] .detail-pane { display: block; }
+      .mobile-detail-head { display: block; margin-bottom: 18px; }
+      .review-sheet { width: min(100%, 816px); margin: 0 auto; padding: 24px 24px 96px; }
+      .notifications-layout { padding-top: 32px; }
+      .form-row { grid-template-columns: 1fr; gap: 5px; }
+      .form-label { padding-top: 0; }
+    }
+
+    @media (max-width: 660px) {
+      .app-shell { grid-template-rows: 60px minmax(0, 1fr); }
+      .header-inner { width: calc(100% - 20px); }
+      .header-start { min-width: 0; gap: 12px; }
+      .primary-nav { gap: 12px; }
+      .nav-tab { font-size: 12px; }
+      .logout-button { display: none; }
+      .queue-heading { padding: 18px 18px 13px; }
+      .queue-meta { padding: 0 18px; }
+      .queue-item { padding-right: 14px; }
+      .review-sheet { padding-right: 18px; padding-left: 18px; }
+      .detail-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
+      .detail-heading h2 { width: 100%; }
+      .fact-row { grid-template-columns: 78px minmax(0, 1fr); gap: 10px; }
+      .review-actions { align-items: stretch; flex-wrap: wrap; }
+      .review-actions .button { flex: 1 1 120px; }
+      .review-actions .danger-button { margin-left: 0; }
+      .notifications-layout { padding: 24px 12px 96px; }
+      .channel-head,
+      .channel-form,
+      .channel-actions { padding-right: 14px; padding-left: 14px; }
+      .channel-actions { align-items: flex-start; flex-wrap: wrap; }
+      .channel-actions .save-button { margin-left: auto; }
+      .test-feedback { order: 3; width: 100%; }
+      .prototype-controls { right: 10px; bottom: 10px; }
+      .prototype-controls select { min-width: 176px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-start">
+          <a class="brand" href="#moderation-pending" aria-label="Ecoku 评论审核台首页">
+            <span class="brand-mark" aria-hidden="true">E</span>
+            <span class="brand-copy"><strong>Ecoku</strong><small>评论审核</small></span>
+          </a>
+          <nav class="primary-nav" aria-label="主导航">
+            <a class="nav-tab" id="moderation-nav" href="#moderation-pending">评论审核</a>
+            <a class="nav-tab" id="notifications-nav" href="#notifications-empty">通知设置</a>
+          </nav>
+        </div>
+        <div class="header-context">
+          <div class="site-picker">
+            <span>当前站点</span>
+            <button class="site-trigger" id="site-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <span>docs · 先审后发</span><span class="chevron" aria-hidden="true"></span>
+            </button>
+            <div class="site-menu" id="site-menu" role="listbox" aria-label="选择站点" hidden>
+              <button class="site-option" type="button" role="option" aria-selected="true">docs · 先审后发</button>
+              <button class="site-option" type="button" role="option" aria-selected="false">garden · 自动通过</button>
+            </div>
+          </div>
+          <span class="session-note">会话于 18:30 到期</span>
+          <button class="logout-button" type="button">退出登录</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-area" id="main-content" tabindex="-1"></main>
+  </div>
+
+  <div class="prototype-controls" data-prototype-only>
+    <label for="state-select">预览状态</label>
+    <select id="state-select">
+      <option value="moderation-pending">待审核</option>
+      <option value="moderation-approved">已批准</option>
+      <option value="moderation-rejected">已拒绝</option>
+      <option value="moderation-deleted">已删除</option>
+      <option value="moderation-extreme">极端文本用例</option>
+      <option value="moderation-none">未选中任何评论</option>
+      <option value="notifications-empty">两个渠道均未配置</option>
+      <option value="notifications-configured">均已配置并启用</option>
+      <option value="notifications-validation">表单校验错误态</option>
+    </select>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const statuses = {
+        pending: { label: "待审核", className: "is-pending" },
+        approved: { label: "已批准", className: "is-approved" },
+        rejected: { label: "已拒绝", className: "is-rejected" },
+        deleted: { label: "已删除", className: "is-deleted" }
+      };
+
+      const comments = {
+        pending: [
+          { id: 1041, status: "pending", username: "林峤", email: "lin@example.test", url: "https://example.test/lin", mark: "/guides/sqlite-backup", parent: 0, createdAt: "2026/08/13 10:18", content: "备份步骤很清楚。是否可以补充一下停服后怎样校验备份文件完整性？" },
+          { id: 1042, status: "pending", username: "Mira", email: "mira@example.test", url: "", mark: "/guides/reverse-proxy", parent: 913, createdAt: "2026/08/13 11:06", content: "回复上面的配置：如果只信任固定代理地址，容器重建后地址变化要怎样处理？" },
+          { id: 1043, status: "pending", username: "访客 17", email: "visitor17@example.test", url: "https://example.test/profile", mark: "/reference/embed-sdk", parent: 0, createdAt: "2026/08/13 12:25", content: "<script>alert(\"x\")<\/script> 这段内容应当始终作为纯文本显示。" }
+        ],
+        approved: [
+          { id: 1034, status: "approved", username: "Owen", email: "owen@example.test", url: "", mark: "/guides/sqlite-backup", parent: 0, createdAt: "2026/08/12 16:40", content: "在临时目录演练恢复的建议很实用。" },
+          { id: 1035, status: "approved", username: "苏合", email: "suhe@example.test", url: "https://example.test/suhe", mark: "/reference/embed-sdk", parent: 0, createdAt: "2026/08/12 17:14", content: "用明确的页面 key 比自动猜测地址可靠很多。" },
+          { id: 1038, status: "approved", username: "苔", email: "moss@example.test", url: "", mark: "/notes/plain-text", parent: 1034, createdAt: "2026/08/12 18:20", content: "纯文本评论读起来很安静。" }
+        ],
+        deleted: [
+          { id: 1037, status: "deleted", username: "已删除", email: "", url: "", mark: "/notes/security-boundaries", parent: 0, createdAt: "2026/08/11 20:05", content: "该评论已删除" },
+          { id: 2040, status: "deleted", username: "已删除", email: "", url: "", mark: "/journal/second-entry", parent: 2038, createdAt: "2026/08/12 22:12", content: "该评论已删除" }
+        ],
+        extreme: [
+          {
+            id: 999999999999,
+            status: "pending",
+            username: "一个用于检查超长字段布局是否稳定的访客昵称",
+            email: "notification-routing-and-archive-verification-for-a-very-long-team-address-that-must-not-collapse-into-a-vertical-column@example.test",
+            url: "https://example.test/a/very/long/visitor/profile/path/that/keeps/going/through/several/segments/and/includes/a-query?source=ecoku-admin-layout&channel=comment-review",
+            mark: "/guides/self-hosted/comment-system/operations/database-migration/recovery-and-long-running-maintenance/a-page-path-that-must-remain-readable-without-forcing-the-layout-to-grow",
+            parent: 888888888888,
+            createdAt: "2026/08/13 14:45",
+            content: "我在按文档演练迁移时，先复制了数据库文件，再把副本放到隔离目录中启动。第一次启动能够按顺序执行迁移，评论正文、审核状态、父子关系和创建时间都保留了；第二次启动没有重复执行已经记录的版本。这部分与说明一致。不过恢复演练里还有几个细节值得确认：如果复制动作发生在仍有写入的时刻，是否应该要求先停止服务，还是允许使用 SQLite 在线备份接口生成一致性快照；如果迁移在创建索引之后、记录版本之前中断，下一次启动会回滚整个事务，还是需要人工删除半成品索引；如果部署机器磁盘空间不足，失败信息是否能够明确区分数据库只读、空间不足和版本过新三种情况。另一个问题是长线程。我的测试数据里包含六级回复、被删除的中间节点和仍处于待审核状态的后代。迁移完成后，公开列表只展示获准公开的内容，墓碑保留后代关系，待审核回复不会泄露；管理端则能够在目标站点和页面范围内继续找到原有父评论。为了让运维人员更容易复核，或许可以在备份章节增加一份固定检查清单：记录迁移前 schema 版本和程序版本，校验备份文件散列，在临时目录执行恢复，检查根评论的 parentId 是否为空，抽查一条六级线程，核对 pending、approved、rejected 三种状态，最后再确认公开接口没有邮箱、网站以外的私有字段和已经清除的正文。这样即使操作者不是开发者，也能根据结果判断是否适合继续上线，而不是只看到服务进程成功启动就误以为数据已经完整。最后还想确认失败恢复边界：原数据库应当始终保持原样，测试迁移只能针对副本，未知未来版本必须拒绝启动，日志不能打印评论正文、邮箱或完整 SQL 参数；若这些条件都满足，整个迁移流程就更容易在低资源服务器上重复演练。"
+          }
+        ]
+      };
+
+      const stateOrder = [
+        "moderation-pending",
+        "moderation-approved",
+        "moderation-rejected",
+        "moderation-deleted",
+        "moderation-extreme",
+        "moderation-none",
+        "notifications-empty",
+        "notifications-configured",
+        "notifications-validation"
+      ];
+
+      const main = document.getElementById("main-content");
+      const stateSelect = document.getElementById("state-select");
+      const moderationNav = document.getElementById("moderation-nav");
+      const notificationsNav = document.getElementById("notifications-nav");
+      const siteTrigger = document.getElementById("site-trigger");
+      const siteMenu = document.getElementById("site-menu");
+      let sortAscending = true;
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function currentState() {
+        const value = window.location.hash.slice(1);
+        return stateOrder.includes(value) ? value : "moderation-pending";
+      }
+
+      function statusBadge(status) {
+        const meta = statuses[status];
+        return `<span class="status-badge ${meta.className}">${meta.label}</span>`;
+      }
+
+      function queueItem(comment, selected, selectable) {
+        const reference = comment.parent ? `回复 #${comment.parent}` : `#${comment.id}`;
+        const copy = comment.status === "deleted" ? "该评论已删除" : comment.content;
+        return `
+          <div class="queue-row${selectable ? "" : " no-select"}">
+            ${selectable ? `<label class="queue-check"><input class="selection-checkbox queue-checkbox" type="checkbox" aria-label="选择评论 #${comment.id}"></label>` : ""}
+            <button class="queue-item" type="button" role="option" data-comment-id="${comment.id}" aria-selected="${selected ? "true" : "false"}">
+              <span class="queue-line">
+                <span class="queue-author" title="${escapeHtml(comment.username)}">${escapeHtml(comment.username)}</span>
+                <time class="queue-date">${escapeHtml(comment.createdAt)}</time>
+              </span>
+              <span class="queue-summary">${escapeHtml(copy)}</span>
+              <span class="queue-line">
+                <span class="queue-path" title="${escapeHtml(comment.mark)}">${escapeHtml(comment.mark)}</span>
+                <span class="queue-reference" title="${escapeHtml(reference)}">${escapeHtml(reference)}</span>
+                ${statusBadge(comment.status)}
+              </span>
+            </button>
+          </div>`;
+      }
+
+      function detail(comment) {
+        if (!comment) return `<div class="detail-empty">从左侧列表选择一条评论</div>`;
+        const parentText = comment.parent ? `回复 #${comment.parent}` : "根评论";
+        const deleted = comment.status === "deleted";
+        const actionMarkup = deleted ? "" : actionButtons(comment.status);
+        return `
+          <article class="review-sheet" aria-labelledby="detail-title">
+            <div class="mobile-detail-head"><button class="back-button" id="detail-back" type="button">‹ 返回</button></div>
+            <div class="detail-info">
+              ${statusBadge(comment.status)}
+              <span>·</span><span>#${comment.id}</span><span>·</span><span>${escapeHtml(parentText)}</span><span>·</span>
+              <span class="detail-location" title="docs / ${escapeHtml(comment.mark)}">docs / ${escapeHtml(comment.mark)}</span>
+            </div>
+            <header class="detail-heading">
+              <h2 id="detail-title" title="${escapeHtml(comment.username)}">${escapeHtml(comment.username)}</h2>
+              <time>${escapeHtml(comment.createdAt)}</time>
+            </header>
+            <p class="comment-body${deleted ? " is-deleted-copy" : ""}">${escapeHtml(deleted ? "该评论已删除" : comment.content)}</p>
+            <dl class="detail-facts">
+              ${factRow("私有邮箱", deleted ? "—" : comment.email || "—")}
+              ${factRow("访客网站", deleted ? "—" : comment.url || "—")}
+              ${factRow("页面 key", comment.mark)}
+              ${factRow("站点", "docs")}
+              ${factRow("提交时间", comment.createdAt)}
+              ${factRow("父评论", comment.parent ? `#${comment.parent}` : "—")}
+            </dl>
+            ${actionMarkup}
+          </article>`;
+      }
+
+      function factRow(label, value) {
+        return `<div class="fact-row"><dt>${label}</dt><dd title="${escapeHtml(value)}">${escapeHtml(value)}</dd></div>`;
+      }
+
+      function actionButtons(status) {
+        if (status === "pending") {
+          return `<div class="review-actions"><button class="button button-primary" type="button">批准</button><button class="button" type="button">拒绝</button></div>`;
+        }
+        if (status === "approved") {
+          return `<div class="review-actions"><button class="button" type="button">拒绝</button><button class="button danger-button" type="button">墓碑删除</button></div>`;
+        }
+        return `<div class="review-actions"><button class="button button-primary" type="button">批准</button><button class="button danger-button" type="button">墓碑删除</button></div>`;
+      }
+
+      function moderationState(state) {
+        const stateStatus = state === "moderation-approved" ? "approved" : state === "moderation-rejected" ? "rejected" : state === "moderation-deleted" ? "deleted" : "pending";
+        const list = state === "moderation-extreme" ? comments.extreme : stateStatus === "rejected" ? [] : comments[stateStatus];
+        const selected = state === "moderation-none" || list.length === 0 ? null : list[0];
+        const counts = { pending: 23, approved: 12, rejected: 0, deleted: 2 };
+        if (state === "moderation-extreme") counts.pending = 1;
+        const selectable = stateStatus === "pending" && list.length > 0;
+        const pageCount = state === "moderation-extreme" || stateStatus === "deleted" ? 1 : stateStatus === "approved" ? 3 : 5;
+
+        main.innerHTML = `
+          <div class="moderation-layout" data-mobile-detail="false">
+            <section class="queue-pane" aria-labelledby="queue-title">
+              <div class="queue-heading">
+                <h1 id="queue-title">评论审核</h1>
+                <button class="icon-button" type="button" title="刷新" aria-label="刷新">↻</button>
+              </div>
+              <nav class="status-tabs" role="tablist" aria-label="评论状态筛选">
+                ${["pending", "approved", "rejected", "deleted"].map((status) => `<button class="status-tab" type="button" role="tab" data-status="${status}" aria-selected="${stateStatus === status}">${statuses[status].label} ${counts[status]}</button>`).join("")}
+              </nav>
+              <div class="queue-meta"><button class="sort-button" type="button">${sortAscending ? "最早提交优先" : "最晚提交优先"}</button><span>${counts[stateStatus]} 条</span></div>
+              ${selectable ? `<div class="batch-toolbar"><label class="batch-select"><input id="select-all" class="selection-checkbox" type="checkbox"><span>本页全选</span></label><span class="batch-count">已选 <strong id="selected-count">0</strong> 条</span><button class="compact-action" type="button">拒绝所选</button><button class="compact-action is-primary" type="button">批准所选</button></div>` : `<div hidden></div>`}
+              <div class="queue-scroll">
+                ${list.length ? `<div class="queue-list" role="listbox" aria-label="评论列表">${list.map((comment, index) => queueItem(comment, index === 0 && Boolean(selected), selectable)).join("")}</div>` : `<div class="queue-empty">没有已拒绝评论</div>`}
+              </div>
+              ${list.length ? `<nav class="pager" aria-label="评论列表分页"><button class="pager-button" type="button" disabled>‹ 上一页</button><span class="pager-divider">｜</span><span>1/${pageCount}</span><span class="pager-divider">｜</span><button class="pager-button" type="button" ${pageCount === 1 ? "disabled" : ""}>下一页 ›</button></nav>` : `<div></div>`}
+            </section>
+            <section class="detail-pane">${detail(selected)}</section>
+          </div>`;
+
+        bindModeration(list);
+      }
+
+      function bindModeration(list) {
+        const layout = main.querySelector(".moderation-layout");
+        const queueButtons = Array.from(main.querySelectorAll(".queue-item"));
+        queueButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            const id = Number(button.dataset.commentId);
+            const comment = list.find((item) => item.id === id);
+            queueButtons.forEach((item) => item.setAttribute("aria-selected", String(item === button)));
+            main.querySelector(".detail-pane").innerHTML = detail(comment);
+            layout.dataset.mobileDetail = "true";
+            bindDetailBack(layout);
+          });
+        });
+
+        bindDetailBack(layout);
+        const sortButton = main.querySelector(".sort-button");
+        sortButton.addEventListener("click", () => {
+          sortAscending = !sortAscending;
+          sortButton.textContent = sortAscending ? "最早提交优先" : "最晚提交优先";
+        });
+
+        main.querySelectorAll(".status-tab").forEach((tab) => {
+          tab.addEventListener("click", () => {
+            window.location.hash = `moderation-${tab.dataset.status}`;
+          });
+        });
+
+        const checkboxes = Array.from(main.querySelectorAll(".queue-checkbox"));
+        const selectAll = main.querySelector("#select-all");
+        const selectedCount = main.querySelector("#selected-count");
+        function updateSelection() {
+          const count = checkboxes.filter((checkbox) => checkbox.checked).length;
+          if (selectedCount) selectedCount.textContent = String(count);
+          if (selectAll) {
+            selectAll.checked = checkboxes.length > 0 && count === checkboxes.length;
+            selectAll.indeterminate = count > 0 && count < checkboxes.length;
+          }
+        }
+        checkboxes.forEach((checkbox) => checkbox.addEventListener("change", updateSelection));
+        if (selectAll) selectAll.addEventListener("change", () => {
+          checkboxes.forEach((checkbox) => { checkbox.checked = selectAll.checked; });
+          updateSelection();
+        });
+      }
+
+      function bindDetailBack(layout) {
+        const back = main.querySelector("#detail-back");
+        if (!back) return;
+        back.addEventListener("click", () => {
+          layout.dataset.mobileDetail = "false";
+          const selected = main.querySelector('.queue-item[aria-selected="true"]');
+          if (selected) selected.focus();
+        });
+      }
+
+      function notificationState(state) {
+        const configured = state === "notifications-configured";
+        const validation = state === "notifications-validation";
+        const enabled = configured || validation;
+        main.innerHTML = `
+          <section class="notifications-layout" aria-labelledby="notifications-title">
+            <div class="notifications-column">
+              <header class="notification-heading"><h1 id="notifications-title">通知设置</h1><p>配置新评论通知的投递渠道，保存后立即生效。</p></header>
+              <div class="channel-stack">
+                ${emailCard({ enabled, configured, validation })}
+                ${telegramCard({ enabled, configured, validation })}
+              </div>
+            </div>
+          </section>`;
+        bindNotifications();
+      }
+
+      function emailCard(options) {
+        return `
+          <section class="channel-card" data-channel="email" data-enabled="${options.enabled}">
+            <header class="channel-head"><h2>电子邮件通知</h2><label class="switch-label"><input class="switch-input" type="checkbox" ${options.enabled ? "checked" : ""}><span class="switch-track" aria-hidden="true"></span><span>启用电子邮件通知</span></label></header>
+            <div class="channel-content">
+              <div class="channel-form">
+                ${inputRow("SMTP 服务器", "email-server", "text", "smtp.example.com", options.configured ? "smtp.example.com" : "")}
+                ${inputRow("端口", "email-port", "text", "465", options.configured ? "465" : "", options.validation ? "端口为空" : "")}
+                ${selectRow("加密方式", "email-encryption", ["SSL/TLS", "STARTTLS", "不加密"])}
+                ${inputRow("用户名", "email-user", "text", "", options.configured ? "notifications@example.test" : "")}
+                ${inputRow("密码", "email-password", "password", options.configured ? "已设置，输入新值以更换" : "", "")}
+                ${inputRow("发件人地址", "email-sender", "email", "", options.configured ? "notifications@example.test" : "")}
+                ${chipRow("通知收件人", "email-recipients", "email", options.configured ? ["ops@example.test", "owner@example.test"] : options.validation ? ["错误邮箱"] : [], options.validation ? "邮箱格式错误" : "")}
+                ${radioRow("email-trigger")}
+              </div>
+              <footer class="channel-actions"><button class="button test-button" type="button" data-kind="email">发送测试邮件</button><span class="test-feedback ${options.validation ? "is-success" : ""}" aria-live="polite">${options.validation ? "测试邮件已发送" : ""}</span><button class="button button-primary save-button" type="button">保存</button></footer>
+            </div>
+          </section>`;
+      }
+
+      function telegramCard(options) {
+        return `
+          <section class="channel-card" data-channel="telegram" data-enabled="${options.enabled}">
+            <header class="channel-head"><h2>Telegram 通知</h2><label class="switch-label"><input class="switch-input" type="checkbox" ${options.enabled ? "checked" : ""}><span class="switch-track" aria-hidden="true"></span><span>启用 Telegram 通知</span></label></header>
+            <div class="channel-content">
+              <div class="channel-form">
+                ${inputRow("Bot Token", "telegram-token", "password", options.configured ? "已设置，输入新值以更换" : "", "", "", "通过 @BotFather 获取")}
+                ${chipRow("接收目标 ID", "telegram-targets", "telegram", options.configured ? ["123456789", "-1001234567890"] : [], "", "支持用户、群组、频道 ID，如 123456789 或 -1001234567890")}
+                ${radioRow("telegram-trigger")}
+              </div>
+              <footer class="channel-actions"><button class="button test-button" type="button" data-kind="telegram">发送测试消息</button><span class="test-feedback ${options.validation ? "is-failure" : ""}" aria-live="polite">${options.validation ? "发送失败：原因" : ""}</span><button class="button button-primary save-button" type="button">保存</button></footer>
+            </div>
+          </section>`;
+      }
+
+      function inputRow(label, id, type, placeholder, value, error, help) {
+        const describedBy = error ? `${id}-error` : help ? `${id}-help` : "";
+        return `<div class="form-row"><label class="form-label" for="${id}">${label}</label><div class="field-stack"><input class="input" id="${id}" type="${type}" placeholder="${escapeHtml(placeholder)}" value="${escapeHtml(value || "")}" ${error ? 'aria-invalid="true"' : ""} ${describedBy ? `aria-describedby="${describedBy}"` : ""}>${error ? `<p class="field-error" id="${id}-error">${error}</p>` : ""}${help ? `<p class="field-help" id="${id}-help">${help}</p>` : ""}</div></div>`;
+      }
+
+      function selectRow(label, id, options) {
+        return `<div class="form-row"><label class="form-label" for="${id}">${label}</label><div class="field-stack"><select class="select" id="${id}">${options.map((option) => `<option>${option}</option>`).join("")}</select></div></div>`;
+      }
+
+      function chipRow(label, id, kind, values, error, help) {
+        return `<div class="form-row"><label class="form-label" for="${id}-input">${label}</label><div class="field-stack"><div class="chip-field" data-chip-kind="${kind}" data-chip-id="${id}" aria-invalid="${error ? "true" : "false"}"><div class="chip-list">${values.map((value) => chipMarkup(value, isValidChip(kind, value))).join("")}</div><input id="${id}-input" type="text" autocomplete="off" aria-label="${label}"></div><p class="field-error" data-chip-error ${error ? "" : "hidden"}>${error || (kind === "email" ? "邮箱格式错误" : "接收目标 ID 格式错误")}</p>${help ? `<p class="field-help">${help}</p>` : ""}</div></div>`;
+      }
+
+      function chipMarkup(value, valid) {
+        return `<span class="chip${valid ? "" : " is-invalid"}" data-chip-value="${escapeHtml(value)}"><span class="chip-text" title="${escapeHtml(value)}">${escapeHtml(value)}</span><button class="chip-remove" type="button" aria-label="移除 ${escapeHtml(value)}">×</button></span>`;
+      }
+
+      function radioRow(name) {
+        return `<div class="form-row"><span class="form-label">触发时机</span><div class="radio-row"><label class="radio-label"><input type="radio" name="${name}" checked>仅新评论待审核时</label><label class="radio-label"><input type="radio" name="${name}">所有新评论</label></div></div>`;
+      }
+
+      function isValidChip(kind, value) {
+        if (kind === "telegram") return /^-?\d+$/.test(value);
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+      }
+
+      function bindNotifications() {
+        main.querySelectorAll(".channel-card").forEach((card) => {
+          const toggle = card.querySelector(".switch-input");
+          function syncEnabled() {
+            const enabled = toggle.checked;
+            card.dataset.enabled = String(enabled);
+            card.querySelectorAll(".channel-content input, .channel-content select, .channel-content button").forEach((control) => { control.disabled = !enabled; });
+          }
+          toggle.addEventListener("change", syncEnabled);
+          syncEnabled();
+        });
+
+        main.querySelectorAll(".chip-field").forEach((field) => {
+          const input = field.querySelector("input");
+          const list = field.querySelector(".chip-list");
+          const error = field.parentElement.querySelector("[data-chip-error]");
+          const kind = field.dataset.chipKind;
+
+          function syncValidation() {
+            const invalid = Boolean(list.querySelector(".chip.is-invalid"));
+            field.setAttribute("aria-invalid", String(invalid));
+            error.hidden = !invalid;
+          }
+
+          function addValues(raw) {
+            raw.split(/[，,\n]+/).map((value) => value.trim()).filter(Boolean).forEach((value) => {
+              const holder = document.createElement("div");
+              holder.innerHTML = chipMarkup(value, isValidChip(kind, value));
+              list.appendChild(holder.firstElementChild);
+            });
+            input.value = "";
+            bindChipRemovers(field, syncValidation);
+            syncValidation();
+          }
+
+          input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === "," || event.key === "，") {
+              event.preventDefault();
+              addValues(input.value);
+            }
+          });
+          input.addEventListener("paste", (event) => {
+            const text = event.clipboardData && event.clipboardData.getData("text");
+            if (text && /[，,\n]/.test(text)) {
+              event.preventDefault();
+              addValues(text);
+            }
+          });
+          input.addEventListener("blur", () => { if (input.value.trim()) addValues(input.value); });
+          field.addEventListener("click", (event) => { if (event.target === field) input.focus(); });
+          bindChipRemovers(field, syncValidation);
+          syncValidation();
+        });
+
+        main.querySelectorAll(".test-button").forEach((button) => {
+          button.addEventListener("click", () => {
+            const feedback = button.parentElement.querySelector(".test-feedback");
+            const success = !feedback.classList.contains("is-success");
+            feedback.className = `test-feedback ${success ? "is-success" : "is-failure"}`;
+            if (button.dataset.kind === "email") feedback.textContent = success ? "测试邮件已发送" : "发送失败：原因";
+            else feedback.textContent = success ? "测试消息已发送" : "发送失败：原因";
+          });
+        });
+      }
+
+      function bindChipRemovers(field, syncValidation) {
+        field.querySelectorAll(".chip-remove").forEach((button) => {
+          if (button.dataset.bound === "true") return;
+          button.dataset.bound = "true";
+          button.addEventListener("click", () => {
+            button.closest(".chip").remove();
+            syncValidation();
+          });
+        });
+      }
+
+      function render() {
+        const state = currentState();
+        stateSelect.value = state;
+        const notifications = state.startsWith("notifications-");
+        moderationNav.setAttribute("aria-current", notifications ? "false" : "page");
+        notificationsNav.setAttribute("aria-current", notifications ? "page" : "false");
+        if (notifications) notificationState(state);
+        else moderationState(state);
+      }
+
+      stateSelect.addEventListener("change", () => { window.location.hash = stateSelect.value; });
+      window.addEventListener("hashchange", render);
+
+      siteTrigger.addEventListener("click", () => {
+        const open = siteMenu.hidden;
+        siteMenu.hidden = !open;
+        siteTrigger.setAttribute("aria-expanded", String(open));
+      });
+
+      siteMenu.querySelectorAll(".site-option").forEach((option) => {
+        option.addEventListener("click", () => {
+          siteMenu.querySelectorAll(".site-option").forEach((item) => item.setAttribute("aria-selected", String(item === option)));
+          siteTrigger.firstElementChild.textContent = option.textContent;
+          siteMenu.hidden = true;
+          siteTrigger.setAttribute("aria-expanded", "false");
+          siteTrigger.focus();
+        });
+      });
+
+      document.addEventListener("pointerdown", (event) => {
+        if (!siteMenu.hidden && !event.target.closest(".site-picker")) {
+          siteMenu.hidden = true;
+          siteTrigger.setAttribute("aria-expanded", "false");
+        }
+      });
+
+      if (!window.location.hash || !stateOrder.includes(window.location.hash.slice(1))) {
+        window.location.hash = "moderation-pending";
+      } else {
+        render();
+      }
+    }());
+  </script>
+</body>
+</html>

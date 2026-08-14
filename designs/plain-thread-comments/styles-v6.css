@@ -1,0 +1,67 @@
+@import url("./styles-v5.css");
+
+.preview-controls[data-settings-open="true"] .preview-actions {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.config-text textarea {
+  width: 100%;
+  min-height: 62px;
+  padding: 8px 10px;
+  resize: vertical;
+  color: var(--content);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  outline: 0;
+  background: var(--theme);
+  font: inherit;
+  line-height: 1.45;
+}
+
+.config-text textarea:focus-visible {
+  border-color: var(--border);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+.identity-grid {
+  margin-bottom: 10px;
+}
+
+.composer-footer {
+  justify-content: flex-end;
+}
+
+.comment-node {
+  padding-top: 10px;
+  padding-bottom: 11px;
+}
+
+.comment-copy {
+  margin-top: 3px;
+}
+
+.comment-meta {
+  min-height: 22px;
+}
+
+.reply-action {
+  margin-left: 2px;
+}
+
+.empty-comments-text {
+  margin: 20px 0 0;
+  color: var(--content);
+  font-size: 15px;
+  line-height: 1.75;
+  white-space: pre-line;
+}
+
+@media (max-width: 460px) {
+  .page {
+    padding-top: 118px;
+  }
+
+  .preview-controls[data-settings-open="true"] .preview-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
