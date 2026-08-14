@@ -34,8 +34,8 @@ Ecoku/
 └── ecoku.env
 ```
 
-容器固定以 UID/GID `10001:10001` 运行。`data/` 保存数据库、WAL 与共享内存边车文件，
-`app/logs/` 保存应用日志；升级时必须原样保留这两个目录。
+容器固定以 UID/GID `10001:10001` 运行。`data/` 保存数据库、WAL 与共享内存边车文件；
+`app/logs/` 保存可选的文件副本。升级时必须原样保留 `data/`，并保留仍在使用的日志目录。
 
 ## 2. 准备 Compose 与公开配置
 
@@ -69,6 +69,11 @@ services:
       - ./app/config.yaml:/app/config.yaml:ro
       - ./app/logs:/var/log/ecoku
       - ./data:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=16m
@@ -90,6 +95,7 @@ services:
 ```yaml
 site:
   port: 12123
+  # 始终写入 stdout，供 docker compose logs 跟随。普通文件路径会额外保留进程内轮转副本。
   log_path: "/var/log/ecoku/ecoku.log"
   trusted_proxies:
     - "127.0.0.1/32"
@@ -206,6 +212,11 @@ curl --fail --head http://127.0.0.1:12123/client/ecoku.umd.js
 
 健康状态必须为 `healthy`。首次启动会创建数据库并按顺序执行全部显式迁移；未知未来版本、
 迁移校验和不符或任一迁移失败都会阻止启动。
+
+应用日志始终出现在 `sudo docker compose logs -f ecoku`。若 `log_path` 指向挂载文件，进程还会
+把同一行写入该文件并由 lumberjack 按约 10MB / 5 份 / 28 天轮转。Compose 的 `json-file`
+`max-size` / `max-file` 负责轮转 Docker 保存的 stdout 副本。不要用 `GIN_MODE=debug` 替代
+访问日志；日志仍不得包含 IP、UA、凭据或评论正文。
 
 ## 5. Caddy 或 Nginx 反向代理
 
@@ -406,8 +417,8 @@ sha256sum "./backups/ecoku-${backup_stamp}.sqlite3" \
 
 1. 阅读 `CHANGELOG.md`，确认目标 tag、schema 与目录变化；
 2. 正常停服并完成上面的数据库与配置备份；
-3. 只修改 `compose.yaml` 中的精确镜像 tag；
-4. 拉取、启动、观察迁移日志与健康状态；
+3. 把 `compose.yaml` 的精确镜像 tag 改为新版本，并补上当前仓库中的 `logging` 段（若旧文件没有）；
+4. 拉取、启动，用 `sudo docker compose logs -f ecoku` 观察启动与迁移日志，确认健康状态；
 5. 验证管理登录、站点配置、公开评论、提交、回复与通知。
 
 ```bash

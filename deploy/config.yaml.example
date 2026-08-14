@@ -2,6 +2,7 @@
 # 容器固定以 UID/GID 10001 运行，绑定挂载时必须保证该用户拥有只读权限。
 site:
   port: 12123
+  # 始终写入 stdout。普通文件路径会额外保留进程内轮转副本。
   log_path: "/var/log/ecoku/ecoku.log"
   # 默认不信任 X-Forwarded-For。只有确认直接 socket 对端后才填写精确 IP/CIDR。
   trusted_proxies: []
