@@ -6,7 +6,7 @@ export const zhCN = Object.freeze({
   website: '网址',
   commentPlaceholder: '写下评论（仅支持纯文本）',
   replyPlaceholder: '写下回复（仅支持纯文本）',
-  submitComment: '发布评论',
+  submitComment: '发布',
   submitReply: '发布回复',
   submitting: '正在提交…',
   cancel: '取消',

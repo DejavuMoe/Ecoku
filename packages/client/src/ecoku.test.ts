@@ -296,6 +296,13 @@ describe('approved production comment surface', () => {
     expect(container.querySelectorAll('.ecoku-comment-row')).toHaveLength(52)
     expect(container.querySelector('.ecoku-section-title')?.textContent).toBe('52 条评论')
     expect(container.querySelector('.ecoku-section-heading')?.textContent).not.toContain('讨论')
+    const composer = container.querySelector('.ecoku-composer')
+    const heading = container.querySelector('.ecoku-section-heading')
+    expect(composer).not.toBeNull()
+    expect(heading).not.toBeNull()
+    expect(composer!.compareDocumentPosition(heading!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(container.querySelector('.ecoku-composer-footer')?.firstElementChild?.classList.contains('ecoku-character-count')).toBe(true)
+    expect(container.querySelector('.ecoku-composer .ecoku-primary-button')?.textContent).toBe('发布')
     expect(container.querySelector('[data-depth="6"]')?.getAttribute('aria-level')).toBe('6')
   })
 
