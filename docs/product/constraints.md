@@ -1,6 +1,6 @@
 # Ecoku 产品约束
 
-> 状态：P0～P4 历史阶段已验收；评论区 index-v9、后台 index-v6 与服务端 v5 通知模板均已批准实施。
+> 状态：P0～P4 历史阶段已验收；评论区 index-v9、后台 index-v7 与服务端 v5 通知模板均已批准实施。
 > 历史验收记录只描述当时版本，不约束当前直接发布模型。
 
 ## 评论体验
@@ -66,8 +66,9 @@
 - 管理 DTO 可以包含私有邮箱，但不得返回 IP、UA、地区、UserID、密码、验证码、token、管理密钥或完整 User。
 - 管理端包含登录、站点注册与评论表单配置、按 `published/deleted` 筛选的评论列表、详情、
   墓碑删除和无后代墓碑的彻底删除。不提供审核队列、用户管理、RBAC、Count 或站点密钥管理界面。
-- 管理端以 `designs/admin-moderation/index-v6.html` 为当前已批准站点配置基线，并沿用 v5 的评论管理、通知设置和发送模板设计；对应 v5 通知模板只供服务端投递时渲染，管理端不展示模板预览，也不公开模板静态页面。浏览器中的管理员 token 只保存在当前页面内存，
+- 管理端以 `designs/admin-moderation/index-v7.html` 为当前已批准站点配置与配色基线，并沿用 v5 的评论管理、通知设置和发送模板设计；对应 v5 通知模板只供服务端投递时渲染，管理端不展示模板预览，也不公开模板静态页面。浏览器中的管理员 token 只保存在当前页面内存，
   不写入 localStorage、sessionStorage、cookie 或 URL。关闭或刷新页面后必须重新登录。
+- 管理端配色默认 `auto`，跟随系统 `prefers-color-scheme`；深色纸张、表面与正文 token 与评论区对齐。不提供主题切换器，也不把配色写入本地存储。
 - 管理端是“评论管理”而非审核队列；已发布评论和公开墓碑使用
   `site_url + pageKey + #ecoku-comment-ID` 精确跳转。
 - 实例站点发现接口只接受管理员 Bearer token；`EcokuSite` management key 仅能调用所属站点的删除接口，

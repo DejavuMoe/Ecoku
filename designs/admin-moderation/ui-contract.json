@@ -7,8 +7,12 @@
   },
   "sourceReferences": [
     {
+      "path": "designs/admin-moderation/index-v7.html",
+      "role": "current approved per-site blogger identity and auto light/dark baseline without a notification decision preview"
+    },
+    {
       "path": "designs/admin-moderation/index-v6.html",
-      "role": "current approved per-site blogger identity baseline without a notification decision preview"
+      "role": "previous approved per-site blogger identity baseline without a notification decision preview"
     },
     {
       "path": "designs/admin-moderation/index-v5.html",
@@ -37,10 +41,13 @@
       ".preview-controller",
       ".preview-header",
       ".variant-tabs",
+      ".scenario-controller",
+      "#theme-select",
       "[data-prototype-only]"
     ],
-    "notes": [
-      "场景切换器、发送模板设计页和 mock 数据不得进入生产构件。",
+      "notes": [
+      "场景切换器、配色预览、发送模板设计页和 mock 数据不得进入生产构件。",
+      "生产管理端固定 auto 配色，不得提供主题切换器或把配色写入本地存储。",
       "生产管理端不得展示或公开提供通知模板预览；实际模板仅由服务端在投递时渲染。"
     ]
   },
@@ -63,6 +70,8 @@
         "routeOrWindow": "/admin/",
         "status": "implemented",
         "referenceFiles": [
+          "packages/admin/index.html",
+          "packages/admin/src/style.css",
           "packages/admin/src/App.vue",
           "packages/admin/src/components/CommentManagementView.vue",
           "packages/admin/src/api.ts",
@@ -75,7 +84,7 @@
     {
       "id": "admin-site-management",
       "prototype": {
-        "entry": "index-v6.html",
+        "entry": "index-v7.html",
         "states": [
           "sites-list",
           "sites-new",
@@ -86,13 +95,18 @@
           "per-site-empty-copy",
           "blogger-identity-empty",
           "blogger-identity-configured",
-          "blogger-identity-validation"
+          "blogger-identity-validation",
+          "theme-auto",
+          "theme-light",
+          "theme-dark"
         ]
       },
       "production": {
         "routeOrWindow": "/admin/",
         "status": "implemented",
         "referenceFiles": [
+          "packages/admin/index.html",
+          "packages/admin/src/style.css",
           "packages/admin/src/components/SiteManagementView.vue",
           "packages/admin/src/api.ts",
           "packages/admin/src/types.ts",
@@ -122,6 +136,8 @@
         "routeOrWindow": "/admin/",
         "status": "implemented",
         "referenceFiles": [
+          "packages/admin/index.html",
+          "packages/admin/src/style.css",
           "packages/admin/src/components/NotificationSettingsView.vue",
           "packages/admin/src/components/ChipInput.vue",
           "server/handle/admin/notifications.go",
