@@ -73,10 +73,19 @@
           "viewport": {
             "width": 720
           }
+        },
+        {
+          "path": "index-v9.html",
+          "createdAt": "2026-08-14T18:07:06.926Z",
+          "status": "approved",
+          "subtitle": "Approved compact composer, count/sort below form, and paper service error",
+          "viewport": {
+            "width": 720
+          }
         }
       ]
     }
   },
   "createdAt": "2026-08-12T08:14:10.430Z",
-  "updatedAt": "2026-08-14T14:34:47.542Z"
+  "updatedAt": "2026-08-14T18:27:09.038Z"
 }

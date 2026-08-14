@@ -4,7 +4,7 @@
 
 - 以当前源码、`docs/product/constraints.md` 和 `docs/operations/self-hosting.md` 为准。
 - `docs/progress/` 只保存历史验收证据；早期阶段、旧 schema 和旧 UI 描述不约束当前实现。
-- 评论区当前批准基线为 `designs/plain-thread-comments/index-v8.html`；管理端当前批准基线为
+- 评论区当前批准基线为 `designs/plain-thread-comments/index-v9.html`；管理端当前批准基线为
   `designs/admin-moderation/index-v6.html`，但生产管理端不得展示“通知判定预览”。
 - 若产品、安全、隐私、数据库、部署或发布边界不明确，先调查，再集中向用户确认。
 
