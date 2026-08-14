@@ -21,6 +21,7 @@ function site(overrides: Partial<SiteSummary> = {}): SiteSummary {
     emailRequired: true, websiteRequired: false,
     placeholder: '写下评论（仅支持纯文本）', commentLimit: 1000,
     emptyMessage: '还没有评论\n成为第一个留下评论的人。', revision: 1,
+    bloggerNickname: 'Dejavu Moe', bloggerEmail: 'admin@example.test',
     createdAt: '2026-08-13T01:00:00Z', updatedAt: '2026-08-13T01:00:00Z',
     ...overrides,
   }
@@ -62,7 +63,8 @@ describe('administrator API contract', () => {
         id: 'site-a', site_url: 'https://blog.example.test', name: "Dejavu's Blog",
         allowed_origins: ['https://blog.example.test'], default_sort: 'newest',
         email_required: true, website_required: false, placeholder: '写下评论',
-        comment_limit: 2048, empty_message: '暂无评论', revision: 2,
+        comment_limit: 2048, empty_message: '暂无评论', blogger_nickname: 'Dejavu Moe',
+        blogger_email: 'admin@example.test', revision: 2,
         created_at: '2026-08-13T00:00:00Z', updated_at: '2026-08-13T00:00:00Z',
         domain: 'MUST_NOT_MAP', default_status: 'MUST_NOT_MAP', management_key_env: 'MUST_NOT_MAP',
       }] }))
@@ -74,7 +76,7 @@ describe('administrator API contract', () => {
     vi.stubGlobal('fetch', fetchMock)
     const sites = await adminApi.listSites('private-token')
     const comments = await adminApi.listComments('private-token', 'site-a', 'published', 1, 20, 'newest')
-    expect(sites[0]).toMatchObject({ name: "Dejavu's Blog", commentLimit: 2048, emptyMessage: '暂无评论' })
+    expect(sites[0]).toMatchObject({ name: "Dejavu's Blog", commentLimit: 2048, emptyMessage: '暂无评论', bloggerNickname: 'Dejavu Moe', bloggerEmail: 'admin@example.test' })
     expect(sites[0]).not.toHaveProperty('domain')
     expect(sites[0]).not.toHaveProperty('defaultStatus')
     expect(comments.data[0]).toMatchObject({ pageTitle: '标题', status: 'published', email: 'private@example.com' })
@@ -92,7 +94,7 @@ describe('administrator API contract', () => {
     const { createdAt: _createdAt, updatedAt: _updatedAt, ...write } = site()
     await adminApi.createSite('token', { ...write, name: '博客', defaultSort: 'oldest', emailRequired: false, websiteRequired: true, placeholder: '评论', commentLimit: 500, emptyMessage: '暂无' })
     const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as Record<string, unknown>
-    expect(payload).toMatchObject({ name: '博客', default_sort: 'oldest', comment_limit: 500, empty_message: '暂无' })
+    expect(payload).toMatchObject({ name: '博客', default_sort: 'oldest', comment_limit: 500, empty_message: '暂无', blogger_nickname: 'Dejavu Moe', blogger_email: 'admin@example.test' })
     expect(payload).not.toHaveProperty('domain')
     expect(payload).not.toHaveProperty('default_status')
     expect(payload).not.toHaveProperty('review_mode')
@@ -158,6 +160,9 @@ describe('approved production surface', () => {
     expect(wrapper.text()).toContain('评论长度上限')
     expect(wrapper.text()).toContain('中文、日文、韩文与其他 Unicode 字符均按一个字符计数')
     expect(wrapper.text()).toContain('每行一个完整来源')
+    expect(wrapper.text()).toContain('博主身份')
+    expect(wrapper.text()).toContain('仅用于私有身份匹配，不会公开')
+    expect(wrapper.text()).not.toContain('通知判定预览')
     expect(wrapper.text()).not.toContain('站点域名')
     expect(wrapper.text()).not.toContain('审核方式')
   })

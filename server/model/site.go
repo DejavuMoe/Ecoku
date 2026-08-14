@@ -29,6 +29,8 @@ type Site struct {
 	Placeholder     string    `gorm:"column:placeholder"`
 	CommentLimit    int       `gorm:"column:comment_limit"`
 	EmptyMessage    string    `gorm:"column:empty_message"`
+	BloggerNickname string    `gorm:"column:blogger_nickname"`
+	BloggerEmail    string    `gorm:"column:blogger_email"`
 	Revision        uint      `gorm:"column:revision"`
 	CreatedAt       time.Time `gorm:"column:created_at"`
 	UpdatedAt       time.Time `gorm:"column:updated_at"`
@@ -46,6 +48,8 @@ type SiteWrite struct {
 	Placeholder     string
 	CommentLimit    int
 	EmptyMessage    string
+	BloggerNickname string
+	BloggerEmail    string
 	AllowedOrigins  []string
 	Revision        uint
 }
@@ -112,7 +116,8 @@ func CreateSite(input SiteWrite, now time.Time) (Site, error) {
 			Name: input.Name, DefaultSort: input.DefaultSort,
 			EmailRequired: input.EmailRequired, WebsiteRequired: input.WebsiteRequired,
 			Placeholder: input.Placeholder, CommentLimit: input.CommentLimit,
-			EmptyMessage: input.EmptyMessage,
+			EmptyMessage: input.EmptyMessage, BloggerNickname: input.BloggerNickname,
+			BloggerEmail: input.BloggerEmail,
 			Revision:     1, CreatedAt: now, UpdatedAt: now,
 		}
 		if err := tx.Create(&created).Error; err != nil {
@@ -142,6 +147,8 @@ func UpdateSite(siteID string, input SiteWrite, now time.Time) (Site, error) {
 				"placeholder":      input.Placeholder,
 				"comment_limit":    input.CommentLimit,
 				"empty_message":    input.EmptyMessage,
+				"blogger_nickname": input.BloggerNickname,
+				"blogger_email":    input.BloggerEmail,
 				"revision":         gorm.Expr("revision + 1"), "updated_at": now,
 			})
 		if result.Error != nil {

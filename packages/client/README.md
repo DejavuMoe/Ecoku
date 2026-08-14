@@ -80,8 +80,12 @@ container and pass that container together with `serverURL`, `siteId`, and
 ## Privacy and security contract
 
 - The browser receives only published comments and public tombstones.
-- Email, nickname, and website remain in component memory only and are cleared
-  by refresh or component destruction.
+- Nickname, email, and website are shared by the root and inline reply forms.
+  They are encrypted in IndexedDB with a non-extractable AES-GCM key, scoped to
+  `serverURL + siteId`, and expire seven days after saving. No identity value is
+  written to localStorage, cookies, or URLs; clearing browser site data removes
+  it naturally. Unavailable, corrupt, or expired storage falls back to an empty
+  identity without blocking comments.
 - The SDK never accepts a management key, administrator token, client IP,
   forwarding header, user-agent value, location, avatar, analytics endpoint, or
   third-party IP service.

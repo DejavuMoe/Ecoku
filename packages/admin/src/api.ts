@@ -86,6 +86,8 @@ function mapSite(value: unknown): SiteSummary | null {
     placeholder: text(raw.placeholder),
     commentLimit: number(raw.comment_limit, 1000),
     emptyMessage: text(raw.empty_message),
+    bloggerNickname: text(raw.blogger_nickname),
+    bloggerEmail: text(raw.blogger_email),
     revision: number(raw.revision),
     createdAt: text(raw.created_at),
     updatedAt: text(raw.updated_at),
@@ -125,6 +127,8 @@ function sitePayload(site: SiteWrite) {
     placeholder: site.placeholder,
     comment_limit: site.commentLimit,
     empty_message: site.emptyMessage,
+    blogger_nickname: site.bloggerNickname,
+    blogger_email: site.bloggerEmail,
     revision: site.revision,
   }
 }

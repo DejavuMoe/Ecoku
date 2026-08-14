@@ -1,7 +1,7 @@
 # Plain thread comments prototype
 
 Approved design history for Ecoku's no-avatar, plain-text comment surface.
-`index-v7.html` is the current approved and implemented production baseline.
+`index-v8.html` is the current approved and implemented production baseline.
 
 ## Direction
 
@@ -120,6 +120,25 @@ deterministic checks with:
 node designs/plain-thread-comments/prototype-v7.test.mjs
 ```
 
+Revision 8 is the current approved and implemented baseline. It keeps revision
+7's thread density and pagination, and fixes the visitor reply flow:
+
+- selecting “回复” opens an inline identity-and-content composer on that exact
+  comment, so an unidentified visitor cannot accidentally create a root comment;
+- root and reply composers share one identity, while every reply still submits
+  the selected parent ID;
+- a successful submission stores the identity for seven days in encrypted
+  IndexedDB data scoped to the Ecoku server and site;
+- no “记住我” checkbox or clear button is shown, and localStorage, cookies and
+  URLs never receive the private identity;
+- switching away from a non-empty reply draft requires confirmation.
+
+Run its checks with:
+
+```text
+node designs/plain-thread-comments/prototype-v8.test.mjs
+```
+
 ## Review states
 
 - Light and dark themes.
@@ -131,5 +150,5 @@ node designs/plain-thread-comments/prototype-v7.test.mjs
 - Service unavailable and retry recovery.
 - Desktop at 1280x900 and mobile at 390x844.
 
-Status: `index-v7.html` was approved on 2026-08-14 and is implemented in the
+Status: `index-v8.html` was approved on 2026-08-15 and is implemented in the
 browser SDK. Earlier revisions remain historical design evidence only.

@@ -50,10 +50,20 @@
             "width": 1440,
             "height": 900
           }
+        },
+        {
+          "path": "index-v6.html",
+          "createdAt": "2026-08-14T14:34:47.542Z",
+          "status": "approved",
+          "subtitle": "Approved per-site blogger identity without a visible notification decision preview",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          }
         }
       ]
     }
   },
   "createdAt": "2026-08-12T22:31:10.516Z",
-  "updatedAt": "2026-08-14T12:10:17.878Z"
+  "updatedAt": "2026-08-14T14:34:47.542Z"
 }

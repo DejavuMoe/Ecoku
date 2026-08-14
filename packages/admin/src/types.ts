@@ -13,6 +13,8 @@ export interface SiteSummary {
   placeholder: string
   commentLimit: number
   emptyMessage: string
+  bloggerNickname: string
+  bloggerEmail: string
   revision: number
   createdAt: string
   updatedAt: string

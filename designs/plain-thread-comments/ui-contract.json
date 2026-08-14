@@ -9,7 +9,7 @@
     {
       "id": "article-plain-thread-comments",
       "prototype": {
-        "entry": "index-v7.html",
+        "entry": "index-v8.html",
         "states": [
           "light",
           "dark",
@@ -37,7 +37,11 @@
           "leaf-dot-control",
           "bottom-left-reply-action",
           "utc8-absolute-timestamps",
-          "root-thread-pagination"
+          "root-thread-pagination",
+          "direct-inline-reply-identity",
+          "encrypted-seven-day-identity",
+          "discard-reply-draft-confirmation",
+          "no-manual-identity-clear"
         ]
       },
       "production": {
@@ -46,6 +50,7 @@
         "referenceFiles": [
           "packages/client/src/ecoku.ts",
           "packages/client/src/comment.ts",
+          "packages/client/src/identity-store.ts",
           "packages/client/src/style.css",
           "packages/client/src/fetch.ts",
           "server/handle/comment/list.go"
@@ -56,7 +61,7 @@
     {
       "id": "article-comment-form-configuration",
       "prototype": {
-        "entry": "index-v7.html",
+        "entry": "index-v8.html",
         "states": [
           "email-required",
           "email-optional",
@@ -64,12 +69,12 @@
           "website-optional",
           "custom-placeholder",
           "empty-placeholder-fallback",
-          "dynamic-requirement-summary",
           "desktop",
           "mobile",
-          "keyboard-focus"
-          ,"unicode-code-point-limit"
-          ,"plain-configurable-empty-copy"
+          "keyboard-focus",
+          "unicode-code-point-limit",
+          "plain-configurable-empty-copy",
+          "inline-reply-identity-fields"
         ]
       },
       "production": {
@@ -80,6 +85,7 @@
           "packages/client/src/config.ts",
           "packages/client/src/fetch.ts",
           "packages/client/src/comment.ts",
+          "packages/client/src/identity-store.ts",
           "packages/client/src/messages.ts",
           "packages/client/src/style.css",
           "server/config/config.go",

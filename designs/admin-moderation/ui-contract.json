@@ -7,8 +7,12 @@
   },
   "sourceReferences": [
     {
+      "path": "designs/admin-moderation/index-v6.html",
+      "role": "current approved per-site blogger identity baseline without a notification decision preview"
+    },
+    {
       "path": "designs/admin-moderation/index-v5.html",
-      "role": "current approved comment management, site settings, and notification baseline"
+      "role": "current approved comment management and notification settings baseline"
     },
     {
       "path": "designs/admin-moderation/email-blogger-new-comment-v5.html",
@@ -71,15 +75,18 @@
     {
       "id": "admin-site-management",
       "prototype": {
-        "entry": "index-v5.html",
+        "entry": "index-v6.html",
         "states": [
           "sites-list",
           "sites-new",
-          "site-validation"
-          ,"site-display-name-fallback"
-          ,"per-site-comment-sort"
-          ,"per-site-comment-limit"
-          ,"per-site-empty-copy"
+          "site-validation",
+          "site-display-name-fallback",
+          "per-site-comment-sort",
+          "per-site-comment-limit",
+          "per-site-empty-copy",
+          "blogger-identity-empty",
+          "blogger-identity-configured",
+          "blogger-identity-validation"
         ]
       },
       "production": {
@@ -87,9 +94,12 @@
         "status": "implemented",
         "referenceFiles": [
           "packages/admin/src/components/SiteManagementView.vue",
+          "packages/admin/src/api.ts",
+          "packages/admin/src/types.ts",
           "server/handle/admin/sites.go",
           "server/model/site.go",
-          "server/model/migrations.go"
+          "server/model/migrations.go",
+          "server/notifications/outbox.go"
         ]
       },
       "status": "implemented"

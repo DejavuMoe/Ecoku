@@ -6,6 +6,7 @@ import (
 	"ecoku-server/utils"
 	"errors"
 	"net/http"
+	"net/mail"
 	"net/url"
 	"strings"
 	"time"
@@ -20,6 +21,8 @@ const (
 	maximumSitePlaceholder = 80
 	maximumSiteName        = 120
 	maximumEmptyMessage    = 240
+	maximumBloggerNickname = 80
+	maximumBloggerEmail    = 254
 )
 
 type SiteDTO struct {
@@ -33,6 +36,8 @@ type SiteDTO struct {
 	Placeholder     string   `json:"placeholder"`
 	CommentLimit    int      `json:"comment_limit"`
 	EmptyMessage    string   `json:"empty_message"`
+	BloggerNickname string   `json:"blogger_nickname"`
+	BloggerEmail    string   `json:"blogger_email"`
 	Revision        uint     `json:"revision"`
 	CreatedAt       string   `json:"created_at"`
 	UpdatedAt       string   `json:"updated_at"`
@@ -49,6 +54,8 @@ type SiteWriteRequest struct {
 	Placeholder     string   `json:"placeholder"`
 	CommentLimit    int      `json:"comment_limit"`
 	EmptyMessage    string   `json:"empty_message"`
+	BloggerNickname string   `json:"blogger_nickname"`
+	BloggerEmail    string   `json:"blogger_email"`
 	Revision        uint     `json:"revision"`
 }
 
@@ -216,11 +223,29 @@ func validateSiteWrite(c *gin.Context, request SiteWriteRequest, creating bool) 
 		utils.SendError(c, http.StatusBadRequest, "无评论文案无效")
 		return model.SiteWrite{}, false
 	}
+	bloggerNickname := strings.TrimSpace(request.BloggerNickname)
+	bloggerEmail := strings.TrimSpace(request.BloggerEmail)
+	if (bloggerNickname == "") != (bloggerEmail == "") {
+		utils.SendError(c, http.StatusBadRequest, "博主昵称和邮箱必须同时填写或同时留空")
+		return model.SiteWrite{}, false
+	}
+	if utf8.RuneCountInString(bloggerNickname) > maximumBloggerNickname || strings.ContainsAny(bloggerNickname, "\r\n") {
+		utils.SendError(c, http.StatusBadRequest, "博主昵称无效")
+		return model.SiteWrite{}, false
+	}
+	if bloggerEmail != "" {
+		parsedEmail, parseErr := mail.ParseAddress(bloggerEmail)
+		if parseErr != nil || parsedEmail.Address != bloggerEmail || utf8.RuneCountInString(bloggerEmail) > maximumBloggerEmail || strings.ContainsAny(bloggerEmail, "\r\n") {
+			utils.SendError(c, http.StatusBadRequest, "博主邮箱无效")
+			return model.SiteWrite{}, false
+		}
+	}
 	return model.SiteWrite{
 		ID: id, SiteURL: siteURL, Domain: strings.ToLower(parsed.Hostname()),
 		Name: name, DefaultSort: defaultSort, EmailRequired: emailRequired,
 		WebsiteRequired: websiteRequired, Placeholder: placeholder,
 		CommentLimit: commentLimit, EmptyMessage: emptyMessage,
+		BloggerNickname: bloggerNickname, BloggerEmail: bloggerEmail,
 		AllowedOrigins: origins, Revision: request.Revision,
 	}, true
 }
@@ -232,6 +257,7 @@ func siteDTO(site model.Site) SiteDTO {
 		DefaultSort:    site.DefaultSort, EmailRequired: site.EmailRequired,
 		WebsiteRequired: site.WebsiteRequired, Placeholder: site.Placeholder,
 		CommentLimit: site.CommentLimit, EmptyMessage: site.EmptyMessage,
+		BloggerNickname: site.BloggerNickname, BloggerEmail: site.BloggerEmail,
 		Revision: site.Revision, CreatedAt: site.CreatedAt.UTC().Format(time.RFC3339Nano),
 		UpdatedAt: site.UpdatedAt.UTC().Format(time.RFC3339Nano),
 	}

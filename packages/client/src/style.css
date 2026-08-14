@@ -592,6 +592,8 @@ a.ecoku-reply-context:hover {
 }
 
 .ecoku-reply-composer {
+  display: grid;
+  gap: 10px;
   margin: 8px 0 3px;
   padding: 13px;
   border: 1px solid var(--ecoku-border-soft);
@@ -599,8 +601,17 @@ a.ecoku-reply-context:hover {
   background: color-mix(in srgb, var(--ecoku-entry) 74%, var(--ecoku-theme));
 }
 
+.ecoku-reply-heading-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .ecoku-reply-heading {
-  margin: 0 0 8px;
+  min-width: 0;
+  margin: 0;
   color: var(--ecoku-secondary);
   font-size: 13px;
 }
@@ -609,12 +620,41 @@ a.ecoku-reply-context:hover {
   color: var(--ecoku-primary);
 }
 
+.ecoku-reply-identity-summary {
+  margin: 0;
+  color: var(--ecoku-secondary);
+  font-size: 12px;
+}
+
+.ecoku-reply-identity-summary strong {
+  color: var(--ecoku-primary);
+  font-weight: 600;
+}
+
+.ecoku-identity-change {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 0;
+  color: var(--ecoku-secondary);
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ecoku-reply-identity-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+}
+
 .ecoku-reply-composer .ecoku-textarea {
   min-height: 92px;
 }
 
 .ecoku-reply-footer {
-  margin-top: 10px;
+  margin-top: 0;
 }
 
 .ecoku-pagination {
@@ -683,6 +723,10 @@ a.ecoku-reply-context:hover {
   .ecoku-identity-grid {
     grid-template-columns: 1fr;
     gap: 9px;
+  }
+
+  .ecoku-reply-identity-grid {
+    grid-template-columns: 1fr;
   }
 
   .ecoku-composer-footer {

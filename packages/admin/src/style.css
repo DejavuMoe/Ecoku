@@ -177,6 +177,10 @@ a { color: inherit; }
 .form-title { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
 .form-title h2 { margin: 0; font-size: 18px; }
 .site-form, .channel-form { display: grid; gap: 14px; }
+.site-subsection { display: grid; gap: 14px; margin-top: 10px; padding-top: 22px; border-top: 1px solid var(--line-soft); }
+.site-subsection-heading { display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: baseline; gap: 14px; }
+.site-subsection-heading h3 { margin: 0; font-size: 16px; }
+.site-subsection-heading p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
 .form-row { display: grid; min-width: 0; grid-template-columns: 120px minmax(0, 1fr); align-items: start; gap: 14px; }
 .form-label { padding-top: 8px; color: var(--muted); font-size: 13px; }
 .field-stack { display: grid; min-width: 0; gap: 5px; }
@@ -264,6 +268,7 @@ dialog::backdrop { background: rgba(20, 20, 19, 0.32); }
   .sites-grid { grid-template-columns: minmax(0, 1fr); }
   .notification-column { width: calc(100% - 28px); padding-top: 24px; }
   .form-row { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+  .site-subsection-heading { grid-template-columns: minmax(0, 1fr); gap: 5px; }
   .form-label { padding-top: 0; }
 }
 
