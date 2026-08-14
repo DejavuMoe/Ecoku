@@ -5,6 +5,23 @@
 
 ## [Unreleased]
 
+## [0.1.0-rc.6] - 2026-08-15
+
+### 变更
+
+- 评论区采用已批准的紧凑发表框与列表标题布局，提交按钮文案为「发布」；
+- 管理端默认 `auto` 配色，跟随系统浅色/深色，深色 token 与评论区对齐，不提供主题开关；
+- 应用日志始终写入容器 stdout，因此 `docker compose logs -f` 可以跟随请求日志；`site.log_path`
+  指向普通文件时仍额外保留进程内轮转副本。Compose 模板中的 `logging` 段只限制 Docker 日志体积，
+  不是查看日志的前提。
+
+### 升级边界
+
+- 本版本不改变 SQLite schema，仍为 v2；
+- 从 `v0.1.0-rc.5` 升级必须先停服做冷备份，再把 `compose.yaml` 的精确镜像 tag 改为
+  `v0.1.0-rc.6`。`app/config.yaml` 的 `log_path` 可保持不变；
+- 回滚时改回 `v0.1.0-rc.5`。本次未写入新 schema，一般不必替换数据库；若启动失败，仍用停服前备份恢复。
+
 ## [0.1.0-rc.5] - 2026-08-15
 
 ### 新增
@@ -73,3 +90,4 @@
 [0.1.0-rc.2]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.2
 [0.1.0-rc.3]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.3
 [0.1.0-rc.5]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.5
+[0.1.0-rc.6]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.6
