@@ -5,6 +5,7 @@ import (
 	"ecoku-server/config"
 	"ecoku-server/model"
 	"encoding/base64"
+	"slices"
 	"strings"
 	"testing"
 
@@ -32,6 +33,63 @@ func setupNotificationTest(t *testing.T) *gorm.DB {
 	model.DB = database
 	t.Cleanup(func() { model.DB = previous; sqlDB, _ := database.DB(); _ = sqlDB.Close() })
 	return database
+}
+
+func TestBloggerIdentityNotificationMatrix(t *testing.T) {
+	tests := []struct {
+		name          string
+		submitter     string
+		submitterMail string
+		parent        string
+		parentMail    string
+		expected      []string
+	}{
+		{name: "visitor root", submitter: "访客", submitterMail: "visitor@example.test", expected: []string{EventBloggerEmail, EventBloggerTelegram}},
+		{name: "visitor replies visitor", submitter: "访客二", submitterMail: "visitor2@example.test", parent: "访客一", parentMail: "visitor1@example.test", expected: []string{EventBloggerEmail, EventBloggerTelegram, EventVisitorReply}},
+		{name: "visitor replies blogger", submitter: "访客", submitterMail: "visitor@example.test", parent: "站长", parentMail: "OWNER@EXAMPLE.TEST", expected: []string{EventBloggerEmail, EventBloggerTelegram}},
+		{name: "blogger root", submitter: "站长", submitterMail: "OWNER@example.test"},
+		{name: "blogger replies visitor", submitter: "站长", submitterMail: "owner@example.test", parent: "访客", parentMail: "visitor@example.test", expected: []string{EventVisitorReply}},
+		{name: "blogger replies blogger", submitter: "站长", submitterMail: "owner@example.test", parent: "站长", parentMail: "OWNER@example.test"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			database := setupNotificationTest(t)
+			if err := database.Exec(`UPDATE sites SET blogger_nickname = '站长', blogger_email = 'owner@example.test' WHERE id = 'site-a'`).Error; err != nil {
+				t.Fatal(err)
+			}
+			if err := database.Exec(`UPDATE notification_settings SET enabled = 1 WHERE channel IN ('email', 'telegram')`).Error; err != nil {
+				t.Fatal(err)
+			}
+			var parentID *uint
+			if test.parent != "" {
+				parentEmail := test.parentMail
+				parent := model.Comment{SiteID: "site-a", Mark: "/article", PageTitle: "文章", Username: test.parent, Email: &parentEmail, Content: "parent"}
+				if err := database.Create(&parent).Error; err != nil {
+					t.Fatal(err)
+				}
+				parentID = &parent.ID
+			}
+			submitterEmail := test.submitterMail
+			comment := model.Comment{SiteID: "site-a", Mark: "/article", PageTitle: "文章", ParentID: parentID, Username: test.submitter, Email: &submitterEmail, Content: "comment"}
+			if err := database.Transaction(func(tx *gorm.DB) error {
+				if err := tx.Create(&comment).Error; err != nil {
+					return err
+				}
+				return EnqueueNewComment(tx, comment)
+			}); err != nil {
+				t.Fatal(err)
+			}
+			var events []string
+			if err := database.Table("notification_outbox").Where("comment_id = ?", comment.ID).Order("event_type ASC").Pluck("event_type", &events).Error; err != nil {
+				t.Fatal(err)
+			}
+			expected := append([]string(nil), test.expected...)
+			slices.Sort(expected)
+			if !slices.Equal(events, expected) {
+				t.Fatalf("events=%v expected=%v", events, expected)
+			}
+		})
+	}
 }
 
 func TestNotificationSecretsAreEncryptedAndRedacted(t *testing.T) {

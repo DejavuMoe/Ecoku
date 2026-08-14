@@ -13,6 +13,11 @@ import {
   type CommentDraft,
   type CommentSort,
 } from './fetch'
+import {
+  loadVisitorIdentity,
+  saveVisitorIdentity,
+  type StoredVisitorIdentity,
+} from './identity-store'
 import { zhCN } from './messages'
 import {
   codePointLength,
@@ -30,16 +35,19 @@ interface ActiveReply {
   parentId: number
   trigger: HTMLButtonElement
   form: HTMLFormElement
+  nickname: HTMLInputElement
+  email: HTMLInputElement
+  website: HTMLInputElement
+  identityGrid: HTMLDivElement
+  identitySummary: HTMLParagraphElement
+  identitySummaryName: HTMLElement
+  identityChange: HTMLButtonElement
   textarea: HTMLTextAreaElement
   error: HTMLParagraphElement
   submit: HTMLButtonElement
 }
 
-interface IdentityDraft {
-  username: string
-  email: string
-  url: string
-}
+type IdentityDraft = StoredVisitorIdentity
 
 export class CommentSurface {
   private config: ResolvedEcokuConfig
@@ -97,6 +105,7 @@ export class CommentSurface {
 
   async mount(): Promise<void> {
     this.config.container.replaceChildren(this.root)
+    await this.restoreVisitorIdentity()
     await this.loadPage(1, false)
   }
 
@@ -328,6 +337,17 @@ export class CommentSurface {
         control.removeAttribute('aria-invalid')
         this.clearError(this.rootError, this.rootContent)
         this.updateRootFormState()
+        if (control !== this.rootContent && this.activeReply?.identityGrid.hidden) {
+          const identity = this.identity()
+          this.setIdentityControls(
+            this.activeReply.nickname,
+            this.activeReply.email,
+            this.activeReply.website,
+            identity,
+          )
+          this.updateReplyIdentityMode(this.activeReply)
+          this.updateReplyFormState(this.activeReply)
+        }
       })
     }
     this.rootForm.addEventListener('submit', (event) => void this.handleRootSubmit(event))
@@ -361,6 +381,13 @@ export class CommentSurface {
     }
     const emptyCopy = this.emptyState.querySelector('p')
     if (emptyCopy) emptyCopy.textContent = next.emptyMessage
+    if (this.activeReply) {
+      this.activeReply.email.required = next.emailRequired
+      this.activeReply.website.required = next.websiteRequired
+      this.activeReply.textarea.maxLength = next.lengthLimit
+      this.updateReplyIdentityMode(this.activeReply)
+      this.updateReplyFormState(this.activeReply)
+    }
     this.updateRootFormState()
   }
 
@@ -631,18 +658,47 @@ export class CommentSurface {
 
   private openReply(comment: CommentData, trigger: HTMLButtonElement, slot: HTMLElement): void {
     if (this.destroyed || this.submissionBusy || comment.deleted) return
-    const identityError = this.validateIdentity(true)
-    if (identityError) {
-      this.showRootIdentityError(identityError)
-      this.announce(zhCN.identityRequired)
+    if (this.activeReply?.parentId === comment.id) {
+      const target = this.activeReply.identityGrid.hidden
+        ? this.activeReply.textarea
+        : this.firstInvalidIdentityControl(this.activeReply) ?? this.activeReply.textarea
+      target.focus()
       return
     }
+    if (this.activeReply && this.replyHasUnsavedInput(this.activeReply)
+      && !window.confirm(zhCN.discardReplyDraft)) return
     this.closeReply(false)
     const form = createElement('form', 'ecoku-reply-composer')
     form.noValidate = true
+    const headingRow = createElement('div', 'ecoku-reply-heading-row')
     const heading = createElement('p', 'ecoku-reply-heading')
     const prefix = document.createTextNode('回复 ')
     heading.append(prefix, createElement('strong', '', comment.username))
+    const identityChange = createElement('button', 'ecoku-identity-change', zhCN.changeIdentity)
+    identityChange.type = 'button'
+    const identitySummary = createElement('p', 'ecoku-reply-identity-summary')
+    const identitySummaryName = createElement('strong')
+    identitySummary.append(identitySummaryName)
+    headingRow.append(heading, identityChange)
+
+    const nickname = createElement('input', 'ecoku-input')
+    const email = createElement('input', 'ecoku-input')
+    const website = createElement('input', 'ecoku-input')
+    this.configureInput(nickname, 'text', 'nickname', MAX_NICKNAME_LENGTH)
+    this.configureInput(email, 'email', 'email', 254)
+    this.configureInput(website, 'url', 'url', 2048)
+    nickname.required = true
+    email.required = this.formConfig.emailRequired
+    website.required = this.formConfig.websiteRequired
+    const identityGrid = createElement('div', 'ecoku-reply-identity-grid')
+    identityGrid.append(
+      this.field(zhCN.nickname, nickname),
+      this.field(zhCN.email, email),
+      this.field(zhCN.website, website),
+    )
+
+    const currentIdentity = this.identity()
+    this.setIdentityControls(nickname, email, website, currentIdentity)
     const textarea = createElement('textarea', 'ecoku-textarea')
     textarea.maxLength = this.formConfig.lengthLimit
     textarea.rows = 4
@@ -661,18 +717,50 @@ export class CommentSurface {
     submit.type = 'submit'
     submit.disabled = true
     footer.append(counter, cancel, submit)
-    form.append(heading, textarea, error, footer)
+    form.append(headingRow, identitySummary, identityGrid, textarea, error, footer)
     slot.append(form)
-    this.activeReply = { parentId: comment.id, trigger, form, textarea, error, submit }
+    const reply: ActiveReply = {
+      parentId: comment.id,
+      trigger,
+      form,
+      nickname,
+      email,
+      website,
+      identityGrid,
+      identitySummary,
+      identitySummaryName,
+      identityChange,
+      textarea,
+      error,
+      submit,
+    }
+    this.activeReply = reply
+    this.updateReplyIdentityMode(reply)
+    for (const control of [nickname, email, website]) {
+      control.addEventListener('input', () => {
+        control.removeAttribute('aria-invalid')
+        this.clearError(error, textarea)
+        this.syncReplyIdentityToRoot(reply)
+        this.updateReplyFormState(reply)
+      })
+    }
     textarea.addEventListener('input', () => {
       const length = codePointLength(textarea.value)
       counter.textContent = `${length}/${this.formConfig.lengthLimit}`
-      submit.disabled = this.submissionBusy || textarea.value.trim() === '' || length > this.formConfig.lengthLimit
+      this.updateReplyFormState(reply)
       this.clearError(error, textarea)
+    })
+    identityChange.addEventListener('click', () => {
+      identityGrid.hidden = false
+      identitySummary.hidden = true
+      identityChange.hidden = true
+      nickname.focus()
     })
     cancel.addEventListener('click', () => this.closeReply(true))
     form.addEventListener('submit', (event) => void this.handleReplySubmit(event))
-    textarea.focus()
+    this.updateReplyFormState(reply)
+    if (identityGrid.hidden) textarea.focus()
+    else (this.firstInvalidIdentityControl(reply) ?? nickname).focus()
   }
 
   private closeReply(restoreFocus: boolean): void {
@@ -697,15 +785,23 @@ export class CommentSurface {
       this.rootContent.focus()
       return
     }
-    const draft = this.createDraft(this.rootContent.value, 0)
-    await this.performSubmission(draft, this.rootError, this.rootContent, this.rootSubmit, false)
+    const identity = this.identity()
+    const draft = this.createDraft(this.rootContent.value, 0, identity)
+    await this.performSubmission(draft, identity, this.rootError, this.rootContent, this.rootSubmit, false)
   }
 
   private async handleReplySubmit(event: SubmitEvent): Promise<void> {
     event.preventDefault()
     const reply = this.activeReply
     if (!reply || this.submissionBusy || this.destroyed) return
-    const identityError = this.validateIdentity(true)
+    const identity = this.identityFromControls(reply.nickname, reply.email, reply.website)
+    const identityError = this.validateIdentityControls(
+      identity,
+      reply.nickname,
+      reply.email,
+      reply.website,
+      true,
+    )
     if (identityError) {
       reply.error.textContent = identityError
       reply.error.hidden = false
@@ -717,12 +813,15 @@ export class CommentSurface {
       reply.textarea.focus()
       return
     }
-    const draft = this.createDraft(reply.textarea.value, reply.parentId)
-    await this.performSubmission(draft, reply.error, reply.textarea, reply.submit, true)
+    this.setIdentityControls(this.nickname, this.email, this.website, identity)
+    this.updateRootFormState()
+    const draft = this.createDraft(reply.textarea.value, reply.parentId, identity)
+    await this.performSubmission(draft, identity, reply.error, reply.textarea, reply.submit, true)
   }
 
   private async performSubmission(
     draft: CommentDraft,
+    identity: IdentityDraft,
     errorElement: HTMLParagraphElement,
     contentElement: HTMLTextAreaElement,
     submitButton: HTMLButtonElement,
@@ -740,6 +839,7 @@ export class CommentSurface {
     try {
       await submitComment(this.config, draft, this.submitController.signal)
       if (this.destroyed || revision !== this.pageRevision || pageKey !== this.config.pageKey) return
+      await saveVisitorIdentity(this.config.serverURL, this.config.siteId, identity)
       if (reply) this.closeReply(false)
       else {
         this.rootContent.value = ''
@@ -766,8 +866,7 @@ export class CommentSurface {
     }
   }
 
-  private createDraft(content: string, parent: number): CommentDraft {
-    const identity = this.identity()
+  private createDraft(content: string, parent: number, identity: IdentityDraft): CommentDraft {
     const draft: CommentDraft = {
       username: identity.username,
       content: content.trim(),
@@ -789,6 +888,9 @@ export class CommentSurface {
       action.disabled = busy
     }
     if (this.activeReply) {
+      this.activeReply.nickname.disabled = busy
+      this.activeReply.email.disabled = busy
+      this.activeReply.website.disabled = busy
       this.activeReply.textarea.disabled = busy
       for (const button of this.activeReply.form.querySelectorAll<HTMLButtonElement>('button')) {
         button.disabled = busy
@@ -796,10 +898,8 @@ export class CommentSurface {
     }
     if (submitButton.isConnected) {
       submitButton.textContent = busy ? zhCN.submitting : (reply ? zhCN.submitReply : zhCN.submitComment)
-      if (!busy) {
-        const currentContent = reply ? this.activeReply?.textarea.value || '' : this.rootContent.value
-        submitButton.disabled = currentContent.trim() === ''
-      }
+      if (!busy && reply && this.activeReply) this.updateReplyFormState(this.activeReply)
+      else if (!busy) this.updateRootFormState()
     }
   }
 
@@ -839,34 +939,128 @@ export class CommentSurface {
     }
   }
 
-  private validateIdentity(focus: boolean): string | null {
-    this.resetIdentityValidity()
-    const identity = this.identity()
+  private async restoreVisitorIdentity(): Promise<void> {
+    const identity = await loadVisitorIdentity(this.config.serverURL, this.config.siteId)
+    if (!identity || this.destroyed) return
+    this.setIdentityControls(this.nickname, this.email, this.website, identity)
+    this.updateRootFormState()
+  }
+
+  private identityFromControls(
+    nickname: HTMLInputElement,
+    email: HTMLInputElement,
+    website: HTMLInputElement,
+  ): IdentityDraft {
+    return {
+      username: nickname.value.trim(),
+      email: email.value.trim(),
+      url: website.value.trim(),
+    }
+  }
+
+  private setIdentityControls(
+    nickname: HTMLInputElement,
+    email: HTMLInputElement,
+    website: HTMLInputElement,
+    identity: IdentityDraft,
+  ): void {
+    nickname.value = identity.username
+    email.value = identity.email
+    website.value = identity.url
+  }
+
+  private validateIdentityControls(
+    identity: IdentityDraft,
+    nickname: HTMLInputElement,
+    email: HTMLInputElement,
+    website: HTMLInputElement,
+    focus: boolean,
+  ): string | null {
+    for (const control of [nickname, email, website]) control.removeAttribute('aria-invalid')
     if (!identity.username) {
-      this.nickname.setAttribute('aria-invalid', 'true')
-      if (focus) this.nickname.focus()
+      nickname.setAttribute('aria-invalid', 'true')
+      if (focus) nickname.focus()
       return zhCN.nicknameRequired
     }
     if (codePointLength(identity.username) > MAX_NICKNAME_LENGTH) {
-      this.nickname.setAttribute('aria-invalid', 'true')
-      if (focus) this.nickname.focus()
+      nickname.setAttribute('aria-invalid', 'true')
+      if (focus) nickname.focus()
       return zhCN.nicknameTooLong
     }
     const emailValid = (!this.formConfig.emailRequired && identity.email === '')
       || (identity.email !== '' && isEmailForClient(identity.email))
     if (!emailValid) {
-      this.email.setAttribute('aria-invalid', 'true')
-      if (focus) this.email.focus()
+      email.setAttribute('aria-invalid', 'true')
+      if (focus) email.focus()
       return this.formConfig.emailRequired ? zhCN.emailRequiredInvalid : zhCN.emailInvalid
     }
     const websiteValid = (!this.formConfig.websiteRequired && identity.url === '')
       || (identity.url !== '' && Boolean(safeHTTPURL(identity.url)))
     if (!websiteValid) {
-      this.website.setAttribute('aria-invalid', 'true')
-      if (focus) this.website.focus()
+      website.setAttribute('aria-invalid', 'true')
+      if (focus) website.focus()
       return this.formConfig.websiteRequired ? zhCN.websiteRequiredInvalid : zhCN.websiteInvalid
     }
     return null
+  }
+
+  private identityIsValid(identity: IdentityDraft): boolean {
+    return Boolean(identity.username)
+      && codePointLength(identity.username) <= MAX_NICKNAME_LENGTH
+      && ((!this.formConfig.emailRequired && identity.email === '')
+        || (identity.email !== '' && isEmailForClient(identity.email)))
+      && ((!this.formConfig.websiteRequired && identity.url === '')
+        || (identity.url !== '' && Boolean(safeHTTPURL(identity.url))))
+  }
+
+  private firstInvalidIdentityControl(reply: ActiveReply): HTMLInputElement | null {
+    const identity = this.identityFromControls(reply.nickname, reply.email, reply.website)
+    if (!identity.username || codePointLength(identity.username) > MAX_NICKNAME_LENGTH) return reply.nickname
+    if (!((!this.formConfig.emailRequired && identity.email === '')
+      || (identity.email !== '' && isEmailForClient(identity.email)))) return reply.email
+    if (!((!this.formConfig.websiteRequired && identity.url === '')
+      || (identity.url !== '' && Boolean(safeHTTPURL(identity.url))))) return reply.website
+    return null
+  }
+
+  private updateReplyIdentityMode(reply: ActiveReply): void {
+    const identity = this.identityFromControls(reply.nickname, reply.email, reply.website)
+    const ready = this.identityIsValid(identity)
+    reply.identityGrid.hidden = ready
+    reply.identitySummary.hidden = !ready
+    reply.identityChange.hidden = !ready
+    reply.identitySummaryName.textContent = ready ? zhCN.replyAs(identity.username) : ''
+  }
+
+  private updateReplyFormState(reply: ActiveReply): void {
+    const identity = this.identityFromControls(reply.nickname, reply.email, reply.website)
+    const length = codePointLength(reply.textarea.value)
+    const counter = reply.form.querySelector<HTMLElement>('.ecoku-character-count')
+    if (counter) counter.textContent = `${length}/${this.formConfig.lengthLimit}`
+    reply.submit.disabled = this.submissionBusy
+      || !this.identityIsValid(identity)
+      || !reply.textarea.value.trim()
+      || length > this.formConfig.lengthLimit
+  }
+
+  private syncReplyIdentityToRoot(reply: ActiveReply): void {
+    const identity = this.identityFromControls(reply.nickname, reply.email, reply.website)
+    this.setIdentityControls(this.nickname, this.email, this.website, identity)
+    this.updateRootFormState()
+  }
+
+  private replyHasUnsavedInput(reply: ActiveReply): boolean {
+    return Boolean(reply.textarea.value.trim())
+  }
+
+  private validateIdentity(focus: boolean): string | null {
+    return this.validateIdentityControls(
+      this.identity(),
+      this.nickname,
+      this.email,
+      this.website,
+      focus,
+    )
   }
 
   private validateContent(value: string): string | null {
@@ -875,26 +1069,11 @@ export class CommentSurface {
     return null
   }
 
-  private resetIdentityValidity(): void {
-    this.nickname.removeAttribute('aria-invalid')
-    this.email.removeAttribute('aria-invalid')
-    this.website.removeAttribute('aria-invalid')
-  }
-
   private updateRootFormState(): void {
     const length = codePointLength(this.rootContent.value)
     this.characterCount.textContent = `${length}/${this.formConfig.lengthLimit}`
-    const identity = this.identity()
-    const validEmail = (!this.formConfig.emailRequired && identity.email === '')
-      || (identity.email !== '' && isEmailForClient(identity.email))
-    const validWebsite = (!this.formConfig.websiteRequired && identity.url === '')
-      || (identity.url !== '' && Boolean(safeHTTPURL(identity.url)))
-    const validIdentity = Boolean(identity.username)
-      && codePointLength(identity.username) <= MAX_NICKNAME_LENGTH
-      && validEmail
-      && validWebsite
     this.rootSubmit.disabled = this.submissionBusy
-      || !validIdentity
+      || !this.identityIsValid(this.identity())
       || !this.rootContent.value.trim()
       || length > this.formConfig.lengthLimit
   }

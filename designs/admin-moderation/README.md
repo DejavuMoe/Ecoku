@@ -1,13 +1,15 @@
 # Ecoku 管理端设计基线
 
 本目录保存 Ecoku 管理端的已批准设计证据、脱敏 fixture 与发送模板设计基线。
-`index-v5.html` 是当前已批准且已经映射到生产管理端的基线；原型文件本身不调用真实 API，也不进入运行时镜像。
+`index-v6.html` 是当前已批准且已经映射到生产管理端的站点配置基线；评论管理、通知设置和仅供服务端渲染参考的通知模板继续沿用 v5。原型文件本身不调用真实 API，也不进入运行时镜像。
 
 ## 当前产品边界
 
 - 评论提交后直接发布；管理队列只包含“已发布”和“已删除”。
 - 管理员可以将已发布评论改为隐私墓碑，并可对墓碑执行显式永久删除。
 - 管理端支持站点创建和编辑：站点 ID、站点 URL、可选名称、允许来源、默认排序、字段要求、评论占位文案、长度上限与无评论文案。
+- 站点可配置一组博主昵称与私有邮箱，供服务端识别博主本人并执行通知去重；两项必须同时填写或同时留空。
+- 博主通知判定采用固定服务端规则，管理端不展示额外的判定预览表。
 - 通知设置是实例级配置，支持 SMTP、Telegram、管理员新评论通知和访客回复通知。
 - 邮件和 Telegram 模板使用站点名称；名称为空时回落到站点 URL 的域名。
 - 管理端不展示模板预览，也不对外提供 `/admin/templates/*` 静态页面；实际发送模板只在服务端渲染。
@@ -36,7 +38,8 @@
 
 ## 文件
 
-- `index-v5.html`、`styles-v5.css`、`prototype-v5.js`：当前管理端设计基线；
+- `index-v6.html`：当前站点配置与博主身份设计基线；
+- `index-v5.html`、`styles-v5.css`、`prototype-v5.js`：当前评论管理和通知设置设计基线；
 - `fixtures-v5.js`：脱敏的站点、评论与通知配置 fixture；
 - `email-*-v5.html`、`telegram-notification-v5.html`：仅供开发验证的已批准发送模板设计基线，不进入管理端构件；
 - `index.html`、`index-v2.html`、`index-v4.html` 及配套文件：历史设计证据；
@@ -50,11 +53,11 @@
 从 `designs` 的父目录启动静态 HTTP 服务，然后打开：
 
 ```text
-http://127.0.0.1:4311/admin-moderation/index-v5.html
+http://127.0.0.1:4311/admin-moderation/index-v6.html
 ```
 
 执行无依赖静态契约测试：
 
 ```text
-node designs/admin-moderation/index-v5.test.mjs
+node designs/admin-moderation/index-v6.test.mjs
 ```

@@ -64,10 +64,19 @@
           "viewport": {
             "width": 720
           }
+        },
+        {
+          "path": "index-v8.html",
+          "createdAt": "2026-08-14T14:34:47.542Z",
+          "status": "approved",
+          "subtitle": "Approved direct inline replies with shared identity and encrypted 7-day browser storage",
+          "viewport": {
+            "width": 720
+          }
         }
       ]
     }
   },
   "createdAt": "2026-08-12T08:14:10.430Z",
-  "updatedAt": "2026-08-14T02:06:35.742Z"
+  "updatedAt": "2026-08-14T14:34:47.542Z"
 }

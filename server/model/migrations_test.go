@@ -2,6 +2,7 @@ package model
 
 import (
 	"ecoku-server/config"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -26,6 +27,123 @@ func freshTestDatabase(t *testing.T) {
 	previous := DB
 	DB = database
 	t.Cleanup(func() { DB = previous; sqlDB, _ := database.DB(); _ = sqlDB.Close() })
+}
+
+func TestV1DatabaseMigratesInPlaceWithoutLosingBusinessData(t *testing.T) {
+	t.Setenv("ECOKU_MODEL_SITE_KEY", strings.Repeat("m", 32))
+	if err := config.ApplyConfig(&config.Config{Sites: []config.RegisteredSiteConfig{{
+		ID: "site-a", SiteURL: "https://example.test", AllowedOrigins: []string{"https://example.test"},
+		ManagementKeyEnv: "ECOKU_MODEL_SITE_KEY", Name: "Example",
+	}}}); err != nil {
+		t.Fatal(err)
+	}
+	database, err := OpenSQLiteDatabase(t.TempDir() + "/v1.sqlite3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDatabase, _ := database.DB()
+	t.Cleanup(func() { _ = sqlDatabase.Close() })
+	if err := createFreshSchema(database); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 8, 14, 1, 2, 3, 0, time.UTC)
+	if err := database.Exec(`INSERT INTO comments
+  (site_id, mark, page_title, parent_id, username, email, url, content, deleted_at, created_at, updated_at)
+  VALUES ('site-a', '/post', '文章', NULL, '访客', 'reader@example.test', 'https://reader.example.test', '保留正文', NULL, ?, ?)`, now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Exec(`UPDATE notification_settings SET enabled = 1, config_json = '{"recipients":["owner@example.test"]}', secret_cipher = X'010203', revision = 7 WHERE channel = 'email'`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Exec(`INSERT INTO notification_outbox
+  (event_type, comment_id, status, attempts, available_at, locked_at, last_error_code, created_at, updated_at, sent_at)
+  VALUES ('blogger_email_new', 1, 'failed', 2, ?, NULL, 'smtp_failed', ?, ?, NULL)`, now, now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	if err := PrepareDatabaseForStartup(database); err != nil {
+		t.Fatalf("migrate v1 to v2: %v", err)
+	}
+	if err := PrepareDatabaseForStartup(database); err != nil {
+		t.Fatalf("repeat v2 startup: %v", err)
+	}
+
+	type migratedComment struct {
+		Username string
+		Email    string
+		URL      string
+		Content  string
+	}
+	var comment migratedComment
+	if err := database.Raw(`SELECT username, email, url, content FROM comments WHERE id = 1`).Scan(&comment).Error; err != nil {
+		t.Fatal(err)
+	}
+	if comment != (migratedComment{Username: "访客", Email: "reader@example.test", URL: "https://reader.example.test", Content: "保留正文"}) {
+		t.Fatalf("comment changed during migration: %#v", comment)
+	}
+	var site Site
+	if err := database.Where("id = ?", "site-a").First(&site).Error; err != nil {
+		t.Fatal(err)
+	}
+	if site.Name != "Example" || site.BloggerNickname != "" || site.BloggerEmail != "" {
+		t.Fatalf("site migration mismatch: %#v", site)
+	}
+	var setting struct {
+		Enabled      bool
+		ConfigJSON   string `gorm:"column:config_json"`
+		SecretCipher []byte `gorm:"column:secret_cipher"`
+		Revision     uint
+	}
+	if err := database.Table("notification_settings").Where("channel = 'email'").First(&setting).Error; err != nil {
+		t.Fatal(err)
+	}
+	if !setting.Enabled || setting.ConfigJSON != `{"recipients":["owner@example.test"]}` || !reflect.DeepEqual(setting.SecretCipher, []byte{1, 2, 3}) || setting.Revision != 7 {
+		t.Fatalf("notification settings changed: %#v", setting)
+	}
+	var outboxCount int64
+	database.Table("notification_outbox").Where("comment_id = 1 AND status = 'failed' AND attempts = 2 AND last_error_code = 'smtp_failed'").Count(&outboxCount)
+	if outboxCount != 1 {
+		t.Fatal("notification outbox row was not preserved")
+	}
+	var versions []int
+	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(versions, []int{1, 2}) {
+		t.Fatalf("migration history mismatch: %v", versions)
+	}
+}
+
+func TestFailedV2MigrationDoesNotRecordCompletion(t *testing.T) {
+	t.Setenv("ECOKU_MODEL_SITE_KEY", strings.Repeat("m", 32))
+	if err := config.ApplyConfig(&config.Config{}); err != nil {
+		t.Fatal(err)
+	}
+	database, err := OpenSQLiteDatabase(t.TempDir() + "/failed-v2.sqlite3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDatabase, _ := database.DB()
+	t.Cleanup(func() { _ = sqlDatabase.Close() })
+	if err := createFreshSchema(database); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Exec(`ALTER TABLE sites ADD COLUMN blogger_nickname TEXT NOT NULL DEFAULT ''`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := PrepareDatabaseForStartup(database); err == nil {
+		t.Fatal("partially incompatible v1 schema was accepted")
+	}
+	var version2 int64
+	database.Table("schema_migrations").Where("version = 2").Count(&version2)
+	if version2 != 0 {
+		t.Fatal("failed migration was recorded as complete")
+	}
+	var bloggerEmail int64
+	database.Raw("SELECT COUNT(*) FROM pragma_table_info('sites') WHERE name = 'blogger_email'").Scan(&bloggerEmail)
+	if bloggerEmail != 0 {
+		t.Fatal("failed migration left a partial blogger_email column")
+	}
 }
 
 func TestFreshSchemaInitializesAndIsRepeatable(t *testing.T) {

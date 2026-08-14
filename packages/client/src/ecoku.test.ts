@@ -1,6 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+vi.mock('./identity-store', () => ({
+  VISITOR_IDENTITY_TTL_MS: 7 * 24 * 60 * 60 * 1000,
+  loadVisitorIdentity: vi.fn(),
+  saveVisitorIdentity: vi.fn(),
+}))
+
 import Ecoku from './ecoku'
 import { resolveConfig } from './config'
+import {
+  loadVisitorIdentity,
+  saveVisitorIdentity,
+  VISITOR_IDENTITY_TTL_MS,
+} from './identity-store'
 import { zhCN } from './messages'
 
 type RawComment = Record<string, unknown>
@@ -101,6 +112,8 @@ async function submitForm(form: HTMLFormElement): Promise<void> {
 
 beforeEach(() => {
   document.body.replaceChildren()
+  vi.mocked(loadVisitorIdentity).mockReset().mockResolvedValue(null)
+  vi.mocked(saveVisitorIdentity).mockReset().mockResolvedValue(true)
 })
 
 afterEach(() => {
@@ -398,6 +411,89 @@ describe('approved production comment surface', () => {
     expect(posts[1]?.content).toBe('Nested reply')
   })
 
+  it('opens an inline reply identity form instead of redirecting an unidentified visitor to the root composer', async () => {
+    const { client, container } = createClient(
+      vi.fn<typeof fetch>().mockResolvedValue(listResponse([comment(1, 0, 'existing root')])),
+    )
+    await client.init()
+
+    const rootNickname = container.querySelector<HTMLInputElement>('.ecoku-composer input[type="text"]')!
+    container.querySelector<HTMLButtonElement>('[data-comment-id="1"] .ecoku-text-action')!.click()
+
+    const reply = container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!
+    const replyGrid = reply.querySelector<HTMLElement>('.ecoku-reply-identity-grid')!
+    const replyNickname = reply.querySelector<HTMLInputElement>('input[type="text"]')!
+    expect(replyGrid.hidden).toBe(false)
+    expect(document.activeElement).toBe(replyNickname)
+    expect(rootNickname.value).toBe('')
+    expect(container.querySelector('.ecoku-root-identity-error')).toBeNull()
+    expect(reply.textContent).toContain('回复 Author 1')
+  })
+
+  it('submits an inline reply with the identity entered beside that reply and remembers it after success', async () => {
+    const posts: Record<string, unknown>[] = []
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      const url = new URL(String(input))
+      if (url.pathname.endsWith('/api/comment/submit')) {
+        posts.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
+        return jsonResponse(201, { id: 2 }, 'submitted')
+      }
+      return listResponse([comment(1, 0, 'existing root')])
+    })
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    container.querySelector<HTMLButtonElement>('[data-comment-id="1"] .ecoku-text-action')!.click()
+
+    const reply = container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!
+    setValue(reply.querySelector<HTMLInputElement>('input[type="text"]')!, 'Reply Guest')
+    setValue(reply.querySelector<HTMLInputElement>('input[type="email"]')!, 'reply@example.com')
+    setValue(reply.querySelector<HTMLInputElement>('input[type="url"]')!, 'https://reply.example/profile')
+    setValue(reply.querySelector<HTMLTextAreaElement>('textarea')!, 'Inline reply')
+    await submitForm(reply)
+
+    await vi.waitFor(() => expect(posts).toHaveLength(1))
+    expect(posts[0]).toEqual({
+      siteId: 'site-a',
+      mark: 'article-a',
+      pageTitle: '测试文章',
+      username: 'Reply Guest',
+      email: 'reply@example.com',
+      url: 'https://reply.example/profile',
+      content: 'Inline reply',
+      parent: 1,
+    })
+    await vi.waitFor(() => {
+      expect(saveVisitorIdentity).toHaveBeenCalledWith(
+        'https://comments.example/base/',
+        'site-a',
+        { username: 'Reply Guest', email: 'reply@example.com', url: 'https://reply.example/profile' },
+      )
+    })
+  })
+
+  it('reuses a valid stored identity in the inline reply composer without displaying private fields', async () => {
+    vi.mocked(loadVisitorIdentity).mockResolvedValue({
+      username: 'Returning Guest',
+      email: 'returning@example.com',
+      url: 'https://returning.example/profile',
+    })
+    const { client, container } = createClient(
+      vi.fn<typeof fetch>().mockResolvedValue(listResponse([comment(1, 0, 'existing root')])),
+    )
+    await client.init()
+    await vi.waitFor(() => {
+      expect(container.querySelector<HTMLInputElement>('.ecoku-composer input[type="text"]')?.value)
+        .toBe('Returning Guest')
+    })
+
+    container.querySelector<HTMLButtonElement>('[data-comment-id="1"] .ecoku-text-action')!.click()
+    const reply = container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!
+    expect(reply.querySelector<HTMLElement>('.ecoku-reply-identity-grid')?.hidden).toBe(true)
+    expect(reply.querySelector('.ecoku-reply-identity-summary')?.textContent).toContain('以 Returning Guest 回复')
+    expect(reply.querySelector('.ecoku-reply-identity-summary')?.textContent).not.toContain('returning@example.com')
+    expect(document.activeElement).toBe(reply.querySelector('textarea'))
+  })
+
   it('prevents duplicate submissions while the first request is unresolved', async () => {
     let resolvePost: ((response: Response) => void) | undefined
     let postCalls = 0
@@ -535,12 +631,19 @@ describe('approved production comment surface', () => {
     expect(container.textContent).not.toContain('obsolete comment')
   })
 
-  it('keeps visitor identity in component memory without browser persistence or URL writes', async () => {
+  it('stores visitor identity through the seven-day encrypted store without cookies, localStorage, or URL writes', async () => {
     const storageWrite = vi.spyOn(Storage.prototype, 'setItem')
     const initialURL = window.location.href
-    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse([])))
+    const fetchMock = vi.fn<typeof fetch>((input) => {
+      const url = new URL(String(input))
+      if (url.pathname.endsWith('/api/comment/submit')) return Promise.resolve(jsonResponse(201, { id: 9 }))
+      return Promise.resolve(listResponse([]))
+    })
+    const { client, container } = createClient(fetchMock)
     await client.init()
-    fillIdentityAndContent(container, 'Private in-memory draft')
+    await submitForm(fillIdentityAndContent(container, 'Remember this identity'))
+    await vi.waitFor(() => expect(saveVisitorIdentity).toHaveBeenCalledTimes(1))
+    expect(VISITOR_IDENTITY_TTL_MS).toBe(7 * 24 * 60 * 60 * 1000)
     expect(storageWrite).not.toHaveBeenCalled()
     expect(document.cookie).toBe('')
     expect(window.location.href).toBe(initialURL)

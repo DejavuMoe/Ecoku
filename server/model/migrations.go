@@ -13,9 +13,13 @@ import (
 )
 
 const (
-	LatestSchemaVersion   = 1
-	freshSchemaName       = "fresh_published_comments"
-	freshSchemaDefinition = "sqlite3:fresh-v1:published-comments:site-display-config:notifications:tombstones"
+	LatestSchemaVersion             = 2
+	freshSchemaVersion              = 1
+	freshSchemaName                 = "fresh_published_comments"
+	freshSchemaDefinition           = "sqlite3:fresh-v1:published-comments:site-display-config:notifications:tombstones"
+	bloggerIdentitySchemaVersion    = 2
+	bloggerIdentitySchemaName       = "site_blogger_identity"
+	bloggerIdentitySchemaDefinition = "sqlite3:v2:sites-blogger-nickname-email"
 )
 
 type schemaMigration struct {
@@ -25,9 +29,10 @@ type schemaMigration struct {
 	AppliedAt time.Time `gorm:"column:applied_at"`
 }
 
-// PrepareDatabaseForStartup accepts only a new empty database or the exact
-// current schema. Ecoku intentionally provides no historical data migration:
-// operators upgrading to this release must back up and recreate SQLite.
+// PrepareDatabaseForStartup creates a new database at v1 and then applies every
+// known migration in order. Existing v1 databases are upgraded in place inside
+// SQLite transactions; migration history is retained and no database or backup
+// file is ever deleted automatically.
 func PrepareDatabaseForStartup(database *gorm.DB) error {
 	exists, err := hasTable(database, "schema_migrations")
 	if err != nil {
@@ -45,7 +50,16 @@ func PrepareDatabaseForStartup(database *gorm.DB) error {
 			return err
 		}
 	}
-	if err := validateFreshSchemaVersion(database); err != nil {
+	currentVersion, err := validateKnownSchemaHistory(database)
+	if err != nil {
+		return err
+	}
+	if currentVersion < LatestSchemaVersion {
+		if err := migrateSchema(database, currentVersion); err != nil {
+			return err
+		}
+	}
+	if err := validateCurrentSchema(database); err != nil {
 		return err
 	}
 	return verifyForeignKeys(database)
@@ -157,7 +171,7 @@ func createFreshSchema(database *gorm.DB) error {
 		}
 		checksum := schemaChecksum(freshSchemaDefinition)
 		if err := tx.Exec(`INSERT INTO schema_migrations (version, name, checksum, applied_at)
-VALUES (?, ?, ?, ?)`, LatestSchemaVersion, freshSchemaName, checksum, now).Error; err != nil {
+VALUES (?, ?, ?, ?)`, freshSchemaVersion, freshSchemaName, checksum, now).Error; err != nil {
 			return fmt.Errorf("记录 schema 版本: %w", err)
 		}
 		return nil
@@ -192,19 +206,93 @@ func seedConfiguredSites(tx *gorm.DB, now time.Time) error {
 	return nil
 }
 
-func validateFreshSchemaVersion(database *gorm.DB) error {
+func validateKnownSchemaHistory(database *gorm.DB) (int, error) {
 	var rows []schemaMigration
 	if err := database.Raw("SELECT version, name, checksum, applied_at FROM schema_migrations ORDER BY version").Scan(&rows).Error; err != nil {
-		return fmt.Errorf("读取 schema 版本: %w", err)
+		return 0, fmt.Errorf("读取 schema 版本: %w", err)
 	}
-	expectedChecksum := schemaChecksum(freshSchemaDefinition)
-	if len(rows) != 1 || rows[0].Version != LatestSchemaVersion || rows[0].Name != freshSchemaName || rows[0].Checksum != expectedChecksum {
-		return fmt.Errorf("数据库不是当前全新 schema；请备份后删除数据库并重新初始化")
+	if len(rows) == 0 {
+		return 0, fmt.Errorf("数据库缺少 schema 版本记录")
+	}
+	expected := map[int]struct {
+		name       string
+		definition string
+	}{
+		freshSchemaVersion:           {name: freshSchemaName, definition: freshSchemaDefinition},
+		bloggerIdentitySchemaVersion: {name: bloggerIdentitySchemaName, definition: bloggerIdentitySchemaDefinition},
+	}
+	for index, row := range rows {
+		version := index + 1
+		if row.Version != version {
+			return 0, fmt.Errorf("数据库 schema 版本记录不连续")
+		}
+		definition, known := expected[row.Version]
+		if !known {
+			if row.Version > LatestSchemaVersion {
+				return 0, fmt.Errorf("数据库 schema 版本 %d 高于当前程序支持的 %d", row.Version, LatestSchemaVersion)
+			}
+			return 0, fmt.Errorf("数据库包含未知 schema 版本 %d", row.Version)
+		}
+		if row.Name != definition.name || row.Checksum != schemaChecksum(definition.definition) {
+			return 0, fmt.Errorf("数据库 schema 版本 %d 校验失败", row.Version)
+		}
+	}
+	return rows[len(rows)-1].Version, nil
+}
+
+func migrateSchema(database *gorm.DB, currentVersion int) error {
+	for version := currentVersion + 1; version <= LatestSchemaVersion; version++ {
+		switch version {
+		case bloggerIdentitySchemaVersion:
+			if err := migrateSiteBloggerIdentity(database); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("没有可用的 schema 迁移版本 %d", version)
+		}
+	}
+	return nil
+}
+
+func migrateSiteBloggerIdentity(database *gorm.DB) error {
+	return database.Transaction(func(tx *gorm.DB) error {
+		statements := []string{
+			`ALTER TABLE sites ADD COLUMN blogger_nickname TEXT NOT NULL DEFAULT '' CHECK (length(blogger_nickname) <= 80)`,
+			`ALTER TABLE sites ADD COLUMN blogger_email TEXT NOT NULL DEFAULT '' CHECK (length(blogger_email) <= 254)`,
+		}
+		for _, statement := range statements {
+			if err := tx.Exec(statement).Error; err != nil {
+				return fmt.Errorf("迁移站点博主身份字段: %w", err)
+			}
+		}
+		now := time.Now().UTC()
+		if err := tx.Exec(`INSERT INTO schema_migrations (version, name, checksum, applied_at)
+VALUES (?, ?, ?, ?)`, bloggerIdentitySchemaVersion, bloggerIdentitySchemaName,
+			schemaChecksum(bloggerIdentitySchemaDefinition), now).Error; err != nil {
+			return fmt.Errorf("记录 schema 版本 %d: %w", bloggerIdentitySchemaVersion, err)
+		}
+		return nil
+	})
+}
+
+func validateCurrentSchema(database *gorm.DB) error {
+	currentVersion, err := validateKnownSchemaHistory(database)
+	if err != nil {
+		return err
+	}
+	if currentVersion != LatestSchemaVersion {
+		return fmt.Errorf("数据库 schema 版本 %d 未升级到 %d", currentVersion, LatestSchemaVersion)
 	}
 	for _, table := range []string{"sites", "site_origins", "comments", "notification_settings", "notification_outbox"} {
 		exists, err := hasTable(database, table)
 		if err != nil || !exists {
 			return fmt.Errorf("数据库缺少当前 schema 表 %s", table)
+		}
+	}
+	for _, column := range []string{"blogger_nickname", "blogger_email"} {
+		var count int64
+		if err := database.Raw("SELECT COUNT(*) FROM pragma_table_info('sites') WHERE name = ?", column).Scan(&count).Error; err != nil || count != 1 {
+			return fmt.Errorf("数据库缺少当前 schema 字段 sites.%s", column)
 		}
 	}
 	return nil

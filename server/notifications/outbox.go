@@ -25,6 +25,10 @@ func (worker *Worker) Wait() {
 }
 
 func EnqueueNewComment(tx *gorm.DB, comment model.Comment) error {
+	var site model.Site
+	if err := tx.Where("id = ?", comment.SiteID).First(&site).Error; err != nil {
+		return err
+	}
 	emailRow, err := loadSetting(tx, ChannelEmail)
 	if err != nil {
 		return err
@@ -33,31 +37,40 @@ func EnqueueNewComment(tx *gorm.DB, comment model.Comment) error {
 	if err != nil {
 		return err
 	}
-	if emailRow.Enabled {
+	if !isBloggerComment(site, comment) && emailRow.Enabled {
 		if err := enqueue(tx, EventBloggerEmail, comment.ID); err != nil {
 			return err
 		}
 	}
-	if telegramRow.Enabled {
+	if !isBloggerComment(site, comment) && telegramRow.Enabled {
 		if err := enqueue(tx, EventBloggerTelegram, comment.ID); err != nil {
 			return err
 		}
 	}
-	return EnqueueReplyNotification(tx, comment)
-}
-
-func EnqueueReplyNotification(tx *gorm.DB, comment model.Comment) error {
-	if comment.ParentID == nil {
+	if comment.ParentID == nil || !emailRow.Enabled {
 		return nil
 	}
-	emailRow, err := loadSetting(tx, ChannelEmail)
-	if err != nil {
+	var parent model.Comment
+	if err := tx.Where("id = ? AND site_id = ? AND mark = ?", *comment.ParentID, comment.SiteID, comment.Mark).First(&parent).Error; err != nil {
 		return err
 	}
-	if !emailRow.Enabled {
+	if parent.DeletedAt != nil || parent.Email == nil || strings.TrimSpace(*parent.Email) == "" || isBloggerComment(site, parent) {
+		return nil
+	}
+	if comment.Email != nil && strings.EqualFold(strings.TrimSpace(*comment.Email), strings.TrimSpace(*parent.Email)) {
 		return nil
 	}
 	return enqueue(tx, EventVisitorReply, comment.ID)
+}
+
+func isBloggerComment(site model.Site, comment model.Comment) bool {
+	nickname := strings.TrimSpace(site.BloggerNickname)
+	email := strings.TrimSpace(site.BloggerEmail)
+	if nickname == "" || email == "" || comment.Email == nil {
+		return false
+	}
+	return strings.TrimSpace(comment.Username) == nickname &&
+		strings.EqualFold(strings.TrimSpace(*comment.Email), email)
 }
 
 func enqueue(tx *gorm.DB, eventType string, commentID uint) error {
@@ -171,6 +184,9 @@ func deliverEvent(ctx context.Context, event outboxRow) error {
 	}
 	switch event.EventType {
 	case EventBloggerEmail:
+		if isBloggerComment(site, comment) {
+			return errDeliveryCancelled
+		}
 		row, err := loadSetting(model.DB, ChannelEmail)
 		if err != nil {
 			return err
@@ -193,6 +209,9 @@ func deliverEvent(ctx context.Context, event outboxRow) error {
 		}
 		return nil
 	case EventBloggerTelegram:
+		if isBloggerComment(site, comment) {
+			return errDeliveryCancelled
+		}
 		row, err := loadSetting(model.DB, ChannelTelegram)
 		if err != nil {
 			return err
@@ -223,6 +242,9 @@ func deliverEvent(ctx context.Context, event outboxRow) error {
 			return errDeliveryCancelled
 		}
 		if parent.Email == nil || strings.TrimSpace(*parent.Email) == "" || parent.DeletedAt != nil {
+			return errDeliveryCancelled
+		}
+		if isBloggerComment(site, parent) {
 			return errDeliveryCancelled
 		}
 		if comment.Email != nil && strings.EqualFold(strings.TrimSpace(*comment.Email), strings.TrimSpace(*parent.Email)) {
