@@ -220,13 +220,14 @@ export class CommentSurface {
 
     this.core.append(
       this.rootForm,
+      heading,
       this.statusLine,
       this.loadingState,
       this.emptyState,
       this.threadList,
       this.pagination,
     )
-    section.append(heading, this.serviceError, this.core)
+    section.append(this.serviceError, this.core)
     this.root.append(section)
 
     this.sortTrigger.addEventListener('click', () => this.toggleSortMenu(this.sortMenu.hidden !== false))
@@ -327,8 +328,8 @@ export class CommentSurface {
     const end = createElement('div', 'ecoku-composer-end')
     this.rootSubmit.type = 'submit'
     this.rootSubmit.disabled = true
-    end.append(this.characterCount, this.rootSubmit)
-    footer.append(end)
+    end.append(this.rootSubmit)
+    footer.append(this.characterCount, end)
     this.rootForm.append(identityGrid, messageLabel, this.rootError, footer)
     this.applyFormConfig(this.formConfig, false)
 
