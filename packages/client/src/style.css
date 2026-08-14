@@ -1,0 +1,751 @@
+.ecoku-comments {
+  --ecoku-theme: var(--theme, rgb(250, 249, 245));
+  --ecoku-entry: var(--entry, rgb(252, 251, 247));
+  --ecoku-primary: var(--primary, rgb(20, 20, 19));
+  --ecoku-secondary: var(--secondary, rgb(96, 91, 82));
+  --ecoku-content: var(--content, rgb(58, 54, 44));
+  --ecoku-border: var(--border, rgb(150, 143, 132));
+  --ecoku-border-soft: var(--border-soft, rgba(20, 20, 19, 0.14));
+  --ecoku-code-bg: var(--code-bg, rgb(243, 239, 231));
+  --ecoku-surface-muted: var(--surface-muted, rgba(243, 239, 231, 0.72));
+  --ecoku-focus: color-mix(in srgb, var(--ecoku-primary) 72%, #2f73ff);
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
+  color: var(--ecoku-primary);
+  color-scheme: light;
+  font-family: inherit;
+  font-size: 17px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  text-rendering: optimizeLegibility;
+}
+
+.ecoku-comments[data-theme="light"] {
+  --ecoku-theme: rgb(250, 249, 245);
+  --ecoku-entry: rgb(252, 251, 247);
+  --ecoku-primary: rgb(20, 20, 19);
+  --ecoku-secondary: rgb(96, 91, 82);
+  --ecoku-content: rgb(58, 54, 44);
+  --ecoku-border: rgb(150, 143, 132);
+  --ecoku-border-soft: rgba(20, 20, 19, 0.14);
+  --ecoku-code-bg: rgb(243, 239, 231);
+  --ecoku-surface-muted: rgba(243, 239, 231, 0.72);
+}
+
+.ecoku-comments[data-theme="dark"] {
+  --ecoku-theme: rgb(26, 29, 32);
+  --ecoku-entry: rgb(34, 38, 42);
+  --ecoku-primary: rgb(242, 236, 226);
+  --ecoku-secondary: rgb(188, 181, 169);
+  --ecoku-content: rgb(216, 209, 197);
+  --ecoku-border: rgb(109, 114, 120);
+  --ecoku-border-soft: rgba(242, 236, 226, 0.14);
+  --ecoku-code-bg: rgb(44, 48, 53);
+  --ecoku-surface-muted: rgba(48, 53, 58, 0.88);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  .ecoku-comments[data-theme="auto"] {
+    --ecoku-theme: var(--theme, rgb(26, 29, 32));
+    --ecoku-entry: var(--entry, rgb(34, 38, 42));
+    --ecoku-primary: var(--primary, rgb(242, 236, 226));
+    --ecoku-secondary: var(--secondary, rgb(188, 181, 169));
+    --ecoku-content: var(--content, rgb(216, 209, 197));
+    --ecoku-border: var(--border, rgb(109, 114, 120));
+    --ecoku-border-soft: var(--border-soft, rgba(242, 236, 226, 0.14));
+    --ecoku-code-bg: var(--code-bg, rgb(44, 48, 53));
+    --ecoku-surface-muted: var(--surface-muted, rgba(48, 53, 58, 0.88));
+    color-scheme: dark;
+  }
+}
+
+.ecoku-comments *,
+.ecoku-comments *::before,
+.ecoku-comments *::after {
+  box-sizing: border-box;
+}
+
+.ecoku-comments [hidden] {
+  display: none !important;
+}
+
+.ecoku-comments button,
+.ecoku-comments input,
+.ecoku-comments textarea {
+  color: inherit;
+  font: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.ecoku-comments button {
+  cursor: pointer;
+}
+
+.ecoku-comments button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+}
+
+.ecoku-comments :focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ecoku-primary) 30%, transparent);
+  outline-offset: 3px;
+}
+
+.ecoku-comment-section {
+  min-height: 360px;
+}
+
+.ecoku-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+}
+
+.ecoku-section-title {
+  margin: 0;
+  color: var(--ecoku-primary);
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.ecoku-sort-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ecoku-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.ecoku-sort-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 112px;
+  min-height: 38px;
+  padding: 0 12px 0 14px;
+  color: var(--ecoku-primary);
+  border: 1px solid var(--ecoku-border-soft);
+  border-radius: 999px;
+  background: var(--ecoku-entry);
+  font-size: 13px;
+}
+
+.ecoku-sort-trigger:hover,
+.ecoku-sort-trigger[aria-expanded="true"] {
+  border-color: var(--ecoku-border);
+  background: var(--ecoku-surface-muted);
+}
+
+.ecoku-sort-chevron {
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.ecoku-sort-trigger[aria-expanded="true"] .ecoku-sort-chevron {
+  transform: translateY(2px) rotate(225deg);
+}
+
+.ecoku-sort-menu {
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  z-index: 20;
+  display: grid;
+  width: 132px;
+  padding: 5px;
+  border: 1px solid var(--ecoku-border-soft);
+  border-radius: 11px;
+  background: var(--ecoku-entry);
+  box-shadow: 0 16px 40px rgba(20, 20, 19, 0.08);
+}
+
+.ecoku-sort-option {
+  min-height: 38px;
+  padding: 0 10px;
+  color: var(--ecoku-content);
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  text-align: left;
+}
+
+.ecoku-sort-option:hover,
+.ecoku-sort-option:focus-visible,
+.ecoku-sort-option[aria-selected="true"] {
+  color: var(--ecoku-primary);
+  background: var(--ecoku-surface-muted);
+}
+
+.ecoku-composer {
+  margin-bottom: 28px;
+  padding: 16px;
+  border: 1px solid var(--ecoku-border-soft);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ecoku-entry) 72%, var(--ecoku-theme));
+  transition: border-color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.ecoku-composer:focus-within {
+  border-color: var(--ecoku-border-soft);
+  background: var(--ecoku-entry);
+  box-shadow: none;
+}
+
+.ecoku-identity-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 7px;
+}
+
+.ecoku-field input::placeholder {
+  font-size: 12px;
+}
+
+.ecoku-field,
+.ecoku-message-field {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ecoku-border-soft);
+  border-radius: 10px;
+  background: var(--ecoku-theme);
+}
+
+.ecoku-field {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.ecoku-message-field {
+  display: block;
+  border-radius: 11px;
+}
+
+.ecoku-field:focus-within,
+.ecoku-message-field:focus-within {
+  border-color: color-mix(in srgb, var(--ecoku-primary) 58%, var(--ecoku-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ecoku-primary) 6%, transparent);
+}
+
+.ecoku-field-label {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0 10px;
+  color: var(--ecoku-secondary);
+  border-right: 1px solid var(--ecoku-border-soft);
+  background: var(--ecoku-surface-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.ecoku-input,
+.ecoku-textarea {
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  transition: border-color 180ms ease, background-color 180ms ease;
+}
+
+.ecoku-input {
+  min-height: 42px;
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+.ecoku-textarea {
+  display: block;
+  min-height: 116px;
+  padding: 11px 12px;
+  resize: vertical;
+  color: var(--ecoku-content);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.ecoku-input:focus,
+.ecoku-textarea:focus {
+  outline: 0;
+}
+
+.ecoku-input[aria-invalid="true"],
+.ecoku-textarea[aria-invalid="true"] {
+  border-color: #b84343;
+}
+
+.ecoku-field:has(.ecoku-input[aria-invalid="true"]),
+.ecoku-message-field:has(.ecoku-textarea[aria-invalid="true"]) {
+  border-color: #b84343;
+}
+
+.ecoku-composer-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 18px;
+  margin-top: 12px;
+}
+
+.ecoku-composer-end,
+.ecoku-reply-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.ecoku-character-count {
+  color: var(--ecoku-secondary);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ecoku-primary-button,
+.ecoku-secondary-button {
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease;
+}
+
+.ecoku-primary-button {
+  color: var(--ecoku-primary);
+  border: 1px solid color-mix(in srgb, var(--ecoku-primary) 72%, var(--ecoku-border));
+  background: var(--ecoku-entry);
+}
+
+.ecoku-secondary-button {
+  color: var(--ecoku-primary);
+  border: 1px solid var(--ecoku-border-soft);
+  background: var(--ecoku-entry);
+}
+
+.ecoku-primary-button:not(:disabled):hover {
+  border-color: var(--ecoku-primary);
+  background: var(--ecoku-code-bg);
+}
+
+.ecoku-secondary-button:not(:disabled):hover {
+  border-color: var(--ecoku-border);
+  background: var(--ecoku-code-bg);
+}
+
+.ecoku-form-error {
+  margin: 9px 0 0;
+  color: #a53434;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ecoku-status-line {
+  min-height: 1.7em;
+  margin: -13px 0 14px;
+  color: var(--ecoku-secondary);
+  font-size: 13px;
+}
+
+.ecoku-loading-state,
+.ecoku-service-error {
+  margin: 0 0 24px;
+  padding: 22px;
+  color: var(--ecoku-secondary);
+  border: 1px solid var(--ecoku-border-soft);
+  border-radius: 14px;
+  background: var(--ecoku-surface-muted);
+  font-size: 14px;
+}
+
+.ecoku-loading-state {
+  text-align: center;
+}
+
+.ecoku-service-error h3 {
+  margin: 0 0 5px;
+  color: var(--ecoku-primary);
+  font-size: 17px;
+}
+
+.ecoku-service-error p {
+  margin: 0 0 14px;
+}
+
+.ecoku-empty-state {
+  margin: 20px 0 24px;
+  color: var(--ecoku-content);
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.ecoku-empty-state p {
+  margin: 0;
+  white-space: pre-line;
+}
+
+.ecoku-thread-list {
+  border-top: 1px solid var(--ecoku-border-soft);
+}
+
+.ecoku-comment-node {
+  min-width: 0;
+}
+
+.ecoku-thread-list > .ecoku-comment-node {
+  border-bottom: 1px solid var(--ecoku-border-soft);
+}
+
+.ecoku-comment-row {
+  position: relative;
+  min-width: 0;
+  padding: 10px 0 11px calc(var(--ecoku-depth, 0) * 22px);
+}
+
+.ecoku-comment-node:not([data-depth="1"]) > .ecoku-comment-row::before {
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  left: var(--ecoku-guide-offset);
+  border-left: 1px dashed color-mix(in srgb, var(--ecoku-secondary) 30%, transparent);
+  content: "";
+  pointer-events: none;
+}
+
+.ecoku-comment-node[data-depth="2"] > .ecoku-comment-row {
+  --ecoku-guide-offset: 8px;
+}
+
+.ecoku-comment-node[data-depth="3"] > .ecoku-comment-row {
+  --ecoku-guide-offset: 30px;
+}
+
+.ecoku-comment-node:not([data-depth="1"]):not([data-depth="2"]):not([data-depth="3"]) > .ecoku-comment-row {
+  --ecoku-guide-offset: 52px;
+}
+
+.ecoku-comment-meta {
+  display: flex;
+  align-items: center;
+  min-height: 20px;
+  min-width: 0;
+  gap: 7px;
+  color: var(--ecoku-secondary);
+  font-size: 11.5px;
+  line-height: 20px;
+}
+
+.ecoku-collapse-button,
+.ecoku-collapse-placeholder {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  flex: 0 0 20px;
+  margin: 0;
+  padding: 0;
+  place-items: center;
+  color: var(--ecoku-secondary);
+  border: 1px solid color-mix(in srgb, var(--ecoku-secondary) 58%, transparent);
+  border-radius: 4px;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+.ecoku-collapse-button {
+  position: relative;
+  font-size: 0;
+}
+
+.ecoku-collapse-button::before,
+.ecoku-collapse-button[aria-expanded="false"]::before {
+  width: 7px;
+  height: 1px;
+  background: currentColor;
+  content: "";
+}
+
+.ecoku-collapse-button::after {
+  position: absolute;
+  width: 1px;
+  height: 7px;
+  background: currentColor;
+  content: "";
+  opacity: 0;
+}
+
+.ecoku-collapse-button[aria-expanded="false"]::after {
+  opacity: 1;
+}
+
+.ecoku-collapse-placeholder::before {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+  opacity: 0.62;
+}
+
+.ecoku-collapse-button:hover:not(:disabled) {
+  color: var(--ecoku-primary);
+  border-color: color-mix(in srgb, var(--ecoku-primary) 72%, transparent);
+  background: var(--ecoku-surface-muted);
+}
+
+.ecoku-comment-author {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ecoku-primary);
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+a.ecoku-comment-author:hover,
+.ecoku-comment-time:hover,
+.ecoku-text-action:hover {
+  color: var(--ecoku-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ecoku-comment-time {
+  color: inherit;
+  font-size: 11.5px;
+  line-height: 20px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.ecoku-reply-context,
+.ecoku-folded-summary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11.5px;
+  line-height: 20px;
+}
+
+.ecoku-reply-context {
+  max-width: min(260px, 55vw);
+  color: inherit;
+  text-decoration: none;
+}
+
+a.ecoku-reply-context:hover {
+  color: var(--ecoku-primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.ecoku-comment-copy {
+  margin-top: 4px;
+  color: var(--ecoku-content);
+  font-size: 16px;
+  line-height: 1.72;
+}
+
+.ecoku-comment-copy p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.ecoku-deleted > .ecoku-comment-row .ecoku-comment-copy {
+  color: var(--ecoku-secondary);
+  font-style: italic;
+}
+
+.ecoku-comment-actions {
+  display: flex;
+  min-height: 26px;
+  align-items: center;
+  margin-top: 3px;
+}
+
+.ecoku-text-action {
+  min-height: 26px;
+  padding: 0;
+  color: var(--ecoku-secondary);
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+}
+
+.ecoku-reply-composer {
+  margin: 8px 0 3px;
+  padding: 13px;
+  border: 1px solid var(--ecoku-border-soft);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ecoku-entry) 74%, var(--ecoku-theme));
+}
+
+.ecoku-reply-heading {
+  margin: 0 0 8px;
+  color: var(--ecoku-secondary);
+  font-size: 13px;
+}
+
+.ecoku-reply-heading strong {
+  color: var(--ecoku-primary);
+}
+
+.ecoku-reply-composer .ecoku-textarea {
+  min-height: 92px;
+}
+
+.ecoku-reply-footer {
+  margin-top: 10px;
+}
+
+.ecoku-pagination {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 12px;
+  color: var(--ecoku-secondary);
+  font-size: 12px;
+}
+
+.ecoku-pagination[hidden] {
+  display: none;
+}
+
+.ecoku-pager-button {
+  min-height: 34px;
+  padding: 4px 7px;
+  color: inherit;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  font: inherit;
+}
+
+.ecoku-pager-button:hover:not(:disabled) {
+  color: var(--ecoku-primary);
+  background: var(--ecoku-surface-muted);
+}
+
+.ecoku-pager-button:disabled {
+  cursor: default;
+  opacity: 0.42;
+}
+
+.ecoku-pagination-status {
+  min-width: 32px;
+  color: var(--ecoku-content);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.ecoku-pagination-separator {
+  opacity: 0.72;
+}
+
+.ecoku-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+@media (max-width: 620px) {
+  .ecoku-comments {
+    font-size: 16px;
+  }
+
+  .ecoku-identity-grid {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+
+  .ecoku-composer-footer {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .ecoku-composer-end {
+    justify-content: space-between;
+  }
+
+  .ecoku-comment-row {
+    padding-left: calc(var(--ecoku-depth, 0) * 14px);
+  }
+
+  .ecoku-comment-node[data-depth="2"] > .ecoku-comment-row {
+    --ecoku-guide-offset: 5px;
+  }
+
+  .ecoku-comment-node[data-depth="3"] > .ecoku-comment-row {
+    --ecoku-guide-offset: 19px;
+  }
+
+  .ecoku-comment-node:not([data-depth="1"]):not([data-depth="2"]):not([data-depth="3"]) > .ecoku-comment-row {
+    --ecoku-guide-offset: 33px;
+  }
+}
+
+@media (max-width: 460px) {
+  .ecoku-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .ecoku-composer {
+    padding: 13px;
+  }
+
+  .ecoku-comment-copy {
+    font-size: 15.5px;
+  }
+
+  .ecoku-comment-meta {
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .ecoku-comment-actions {
+    min-height: 40px;
+  }
+
+  .ecoku-pager-button {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ecoku-comments *,
+  .ecoku-comments *::before,
+  .ecoku-comments *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}

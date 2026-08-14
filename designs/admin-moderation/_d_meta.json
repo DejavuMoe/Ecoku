@@ -1,0 +1,59 @@
+{
+  "type": "design",
+  "designSystems": [],
+  "primaryDesignSystem": null,
+  "assets": {
+    "Ecoku admin moderation": {
+      "versions": [
+        {
+          "path": "index.html",
+          "createdAt": "2026-08-12T22:31:10.513Z",
+          "status": "approved",
+          "subtitle": "Warm paper, queue-and-review production admin prototype",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          }
+        },
+        {
+          "path": "index-v2.html",
+          "createdAt": "2026-08-13T02:35:12.254Z",
+          "status": "approved",
+          "subtitle": "Approved PaperMod-aligned admin with current-page batch moderation",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          }
+        },
+        {
+          "path": "index-v3.html",
+          "createdAt": "2026-08-13T06:59:15.434Z",
+          "status": "needs-review",
+          "subtitle": "Review candidate with site form settings and corrected destructive controls"
+        },
+        {
+          "path": "index-v4.html",
+          "createdAt": "2026-08-13T14:02:02.713Z",
+          "status": "needs-review",
+          "subtitle": "Needs-review candidate with per-site default sort and state-aware original-page links",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          }
+        },
+        {
+          "path": "index-v5.html",
+          "createdAt": "2026-08-13T14:44:30.000Z",
+          "status": "approved",
+          "subtitle": "Approved always-published comment management, concise site form, and site-aware recipient notification templates",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          }
+        }
+      ]
+    }
+  },
+  "createdAt": "2026-08-12T22:31:10.516Z",
+  "updatedAt": "2026-08-13T15:15:33.000Z"
+}

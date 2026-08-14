@@ -1,0 +1,5 @@
+params:
+  comments: true
+  ecoku:
+    server_url: "https://comments.example.com"
+    site_id: "blog"

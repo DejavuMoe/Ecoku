@@ -1,0 +1,75 @@
+{
+  "type": "design",
+  "designSystems": [],
+  "primaryDesignSystem": null,
+  "assets": {
+    "Ecoku admin layout": {
+      "versions": [
+        {
+          "path": "admin-layout.html",
+          "createdAt": "2026-08-13T07:26:49.796Z",
+          "status": "needs-review",
+          "subtitle": "Moderation workspace and global notification settings review prototype",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          }
+        },
+        {
+          "path": "admin-layout-v2.html",
+          "createdAt": "2026-08-13T10:55:29.697Z",
+          "status": "approved",
+          "subtitle": "Wider moderation workspace, site management, deletion semantics, and notification previews",
+          "viewport": {
+            "width": 1600,
+            "height": 900
+          }
+        }
+      ]
+    },
+    "Ecoku visitor reply email": {
+      "versions": [
+        {
+          "path": "email-reply-notification.html",
+          "createdAt": "2026-08-13T10:55:29.490Z",
+          "status": "approved",
+          "subtitle": "Send-ready visitor reply notification email template",
+          "viewport": {
+            "width": 600,
+            "height": 900
+          }
+        }
+      ]
+    },
+    "Ecoku admin email notification": {
+      "versions": [
+        {
+          "path": "email-admin-notification.html",
+          "createdAt": "2026-08-13T10:55:29.905Z",
+          "status": "approved",
+          "subtitle": "Send-ready administrator pending-comment email template",
+          "viewport": {
+            "width": 600,
+            "height": 900
+          }
+        }
+      ]
+    },
+    "Ecoku Telegram notification": {
+      "versions": [
+        {
+          "path": "telegram-notification.html",
+          "createdAt": "2026-08-13T10:55:30.106Z",
+          "status": "approved",
+          "subtitle": "Administrator Telegram message template preview",
+          "viewport": {
+            "width": 920,
+            "height": 760
+          }
+        }
+      ]
+    }
+  },
+  "createdAt": "2026-08-13T07:26:49.796Z",
+  "updatedAt": "2026-08-13T11:14:49.383Z"
+}

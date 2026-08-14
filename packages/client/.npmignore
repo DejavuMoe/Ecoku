@@ -1,0 +1,35 @@
+# Source files
+src/
+public/
+index.html
+test-build.html
+
+# Development files
+vite.config.ts
+tsconfig.json
+tsconfig.build.json
+.gitignore
+
+# Node modules and logs
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Development and testing
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

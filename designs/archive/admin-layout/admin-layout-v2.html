@@ -1,0 +1,1124 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ecoku 评论审核台 · 布局原型 v2</title>
+  <style>
+    :root {
+      --paper: rgb(250, 249, 245);
+      --surface: rgb(252, 251, 247);
+      --ink: rgb(20, 20, 19);
+      --ink-soft: rgb(58, 54, 44);
+      --muted: rgb(96, 91, 82);
+      --line: rgb(150, 143, 132);
+      --line-soft: rgba(20, 20, 19, 0.14);
+      --wash: rgb(243, 239, 231);
+      --wash-translucent: rgba(243, 239, 231, 0.76);
+      --accent: rgb(42, 83, 108);
+      --accent-hover: rgb(31, 67, 90);
+      --accent-text: rgb(250, 249, 245);
+      --pending: rgb(133, 83, 28);
+      --pending-bg: rgb(247, 235, 211);
+      --approved: rgb(42, 102, 72);
+      --approved-bg: rgb(225, 240, 229);
+      --rejected: rgb(145, 54, 52);
+      --rejected-bg: rgb(246, 226, 223);
+      --deleted: rgb(91, 87, 82);
+      --deleted-bg: rgb(232, 229, 222);
+      --danger: rgb(139, 48, 45);
+      --danger-hover: rgb(111, 35, 33);
+      --shadow: 0 18px 48px rgba(20, 20, 19, 0.1);
+      --radius: 14px;
+      --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+      --serif: "OPPO Serif SC", "Noto Serif CJK SC", "Songti SC", serif;
+      --mono: ui-monospace, "SFMono-Regular", "Cascadia Code", "Roboto Mono", monospace;
+      color-scheme: light;
+      font-family: var(--serif);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { min-width: 320px; min-height: 100%; background: var(--paper); }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      overflow: hidden;
+      color: var(--ink);
+      background: var(--paper);
+      font-size: 15px;
+      line-height: 1.65;
+      text-rendering: optimizeLegibility;
+    }
+    button, input, select, textarea { color: inherit; font: inherit; }
+    button, select { cursor: pointer; }
+    button:disabled, input:disabled, select:disabled, textarea:disabled { cursor: not-allowed; }
+    [hidden] { display: none !important; }
+    :focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 72%, white); outline-offset: 3px; }
+
+    .skip-link {
+      position: fixed;
+      z-index: 200;
+      top: 8px;
+      left: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      color: var(--accent-text);
+      background: var(--accent);
+      transform: translateY(-160%);
+    }
+    .skip-link:focus { transform: translateY(0); }
+
+    .app-shell { display: grid; min-height: 100vh; grid-template-rows: 60px minmax(0, 1fr); }
+    .app-header { position: relative; z-index: 40; border-bottom: 1px solid var(--line-soft); background: var(--paper); }
+    .header-inner {
+      display: flex;
+      width: min(calc(100% - 48px), 1440px);
+      height: 60px;
+      margin: 0 auto;
+      align-items: center;
+      justify-content: space-between;
+      gap: 28px;
+    }
+    .header-start, .header-context, .primary-nav, .brand { display: flex; align-items: center; }
+    .header-start { min-width: 0; gap: 34px; }
+    .header-context { flex: 0 0 auto; gap: 12px; }
+    .primary-nav { align-self: stretch; gap: 24px; }
+    .brand { flex: 0 0 auto; gap: 10px; color: inherit; text-decoration: none; }
+    .brand-mark {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border: 1px solid var(--ink);
+      border-radius: 50%;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .brand-copy { display: grid; line-height: 1.05; }
+    .brand-copy strong { font-size: 19px; }
+    .brand-copy small { margin-top: 4px; color: var(--muted); font-size: 10px; letter-spacing: 0.08em; }
+    .nav-tab {
+      position: relative;
+      display: grid;
+      height: 100%;
+      place-items: center;
+      padding: 0;
+      border: 0;
+      color: var(--muted);
+      background: transparent;
+      font-size: 14px;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .nav-tab::after {
+      position: absolute;
+      right: 0;
+      bottom: -1px;
+      left: 0;
+      height: 2px;
+      background: transparent;
+      content: "";
+    }
+    .nav-tab:hover, .nav-tab[aria-current="page"] { color: var(--ink); }
+    .nav-tab[aria-current="page"] { font-weight: 700; }
+    .nav-tab[aria-current="page"]::after { background: var(--accent); }
+
+    .site-picker { position: relative; }
+    .site-trigger {
+      display: flex;
+      min-width: 194px;
+      min-height: 38px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 0 13px 0 15px;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      background: var(--surface);
+      font-size: 13px;
+    }
+    .site-trigger:hover, .site-trigger[aria-expanded="true"] { border-color: var(--line); background: var(--wash-translucent); }
+    .chevron {
+      width: 8px;
+      height: 8px;
+      flex: 0 0 auto;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
+      transform: translateY(-2px) rotate(45deg);
+    }
+    .site-menu {
+      position: absolute;
+      top: calc(100% + 7px);
+      right: 0;
+      display: grid;
+      width: 252px;
+      padding: 6px;
+      border: 1px solid var(--line-soft);
+      border-radius: 12px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .site-option {
+      display: grid;
+      min-height: 48px;
+      padding: 7px 12px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      text-align: left;
+    }
+    .site-option:hover, .site-option[aria-selected="true"] { background: var(--wash-translucent); }
+    .site-option[aria-selected="true"] { font-weight: 700; }
+    .site-option small { color: var(--muted); font-family: var(--mono); font-size: 11px; font-weight: 400; }
+    .logout-button, .icon-button, .sort-button, .pager-button, .back-button { border: 0; background: transparent; }
+    .logout-button {
+      min-height: 36px;
+      padding: 0 10px;
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .logout-button:hover, .icon-button:hover, .back-button:hover { color: var(--ink); background: var(--wash); }
+
+    .main-area { min-height: 0; }
+    .moderation-layout {
+      display: grid;
+      width: min(100%, 1440px);
+      height: calc(100vh - 60px);
+      margin: 0 auto;
+      grid-template-columns: 500px minmax(0, 1fr);
+      border-right: 1px solid var(--line-soft);
+      border-left: 1px solid var(--line-soft);
+    }
+    .queue-pane {
+      display: grid;
+      min-width: 0;
+      min-height: 0;
+      grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+      border-right: 1px solid var(--line-soft);
+      background: var(--surface);
+    }
+    .queue-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px 22px 14px;
+    }
+    .queue-heading h1, .page-heading h1 { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.3; }
+    .icon-button {
+      display: grid;
+      width: 36px;
+      height: 36px;
+      place-items: center;
+      border-radius: 999px;
+      color: var(--muted);
+      font-family: var(--sans);
+      font-size: 20px;
+      line-height: 1;
+    }
+    .status-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      padding: 0 14px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+    .status-tab {
+      position: relative;
+      min-width: 0;
+      min-height: 44px;
+      padding: 0 4px;
+      overflow: hidden;
+      border: 0;
+      color: var(--muted);
+      background: transparent;
+      font-size: 13px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .status-tab::after {
+      position: absolute;
+      right: 16px;
+      bottom: -1px;
+      left: 16px;
+      height: 2px;
+      background: transparent;
+      content: "";
+    }
+    .status-tab:hover, .status-tab[aria-selected="true"] { color: var(--ink); }
+    .status-tab[aria-selected="true"] { font-weight: 700; }
+    .status-tab[aria-selected="true"]::after { background: var(--accent); }
+    .queue-meta {
+      display: flex;
+      min-height: 38px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 0 22px;
+      border-bottom: 1px solid var(--line-soft);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .sort-button {
+      padding: 4px 0;
+      color: inherit;
+      font-size: inherit;
+      text-decoration: underline;
+      text-decoration-color: transparent;
+      text-underline-offset: 3px;
+    }
+    .sort-button:hover { color: var(--ink); text-decoration-color: currentColor; }
+    .batch-toolbar {
+      display: flex;
+      min-height: 44px;
+      align-items: center;
+      gap: 9px;
+      padding: 7px 16px;
+      border-bottom: 1px solid var(--line-soft);
+      background: color-mix(in srgb, var(--wash-translucent) 54%, transparent);
+      font-size: 11px;
+    }
+    .batch-select { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+    .selection-checkbox { width: 16px; height: 16px; flex: 0 0 auto; margin: 0; accent-color: var(--accent); }
+    .batch-count { margin-right: auto; color: var(--muted); }
+    .compact-action {
+      min-height: 30px;
+      padding: 0 11px;
+      border: 1px solid var(--line-soft);
+      border-radius: 999px;
+      background: var(--surface);
+      font-size: 11px;
+    }
+    .compact-action:hover { border-color: var(--line); background: var(--wash); }
+    .compact-action.is-primary { border-color: var(--accent); color: var(--accent-text); background: var(--accent); }
+    .compact-action.is-primary:hover { background: var(--accent-hover); }
+    .queue-scroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+    .queue-list { display: grid; }
+    .queue-row { display: grid; grid-template-columns: auto minmax(0, 1fr); border-bottom: 1px solid var(--line-soft); }
+    .queue-check-wrap { display: grid; width: 28px; place-items: start center; padding-top: 19px; }
+    .queue-item {
+      display: grid;
+      min-width: 0;
+      padding: 14px 16px 15px 4px;
+      border: 0;
+      background: transparent;
+      text-align: left;
+    }
+    .queue-row:not(:has(.queue-check-wrap)) .queue-item { padding-left: 18px; }
+    .queue-row:hover { background: color-mix(in srgb, var(--wash) 56%, transparent); }
+    .queue-row:has(.queue-item[aria-selected="true"]) { background: var(--wash-translucent); }
+    .queue-item-line { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 14px; }
+    .queue-author { overflow: hidden; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+    .queue-time { flex: 0 0 auto; color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .queue-summary {
+      display: -webkit-box;
+      min-height: 3.25em;
+      margin: 7px 0 8px;
+      overflow: hidden;
+      color: var(--ink-soft);
+      font-size: 13px;
+      line-height: 1.62;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+    .queue-path {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 11px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .queue-tail { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .badge {
+      display: inline-flex;
+      min-height: 22px;
+      align-items: center;
+      padding: 0 9px;
+      border-radius: 999px;
+      font-family: var(--serif);
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .badge-pending { color: var(--pending); background: var(--pending-bg); }
+    .badge-approved { color: var(--approved); background: var(--approved-bg); }
+    .badge-deleted { color: var(--deleted); background: var(--deleted-bg); }
+    .queue-empty { display: grid; min-height: 180px; place-items: center; color: var(--muted); font-size: 13px; }
+    .pager {
+      display: flex;
+      min-height: 48px;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      border-top: 1px solid var(--line-soft);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .pager-button { padding: 4px 7px; border-radius: 7px; color: inherit; }
+    .pager-button:hover:not(:disabled) { color: var(--ink); background: var(--wash); }
+    .pager-button:disabled { opacity: 0.42; }
+
+    .detail-pane { min-width: 0; min-height: 0; overflow-y: auto; background: var(--paper); }
+    .detail-empty { display: grid; height: 100%; place-items: center; color: var(--muted); font-size: 14px; }
+    .review-sheet {
+      display: grid;
+      width: 100%;
+      min-height: 100%;
+      padding: 36px 40px 44px;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      align-content: start;
+      gap: 38px;
+    }
+    .detail-main { min-width: 0; }
+    .detail-side { min-width: 0; padding-left: 28px; border-left: 1px solid var(--line-soft); }
+    .mobile-detail-bar { display: none; }
+    .detail-info {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .detail-location { min-width: 0; overflow: hidden; font-family: var(--mono); text-overflow: ellipsis; }
+    .detail-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; margin-top: 22px; }
+    .detail-heading h2 { min-width: 0; margin: 0; overflow: hidden; font-size: 24px; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+    .detail-heading time { flex: 0 0 auto; color: var(--muted); font-size: 12px; }
+    .comment-body {
+      min-height: 150px;
+      margin: 22px 0 0;
+      padding: 22px 0 28px;
+      border-top: 1px solid var(--line-soft);
+      border-bottom: 1px solid var(--line-soft);
+      font-size: 16px;
+      line-height: 1.78;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .comment-body.is-deleted-copy { min-height: 96px; color: var(--muted); font-style: italic; }
+    .detail-facts { display: grid; margin: 0; gap: 0; }
+    .fact-row { display: grid; min-width: 0; padding: 10px 0; grid-template-columns: 86px minmax(0, 1fr); border-bottom: 1px solid var(--line-soft); }
+    .fact-row dt { color: var(--muted); font-size: 12px; }
+    .fact-row dd { min-width: 0; margin: 0; font-family: var(--mono); font-size: 12px; line-height: 1.65; word-break: break-all; }
+    .review-actions { display: flex; align-items: center; gap: 10px; margin-top: 26px; }
+    .review-actions .danger-button { margin-left: auto; }
+    .button {
+      min-height: 38px;
+      padding: 0 16px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .button:hover:not(:disabled) { background: var(--wash); }
+    .button-primary { border-color: var(--accent); color: var(--accent-text); background: var(--accent); }
+    .button-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .danger-button { border-color: var(--danger); color: var(--danger); }
+    .danger-button:hover:not(:disabled) { color: var(--accent-text); background: var(--danger); }
+    .button:disabled { opacity: 0.42; }
+
+    .page-layout { height: calc(100vh - 60px); overflow-y: auto; }
+    .page-column { width: min(calc(100% - 48px), 1440px); margin: 0 auto; padding: 34px 0 52px; }
+    .page-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+    .page-heading p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+    .sites-grid { display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 24px; }
+    .site-list-panel, .site-form-panel, .channel-card, .template-panel {
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius);
+      background: var(--surface);
+    }
+    .panel-heading { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 16px; padding: 0 18px; border-bottom: 1px solid var(--line-soft); }
+    .panel-heading h2, .channel-head h2, .template-panel h2 { margin: 0; font-size: 16px; font-weight: 700; }
+    .site-list { display: grid; }
+    .site-list-item {
+      display: grid;
+      min-width: 0;
+      padding: 16px 18px;
+      border: 0;
+      border-bottom: 1px solid var(--line-soft);
+      background: transparent;
+      text-align: left;
+    }
+    .site-list-item:last-child { border-bottom: 0; }
+    .site-list-item:hover, .site-list-item[aria-selected="true"] { background: var(--wash-translucent); }
+    .site-list-item strong, .site-list-item small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .site-list-item small { margin-top: 4px; color: var(--muted); font-family: var(--mono); font-size: 11px; }
+    .site-form-panel { padding: 22px 24px 24px; }
+    .form-title { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+    .form-title h2 { margin: 0; font-size: 18px; }
+    .site-form, .channel-form { display: grid; gap: 14px; }
+    .form-row { display: grid; min-width: 0; grid-template-columns: 120px minmax(0, 1fr); align-items: start; gap: 14px; }
+    .form-label { padding-top: 8px; color: var(--muted); font-size: 13px; }
+    .field-stack { display: grid; min-width: 0; gap: 5px; }
+    .input, .select, .textarea, .chip-field {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid var(--line-soft);
+      border-radius: 9px;
+      background: var(--paper);
+      font-family: var(--sans);
+      font-size: 13px;
+    }
+    .input, .select { padding: 0 11px; }
+    .textarea { min-height: 86px; padding: 9px 11px; resize: vertical; }
+    .input:hover, .select:hover, .textarea:hover, .chip-field:hover { border-color: var(--line); }
+    [aria-invalid="true"].input, [aria-invalid="true"].chip-field { border-color: var(--danger); }
+    .field-error { margin: 0; color: var(--danger); font-size: 12px; }
+    .field-help { margin: 0; color: var(--muted); font-size: 12px; }
+    .radio-row, .check-row { display: flex; min-height: 38px; align-items: center; flex-wrap: wrap; gap: 18px; }
+    .radio-label, .check-label { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; }
+    .radio-label input, .check-label input { accent-color: var(--accent); }
+    .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line-soft); }
+
+    .notification-column { width: min(calc(100% - 48px), 820px); margin: 0 auto; padding: 34px 0 52px; }
+    .notification-column .page-heading { align-items: start; }
+    .channel-stack { display: grid; gap: 24px; }
+    .channel-head { display: flex; min-height: 60px; align-items: center; justify-content: space-between; gap: 18px; padding: 0 20px; border-bottom: 1px solid var(--line-soft); }
+    .switch-label { display: inline-flex; align-items: center; gap: 9px; font-size: 12px; cursor: pointer; }
+    .switch-input { position: absolute; opacity: 0; pointer-events: none; }
+    .switch-track {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--deleted-bg);
+      transition: background 160ms ease;
+    }
+    .switch-track::after {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--line);
+      content: "";
+      transition: transform 160ms ease, background 160ms ease;
+    }
+    .switch-input:checked + .switch-track { border-color: var(--accent); background: var(--accent); }
+    .switch-input:checked + .switch-track::after { background: var(--accent-text); transform: translateX(16px); }
+    .switch-input:focus-visible + .switch-track { outline: 2px solid color-mix(in srgb, var(--accent) 72%, white); outline-offset: 3px; }
+    .channel-content { padding: 20px; transition: opacity 160ms ease; }
+    .channel-card[data-enabled="false"] .channel-content { opacity: 0.42; }
+    .channel-actions { display: flex; align-items: center; gap: 10px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line-soft); }
+    .channel-actions .save-button { margin-left: auto; }
+    .test-feedback { font-size: 12px; }
+    .test-feedback.is-success { color: var(--approved); }
+    .test-feedback.is-failure { color: var(--danger); }
+    .chip-field { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 6px; padding: 5px 7px; }
+    .chip-list { display: contents; }
+    .chip-field > input { width: 110px; min-width: 70px; flex: 1 1 110px; border: 0; outline: 0; background: transparent; font-family: var(--sans); font-size: 13px; }
+    .chip { display: inline-flex; min-width: 0; max-width: 100%; align-items: center; gap: 4px; padding: 3px 7px 3px 9px; border-radius: 999px; background: var(--wash); font-size: 12px; }
+    .chip.is-invalid { color: var(--danger); background: var(--rejected-bg); }
+    .chip-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .chip-remove { display: grid; width: 18px; height: 18px; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; line-height: 1; }
+    .chip-remove:hover { background: var(--deleted-bg); }
+    .template-panel { margin-top: 24px; padding: 20px; }
+    .template-links { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+    .template-link {
+      display: grid;
+      min-width: 0;
+      min-height: 92px;
+      align-content: space-between;
+      padding: 14px;
+      border: 1px solid var(--line-soft);
+      border-radius: 10px;
+      color: inherit;
+      background: var(--paper);
+      text-decoration: none;
+    }
+    .template-link:hover { border-color: var(--line); background: var(--wash-translucent); }
+    .template-link strong { font-size: 13px; }
+    .template-link span { color: var(--muted); font-size: 12px; }
+
+    .preview-controller {
+      position: fixed;
+      z-index: 70;
+      right: 16px;
+      bottom: 16px;
+      display: grid;
+      width: 220px;
+      gap: 5px;
+      padding: 10px;
+      border: 1px solid var(--line-soft);
+      border-radius: 12px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .preview-controller label { color: var(--muted); font-size: 11px; }
+    .preview-controller select { min-height: 36px; padding: 0 8px; border: 1px solid var(--line-soft); border-radius: 8px; background: var(--paper); font-size: 12px; }
+
+    dialog {
+      width: min(calc(100% - 32px), 440px);
+      padding: 0;
+      border: 1px solid var(--line-soft);
+      border-radius: var(--radius);
+      color: var(--ink);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    dialog::backdrop { background: rgba(20, 20, 19, 0.32); }
+    .dialog-body { padding: 24px; }
+    .dialog-body h2 { margin: 0; font-size: 20px; }
+    .dialog-body p { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 16px 24px; border-top: 1px solid var(--line-soft); }
+
+    @media (min-width: 1600px) {
+      .moderation-layout { grid-template-columns: 520px minmax(0, 1fr); }
+      .review-sheet { grid-template-columns: minmax(0, 1fr) 320px; padding-right: 44px; padding-left: 44px; }
+    }
+    @media (max-width: 1180px) {
+      .header-inner { width: min(calc(100% - 28px), 1440px); }
+      .brand-copy small { display: none; }
+      .header-start { gap: 22px; }
+      .primary-nav { gap: 18px; }
+      .site-trigger { min-width: 166px; }
+      .moderation-layout { grid-template-columns: 440px minmax(0, 1fr); }
+      .review-sheet { grid-template-columns: minmax(0, 1fr); }
+      .detail-side { padding: 22px 0 0; border-top: 1px solid var(--line-soft); border-left: 0; }
+      .comment-body { min-height: 110px; }
+    }
+    @media (max-width: 1023px) {
+      body { overflow: hidden; }
+      .header-inner { width: calc(100% - 20px); gap: 12px; }
+      .brand-copy, .site-picker { display: none; }
+      .header-start { gap: 18px; }
+      .primary-nav { gap: 14px; }
+      .logout-button { padding: 0 5px; }
+      .moderation-layout { position: relative; display: block; border: 0; }
+      .queue-pane { width: 100%; height: 100%; border-right: 0; }
+      .detail-pane {
+        position: absolute;
+        z-index: 20;
+        inset: 0;
+        display: none;
+        background: var(--paper);
+      }
+      .moderation-layout[data-mobile-detail="true"] .detail-pane { display: block; }
+      .review-sheet { min-height: 100%; padding: 20px 22px 44px; grid-template-columns: minmax(0, 1fr); gap: 22px; }
+      .mobile-detail-bar { display: flex; margin-bottom: 16px; }
+      .back-button { min-height: 36px; padding: 0 10px; border-radius: 999px; color: var(--muted); }
+      .page-column { width: calc(100% - 28px); padding-top: 24px; }
+      .sites-grid { grid-template-columns: minmax(0, 1fr); }
+      .notification-column { width: calc(100% - 28px); padding-top: 24px; }
+      .form-row { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+      .form-label { padding-top: 0; }
+      .template-links { grid-template-columns: minmax(0, 1fr); }
+      .preview-controller { right: 10px; bottom: 10px; width: 190px; }
+    }
+    @media (max-width: 680px) {
+      .app-shell { grid-template-rows: 56px minmax(0, 1fr); }
+      .app-header { overflow-x: auto; }
+      .header-inner { width: max-content; min-width: calc(100% - 20px); height: 56px; }
+      .brand-mark { width: 31px; height: 31px; font-size: 16px; }
+      .nav-tab { font-size: 13px; }
+      .main-area, .moderation-layout, .page-layout { height: calc(100vh - 56px); }
+      .queue-heading { padding: 16px 16px 10px; }
+      .queue-meta { padding: 0 16px; }
+      .batch-toolbar { overflow-x: auto; }
+      .compact-action { white-space: nowrap; }
+      .review-sheet { padding-right: 16px; padding-left: 16px; }
+      .detail-heading { display: grid; gap: 4px; }
+      .detail-info { flex-wrap: wrap; white-space: normal; }
+      .detail-location { width: 100%; white-space: nowrap; }
+      .review-actions { flex-wrap: wrap; }
+      .review-actions .danger-button { margin-left: 0; }
+      .page-heading { align-items: start; }
+      .site-form-panel, .channel-content, .template-panel { padding-right: 16px; padding-left: 16px; }
+      .channel-head { align-items: start; padding: 14px 16px; }
+      .switch-label { align-items: start; }
+      .channel-actions { flex-wrap: wrap; }
+      .channel-actions .save-button { margin-left: 0; }
+      .preview-controller { position: static; width: auto; margin: 10px; box-shadow: none; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-start">
+          <a class="brand" href="#moderation-pending" aria-label="Ecoku 评论审核首页">
+            <span class="brand-mark" aria-hidden="true">E</span>
+            <span class="brand-copy"><strong>Ecoku</strong><small>评论审核</small></span>
+          </a>
+          <nav class="primary-nav" aria-label="主导航">
+            <a class="nav-tab" id="nav-moderation" href="#moderation-pending">评论审核</a>
+            <a class="nav-tab" id="nav-sites" href="#sites-list">站点管理</a>
+            <a class="nav-tab" id="nav-notifications" href="#notifications-empty">通知设置</a>
+          </nav>
+        </div>
+        <div class="header-context">
+          <div class="site-picker">
+            <button class="site-trigger" id="site-trigger" type="button" aria-expanded="false" aria-haspopup="listbox">
+              <span>blog.dejavu.moe</span><span class="chevron" aria-hidden="true"></span>
+            </button>
+            <div class="site-menu" id="site-menu" role="listbox" aria-label="选择站点" hidden>
+              <button class="site-option" type="button" role="option" aria-selected="true" data-domain="blog.dejavu.moe"><span>blog.dejavu.moe</span><small>blog</small></button>
+              <button class="site-option" type="button" role="option" aria-selected="false" data-domain="docs.example.test"><span>docs.example.test</span><small>docs</small></button>
+            </div>
+          </div>
+          <button class="logout-button" type="button">退出登录</button>
+        </div>
+      </div>
+    </header>
+    <main class="main-area" id="main-content"></main>
+  </div>
+
+  <aside class="preview-controller" aria-label="原型场景">
+    <label for="state-select">原型场景</label>
+    <select id="state-select">
+      <option value="moderation-pending">待审核 · 已选中</option>
+      <option value="moderation-approved">已批准 · 已选中</option>
+      <option value="moderation-deleted">已删除 · 有后代</option>
+      <option value="moderation-deleted-leaf">已删除 · 可彻底删除</option>
+      <option value="moderation-none">未选择评论</option>
+      <option value="moderation-extreme">极端长文本</option>
+      <option value="sites-list">站点管理 · 编辑</option>
+      <option value="sites-new">站点管理 · 新增</option>
+      <option value="notifications-empty">通知设置 · 未配置</option>
+      <option value="notifications-configured">通知设置 · 已配置</option>
+      <option value="notifications-validation">通知设置 · 校验反馈</option>
+    </select>
+  </aside>
+
+  <dialog id="confirm-dialog">
+    <div class="dialog-body"><h2 id="dialog-title">确认操作</h2><p id="dialog-copy"></p></div>
+    <div class="dialog-actions"><button class="button" id="dialog-cancel" type="button">取消</button><button class="button danger-button" id="dialog-confirm" type="button">确认</button></div>
+  </dialog>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const main = document.getElementById("main-content");
+      const stateSelect = document.getElementById("state-select");
+      const navModeration = document.getElementById("nav-moderation");
+      const navSites = document.getElementById("nav-sites");
+      const navNotifications = document.getElementById("nav-notifications");
+      const siteTrigger = document.getElementById("site-trigger");
+      const siteMenu = document.getElementById("site-menu");
+      const confirmDialog = document.getElementById("confirm-dialog");
+      let sortAscending = true;
+
+      const statuses = {
+        pending: { label: "待审核", badge: "badge-pending" },
+        approved: { label: "已批准", badge: "badge-approved" },
+        deleted: { label: "已删除", badge: "badge-deleted" }
+      };
+
+      const longPath = "/guides/self-hosted/ecoku/complete-reference/very-long-page-key/with-an-extra-section/and-a-final-anchor/";
+      const longText = "这是一条用于检查极端正文布局的长评论。".repeat(34) + "末尾仍然需要保持正常的中文换行、清晰的段落节奏以及可操作按钮的位置，不应造成横向滚动，也不能把元信息挤成逐字竖排。";
+      const comments = {
+        pending: [
+          { id: 1041, status: "pending", username: "林峤", email: "lin@example.test", url: "https://example.test/lin", mark: "/guides/sqlite-backup", createdAt: "2026/08/13 10:18", parent: 0, content: "备份步骤很清楚。是否可以补充一下停服后怎样校验备份文件完整性？" },
+          { id: 1042, status: "pending", username: "Mira", email: "mira@example.test", url: "", mark: "/guides/reverse-proxy", createdAt: "2026/08/13 11:06", parent: 913, content: "回复上面的配置：如果只信任固定代理地址，容器重启后地址变化要怎样处理？" },
+          { id: 1043, status: "pending", username: "访客 17", email: "reader17@example.test", url: "https://reader.example.test", mark: "/reference/embed-sdk", createdAt: "2026/08/13 12:25", parent: 0, content: "<script>alert(\"x\")<\/script> 这段内容应当始终作为纯文本显示。" }
+        ],
+        approved: [
+          { id: 1032, status: "approved", username: "青崖", email: "qingya@example.test", url: "https://notes.example.test", mark: "/posts/ecoku-release", createdAt: "2026/08/12 20:41", parent: 0, content: "迁移与回滚边界写得很清楚，尤其是明确区分了本地验收和线上发布。" },
+          { id: 1031, status: "approved", username: "木泽", email: "muze@example.test", url: "", mark: "/posts/ecoku-release", createdAt: "2026/08/12 20:18", parent: 1011, content: "补充一点：SQLite 备份完成后还可以执行完整性检查。" }
+        ],
+        deleted: [
+          { id: 1029, status: "deleted", username: "—", email: "—", url: "—", mark: "/posts/thread-example", createdAt: "2026/08/11 16:09", parent: 0, content: "该评论已删除", hasChildren: true },
+          { id: 1008, status: "deleted", username: "—", email: "—", url: "—", mark: "/posts/old-note", createdAt: "2026/08/10 09:22", parent: 0, content: "该评论已删除", hasChildren: false }
+        ],
+        extreme: [
+          { id: 1088, status: "pending", username: "一位使用很长显示名称来验证列表与详情标题截断效果的访客", email: "very-long-mailbox-name-for-layout-verification-and-multiple-segments@notifications.subdomain.example.test", url: "https://example.test/users/a-very-long-user-name/posts/a-very-long-slug/with/query/segments?source=ecoku&view=complete", mark: longPath, createdAt: "2026/08/13 13:56", parent: 1001, content: longText }
+        ]
+      };
+
+      const stateOrder = [
+        "moderation-pending", "moderation-approved", "moderation-deleted", "moderation-deleted-leaf", "moderation-none", "moderation-extreme",
+        "sites-list", "sites-new", "notifications-empty", "notifications-configured", "notifications-validation"
+      ];
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>\"']/g, function (char) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[char];
+        });
+      }
+
+      function currentState() {
+        const hash = window.location.hash.slice(1);
+        return stateOrder.includes(hash) ? hash : "moderation-pending";
+      }
+
+      function statusBadge(status) {
+        const config = statuses[status];
+        return `<span class="badge ${config.badge}">${config.label}</span>`;
+      }
+
+      function queueItem(comment, selected, selectable) {
+        const parentText = comment.parent ? `回复 #${comment.parent}` : `#${comment.id}`;
+        const summary = comment.status === "deleted" ? "该评论已删除" : comment.content;
+        return `
+          <div class="queue-row">
+            ${selectable ? `<label class="queue-check-wrap"><input class="selection-checkbox queue-checkbox" type="checkbox" value="${comment.id}" aria-label="选择 #${comment.id}"></label>` : ""}
+            <button class="queue-item" type="button" role="option" aria-selected="${selected}" data-comment-id="${comment.id}">
+              <span class="queue-item-line"><span class="queue-author" title="${escapeHtml(comment.username)}">${escapeHtml(comment.username)}</span><time class="queue-time">${escapeHtml(comment.createdAt.slice(5))}</time></span>
+              <span class="queue-summary">${escapeHtml(summary)}</span>
+              <span class="queue-item-line"><span class="queue-path" title="${escapeHtml(comment.mark)}">${escapeHtml(comment.mark)}</span><span class="queue-tail"><span>${escapeHtml(parentText)}</span>${statusBadge(comment.status)}</span></span>
+            </button>
+          </div>`;
+      }
+
+      function factRow(label, value) {
+        return `<div class="fact-row"><dt>${label}</dt><dd title="${escapeHtml(value)}">${escapeHtml(value)}</dd></div>`;
+      }
+
+      function detail(comment) {
+        if (!comment) return `<div class="detail-empty">从左侧列表选择一条评论</div>`;
+        const deleted = comment.status === "deleted";
+        const parentText = comment.parent ? `回复 #${comment.parent}` : "根评论";
+        let actionMarkup = "";
+        if (comment.status === "pending") {
+          actionMarkup = `<div class="review-actions"><button class="button danger-button js-confirm" type="button" data-title="拒绝并永久删除？" data-copy="该待审核评论及其全部未公开后代将被永久删除。">拒绝</button><button class="button button-primary" type="button">批准</button></div>`;
+        } else if (comment.status === "approved") {
+          actionMarkup = `<div class="review-actions"><button class="button danger-button js-confirm" type="button" data-title="将评论替换为墓碑？" data-copy="昵称、私有邮箱、网站和原正文将被清除，后代回复继续保留。">墓碑删除</button></div>`;
+        } else if (!comment.hasChildren) {
+          actionMarkup = `<div class="review-actions"><button class="button danger-button js-confirm" type="button" data-title="彻底删除这条墓碑？" data-copy="该墓碑没有后代，确认后将被永久删除。">彻底删除</button></div>`;
+        }
+        return `
+          <article class="review-sheet" aria-labelledby="detail-title">
+            <div class="detail-main">
+              <div class="mobile-detail-bar"><button class="back-button" id="detail-back" type="button">‹ 返回</button></div>
+              <div class="detail-info">${statusBadge(comment.status)}<span>·</span><span>#${comment.id}</span><span>·</span><span>${escapeHtml(parentText)}</span><span>·</span><span class="detail-location" title="blog / ${escapeHtml(comment.mark)}">blog / ${escapeHtml(comment.mark)}</span></div>
+              <header class="detail-heading"><h2 id="detail-title" title="${escapeHtml(comment.username)}">${escapeHtml(comment.username)}</h2><time>${escapeHtml(comment.createdAt)}</time></header>
+              <p class="comment-body${deleted ? " is-deleted-copy" : ""}">${escapeHtml(deleted ? "该评论已删除" : comment.content)}</p>
+              ${actionMarkup}
+            </div>
+            <aside class="detail-side" aria-label="评论元信息">
+              <dl class="detail-facts">
+                ${factRow("私有邮箱", deleted ? "—" : comment.email || "—")}
+                ${factRow("访客网站", deleted ? "—" : comment.url || "—")}
+                ${factRow("页面 key", comment.mark)}
+                ${factRow("站点", "blog")}
+                ${factRow("提交时间", comment.createdAt)}
+                ${factRow("父评论", comment.parent ? `#${comment.parent}` : "—")}
+              </dl>
+            </aside>
+          </article>`;
+      }
+
+      function moderationState(state) {
+        let status = "pending";
+        let list = comments.pending;
+        let selected = list[0];
+        if (state === "moderation-approved") { status = "approved"; list = comments.approved; selected = list[0]; }
+        if (state === "moderation-deleted") { status = "deleted"; list = comments.deleted; selected = list[0]; }
+        if (state === "moderation-deleted-leaf") { status = "deleted"; list = comments.deleted; selected = list[1]; }
+        if (state === "moderation-none") { selected = null; }
+        if (state === "moderation-extreme") { list = comments.extreme; selected = list[0]; }
+        const counts = { pending: state === "moderation-extreme" ? 1 : 23, approved: 12, deleted: 2 };
+        const selectable = status === "pending" && list.length > 0;
+        const pageCount = status === "pending" ? 5 : status === "approved" ? 3 : 1;
+
+        main.innerHTML = `
+          <div class="moderation-layout" data-mobile-detail="false">
+            <section class="queue-pane" aria-labelledby="queue-title">
+              <div class="queue-heading"><h1 id="queue-title">评论审核</h1><button class="icon-button" type="button" title="刷新" aria-label="刷新">↻</button></div>
+              <nav class="status-tabs" role="tablist" aria-label="评论状态筛选">
+                ${["pending", "approved", "deleted"].map((name) => `<button class="status-tab" type="button" role="tab" data-status="${name}" aria-selected="${status === name}">${statuses[name].label} ${counts[name]}</button>`).join("")}
+              </nav>
+              <div class="queue-meta"><button class="sort-button" type="button">${sortAscending ? "最早提交优先" : "最晚提交优先"}</button><span>${counts[status]} 条</span></div>
+              ${selectable ? `<div class="batch-toolbar"><label class="batch-select"><input id="select-all" class="selection-checkbox" type="checkbox"><span>本页全选</span></label><span class="batch-count">已选 <strong id="selected-count">0</strong> 条</span><button class="compact-action js-confirm" type="button" data-title="拒绝并永久删除所选评论？" data-copy="所选待审核评论及其全部未公开后代将被永久删除。">拒绝所选</button><button class="compact-action is-primary" type="button">批准所选</button></div>` : `<div hidden></div>`}
+              <div class="queue-scroll"><div class="queue-list" role="listbox" aria-label="评论列表">${list.map((comment) => queueItem(comment, Boolean(selected && comment.id === selected.id), selectable)).join("")}</div></div>
+              <nav class="pager" aria-label="评论列表分页"><button class="pager-button" type="button" disabled>‹ 上一页</button><span>｜</span><span>1/${pageCount}</span><span>｜</span><button class="pager-button" type="button" ${pageCount === 1 ? "disabled" : ""}>下一页 ›</button></nav>
+            </section>
+            <section class="detail-pane">${detail(selected)}</section>
+          </div>`;
+
+        bindModeration(list);
+      }
+
+      function bindModeration(list) {
+        const layout = main.querySelector(".moderation-layout");
+        const queueButtons = Array.from(main.querySelectorAll(".queue-item"));
+        queueButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            const comment = list.find((item) => item.id === Number(button.dataset.commentId));
+            queueButtons.forEach((item) => item.setAttribute("aria-selected", String(item === button)));
+            main.querySelector(".detail-pane").innerHTML = detail(comment);
+            layout.dataset.mobileDetail = "true";
+            bindDetailBack(layout);
+            bindConfirmButtons();
+          });
+        });
+        bindDetailBack(layout);
+        const sortButton = main.querySelector(".sort-button");
+        sortButton.addEventListener("click", () => {
+          sortAscending = !sortAscending;
+          sortButton.textContent = sortAscending ? "最早提交优先" : "最晚提交优先";
+        });
+        main.querySelectorAll(".status-tab").forEach((tab) => tab.addEventListener("click", () => { window.location.hash = `moderation-${tab.dataset.status}`; }));
+        const checkboxes = Array.from(main.querySelectorAll(".queue-checkbox"));
+        const selectAll = main.querySelector("#select-all");
+        const selectedCount = main.querySelector("#selected-count");
+        function updateSelection() {
+          const count = checkboxes.filter((checkbox) => checkbox.checked).length;
+          if (selectedCount) selectedCount.textContent = String(count);
+          if (selectAll) {
+            selectAll.checked = checkboxes.length > 0 && count === checkboxes.length;
+            selectAll.indeterminate = count > 0 && count < checkboxes.length;
+          }
+        }
+        checkboxes.forEach((checkbox) => checkbox.addEventListener("change", updateSelection));
+        if (selectAll) selectAll.addEventListener("change", () => { checkboxes.forEach((checkbox) => { checkbox.checked = selectAll.checked; }); updateSelection(); });
+        bindConfirmButtons();
+      }
+
+      function bindDetailBack(layout) {
+        const back = main.querySelector("#detail-back");
+        if (!back) return;
+        back.addEventListener("click", () => {
+          layout.dataset.mobileDetail = "false";
+          const selected = main.querySelector('.queue-item[aria-selected="true"]');
+          if (selected) selected.focus();
+        });
+      }
+
+      function sitesState(state) {
+        const creating = state === "sites-new";
+        main.innerHTML = `
+          <section class="page-layout" aria-labelledby="sites-title">
+            <div class="page-column">
+              <header class="page-heading"><div><h1 id="sites-title">站点管理</h1></div><button class="button button-primary" id="new-site" type="button">新增站点</button></header>
+              <div class="sites-grid">
+                <section class="site-list-panel" aria-label="站点列表">
+                  <div class="panel-heading"><h2>已注册站点</h2><span class="queue-time">2 条</span></div>
+                  <div class="site-list">
+                    <button class="site-list-item" type="button" aria-selected="${!creating}"><strong>blog.dejavu.moe</strong><small>blog</small></button>
+                    <button class="site-list-item" type="button" aria-selected="false"><strong>docs.example.test</strong><small>docs</small></button>
+                  </div>
+                </section>
+                <section class="site-form-panel" aria-labelledby="site-form-title">
+                  <div class="form-title"><h2 id="site-form-title">${creating ? "新增站点" : "编辑站点"}</h2></div>
+                  <form class="site-form" onsubmit="return false">
+                    ${inputRow("站点域名", "site-domain", "text", "blog.example.test", creating ? "" : "blog.dejavu.moe")}
+                    ${inputRow("站点 ID", "site-id", "text", "blog", creating ? "" : "blog")}
+                    ${inputRow("站点 URL", "site-url", "url", "https://blog.example.test", creating ? "" : "https://blog.dejavu.moe")}
+                    ${textareaRow("允许来源", "site-origins", "https://blog.example.test", creating ? "" : "https://blog.dejavu.moe\nhttp://127.0.0.1:1313")}
+                    <div class="form-row"><span class="form-label">审核方式</span><div class="radio-row"><label class="radio-label"><input type="radio" name="moderation-mode" checked>先审后发</label><label class="radio-label"><input type="radio" name="moderation-mode">直接发布</label></div></div>
+                    <div class="form-row"><span class="form-label">字段要求</span><div class="check-row"><label class="check-label"><input type="checkbox" checked>邮箱必填</label><label class="check-label"><input type="checkbox">网站必填</label></div></div>
+                    ${inputRow("评论占位文案", "site-placeholder", "text", "写下评论（仅支持纯文本）", creating ? "" : "写下评论（仅支持纯文本）")}
+                    <div class="form-actions">${creating ? `<button class="button" id="cancel-new-site" type="button">取消</button>` : ""}<button class="button button-primary" type="submit">${creating ? "创建站点" : "保存站点"}</button></div>
+                  </form>
+                </section>
+              </div>
+            </div>
+          </section>`;
+        document.getElementById("new-site").addEventListener("click", () => { window.location.hash = "sites-new"; });
+        const cancel = document.getElementById("cancel-new-site");
+        if (cancel) cancel.addEventListener("click", () => { window.location.hash = "sites-list"; });
+      }
+
+      function inputRow(label, id, type, placeholder, value, error, help) {
+        return `<div class="form-row"><label class="form-label" for="${id}">${label}</label><div class="field-stack"><input class="input" id="${id}" type="${type}" placeholder="${escapeHtml(placeholder || "")}" value="${escapeHtml(value || "")}" ${error ? 'aria-invalid="true"' : ""}>${error ? `<p class="field-error">${error}</p>` : ""}${help ? `<p class="field-help">${help}</p>` : ""}</div></div>`;
+      }
+
+      function textareaRow(label, id, placeholder, value) {
+        return `<div class="form-row"><label class="form-label" for="${id}">${label}</label><div class="field-stack"><textarea class="textarea" id="${id}" placeholder="${escapeHtml(placeholder)}">${escapeHtml(value || "")}</textarea></div></div>`;
+      }
+
+      function selectRow(label, id, options) {
+        return `<div class="form-row"><label class="form-label" for="${id}">${label}</label><div class="field-stack"><select class="select" id="${id}">${options.map((option) => `<option>${option}</option>`).join("")}</select></div></div>`;
+      }
+
+      function radioRow(name) {
+        return `<div class="form-row"><span class="form-label">触发时机</span><div class="radio-row"><label class="radio-label"><input type="radio" name="${name}" checked>仅新评论待审核时</label><label class="radio-label"><input type="radio" name="${name}">所有新评论</label></div></div>`;
+      }
+
+      function chipMarkup(value, valid) {
+        return `<span class="chip${valid ? "" : " is-invalid"}" data-chip-value="${escapeHtml(value)}"><span class="chip-text" title="${escapeHtml(value)}">${escapeHtml(value)}</span><button class="chip-remove" type="button" aria-label="移除 ${escapeHtml(value)}">×</button></span>`;
+      }
+
+      function chipRow(label, id, kind, values, error, help) {
+        return `<div class="form-row"><label class="form-label" for="${id}-input">${label}</label><div class="field-stack"><div class="chip-field" data-chip-kind="${kind}" aria-invalid="${error ? "true" : "false"}"><div class="chip-list">${values.map((value) => chipMarkup(value, isValidChip(kind, value))).join("")}</div><input id="${id}-input" type="text" autocomplete="off" aria-label="${label}"></div><p class="field-error" data-chip-error ${error ? "" : "hidden"}>${error || (kind === "email" ? "邮箱格式错误" : "接收目标 ID 格式错误")}</p>${help ? `<p class="field-help">${help}</p>` : ""}</div></div>`;
+      }
+
+      function emailCard(options) {
+        return `
+          <section class="channel-card" data-enabled="${options.enabled}">
+            <header class="channel-head"><h2>电子邮件通知</h2><label class="switch-label"><input class="switch-input" type="checkbox" ${options.enabled ? "checked" : ""}><span class="switch-track" aria-hidden="true"></span><span>启用电子邮件通知</span></label></header>
+            <div class="channel-content">
+              <div class="channel-form">
+                ${inputRow("SMTP 服务器", "email-server", "text", "smtp.example.com", options.configured ? "smtp.example.com" : "")}
+                ${inputRow("端口", "email-port", "text", "465", options.configured ? "465" : "", options.validation ? "端口为空" : "")}
+                ${selectRow("加密方式", "email-encryption", ["SSL/TLS", "STARTTLS", "不加密"])}
+                ${inputRow("用户名", "email-user", "text", "", options.configured ? "notifications@example.test" : "")}
+                ${inputRow("密码", "email-password", "password", options.configured ? "已设置，输入新值以更换" : "", "")}
+                ${inputRow("发件人地址", "email-sender", "email", "", options.configured ? "notifications@example.test" : "")}
+                ${chipRow("通知收件人", "email-recipients", "email", options.configured ? ["ops@example.test", "owner@example.test"] : options.validation ? ["错误邮箱"] : [], options.validation ? "邮箱格式错误" : "")}
+                ${radioRow("email-trigger")}
+                <div class="form-row"><span class="form-label">回复通知</span><div class="check-row"><label class="check-label"><input type="checkbox" checked>访客收到回复时</label></div></div>
+              </div>
+              <footer class="channel-actions"><button class="button test-button" type="button" data-kind="email">发送测试邮件</button><span class="test-feedback ${options.validation ? "is-success" : ""}" aria-live="polite">${options.validation ? "测试邮件已发送" : ""}</span><button class="button button-primary save-button" type="button">保存</button></footer>
+            </div>
+          </section>`;
+      }
+
+      function telegramCard(options) {
+        return `
+          <section class="channel-card" data-enabled="${options.enabled}">
+            <header class="channel-head"><h2>Telegram 通知</h2><label class="switch-label"><input class="switch-input" type="checkbox" ${options.enabled ? "checked" : ""}><span class="switch-track" aria-hidden="true"></span><span>启用 Telegram 通知</span></label></header>
+            <div class="channel-content">
+              <div class="channel-form">
+                ${inputRow("Bot Token", "telegram-token", "password", options.configured ? "已设置，输入新值以更换" : "", "", "", "通过 @BotFather 获取")}
+                ${chipRow("接收目标 ID", "telegram-targets", "telegram", options.configured ? ["123456789", "-1001234567890"] : [], "", "支持用户、群组、频道 ID，如 123456789 或 -1001234567890")}
+                ${radioRow("telegram-trigger")}
+              </div>
+              <footer class="channel-actions"><button class="button test-button" type="button" data-kind="telegram">发送测试消息</button><span class="test-feedback ${options.validation ? "is-failure" : ""}" aria-live="polite">${options.validation ? "发送失败：原因" : ""}</span><button class="button button-primary save-button" type="button">保存</button></footer>
+            </div>
+          </section>`;
+      }
+
+      function notificationsState(state) {
+        const configured = state === "notifications-configured";
+        const validation = state === "notifications-validation";
+        const enabled = configured || validation;
+        main.innerHTML = `
+          <section class="page-layout" aria-labelledby="notifications-title">
+            <div class="notification-column">
+              <header class="page-heading"><div><h1 id="notifications-title">通知设置</h1><p>配置新评论通知的投递渠道，保存后立即生效。</p></div></header>
+              <div class="channel-stack">${emailCard({ enabled, configured, validation })}${telegramCard({ enabled, configured, validation })}</div>
+              <section class="template-panel" aria-labelledby="template-title">
+                <h2 id="template-title">通知模板</h2>
+                <div class="template-links">
+                  <a class="template-link" href="email-admin-notification.html" target="_blank" rel="noopener"><strong>管理员新评论邮件</strong><span>打开预览</span></a>
+                  <a class="template-link" href="email-reply-notification.html" target="_blank" rel="noopener"><strong>访客回复邮件</strong><span>打开预览</span></a>
+                  <a class="template-link" href="telegram-notification.html" target="_blank" rel="noopener"><strong>Telegram 消息</strong><span>打开预览</span></a>
+                </div>
+              </section>
+            </div>
+          </section>`;
+        bindNotifications();
+      }
+
+      function isValidChip(kind, value) {
+        return kind === "telegram" ? /^-?\d+$/.test(value) : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+      }
+
+      function bindNotifications() {
+        main.querySelectorAll(".channel-card").forEach((card) => {
+          const toggle = card.querySelector(".switch-input");
+          function syncEnabled() {
+            const enabled = toggle.checked;
+            card.dataset.enabled = String(enabled);
+            card.querySelectorAll(".channel-content input, .channel-content select, .channel-content button").forEach((control) => { control.disabled = !enabled; });
+          }
+          toggle.addEventListener("change", syncEnabled);
+          syncEnabled();
+        });
+
+        main.querySelectorAll(".chip-field").forEach((field) => {
+          const input = field.querySelector("input");
+          const list = field.querySelector(".chip-list");
+          const error = field.parentElement.querySelector("[data-chip-error]");
+          const kind = field.dataset.chipKind;
+          function syncValidation() {
+            const invalid = Boolean(list.querySelector(".chip.is-invalid"));
+            field.setAttribute("aria-invalid", String(invalid));
+            error.hidden = !invalid;
+          }
+          function addValues(raw) {
+            raw.split(/[，,\n]+/).map((value) => value.trim()).filter(Boolean).forEach((value) => {
+              const holder = document.createElement("div");
+              holder.innerHTML = chipMarkup(value, isValidChip(kind, value));
+              list.appendChild(holder.firstElementChild);
+            });
+            input.value = "";
+            bindChipRemovers(field, syncValidation);
+            syncValidation();
+          }
+          input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter" || event.key === "," || event.key === "，") { event.preventDefault(); addValues(input.value); }
+          });
+          input.addEventListener("paste", (event) => {
+            const text = event.clipboardData && event.clipboardData.getData("text");
+            if (text && /[，,\n]/.test(text)) { event.preventDefault(); addValues(text); }
+          });
+          input.addEventListener("blur", () => { if (input.value.trim()) addValues(input.value); });
+          field.addEventListener("click", (event) => { if (event.target === field) input.focus(); });
+          bindChipRemovers(field, syncValidation);
+          syncValidation();
+        });
+
+        main.querySelectorAll(".test-button").forEach((button) => {
+          button.addEventListener("click", () => {
+            const feedback = button.parentElement.querySelector(".test-feedback");
+            const success = !feedback.classList.contains("is-success");
+            feedback.className = `test-feedback ${success ? "is-success" : "is-failure"}`;
+            feedback.textContent = button.dataset.kind === "email" ? (success ? "测试邮件已发送" : "发送失败：原因") : (success ? "测试消息已发送" : "发送失败：原因");
+          });
+        });
+      }
+
+      function bindChipRemovers(field, syncValidation) {
+        field.querySelectorAll(".chip-remove").forEach((button) => {
+          if (button.dataset.bound === "true") return;
+          button.dataset.bound = "true";
+          button.addEventListener("click", () => { button.closest(".chip").remove(); syncValidation(); });
+        });
+      }
+
+      function bindConfirmButtons() {
+        main.querySelectorAll(".js-confirm").forEach((button) => {
+          button.addEventListener("click", () => {
+            document.getElementById("dialog-title").textContent = button.dataset.title;
+            document.getElementById("dialog-copy").textContent = button.dataset.copy;
+            confirmDialog.showModal();
+          });
+        });
+      }
+
+      function render() {
+        const state = currentState();
+        stateSelect.value = state;
+        const section = state.startsWith("sites-") ? "sites" : state.startsWith("notifications-") ? "notifications" : "moderation";
+        navModeration.setAttribute("aria-current", section === "moderation" ? "page" : "false");
+        navSites.setAttribute("aria-current", section === "sites" ? "page" : "false");
+        navNotifications.setAttribute("aria-current", section === "notifications" ? "page" : "false");
+        if (section === "sites") sitesState(state);
+        else if (section === "notifications") notificationsState(state);
+        else moderationState(state);
+      }
+
+      stateSelect.addEventListener("change", () => { window.location.hash = stateSelect.value; });
+      window.addEventListener("hashchange", render);
+      siteTrigger.addEventListener("click", () => {
+        const open = siteMenu.hidden;
+        siteMenu.hidden = !open;
+        siteTrigger.setAttribute("aria-expanded", String(open));
+      });
+      siteMenu.querySelectorAll(".site-option").forEach((option) => {
+        option.addEventListener("click", () => {
+          siteMenu.querySelectorAll(".site-option").forEach((item) => item.setAttribute("aria-selected", String(item === option)));
+          siteTrigger.firstElementChild.textContent = option.dataset.domain;
+          siteMenu.hidden = true;
+          siteTrigger.setAttribute("aria-expanded", "false");
+          siteTrigger.focus();
+        });
+      });
+      document.addEventListener("pointerdown", (event) => {
+        if (!siteMenu.hidden && !event.target.closest(".site-picker")) { siteMenu.hidden = true; siteTrigger.setAttribute("aria-expanded", "false"); }
+      });
+      document.getElementById("dialog-cancel").addEventListener("click", () => { confirmDialog.close(); });
+      document.getElementById("dialog-confirm").addEventListener("click", () => { confirmDialog.close(); });
+      confirmDialog.addEventListener("click", (event) => { if (event.target === confirmDialog) confirmDialog.close(); });
+
+      if (!window.location.hash || !stateOrder.includes(window.location.hash.slice(1))) window.location.hash = "moderation-pending";
+      else render();
+    }());
+  </script>
+</body>
+</html>

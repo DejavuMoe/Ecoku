@@ -1,0 +1,31 @@
+name: ecoku
+
+services:
+  ecoku:
+    image: "git.via.moe/dejavu/ecoku:${ECOKU_VERSION:-v0.1.0-rc.1}"
+    init: true
+    restart: unless-stopped
+    env_file:
+      - ./deploy/ecoku.env
+    ports:
+      - "127.0.0.1:12123:12123"
+    volumes:
+      - ./deploy/config.yaml:/app/config.yaml:ro
+      - ecoku-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--output-document=-", "http://127.0.0.1:12123/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    stop_grace_period: 30s
+
+volumes:
+  ecoku-data:

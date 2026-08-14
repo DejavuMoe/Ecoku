@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ecoku Telegram 消息模板</title>
+  <style>
+    :root {
+      --paper: rgb(250, 249, 245);
+      --surface: rgb(252, 251, 247);
+      --ink: rgb(20, 20, 19);
+      --ink-soft: rgb(58, 54, 44);
+      --muted: rgb(96, 91, 82);
+      --line: rgb(150, 143, 132);
+      --line-soft: rgba(20, 20, 19, 0.14);
+      --wash: rgb(243, 239, 231);
+      --accent: rgb(42, 83, 108);
+      --accent-hover: rgb(31, 67, 90);
+      --accent-text: rgb(250, 249, 245);
+      --pending: rgb(133, 83, 28);
+      --pending-bg: rgb(247, 235, 211);
+      --radius: 14px;
+      --shadow: 0 18px 48px rgba(20, 20, 19, 0.1);
+      --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+      --serif: "OPPO Serif SC", "Noto Serif CJK SC", "Songti SC", serif;
+      --mono: ui-monospace, "SFMono-Regular", "Cascadia Code", "Roboto Mono", monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { min-width: 320px; min-height: 100%; background: var(--wash); }
+    body { min-height: 100vh; margin: 0; color: var(--ink); background: var(--wash); font-family: var(--serif); line-height: 1.65; }
+    button { color: inherit; font: inherit; cursor: pointer; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .preview-shell { display: grid; min-height: 100vh; grid-template-rows: 58px minmax(0, 1fr); }
+    .preview-header { border-bottom: 1px solid var(--line-soft); background: var(--paper); }
+    .preview-header-inner {
+      display: flex;
+      width: min(calc(100% - 32px), 920px);
+      height: 58px;
+      margin: 0 auto;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+    .preview-title { display: flex; align-items: center; gap: 10px; }
+    .mark { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--ink); border-radius: 50%; font-weight: 700; }
+    .preview-title strong { font-size: 16px; }
+    .variant-tabs { display: flex; gap: 4px; padding: 3px; border: 1px solid var(--line-soft); border-radius: 999px; background: var(--surface); }
+    .variant-tab { min-height: 32px; padding: 0 12px; border: 0; border-radius: 999px; color: var(--muted); background: transparent; font-size: 12px; }
+    .variant-tab[aria-pressed="true"] { color: var(--ink); background: var(--wash); font-weight: 700; }
+    .stage { display: grid; place-items: center; padding: 32px 16px; }
+    .conversation { width: min(100%, 560px); border: 1px solid var(--line-soft); border-radius: var(--radius); background: var(--paper); box-shadow: var(--shadow); overflow: hidden; }
+    .conversation-head { display: flex; min-height: 64px; align-items: center; gap: 12px; padding: 0 18px; border-bottom: 1px solid var(--line-soft); background: var(--surface); }
+    .bot-mark { display: grid; width: 36px; height: 36px; place-items: center; border-radius: 50%; color: var(--accent-text); background: var(--accent); font-weight: 700; }
+    .bot-copy { display: grid; line-height: 1.25; }
+    .bot-copy strong { font-size: 14px; }
+    .bot-copy small { color: var(--muted); font-size: 11px; }
+    .conversation-body { padding: 28px 18px 34px; background: var(--wash); }
+    .message { width: min(100%, 440px); padding: 18px; border: 1px solid var(--line-soft); border-radius: 4px var(--radius) var(--radius) var(--radius); background: var(--surface); }
+    .message-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .message-heading strong { font-size: 16px; }
+    .status { padding: 3px 8px; border-radius: 999px; color: var(--pending); background: var(--pending-bg); font-size: 11px; font-weight: 700; }
+    .facts { display: grid; margin: 16px 0 0; gap: 7px; }
+    .fact { display: grid; min-width: 0; grid-template-columns: 66px minmax(0, 1fr); gap: 10px; font-size: 12px; }
+    .fact span:first-child { color: var(--muted); }
+    .fact span:last-child { min-width: 0; word-break: break-all; }
+    .fact.is-mono span:last-child { font-family: var(--mono); }
+    .comment { margin: 16px 0 0; padding: 14px 0 0; border-top: 1px solid var(--line-soft); color: var(--ink-soft); font-size: 14px; line-height: 1.75; white-space: pre-wrap; }
+    .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 16px; }
+    .action { display: grid; min-height: 38px; place-items: center; border: 1px solid var(--accent); border-radius: 9px; color: var(--accent); background: transparent; font-size: 12px; font-weight: 700; text-decoration: none; }
+    .action.is-primary { color: var(--accent-text); background: var(--accent); }
+    .action:hover { background: var(--wash); }
+    .action.is-primary:hover { background: var(--accent-hover); }
+    .message-time { display: block; margin-top: 9px; color: var(--muted); font-family: var(--sans); font-size: 10px; text-align: right; }
+    @media (max-width: 620px) {
+      .preview-header-inner { width: calc(100% - 20px); }
+      .preview-title strong { display: none; }
+      .stage { padding: 18px 10px; align-items: start; }
+      .conversation-body { padding: 20px 12px 28px; }
+      .message { width: 100%; }
+      .actions { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition-duration: 0.01ms !important; } }
+  </style>
+</head>
+<body>
+  <div class="preview-shell">
+    <header class="preview-header">
+      <div class="preview-header-inner">
+        <div class="preview-title"><span class="mark" aria-hidden="true">E</span><strong>Telegram 消息模板</strong></div>
+        <div class="variant-tabs" role="group" aria-label="消息场景">
+          <button class="variant-tab" type="button" aria-pressed="true" data-variant="pending">待审核</button>
+          <button class="variant-tab" type="button" aria-pressed="false" data-variant="published">已发布</button>
+        </div>
+      </div>
+    </header>
+    <main class="stage">
+      <section class="conversation" aria-label="Telegram 消息预览">
+        <header class="conversation-head"><span class="bot-mark" aria-hidden="true">E</span><span class="bot-copy"><strong>Ecoku Bot</strong><small>通知</small></span></header>
+        <div class="conversation-body">
+          <article class="message">
+            <div class="message-heading"><strong id="message-title">新评论待审核</strong><span class="status" id="message-status">待审核</span></div>
+            <div class="facts">
+              <div class="fact"><span>站点</span><span>blog.dejavu.moe</span></div>
+              <div class="fact"><span>访客</span><span>林峤</span></div>
+              <div class="fact is-mono"><span>页面</span><span>/guides/sqlite-backup</span></div>
+              <div class="fact"><span>编号</span><span>#1041</span></div>
+            </div>
+            <p class="comment">备份步骤很清楚。是否可以补充一下停服后怎样校验备份文件完整性？</p>
+            <div class="actions"><a class="action is-primary" href="https://comments.example.test/admin/#moderation-pending">打开审核台</a><a class="action" href="https://blog.example.test/guides/sqlite-backup#comment-1041">查看原文</a></div>
+            <time class="message-time">10:18</time>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script>
+    (function () {
+      "use strict";
+      const tabs = Array.from(document.querySelectorAll(".variant-tab"));
+      const title = document.getElementById("message-title");
+      const status = document.getElementById("message-status");
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          tabs.forEach((item) => item.setAttribute("aria-pressed", String(item === tab)));
+          const published = tab.dataset.variant === "published";
+          title.textContent = published ? "新评论已发布" : "新评论待审核";
+          status.textContent = published ? "已批准" : "待审核";
+        });
+      });
+    }());
+  </script>
+</body>
+</html>

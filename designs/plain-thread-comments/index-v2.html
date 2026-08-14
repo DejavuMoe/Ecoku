@@ -1,0 +1,1353 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>纯文本嵌套评论系统原型 · Hugo 主题修订版</title>
+  <style>
+    :root {
+      --gap: 28px;
+      --content-gap: 26px;
+      --main-width: 720px;
+      --radius: 14px;
+      --theme: rgb(250, 249, 245);
+      --entry: rgb(252, 251, 247);
+      --primary: rgb(20, 20, 19);
+      --secondary: rgb(96, 91, 82);
+      --tertiary: rgb(227, 221, 209);
+      --content: rgb(58, 54, 44);
+      --code-bg: rgb(243, 239, 231);
+      --border: rgb(150, 143, 132);
+      --border-soft: rgba(20, 20, 19, 0.14);
+      --surface-muted: rgba(243, 239, 231, 0.72);
+      --shadow-soft: 0 16px 40px rgba(20, 20, 19, 0.06);
+      color-scheme: light;
+    }
+
+    :root[data-theme="dark"] {
+      --theme: rgb(26, 29, 32);
+      --entry: rgb(34, 38, 42);
+      --primary: rgb(242, 236, 226);
+      --secondary: rgb(188, 181, 169);
+      --tertiary: rgb(78, 85, 91);
+      --content: rgb(216, 209, 197);
+      --code-bg: rgb(44, 48, 53);
+      --border: rgb(109, 114, 120);
+      --border-soft: rgba(242, 236, 226, 0.14);
+      --surface-muted: rgba(48, 53, 58, 0.88);
+      --shadow-soft: 0 18px 40px rgba(0, 0, 0, 0.34);
+      color-scheme: dark;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    html {
+      min-height: 100%;
+      overflow-y: scroll;
+      background: var(--theme);
+      -webkit-tap-highlight-color: transparent;
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--primary);
+      background: var(--theme);
+      font-family: "OPPO Serif SC", "Noto Serif CJK SC", "Songti SC", serif;
+      font-size: 17px;
+      line-height: 1.7;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      color: inherit;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    :focus-visible {
+      outline: 2px solid color-mix(in srgb, var(--primary) 30%, transparent);
+      outline-offset: 3px;
+    }
+
+    .preview-controls {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 30;
+      display: flex;
+      gap: 6px;
+      padding: 6px;
+      border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--theme) 88%, transparent);
+      box-shadow: var(--shadow-soft);
+      -webkit-backdrop-filter: blur(18px) saturate(1.1);
+      backdrop-filter: blur(18px) saturate(1.1);
+    }
+
+    .preview-button {
+      min-height: 36px;
+      padding: 0 13px;
+      color: var(--secondary);
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      font-size: 13px;
+      line-height: 1;
+      transition: color 0.18s ease, background-color 0.18s ease;
+    }
+
+    .preview-button:hover,
+    .preview-button[aria-pressed="true"] {
+      color: var(--primary);
+      background: var(--code-bg);
+    }
+
+    .page {
+      width: min(100% - calc(var(--gap) * 2), var(--main-width));
+      margin: 0 auto;
+      padding: 76px 0 96px;
+    }
+
+    .context {
+      margin-bottom: 30px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+
+    .context-kicker {
+      margin: 0 0 4px;
+      color: var(--secondary);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+    }
+
+    .context-title {
+      margin: 0;
+      font-size: clamp(25px, 5vw, 32px);
+      font-variation-settings: "wght" 600;
+      line-height: 1.3;
+    }
+
+    .comment-section {
+      min-height: 620px;
+    }
+
+    .section-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      margin: 0;
+      color: var(--primary);
+      font-size: 21px;
+      font-variation-settings: "wght" 600;
+      line-height: 1.3;
+    }
+
+    .section-count {
+      color: var(--secondary);
+      font-size: 14px;
+      font-variation-settings: "wght" 400;
+    }
+
+    .sort-picker {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--secondary);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .sort-trigger {
+      display: inline-flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-width: 112px;
+      min-height: 38px;
+      padding: 0 12px 0 14px;
+      color: var(--primary);
+      border: 1px solid var(--border-soft);
+      border-radius: 999px;
+      background: var(--entry);
+      font-size: 13px;
+    }
+
+    .sort-trigger:hover,
+    .sort-trigger[aria-expanded="true"] {
+      border-color: var(--border);
+      background: var(--surface-muted);
+    }
+
+    .sort-chevron {
+      width: 7px;
+      height: 7px;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
+      transform: translateY(-2px) rotate(45deg);
+      transition: transform 0.16s ease;
+    }
+
+    .sort-trigger[aria-expanded="true"] .sort-chevron {
+      transform: translateY(2px) rotate(225deg);
+    }
+
+    .sort-menu {
+      position: absolute;
+      top: calc(100% + 7px);
+      right: 0;
+      z-index: 20;
+      display: grid;
+      width: 132px;
+      padding: 5px;
+      border: 1px solid var(--border-soft);
+      border-radius: 11px;
+      background: var(--entry);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .sort-option {
+      min-height: 38px;
+      padding: 0 10px;
+      color: var(--content);
+      border: 0;
+      border-radius: 7px;
+      background: transparent;
+      text-align: left;
+    }
+
+    .sort-option:hover,
+    .sort-option:focus-visible,
+    .sort-option[aria-selected="true"] {
+      color: var(--primary);
+      background: var(--surface-muted);
+    }
+
+    .composer {
+      margin-bottom: 32px;
+      padding: 16px;
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius);
+      background: color-mix(in srgb, var(--entry) 72%, var(--theme));
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.3s ease;
+    }
+
+    .composer:focus-within {
+      border-color: var(--border-soft);
+      box-shadow: none;
+      background: var(--entry);
+    }
+
+    .identity-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .field {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--border-soft);
+      border-radius: 10px;
+      background: var(--theme);
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .field:focus-within {
+      border-color: color-mix(in srgb, var(--primary) 58%, var(--border));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 6%, transparent);
+    }
+
+    .field-label {
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      color: var(--secondary);
+      border-right: 1px solid var(--border-soft);
+      background: var(--surface-muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .field input {
+      min-width: 0;
+      width: 100%;
+      height: 40px;
+      padding: 0 10px;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      font-size: 13px;
+    }
+
+    .message-field {
+      display: block;
+      overflow: hidden;
+      border: 1px solid var(--border-soft);
+      border-radius: 11px;
+      background: var(--theme);
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .message-field:focus-within {
+      border-color: color-mix(in srgb, var(--primary) 58%, var(--border));
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 6%, transparent);
+    }
+
+    .message-field textarea {
+      display: block;
+      width: 100%;
+      min-height: 120px;
+      resize: vertical;
+      padding: 13px 14px;
+      color: var(--content);
+      border: 0;
+      outline: 0;
+      background: transparent;
+      font-size: 15px;
+      line-height: 1.72;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: color-mix(in srgb, var(--secondary) 72%, transparent);
+      opacity: 1;
+    }
+
+    .composer-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: 11px;
+    }
+
+    .composer-guidance {
+      min-width: 0;
+      margin: 0;
+      color: var(--secondary);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .composer-end {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .character-count {
+      color: var(--secondary);
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .primary-button,
+    .secondary-button {
+      min-height: 40px;
+      padding: 0 16px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 13px;
+      transition: transform 0.15s ease, color 0.18s ease, background-color 0.18s ease, border-color 0.18s ease;
+    }
+
+    .primary-button {
+      color: var(--primary);
+      border-color: color-mix(in srgb, var(--primary) 72%, var(--border));
+      background: var(--entry);
+    }
+
+    .secondary-button {
+      color: var(--primary);
+      background: var(--entry);
+    }
+
+    .primary-button:hover:not(:disabled),
+    .secondary-button:hover:not(:disabled) {
+      transform: none;
+    }
+
+    .primary-button:hover:not(:disabled),
+    .secondary-button:hover:not(:disabled) {
+      border-color: var(--primary);
+      background: var(--code-bg);
+    }
+
+    .primary-button:disabled,
+    .secondary-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.42;
+    }
+
+    .form-error {
+      margin: 8px 0 0;
+      color: color-mix(in srgb, #bd5c4e 78%, var(--primary));
+      font-size: 12px;
+    }
+
+    .status-line {
+      min-height: 24px;
+      margin: -18px 0 14px;
+      color: var(--secondary);
+      font-size: 13px;
+    }
+
+    .thread-list {
+      border-top: 1px solid var(--border-soft);
+    }
+
+    .root-thread {
+      padding: 20px 0 22px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+
+    .comment-node {
+      min-width: 0;
+    }
+
+    .comment-row {
+      min-width: 0;
+    }
+
+    .children {
+      display: grid;
+      gap: 18px;
+      margin-top: 18px;
+      margin-left: 25px;
+    }
+
+    .comment-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0 7px;
+      min-height: 24px;
+      color: var(--secondary);
+      font-size: 12.5px;
+      line-height: 1.55;
+    }
+
+    .collapse-button {
+      min-width: 29px;
+      min-height: 29px;
+      margin: -3px 0 -2px -7px;
+      padding: 0 4px;
+      color: var(--secondary);
+      border: 0;
+      border-radius: 6px;
+      background: transparent;
+      font-family: ui-monospace, "Maple Mono Normal", monospace;
+      font-size: 12px;
+      line-height: 1;
+    }
+
+    .collapse-button:hover {
+      color: var(--primary);
+      background: var(--surface-muted);
+    }
+
+    .comment-author {
+      color: var(--primary);
+      font-variation-settings: "wght" 600;
+    }
+
+    a.comment-author:hover,
+    .comment-time:hover,
+    .comment-permalink:hover {
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    .comment-time,
+    .comment-permalink {
+      color: var(--secondary);
+    }
+
+    .meta-separator {
+      color: color-mix(in srgb, var(--secondary) 58%, transparent);
+    }
+
+    .comment-copy {
+      margin-top: 5px;
+      color: var(--content);
+      font-size: 16px;
+      line-height: 1.76;
+      white-space: pre-wrap;
+      word-break: normal;
+      overflow-wrap: anywhere;
+    }
+
+    .comment-copy p {
+      margin: 0 0 0.72em;
+    }
+
+    .comment-copy p:last-child {
+      margin-bottom: 0;
+    }
+
+    .comment-actions {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      margin-top: 5px;
+    }
+
+    .text-action {
+      min-height: 30px;
+      padding: 0;
+      color: var(--secondary);
+      border: 0;
+      background: transparent;
+      font-size: 12.5px;
+      text-decoration: underline;
+      text-decoration-color: color-mix(in srgb, var(--secondary) 58%, transparent);
+      text-underline-offset: 3px;
+    }
+
+    .text-action:hover {
+      color: var(--primary);
+      text-decoration-color: currentColor;
+    }
+
+    .folded-summary {
+      color: var(--secondary);
+      font-size: 12.5px;
+    }
+
+    .deleted .comment-author,
+    .deleted .comment-copy {
+      color: var(--secondary);
+      font-style: italic;
+      font-variation-settings: "wght" 400;
+    }
+
+    .reply-slot {
+      margin-top: 10px;
+    }
+
+    .reply-composer {
+      padding: 12px;
+      border: 1px solid var(--border-soft);
+      border-radius: 11px;
+      background: color-mix(in srgb, var(--entry) 74%, var(--theme));
+    }
+
+    .reply-heading {
+      margin: 0 0 8px;
+      color: var(--secondary);
+      font-size: 12.5px;
+    }
+
+    .reply-heading strong {
+      color: var(--primary);
+      font-variation-settings: "wght" 600;
+    }
+
+    .reply-composer textarea {
+      display: block;
+      width: 100%;
+      min-height: 82px;
+      resize: vertical;
+      padding: 10px 11px;
+      color: var(--content);
+      border: 1px solid var(--border-soft);
+      border-radius: 9px;
+      outline: 0;
+      background: var(--theme);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .reply-composer textarea:focus {
+      border-color: color-mix(in srgb, var(--primary) 58%, var(--border));
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 7%, transparent);
+    }
+
+    .reply-footer {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 9px;
+      margin-top: 9px;
+    }
+
+    .load-more {
+      display: block;
+      min-height: 42px;
+      margin: 18px auto 0;
+      padding: 0 17px;
+      color: var(--primary);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--entry);
+      font-size: 13px;
+    }
+
+    .load-more:hover {
+      border-color: var(--primary);
+      background: var(--code-bg);
+    }
+
+    .service-error {
+      padding: 28px 20px;
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius);
+      background: color-mix(in srgb, var(--entry) 68%, var(--theme));
+      text-align: center;
+    }
+
+    .service-error h3 {
+      margin: 0 0 6px;
+      font-size: 17px;
+      font-variation-settings: "wght" 600;
+    }
+
+    .service-error p {
+      margin: 0 0 14px;
+      color: var(--secondary);
+      font-size: 13px;
+    }
+
+    body,
+    .preview-controls,
+    .composer,
+    .field,
+    .message-field,
+    .reply-composer,
+    .reply-composer textarea,
+    .sort-select,
+    .service-error {
+      transition: color 0.3s ease, background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    @media (max-width: 768px) {
+      :root {
+        --gap: 18px;
+        --content-gap: 22px;
+      }
+
+      .page {
+        padding: 82px 0 72px;
+      }
+
+      .preview-controls {
+        top: 12px;
+        right: 12px;
+      }
+
+      .identity-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .composer-footer {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .composer-end {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .children {
+        gap: 17px;
+        margin-top: 17px;
+        margin-left: 14px;
+      }
+
+      .collapse-button,
+      .text-action {
+        min-height: 44px;
+      }
+
+      .collapse-button {
+        margin-top: -9px;
+        margin-bottom: -8px;
+      }
+    }
+
+    @media (max-width: 460px) {
+      .context-title {
+        font-size: 23px;
+      }
+
+      .section-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .composer {
+        padding: 13px;
+      }
+
+      .comment-copy {
+        font-size: 15.5px;
+      }
+
+      .preview-button {
+        padding: 0 11px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <aside class="preview-controls" aria-label="原型预览控制">
+    <button class="preview-button" id="theme-toggle" type="button" aria-pressed="false">切换深色</button>
+    <button class="preview-button" id="service-toggle" type="button" aria-pressed="false">模拟故障</button>
+  </aside>
+
+  <main class="page" data-screen-label="纯文本嵌套评论系统">
+    <header class="context">
+      <p class="context-kicker">文章评论区</p>
+      <h1 class="context-title">Windows 11 IoT LTSC 养老指南</h1>
+    </header>
+
+    <section class="comment-section" id="comment-section" aria-label="评论区">
+      <div class="section-heading">
+        <h2 class="section-title">讨论 <span class="section-count" id="comment-count">8 条评论</span></h2>
+        <div class="sort-picker" id="sort-picker">
+          <span>排序</span>
+          <button class="sort-trigger" id="sort-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+            <span id="sort-trigger-label">最早在前</span>
+            <span class="sort-chevron" aria-hidden="true"></span>
+          </button>
+          <div class="sort-menu" id="sort-menu" role="listbox" aria-label="评论排序" hidden>
+            <button class="sort-option" type="button" role="option" data-sort="oldest" aria-selected="true">最早在前</button>
+            <button class="sort-option" type="button" role="option" data-sort="newest" aria-selected="false">最新在前</button>
+          </div>
+          <input id="sort-select" type="hidden" value="oldest">
+        </div>
+      </div>
+
+      <section class="service-error" id="service-error" aria-live="polite" hidden>
+        <h3>评论暂时不可用</h3>
+        <p>你的文章内容不受影响。请稍后重试加载评论。</p>
+        <button class="secondary-button" id="retry-button" type="button">重新加载</button>
+      </section>
+
+      <div id="comment-core">
+        <form class="composer" id="comment-form" novalidate>
+          <div class="identity-grid">
+            <label class="field">
+              <span class="field-label">昵称</span>
+              <input id="nickname" name="nickname" type="text" value="Dejavu Moe" maxlength="32" autocomplete="nickname" required aria-label="昵称">
+            </label>
+            <label class="field">
+              <span class="field-label">邮箱</span>
+              <input id="email" name="email" type="email" value="reader@example.com" maxlength="254" autocomplete="email" required aria-label="邮箱">
+            </label>
+            <label class="field">
+              <span class="field-label">网址</span>
+              <input id="website" name="website" type="url" placeholder="可选" maxlength="2048" autocomplete="url" aria-label="网址">
+            </label>
+          </div>
+
+          <label class="message-field">
+            <textarea id="comment-input" name="comment" maxlength="1000" placeholder="写下评论（仅支持纯文本）" required aria-label="评论内容"></textarea>
+          </label>
+          <p class="form-error" id="form-error" role="alert" hidden></p>
+
+          <div class="composer-footer">
+            <p class="composer-guidance">纯文本，邮箱不会公开。</p>
+            <div class="composer-end">
+              <span class="character-count" id="character-count">0/1000</span>
+              <button class="primary-button" id="submit-button" type="submit" disabled>发布评论</button>
+            </div>
+          </div>
+        </form>
+
+        <p class="status-line" id="status-line" role="status" aria-live="polite"></p>
+
+        <div class="thread-list" id="thread-list">
+          <article class="comment-node root-thread" data-created="1">
+            <div class="comment-row" id="comment-1042">
+              <header class="comment-meta">
+                <button class="collapse-button" type="button" aria-expanded="true" title="折叠这条讨论">[-]</button>
+                <a class="comment-author" href="#author-qingya">青崖</a>
+                <a class="comment-time" href="#comment-1042">2 小时前</a>
+                <span class="meta-separator">·</span>
+                <a class="comment-permalink" href="#comment-1042">链接</a>
+                <span class="folded-summary" hidden></span>
+              </header>
+              <div class="collapsible-content">
+                <div class="comment-copy"><p>这篇指南里关于激活方式的边界写得很清楚。我更关心长期使用时，系统更新会不会把本地策略恢复成默认值？</p></div>
+                <div class="comment-actions">
+                  <button class="text-action reply-action" type="button">回复</button>
+                </div>
+                <div class="reply-slot"></div>
+              </div>
+            </div>
+
+            <div class="children">
+              <article class="comment-node" data-created="2">
+                <div class="comment-row" id="comment-1043">
+                  <header class="comment-meta">
+                    <button class="collapse-button" type="button" aria-expanded="true" title="折叠这条讨论">[-]</button>
+                    <span class="comment-author">Dejavu Moe</span>
+                    <a class="comment-time" href="#comment-1043">1 小时前</a>
+                    <span class="meta-separator">·</span>
+                    <a class="comment-permalink" href="#comment-1043">链接</a>
+                    <span class="folded-summary" hidden></span>
+                  </header>
+                  <div class="collapsible-content">
+                    <div class="comment-copy"><p>大版本更新后确实有被覆盖的可能。我会把需要复查的策略单独列成清单，并补一个更新后的验证步骤。</p></div>
+                    <div class="comment-actions">
+                      <button class="text-action reply-action" type="button">回复</button>
+                    </div>
+                    <div class="reply-slot"></div>
+                  </div>
+                </div>
+
+                <div class="children">
+                  <article class="comment-node" data-created="3">
+                    <div class="comment-row" id="comment-1044">
+                      <header class="comment-meta">
+                        <button class="collapse-button" type="button" aria-expanded="true" title="折叠这条讨论">[-]</button>
+                        <a class="comment-author" href="#author-qingya">青崖</a>
+                        <a class="comment-time" href="#comment-1044">48 分钟前</a>
+                        <span class="meta-separator">·</span>
+                        <a class="comment-permalink" href="#comment-1044">链接</a>
+                        <span class="folded-summary" hidden></span>
+                      </header>
+                      <div class="collapsible-content">
+                        <div class="comment-copy"><p>这样就够了。比起承诺永久有效，我更需要知道什么时候应该重新检查。</p></div>
+                        <div class="comment-actions">
+                          <button class="text-action reply-action" type="button">回复</button>
+                        </div>
+                        <div class="reply-slot"></div>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </article>
+            </div>
+          </article>
+
+          <article class="comment-node root-thread" data-created="4">
+            <div class="comment-row" id="comment-1045">
+              <header class="comment-meta">
+                <button class="collapse-button" type="button" aria-expanded="true" title="折叠这条讨论">[-]</button>
+                <span class="comment-author">南窗</span>
+                <a class="comment-time" href="#comment-1045">56 分钟前</a>
+                <span class="meta-separator">·</span>
+                <a class="comment-permalink" href="#comment-1045">链接</a>
+                <span class="folded-summary" hidden></span>
+              </header>
+              <div class="collapsible-content">
+                <div class="comment-copy"><p>纯文本测试：&lt;strong&gt;这段不会变粗&lt;/strong&gt;，**这段也不会**。
+换行会保留，除此之外不做任何富文本渲染。</p></div>
+                <div class="comment-actions">
+                  <button class="text-action reply-action" type="button">回复</button>
+                </div>
+                <div class="reply-slot"></div>
+              </div>
+            </div>
+          </article>
+
+          <article class="comment-node root-thread" data-created="5">
+            <div class="comment-row" id="comment-1046">
+              <header class="comment-meta">
+                <button class="collapse-button" type="button" aria-expanded="true" title="折叠这条讨论">[-]</button>
+                <a class="comment-author" href="#author-muze">木泽</a>
+                <a class="comment-time" href="#comment-1046">31 分钟前</a>
+                <span class="meta-separator">·</span>
+                <a class="comment-permalink" href="#comment-1046">链接</a>
+                <span class="folded-summary" hidden></span>
+              </header>
+              <div class="collapsible-content">
+                <div class="comment-copy"><p>嵌套层级用留白表达挺舒服，手机上也没有被挤成一条窄缝。</p></div>
+                <div class="comment-actions">
+                  <button class="text-action reply-action" type="button">回复</button>
+                </div>
+                <div class="reply-slot"></div>
+              </div>
+            </div>
+
+            <div class="children">
+              <article class="comment-node deleted" data-created="6">
+                <div class="comment-row" id="comment-1047">
+                  <header class="comment-meta">
+                    <button class="collapse-button" type="button" aria-expanded="true" title="折叠这条讨论">[-]</button>
+                    <span class="comment-author">已删除</span>
+                    <a class="comment-time" href="#comment-1047">18 分钟前</a>
+                    <span class="meta-separator">·</span>
+                    <a class="comment-permalink" href="#comment-1047">链接</a>
+                    <span class="folded-summary" hidden></span>
+                  </header>
+                  <div class="collapsible-content">
+                    <div class="comment-copy"><p>[该评论已删除]</p></div>
+                  </div>
+                </div>
+
+                <div class="children">
+                  <article class="comment-node" data-created="7">
+                    <div class="comment-row" id="comment-1048">
+                      <header class="comment-meta">
+                        <button class="collapse-button" type="button" aria-expanded="true" title="折叠这条讨论">[-]</button>
+                        <span class="comment-author">Lin</span>
+                        <a class="comment-time" href="#comment-1048">12 分钟前</a>
+                        <span class="meta-separator">·</span>
+                        <a class="comment-permalink" href="#comment-1048">链接</a>
+                        <span class="folded-summary" hidden></span>
+                      </header>
+                      <div class="collapsible-content">
+                        <div class="comment-copy"><p>保留删除位置是对的，不然下面这条回复会突然失去上下文。</p></div>
+                        <div class="comment-actions">
+                          <button class="text-action reply-action" type="button">回复</button>
+                        </div>
+                        <div class="reply-slot"></div>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </article>
+            </div>
+          </article>
+
+          <article class="comment-node root-thread" data-created="8">
+            <div class="comment-row" id="comment-1049">
+              <header class="comment-meta">
+                <button class="collapse-button" type="button" aria-expanded="true" title="折叠这条讨论">[-]</button>
+                <span class="comment-author">初七</span>
+                <a class="comment-time" href="#comment-1049">刚刚</a>
+                <span class="meta-separator">·</span>
+                <a class="comment-permalink" href="#comment-1049">链接</a>
+                <span class="folded-summary" hidden></span>
+              </header>
+              <div class="collapsible-content">
+                <div class="comment-copy"><p>没有头像和反应按钮之后，注意力确实更集中在讨论本身。</p></div>
+                <div class="comment-actions">
+                  <button class="text-action reply-action" type="button">回复</button>
+                </div>
+                <div class="reply-slot"></div>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <button class="load-more" id="load-more" type="button">查看更多 12 条评论</button>
+      </div>
+    </section>
+  </main>
+
+  <template id="reply-template">
+    <form class="reply-composer" novalidate>
+      <p class="reply-heading">回复 <strong data-reply-author></strong></p>
+      <textarea maxlength="1000" placeholder="写下回复（仅支持纯文本）" required aria-label="回复内容"></textarea>
+      <div class="reply-footer">
+        <button class="secondary-button cancel-reply" type="button">取消</button>
+        <button class="primary-button submit-reply" type="submit">发布回复</button>
+      </div>
+    </form>
+  </template>
+
+  <script>
+    (() => {
+      const root = document.documentElement;
+      const themeToggle = document.getElementById("theme-toggle");
+      const serviceToggle = document.getElementById("service-toggle");
+      const retryButton = document.getElementById("retry-button");
+      const serviceError = document.getElementById("service-error");
+      const commentCore = document.getElementById("comment-core");
+      const commentForm = document.getElementById("comment-form");
+      const nickname = document.getElementById("nickname");
+      const email = document.getElementById("email");
+      const website = document.getElementById("website");
+      const commentInput = document.getElementById("comment-input");
+      const characterCount = document.getElementById("character-count");
+      const submitButton = document.getElementById("submit-button");
+      const formError = document.getElementById("form-error");
+      const statusLine = document.getElementById("status-line");
+      const threadList = document.getElementById("thread-list");
+      const commentCount = document.getElementById("comment-count");
+      const sortSelect = document.getElementById("sort-select");
+      const sortPicker = document.getElementById("sort-picker");
+      const sortTrigger = document.getElementById("sort-trigger");
+      const sortTriggerLabel = document.getElementById("sort-trigger-label");
+      const sortMenu = document.getElementById("sort-menu");
+      const replyTemplate = document.getElementById("reply-template");
+      const loadMore = document.getElementById("load-more");
+      let totalComments = 8;
+      let sequence = 1050;
+
+      const toggleSortMenu = (open) => {
+        sortMenu.hidden = !open;
+        sortTrigger.setAttribute("aria-expanded", String(open));
+        if (open) {
+          const selected = sortMenu.querySelector('[aria-selected="true"]');
+          window.setTimeout(() => selected?.focus(), 0);
+        }
+      };
+
+      const chooseSort = (value) => {
+        if (value !== "oldest" && value !== "newest") return;
+        sortSelect.value = value;
+        sortTriggerLabel.textContent = value === "oldest" ? "最早在前" : "最新在前";
+        sortMenu.querySelectorAll("[data-sort]").forEach((option) => {
+          option.setAttribute("aria-selected", String(option.dataset.sort === value));
+        });
+        toggleSortMenu(false);
+        sortSelect.dispatchEvent(new Event("change"));
+        sortTrigger.focus();
+      };
+
+      sortTrigger.addEventListener("click", () => toggleSortMenu(sortMenu.hidden));
+      sortTrigger.addEventListener("keydown", (event) => {
+        if (["ArrowDown", "Enter", " "].includes(event.key)) {
+          event.preventDefault();
+          toggleSortMenu(true);
+        }
+      });
+      sortMenu.addEventListener("click", (event) => {
+        const option = event.target.closest("[data-sort]");
+        if (option) chooseSort(option.dataset.sort);
+      });
+      sortMenu.addEventListener("keydown", (event) => {
+        const options = Array.from(sortMenu.querySelectorAll("[data-sort]"));
+        const currentIndex = options.indexOf(document.activeElement);
+        if (event.key === "Escape") {
+          event.preventDefault();
+          toggleSortMenu(false);
+          sortTrigger.focus();
+          return;
+        }
+        if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+          event.preventDefault();
+          const nextIndex = event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? options.length - 1
+              : (currentIndex + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length;
+          options[nextIndex]?.focus();
+        }
+      });
+      document.addEventListener("click", (event) => {
+        if (!sortPicker.contains(event.target)) toggleSortMenu(false);
+      });
+
+      const setStatus = (message) => {
+        statusLine.textContent = message;
+      };
+
+      const updateCount = () => {
+        commentCount.textContent = totalComments + " 条评论";
+      };
+
+      const updateThemeButton = () => {
+        const dark = root.dataset.theme === "dark";
+        themeToggle.textContent = dark ? "切换浅色" : "切换深色";
+        themeToggle.setAttribute("aria-pressed", String(dark));
+      };
+
+      themeToggle.addEventListener("click", () => {
+        root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+        try {
+          localStorage.setItem("plain-thread-theme", root.dataset.theme);
+        } catch (_) {
+          // The prototype remains functional when storage is unavailable.
+        }
+        updateThemeButton();
+      });
+
+      try {
+        const storedTheme = localStorage.getItem("plain-thread-theme");
+        if (storedTheme === "dark" || storedTheme === "light") {
+          root.dataset.theme = storedTheme;
+        }
+      } catch (_) {
+        // Use the document default.
+      }
+      updateThemeButton();
+
+      const setServiceError = (failed) => {
+        serviceError.hidden = !failed;
+        commentCore.hidden = failed;
+        serviceToggle.setAttribute("aria-pressed", String(failed));
+        serviceToggle.textContent = failed ? "恢复正常" : "模拟故障";
+      };
+
+      serviceToggle.addEventListener("click", () => {
+        setServiceError(serviceToggle.getAttribute("aria-pressed") !== "true");
+      });
+
+      retryButton.addEventListener("click", () => {
+        retryButton.disabled = true;
+        retryButton.textContent = "正在重新加载…";
+        window.setTimeout(() => {
+          retryButton.disabled = false;
+          retryButton.textContent = "重新加载";
+          setServiceError(false);
+          setStatus("评论已重新加载。");
+        }, 650);
+      });
+
+      const validateComposer = (showError) => {
+        const nameReady = nickname.value.trim().length > 0;
+        const emailReady = email.value.trim().length > 0 && email.validity.valid;
+        const websiteReady = website.value.trim().length === 0 || website.validity.valid;
+        const messageReady = commentInput.value.trim().length > 0;
+        const ready = nameReady && emailReady && websiteReady && messageReady;
+
+        submitButton.disabled = !ready;
+        characterCount.textContent = commentInput.value.length + "/1000";
+
+        if (!showError || ready) {
+          formError.hidden = true;
+          formError.textContent = "";
+          return ready;
+        }
+
+        if (!nameReady) {
+          formError.textContent = "请输入昵称。";
+          nickname.focus();
+        } else if (!emailReady) {
+          formError.textContent = "请输入有效邮箱；它只用于回复通知。";
+          email.focus();
+        } else if (!websiteReady) {
+          formError.textContent = "网址需要以 http:// 或 https:// 开头。";
+          website.focus();
+        } else {
+          formError.textContent = "评论内容不能为空。";
+          commentInput.focus();
+        }
+        formError.hidden = false;
+        return false;
+      };
+
+      [nickname, email, website, commentInput].forEach((control) => {
+        control.addEventListener("input", () => validateComposer(false));
+      });
+
+      const createElement = (tag, className, text) => {
+        const element = document.createElement(tag);
+        if (className) element.className = className;
+        if (text !== undefined) element.textContent = text;
+        return element;
+      };
+
+      const makeCommentNode = (author, text, isRoot) => {
+        sequence += 1;
+        const node = createElement("article", "comment-node" + (isRoot ? " root-thread" : ""));
+        node.dataset.created = String(Date.now());
+
+        const row = createElement("div", "comment-row");
+        row.id = "comment-" + sequence;
+
+        const meta = createElement("header", "comment-meta");
+        const collapse = createElement("button", "collapse-button", "[-]");
+        collapse.type = "button";
+        collapse.title = "折叠这条讨论";
+        collapse.setAttribute("aria-expanded", "true");
+        meta.appendChild(collapse);
+        meta.appendChild(createElement("span", "comment-author", author));
+
+        const time = createElement("a", "comment-time", "刚刚");
+        time.href = "#" + row.id;
+        meta.appendChild(time);
+        meta.appendChild(createElement("span", "meta-separator", "·"));
+
+        const permalink = createElement("a", "comment-permalink", "链接");
+        permalink.href = "#" + row.id;
+        meta.appendChild(permalink);
+
+        const summary = createElement("span", "folded-summary");
+        summary.hidden = true;
+        meta.appendChild(summary);
+        row.appendChild(meta);
+
+        const collapsible = createElement("div", "collapsible-content");
+        const copy = createElement("div", "comment-copy");
+        const paragraph = createElement("p", "", text);
+        copy.appendChild(paragraph);
+        collapsible.appendChild(copy);
+
+        const actions = createElement("div", "comment-actions");
+        const reply = createElement("button", "text-action reply-action", "回复");
+        reply.type = "button";
+        actions.appendChild(reply);
+        collapsible.appendChild(actions);
+        collapsible.appendChild(createElement("div", "reply-slot"));
+        row.appendChild(collapsible);
+        node.appendChild(row);
+        bindNode(node);
+        return node;
+      };
+
+      const ensureChildren = (node) => {
+        let children = Array.from(node.children).find((child) => child.classList.contains("children"));
+        if (!children) {
+          children = createElement("div", "children");
+          node.appendChild(children);
+        }
+        return children;
+      };
+
+      const openReplyComposer = (node) => {
+        const row = Array.from(node.children).find((child) => child.classList.contains("comment-row"));
+        const slot = row.querySelector(".reply-slot");
+        if (slot.firstElementChild) {
+          slot.querySelector("textarea").focus();
+          return;
+        }
+
+        document.querySelectorAll(".reply-slot .reply-composer").forEach((composer) => composer.remove());
+        const fragment = replyTemplate.content.cloneNode(true);
+        const form = fragment.querySelector("form");
+        const textarea = fragment.querySelector("textarea");
+        const author = row.querySelector(".comment-author").textContent.trim();
+        fragment.querySelector("[data-reply-author]").textContent = author;
+
+        fragment.querySelector(".cancel-reply").addEventListener("click", () => {
+          form.remove();
+        });
+
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          const value = textarea.value.trim();
+          if (!value) {
+            textarea.focus();
+            return;
+          }
+          const replyNode = makeCommentNode(nickname.value.trim() || "Dejavu Moe", value, false);
+          ensureChildren(node).appendChild(replyNode);
+          form.remove();
+          totalComments += 1;
+          updateCount();
+          setStatus("回复已作为纯文本加入讨论。");
+          replyNode.querySelector(".comment-row").scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+
+        slot.appendChild(fragment);
+        textarea.focus();
+      };
+
+      function bindNode(node) {
+        const row = Array.from(node.children).find((child) => child.classList.contains("comment-row"));
+        if (!row) return;
+        const collapse = row.querySelector(".collapse-button");
+        const content = row.querySelector(".collapsible-content");
+        const summary = row.querySelector(".folded-summary");
+
+        collapse.addEventListener("click", () => {
+          const children = Array.from(node.children).find((child) => child.classList.contains("children"));
+          const willCollapse = collapse.getAttribute("aria-expanded") === "true";
+          collapse.setAttribute("aria-expanded", String(!willCollapse));
+          collapse.textContent = willCollapse ? "[+]" : "[-]";
+          collapse.title = willCollapse ? "展开这条讨论" : "折叠这条讨论";
+          content.hidden = willCollapse;
+          if (children) children.hidden = willCollapse;
+          const replyCount = children ? children.querySelectorAll(".comment-node").length : 0;
+          summary.textContent = replyCount > 0 ? "已折叠，含 " + replyCount + " 条回复" : "评论已折叠";
+          summary.hidden = !willCollapse;
+        });
+
+        const reply = row.querySelector(".reply-action");
+        if (reply) {
+          reply.addEventListener("click", () => openReplyComposer(node));
+        }
+      }
+
+      document.querySelectorAll(".comment-node").forEach(bindNode);
+
+      commentForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        if (!validateComposer(true)) return;
+
+        const newNode = makeCommentNode(nickname.value.trim(), commentInput.value.trim(), true);
+        if (sortSelect.value === "newest") {
+          threadList.prepend(newNode);
+        } else {
+          threadList.appendChild(newNode);
+        }
+        commentInput.value = "";
+        totalComments += 1;
+        updateCount();
+        validateComposer(false);
+        setStatus("评论已发布；输入内容按纯文本显示。");
+        newNode.querySelector(".comment-row").scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+
+      sortSelect.addEventListener("change", () => {
+        const roots = Array.from(threadList.querySelectorAll(":scope > .root-thread"));
+        roots.sort((a, b) => {
+          const difference = Number(a.dataset.created) - Number(b.dataset.created);
+          return sortSelect.value === "oldest" ? difference : -difference;
+        });
+        roots.forEach((node) => threadList.appendChild(node));
+      });
+
+      loadMore.addEventListener("click", () => {
+        loadMore.disabled = true;
+        loadMore.textContent = "正在加载…";
+        window.setTimeout(() => {
+          const first = makeCommentNode("风物长宜", "补充一个小细节：如果是在虚拟机里测试，记得把快照时间写进操作记录。", true);
+          const second = makeCommentNode("Mori", "收藏了。文章和评论都保持这种纯文本密度就很好。", true);
+          threadList.append(first, second);
+          totalComments += 2;
+          updateCount();
+          loadMore.textContent = "已加载全部评论";
+          setStatus("已加载更多评论。");
+        }, 650);
+      });
+
+      validateComposer(false);
+      updateCount();
+    })();
+  </script>
+</body>
+</html>

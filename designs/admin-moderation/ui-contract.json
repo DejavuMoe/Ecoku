@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "name": "Ecoku admin",
+    "slug": "admin-moderation",
+    "surfaceType": "web"
+  },
+  "sourceReferences": [
+    {
+      "path": "designs/admin-moderation/index-v5.html",
+      "role": "current approved comment management, site settings, and notification baseline"
+    },
+    {
+      "path": "designs/admin-moderation/email-blogger-new-comment-v5.html",
+      "role": "current approved blogger new-comment email baseline"
+    },
+    {
+      "path": "designs/admin-moderation/email-visitor-reply-v5.html",
+      "role": "current approved visitor reply email baseline"
+    },
+    {
+      "path": "designs/admin-moderation/telegram-notification-v5.html",
+      "role": "current approved Telegram message baseline"
+    },
+    {
+      "path": "D:/Forgejo/Blog/designs/twikoo-theme-styles/index.html",
+      "role": "visual reference only",
+      "productionMappingInherited": false
+    }
+  ],
+  "prototypeOnly": {
+    "selectors": [
+      ".preview-controller",
+      ".preview-header",
+      ".variant-tabs",
+      "[data-prototype-only]"
+    ],
+    "notes": [
+      "场景切换器、模板预览外壳和 mock 数据不得进入生产构件。"
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "admin-comment-management-workspace",
+      "prototype": {
+        "entry": "index-v5.html",
+        "states": [
+          "published",
+          "deleted",
+          "unselected",
+          "extreme-text",
+          "desktop-split-view",
+          "mobile-list",
+          "mobile-detail"
+        ]
+      },
+      "production": {
+        "routeOrWindow": "/admin/",
+        "status": "implemented",
+        "referenceFiles": [
+          "packages/admin/src/App.vue",
+          "packages/admin/src/components/CommentManagementView.vue",
+          "packages/admin/src/api.ts",
+          "packages/admin/src/stores/admin.ts",
+          "server/handle/admin/deletion.go"
+        ]
+      },
+      "status": "implemented"
+    },
+    {
+      "id": "admin-site-management",
+      "prototype": {
+        "entry": "index-v5.html",
+        "states": [
+          "sites-list",
+          "sites-new",
+          "site-validation"
+          ,"site-display-name-fallback"
+          ,"per-site-comment-sort"
+          ,"per-site-comment-limit"
+          ,"per-site-empty-copy"
+        ]
+      },
+      "production": {
+        "routeOrWindow": "/admin/",
+        "status": "implemented",
+        "referenceFiles": [
+          "packages/admin/src/components/SiteManagementView.vue",
+          "server/handle/admin/sites.go",
+          "server/model/site.go",
+          "server/model/migrations.go"
+        ]
+      },
+      "status": "implemented"
+    },
+    {
+      "id": "admin-notification-settings",
+      "prototype": {
+        "entry": "index-v5.html",
+        "states": [
+          "notifications-empty",
+          "notifications-configured",
+          "notifications-validation",
+          "channel-disabled",
+          "chip-multiple-values",
+          "test-success",
+          "test-failure"
+        ]
+      },
+      "production": {
+        "routeOrWindow": "/admin/",
+        "status": "implemented",
+        "referenceFiles": [
+          "packages/admin/src/components/NotificationSettingsView.vue",
+          "packages/admin/src/components/ChipInput.vue",
+          "server/handle/admin/notifications.go",
+          "server/notifications/settings.go",
+          "server/notifications/outbox.go"
+        ]
+      },
+      "status": "implemented"
+    },
+    {
+      "id": "notification-templates",
+      "prototype": {
+        "entry": "email-blogger-new-comment-v5.html",
+        "states": [
+          "blogger-new-comment-email",
+          "blogger-new-reply-email",
+          "visitor-reply-email",
+          "telegram-message",
+          "site-name-domain-fallback",
+          "article-title",
+          "long-content",
+          "safe-escaped-content"
+        ]
+      },
+      "production": {
+        "routeOrWindow": "outbound notifications",
+        "status": "implemented",
+        "referenceFiles": [
+          "server/notifications/templates.go",
+          "server/notifications/delivery.go"
+        ]
+      },
+      "status": "implemented"
+    }
+  ]
+}

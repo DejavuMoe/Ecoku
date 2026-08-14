@@ -1,0 +1,73 @@
+{
+  "type": "design",
+  "designSystems": [],
+  "primaryDesignSystem": null,
+  "assets": {
+    "Plain thread comments": {
+      "versions": [
+        {
+          "path": "index.html",
+          "createdAt": "2026-08-12T08:14:10.430Z",
+          "status": "approved",
+          "subtitle": "No-avatar, plain-text, Hacker News-like nested comments",
+          "viewport": {
+            "width": 720
+          }
+        },
+        {
+          "path": "index-v2.html",
+          "createdAt": "2026-08-13T02:35:12.335Z",
+          "status": "needs-review",
+          "subtitle": "Hugo-inherited typography, themed controls, and quieter focus treatment",
+          "viewport": {
+            "width": 720
+          }
+        },
+        {
+          "path": "index-v3.html",
+          "createdAt": "2026-08-13T02:55:12.466Z",
+          "status": "approved",
+          "subtitle": "Approved count-only heading, concise sorting, root-only dividers, safe links, and six-level threads",
+          "viewport": {
+            "width": 720
+          }
+        },
+        {
+          "path": "index-v4.html",
+          "createdAt": "2026-08-13T06:59:15.339Z",
+          "status": "approved",
+          "subtitle": "Approved per-site field requirements and configurable placeholder"
+        },
+        {
+          "path": "index-v5.html",
+          "createdAt": "2026-08-13T14:02:02.618Z",
+          "status": "needs-review",
+          "subtitle": "Needs-review candidate with equal-size fold controls, hidden sort label, and newest-first site default",
+          "viewport": {
+            "width": 720
+          }
+        },
+        {
+          "path": "index-v6.html",
+          "createdAt": "2026-08-13T14:44:30.000Z",
+          "status": "approved",
+          "subtitle": "Approved compact inline replies, code-point limits, configurable field behavior, and plain empty state",
+          "viewport": {
+            "width": 720
+          }
+        },
+        {
+          "path": "index-v7.html",
+          "createdAt": "2026-08-14T01:31:32.843Z",
+          "status": "approved",
+          "subtitle": "Approved compact equal-height thread controls, bottom reply actions, UTC+8 timestamps, and root-thread pagination",
+          "viewport": {
+            "width": 720
+          }
+        }
+      ]
+    }
+  },
+  "createdAt": "2026-08-12T08:14:10.430Z",
+  "updatedAt": "2026-08-14T02:06:35.742Z"
+}

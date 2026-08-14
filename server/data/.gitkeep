@@ -1,0 +1,5 @@
+# This file ensures the data directory is tracked by git
+# The data directory is used to store:
+# - SQLite database files (*.db)
+# - Application logs
+# - Other runtime data files

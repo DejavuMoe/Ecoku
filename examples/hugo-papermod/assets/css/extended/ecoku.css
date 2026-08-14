@@ -1,0 +1,44 @@
+.comment-shell {
+    margin-top: 2.75rem;
+    min-height: 8rem;
+}
+
+.comment-loader {
+    padding: 1.25rem 0;
+    color: var(--secondary);
+}
+
+.comment-status {
+    margin: 0;
+}
+
+.comment-retry {
+    margin-top: 0.75rem;
+    padding: 0.55rem 0.9rem;
+    border: 1px solid var(--tertiary);
+    border-radius: 0.4rem;
+    color: var(--primary);
+    background: var(--entry);
+    cursor: pointer;
+    font: inherit;
+}
+
+.comment-retry:hover {
+    border-color: var(--secondary);
+}
+
+.comment-retry:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
+}
+
+.comment-retry[hidden],
+.comment-loader[hidden] {
+    display: none;
+}
+
+@media (max-width: 640px) {
+    .comment-shell {
+        margin-top: 2rem;
+    }
+}
