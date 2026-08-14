@@ -1,0 +1,154 @@
+@import url("./styles-v8.css");
+
+.field-label {
+  padding: 0 8px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.field input {
+  height: 32px;
+  padding: 0 9px;
+  font-size: 13px;
+}
+
+.composer-footer {
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.composer-footer > .character-count {
+  flex: 0 0 auto;
+  line-height: 1;
+}
+
+.composer-end {
+  margin-inline-start: auto;
+}
+
+.composer {
+  margin-bottom: 10px;
+}
+
+.composer-footer .primary-button {
+  min-height: 32px;
+  padding: 0 13px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.section-heading {
+  min-height: 32px;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 10px;
+}
+
+.section-title {
+  color: var(--content);
+  font-size: 12px;
+  font-variation-settings: "wght" 600;
+  line-height: 32px;
+}
+
+.sort-picker {
+  font-size: 12px;
+}
+
+.sort-trigger {
+  min-width: 0;
+  min-height: 32px;
+  height: 32px;
+  padding: 0 12px;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.sort-option {
+  min-height: 32px;
+  font-size: 12px;
+}
+
+.sort-menu {
+  width: max-content;
+  min-width: 100%;
+}
+
+.status-line {
+  min-height: 0;
+  margin: 0 0 8px;
+}
+
+.status-line:empty {
+  display: none;
+}
+
+.service-error {
+  margin: 0 0 16px;
+  padding: 16px;
+  color: var(--content);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--entry) 72%, var(--theme));
+  box-shadow: none;
+  text-align: left;
+}
+
+.service-error h3 {
+  margin: 0 0 6px;
+  color: var(--primary);
+  font-size: 15px;
+  font-variation-settings: "wght" 600;
+  line-height: 1.35;
+}
+
+.service-error p {
+  margin: 0 0 12px;
+  color: var(--secondary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.service-error .secondary-button {
+  min-height: 32px;
+  padding: 0 13px;
+  font-size: 12px;
+}
+
+.reply-action {
+  min-height: 22px;
+  color: color-mix(in srgb, var(--secondary) 82%, var(--theme));
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+}
+
+.reply-action:hover {
+  color: var(--secondary);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--secondary) 55%, transparent);
+  text-underline-offset: 3px;
+}
+
+@media (max-width: 768px) {
+  .composer-footer,
+  .section-heading {
+    align-items: center;
+    flex-direction: row;
+  }
+
+  .composer-end {
+    width: auto;
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 460px) {
+  .section-heading {
+    align-items: center;
+    flex-direction: row;
+  }
+}

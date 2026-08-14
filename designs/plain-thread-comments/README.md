@@ -1,7 +1,8 @@
 # Plain thread comments prototype
 
 Approved design history for Ecoku's no-avatar, plain-text comment surface.
-`index-v8.html` is the current approved and implemented production baseline.
+`index-v9.html` is the current approved production baseline. `index-v8.html`
+remains historical evidence.
 
 ## Direction
 
@@ -110,11 +111,10 @@ Run its checks with:
 node designs/plain-thread-comments/prototype-v6.test.mjs
 ```
 
-Revision 7 is the current approved and implemented baseline. It keeps the
-revision 6 form contract and adds compact equal-height thread/leaf controls,
-bottom-left reply actions, linked parent mentions, absolute UTC+8 timestamps,
-subtle descendant guide lines and reusable root-thread pagination. Run its
-deterministic checks with:
+Revision 7 keeps the revision 6 form contract and adds compact equal-height
+thread/leaf controls, bottom-left reply actions, linked parent mentions,
+absolute UTC+8 timestamps, subtle descendant guide lines and reusable
+root-thread pagination. Run its deterministic checks with:
 
 ```text
 node designs/plain-thread-comments/prototype-v7.test.mjs
@@ -139,6 +139,25 @@ Run its checks with:
 node designs/plain-thread-comments/prototype-v8.test.mjs
 ```
 
+Revision 9 is the current approved visual tightening of revision 8
+composer, list chrome and service error. Behavior is unchanged:
+
+- nickname, email and website fields use a shorter 32px control height;
+- the root composer places the character count on the left edge of the
+  comment box, still on the same row as the publish button;
+- the root submit label is “发布”, with a smaller pill button;
+- “回复” is smaller and more muted than comment body copy;
+- the comment count sits left below the composer, and the sort control sits
+  right below the publish button; both stay within the 32px / 12px publish size;
+- the service-unavailable block uses the same warm paper surface and thin
+  soft border as the composer, with no saturated info tint.
+
+Run its checks with:
+
+```text
+node designs/plain-thread-comments/prototype-v9.test.mjs
+```
+
 ## Review states
 
 - Light and dark themes.
@@ -150,5 +169,5 @@ node designs/plain-thread-comments/prototype-v8.test.mjs
 - Service unavailable and retry recovery.
 - Desktop at 1280x900 and mobile at 390x844.
 
-Status: `index-v8.html` was approved on 2026-08-15 and is implemented in the
-browser SDK. Earlier revisions remain historical design evidence only.
+Status: `index-v9.html` was approved on 2026-08-15. Earlier revisions remain
+historical design evidence only.
