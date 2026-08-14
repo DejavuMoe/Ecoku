@@ -1,6 +1,6 @@
 {
   "name": "ecoku-workspace",
-  "version": "0.1.0-rc.3",
+  "version": "0.1.0-rc.5",
   "private": true,
   "description": "Ecoku self-hosted comment system workspace",
   "scripts": {
