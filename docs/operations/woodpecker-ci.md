@@ -19,7 +19,7 @@
 - Git remote：`ssh://git@ssh.via.moe/dejavu/Ecoku.git`；
 - Forgejo Web/Registry：`git.via.moe`；
 - 镜像：`git.via.moe/dejavu/ecoku`；
-- 当前候选版本：`v0.1.0-rc.2`，必须与根 `VERSION` 的 `0.1.0-rc.2` 一致；
+- 当前候选版本：`v0.1.0-rc.3`，必须与根 `VERSION` 的 `0.1.0-rc.3` 一致；
 - 默认分支：`master`。
 
 Forgejo 容器镜像格式为 `{registry}/{owner}/{image}`。镜像名与仓库名匹配，Dockerfile 还写入
@@ -108,7 +108,7 @@ Registry 登录使用 PAT，不使用账户密码。不要把令牌放进仓库�
 
 ## 7. 发布当前 RC
 
-只有普通 push 的 `test` 已通过，才创建带注释 tag `v0.1.0-rc.2`。tag pipeline 会先检查：
+只有普通 push 的 `test` 已通过，才创建带注释 tag `v0.1.0-rc.3`。tag pipeline 会先检查：
 
 - tag 满足 SemVer；
 - 去掉前导 `v` 后与根 `VERSION` 完全一致；
@@ -117,22 +117,22 @@ Registry 登录使用 PAT，不使用账户密码。不要把令牌放进仓库�
 成功顺序为：
 
 1. `test`；
-2. 原生 Agent 分别推送 `v0.1.0-rc.2-amd64` 和 `v0.1.0-rc.2-arm64`；
-3. `publish-manifest` 合成 `v0.1.0-rc.2`；
+2. 原生 Agent 分别推送 `v0.1.0-rc.3-amd64` 和 `v0.1.0-rc.3-arm64`；
+3. `publish-manifest` 合成 `v0.1.0-rc.3`；
 4. Forgejo Packages 显示 `dejavu/ecoku` 及该版本。
 
 默认不发布 `latest`。两个架构后缀标签是可追溯中间产物；部署只使用
-`git.via.moe/dejavu/ecoku:v0.1.0-rc.2`。
+`git.via.moe/dejavu/ecoku:v0.1.0-rc.3`。
 
 ## 8. 发布后验收
 
 在有 Registry 读取权限的机器上交互式登录并检查：
 
 ```bash
-docker login git.via.moe --username dejavu
-docker buildx imagetools inspect git.via.moe/dejavu/ecoku:v0.1.0-rc.2
-docker pull --platform linux/amd64 git.via.moe/dejavu/ecoku:v0.1.0-rc.2
-docker pull --platform linux/arm64 git.via.moe/dejavu/ecoku:v0.1.0-rc.2
+sudo docker login git.via.moe --username dejavu
+sudo docker buildx imagetools inspect git.via.moe/dejavu/ecoku:v0.1.0-rc.3
+sudo docker pull --platform linux/amd64 git.via.moe/dejavu/ecoku:v0.1.0-rc.3
+sudo docker pull --platform linux/arm64 git.via.moe/dejavu/ecoku:v0.1.0-rc.3
 ```
 
 manifest 必须同时列出 `linux/amd64` 与 `linux/arm64`。再按
@@ -142,7 +142,7 @@ SQLite 初始化和重启持久性；不要让两个架构容器共享 SQLite �
 ## 9. 失败处理与边界
 
 - 任一架构失败时不得认为 RC 已发布；manifest workflow 应保持不运行。
-- 未被其他环境使用的首次失败 tag 也优先发布递增 RC，如 `v0.1.0-rc.2`，不要删除后重建同名 tag。
+- 未被其他环境使用的首次失败 tag 也优先发布递增 RC，如 `v0.1.0-rc.4`，不要删除后重建同名 tag。
 - Registry Secret 轮换后立即撤销旧 PAT，再更新 Woodpecker Secret。
 - CI 只测试、构建和发布镜像，不连接部署服务器、不迁移数据库、不创建 Forgejo Release。
 - 本地静态检查不能替代首次真实镜像体积、双架构拉取和容器运行验收。

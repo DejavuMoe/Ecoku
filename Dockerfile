@@ -31,6 +31,7 @@ FROM alpine:3.24.1 AS runtime
 ARG ECOKU_VERSION
 ARG ECOKU_REVISION
 ARG ECOKU_SOURCE
+ENV GIN_MODE=release
 LABEL org.opencontainers.image.title="Ecoku" \
       org.opencontainers.image.description="Self-hosted plain-text comment system" \
       org.opencontainers.image.version="${ECOKU_VERSION}" \

@@ -2,7 +2,7 @@
 # 容器固定以 UID/GID 10001 运行，绑定挂载时必须保证该用户拥有只读权限。
 site:
   port: 12123
-  log_path: "/data/ecoku.log"
+  log_path: "/var/log/ecoku/ecoku.log"
   # 默认不信任 X-Forwarded-For。只有确认直接 socket 对端后才填写精确 IP/CIDR。
   trusted_proxies: []
 
@@ -16,10 +16,6 @@ rate_limit:
   comment_delete: 30
   admin_login: 5
   notification_test: 5
-
-# 这里只提供空数据库首次初始化种子。初始化后，站点由管理端写入 SQLite 注册表；
-# 修改本段不会覆盖数据库中的站点配置。
-sites: []
 
 notifications:
   # SMTP 密码与 Telegram Bot Token 使用此主密钥加密后保存到 SQLite。

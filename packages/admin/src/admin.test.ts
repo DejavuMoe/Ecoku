@@ -162,14 +162,15 @@ describe('approved production surface', () => {
     expect(wrapper.text()).not.toContain('审核方式')
   })
 
-  it('renders redacted secret placeholders, destination separators, and all approved template previews', () => {
+  it('renders redacted secret placeholders and destination separators without public template previews', () => {
     const store = useAdminStore(); store.token = 'token'; store.notificationSettings = notifications()
     const wrapper = mount(NotificationSettingsView, { global: { plugins: [pinia] } })
     expect(wrapper.find<HTMLInputElement>('#email-password').element.placeholder).toBe('已设置，输入新值以更换')
     expect(wrapper.find<HTMLInputElement>('#telegram-token').element.placeholder).toBe('已设置，输入新值以更换')
     expect(wrapper.text()).toContain('按 Enter、逗号或换行添加多个邮箱')
     expect(wrapper.text()).toContain('按 Enter、逗号或换行添加；支持用户、群组、频道 ID')
-    expect(wrapper.findAll('.template-link')).toHaveLength(4)
+    expect(wrapper.find('.template-panel').exists()).toBe(false)
+    expect(wrapper.html()).not.toContain('/admin/templates/')
   })
 
   it('accepts pasted comma/newline chips, flags invalid values, and removes one chip', async () => {

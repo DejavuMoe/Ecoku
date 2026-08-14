@@ -14,7 +14,9 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -43,11 +45,23 @@ func main() {
 	if err := notifications.ValidateStoredSecrets(); err != nil {
 		log.Fatalf("通知凭据校验失败: %v", err)
 	}
-	if err := notifications.StartWorker(context.Background()); err != nil {
+	runtimeContext, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	worker, err := notifications.StartWorker(runtimeContext)
+	if err != nil {
 		log.Fatalf("通知队列初始化失败: %v", err)
 	}
 	// 初始化路由
-	routes.InitRouter()
+	serverErr := routes.RunServer(runtimeContext)
+	stop()
+	worker.Wait()
+	databaseErr := model.CloseDatabase()
+	if serverErr != nil {
+		log.Fatalf("HTTP 服务退出失败: %v", serverErr)
+	}
+	if databaseErr != nil {
+		log.Fatalf("数据库关闭失败: %v", databaseErr)
+	}
+	log.Printf("Ecoku 已安全停止")
 }
 
 func runPasswordHash(reader io.Reader, writer io.Writer) error {
@@ -72,7 +86,7 @@ func runPasswordHash(reader io.Reader, writer io.Writer) error {
 	return nil
 }
 
-func runTwikooImport(arguments []string) error {
+func runTwikooImport(arguments []string) (resultErr error) {
 	flags := flag.NewFlagSet("import-twikoo", flag.ContinueOnError)
 	siteID := flags.String("site", "", "目标站点 ID")
 	filePath := flags.String("file", "", "Twikoo JSON 导出文件")
@@ -86,6 +100,11 @@ func runTwikooImport(arguments []string) error {
 	config.InitConfigFile()
 	logs.InitLogger()
 	model.InitDatabase()
+	defer func() {
+		if err := model.CloseDatabase(); err != nil && resultErr == nil {
+			resultErr = fmt.Errorf("关闭导入数据库: %w", err)
+		}
+	}()
 	file, err := os.Open(*filePath)
 	if err != nil {
 		return fmt.Errorf("打开导出文件: %w", err)

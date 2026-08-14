@@ -25,6 +25,7 @@ dist-ssr
 *.sw?
 config.yaml
 .env
+/ecoku.env
 deploy/config.yaml
 deploy/ecoku.env
 /data/

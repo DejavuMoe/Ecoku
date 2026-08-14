@@ -36,7 +36,8 @@
       "[data-prototype-only]"
     ],
     "notes": [
-      "场景切换器、模板预览外壳和 mock 数据不得进入生产构件。"
+      "场景切换器、发送模板设计页和 mock 数据不得进入生产构件。",
+      "生产管理端不得展示或公开提供通知模板预览；实际模板仅由服务端在投递时渲染。"
     ]
   },
   "surfaces": [
@@ -136,7 +137,7 @@
         ]
       },
       "production": {
-        "routeOrWindow": "outbound notifications",
+        "routeOrWindow": "internal outbound notifications only; no /admin/templates/* route",
         "status": "implemented",
         "referenceFiles": [
           "server/notifications/templates.go",

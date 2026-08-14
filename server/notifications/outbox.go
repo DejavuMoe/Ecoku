@@ -13,6 +13,17 @@ import (
 
 var errDeliveryCancelled = errors.New("notification delivery cancelled")
 
+type Worker struct {
+	done <-chan struct{}
+}
+
+func (worker *Worker) Wait() {
+	if worker == nil || worker.done == nil {
+		return
+	}
+	<-worker.done
+}
+
 func EnqueueNewComment(tx *gorm.DB, comment model.Comment) error {
 	emailRow, err := loadSetting(tx, ChannelEmail)
 	if err != nil {
@@ -57,18 +68,23 @@ func enqueue(tx *gorm.DB, eventType string, commentID uint) error {
   ON CONFLICT(event_type, comment_id) DO NOTHING`, eventType, commentID, now, now, now).Error
 }
 
-func StartWorker(ctx context.Context) error {
+func StartWorker(ctx context.Context) (*Worker, error) {
 	cutoff := time.Now().UTC().Add(-10 * time.Minute)
 	if err := model.DB.Table("notification_outbox").Where("status = 'processing' AND locked_at < ?", cutoff).Updates(map[string]any{
 		"status": "failed", "locked_at": nil, "last_error_code": "worker_recovered",
 		"available_at": time.Now().UTC(), "updated_at": time.Now().UTC(),
 	}).Error; err != nil {
-		return err
+		return nil, err
 	}
+	done := make(chan struct{})
 	go func() {
+		defer close(done)
 		ticker := time.NewTicker(3 * time.Second)
 		defer ticker.Stop()
 		for {
+			if ctx.Err() != nil {
+				return
+			}
 			for i := 0; i < 10; i++ {
 				processed, _ := ProcessPendingOnce(ctx)
 				if !processed {
@@ -82,7 +98,7 @@ func StartWorker(ctx context.Context) error {
 			}
 		}
 	}()
-	return nil
+	return &Worker{done: done}, nil
 }
 
 func ProcessPendingOnce(ctx context.Context) (bool, error) {

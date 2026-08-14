@@ -21,11 +21,7 @@ assert.match(html, /id="site-comment-limit"[^>]*min="1"[^>]*max="10000"/, "site 
 assert.match(html, /textareaRow\("无评论文案"/, "site settings should expose the empty-comment copy");
 assert.match(html, /\.queue-tail\s*\{[^}]*grid-template-columns:[^}]*54px;/s, "queue relation and status columns should stay aligned");
 assert.match(html, /\.queue-row:not\(:has\(\.queue-check-wrap\)\) \.queue-item \{ grid-column: 1 \/ -1;/, "non-selectable queues should keep the item across both grid columns");
-assert.match(html, /email-blogger-new-comment-v5\.html/, "blogger new-comment email preview should stay available");
-assert.match(html, /email-blogger-new-reply-v5\.html/, "blogger new-reply email preview should stay available");
-assert.match(html, /email-visitor-reply-v5\.html/, "visitor reply email preview should stay available");
-assert.match(html, /email-domain-fallback-v5\.html/, "site-name fallback preview should stay available");
-assert.match(html, /telegram-notification-v5\.html/, "Telegram preview should stay available");
+assert.doesNotMatch(html, /通知模板|template-panel|template-link/, "admin UI should not expose notification template previews");
 
 for (const file of [
   "email-blogger-new-comment-v5.html",

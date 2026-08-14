@@ -3,6 +3,27 @@
 本项目遵循 [Semantic Versioning](https://semver.org/)。正式发布前的候选版本可能继续调整 API、
 配置和数据库结构；升级前必须阅读对应版本说明并备份 SQLite 数据库。
 
+## [0.1.0-rc.3] - 2026-08-14
+
+### 变更
+
+- 生产 Compose 固定使用 `v0.1.0-rc.3`，宿主目录收敛为 `app/config.yaml`、`app/logs/` 与
+  `data/`，不再通过额外 `.env` 重复维护镜像版本；
+- 容器默认使用 release 模式，运行环境文件只保留首次初始化所需的管理员与通知密钥；
+- SQLite 启动时启用并验证 WAL、5 秒忙等待、`synchronous=NORMAL` 与外键约束；连接池仍保持
+  单连接，避免在候选版本中未经压测扩大进程内并发边界；
+- 服务收到 SIGTERM 后会先停止 HTTP 与通知 worker，再 checkpoint WAL 并关闭 SQLite，保证正常
+  停服后的单文件冷备份边界；
+- 管理端不再展示通知模板预览，也不再公开 `/admin/templates/*` 静态页面；实际 SMTP 与
+  Telegram 通知模板及投递逻辑保持不变。
+
+### 升级边界
+
+- 本版本不改变 SQLite schema；首次启动会把现有数据库的持久化日志模式切换为 WAL。升级时必须
+  原样保留 `data/ecoku.sqlite3`，并按停服备份流程处理运行期的 `-wal` / `-shm` 边车文件；
+- 从 `v0.1.0-rc.2` 升级需要停服后把 `config.yaml` 移到 `app/config.yaml`，并把旧
+  `data/ecoku.log`（若存在）移到 `app/logs/ecoku.log`。完整步骤和回滚方式见部署文档。
+
 ## [0.1.0-rc.2] - 2026-08-14
 
 ### 新增
@@ -34,3 +55,4 @@
 
 [0.1.0-rc.1]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.1
 [0.1.0-rc.2]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.2
+[0.1.0-rc.3]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.3
