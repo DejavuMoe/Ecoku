@@ -24,6 +24,8 @@ steps:
       dockerfile: Dockerfile
       platforms: linux/amd64
       tag: ${CI_COMMIT_TAG}-amd64
+      cache_images:
+        - git.via.moe/dejavu/ecoku:buildcache-amd64
       buildkit_oci_max_parallelism: 1
       build_args:
         - ECOKU_VERSION=${CI_COMMIT_TAG}
