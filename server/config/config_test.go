@@ -28,6 +28,9 @@ func TestApplyConfigRegistersSitesAndAppliesCommentDefaults(t *testing.T) {
 	if loaded.Database.SQLite.Path != "./data/ecoku.bin" {
 		t.Fatalf("default sqlite path = %q", loaded.Database.SQLite.Path)
 	}
+	if loaded.Site.LogPath != "" {
+		t.Fatalf("empty log_path should stay stdout, got %q", loaded.Site.LogPath)
+	}
 	if _, ok := GetRegisteredSite("unknown"); ok {
 		t.Fatal("unknown site was registered")
 	}

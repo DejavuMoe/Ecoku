@@ -149,6 +149,8 @@
 - 当前全新 schema 不创建 `users`、`email_verification_codes` 或 `counts` 遗留表。
 - P4 的默认交付拓扑是单个非 root 运行容器：Go 进程同时提供 API 和 `/admin/` 静态管理端，SQLite 数据与配置从容器外持久化；
   管理端静态文件缺失时，启用管理员能力的服务必须启动失败。
+- 应用日志始终写入 stdout，供 `docker compose logs` 跟随；`site.log_path` 指向普通文件时额外由进程内轮转保留副本。
+  空值、`stdout`、`-` 或 `/dev/stdout` 只写标准输出。日志仍不得包含 IP、UA、凭据、token 或评论正文。
 - 浏览器 SDK 的 npm 包名为 `ecoku`，P4 发布候选版本为 `3.0.0`，提供 ESM、CommonJS、UMD 和 TypeScript 声明；
   根工作区为 private，自动化只生成发布候选构件，不创建 tag、release 或执行 npm publish。
 - 旧持久开发验收实例已经退役；其专用域名、IP、同步脚本、部署模板和登录指引不再属于当前

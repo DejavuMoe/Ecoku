@@ -13,6 +13,11 @@ services:
       - ./app/config.yaml:/app/config.yaml:ro
       - ./app/logs:/var/log/ecoku
       - ./data:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=16m

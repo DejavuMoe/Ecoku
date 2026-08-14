@@ -189,9 +189,7 @@ func applyDefaults(loaded *Config) {
 	if loaded.Site.Port == 0 {
 		loaded.Site.Port = 12123
 	}
-	if strings.TrimSpace(loaded.Site.LogPath) == "" {
-		loaded.Site.LogPath = "./data/log.txt"
-	}
+	loaded.Site.LogPath = strings.TrimSpace(loaded.Site.LogPath)
 	if strings.TrimSpace(loaded.Database.SQLite.Path) == "" {
 		loaded.Database.SQLite.Path = "./data/ecoku.bin"
 	}

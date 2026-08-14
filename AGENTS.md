@@ -23,12 +23,27 @@
 
 - `server/`、`packages/client/`、`packages/admin/` 是运行时代码；`designs/`、`examples/` 和
   `docs/progress/` 不进入运行时镜像。
-- 根 `VERSION` 是 OCI 候选版本的唯一文本版本来源；发布 tag 必须为 `v` + `VERSION`。
+- 根 `VERSION` 是容器 / OCI 候选版本的唯一文本来源：整文件一行、不带前导 `v`。它不进入 Go 或
+  `pnpm` 日常构建，也不驱动 `packages/client`、`packages/admin` 的 package 版本。
+- 准备容器发版提交时，必须把同一版本号同步到这四项，缺一不可：
+  - `VERSION`（无 `v`）
+  - 根 `package.json` 的 `version`（与 `VERSION` 相同）
+  - `compose.yaml` 的 `image`，精确写成 `git.via.moe/dejavu/ecoku:v` + `VERSION`；禁止
+    `ECOKU_VERSION` 占位符或浮动 tag
+  - `CHANGELOG.md` 对应章节与页脚 tag 链接
+- 发布 Git tag 必须为 `v` + `VERSION` 的整行内容。Woodpecker 只在 `v*` tag 上构建镜像，并用
+  `CI_COMMIT_TAG`（带 `v`）作为镜像 tag 和 OCI `org.opencontainers.image.version`。tag 流水线会
+  校验去掉 `v` 后与 `VERSION` 完全一致，且 `compose.yaml` 已钉死同一 tag。改 `VERSION` 本身不会
+  生成镜像。
 - 私有 Forgejo 源仓库可以发布公开 OCI 镜像。Woodpecker 在原生 `linux/amd64` 与 `linux/arm64`
   Agent 上测试和构建，再合并同一 tag 的 manifest；CI 不部署生产服务器、不读取生产配置、不迁移生产数据库。
 - 文档和示例只使用 `<REGISTRY_HOST>`、`<OWNER>`、`comments.example.com`、`blog.example.com`
   等占位符。真实域名、密码、token、SMTP 凭据、Telegram Token、数据库和日志不得进入 Git。
 - 提交、推送、tag、镜像发布、生产部署和真实数据库操作均需要当前任务的明确授权。
+- 每次发版（新 tag）若可能影响生产平滑升级——包括 schema、Compose 挂载、配置键、日志出口
+  或镜像契约——必须在回复中先给出：停服冷备份、改精确镜像 tag、
+  `sudo docker compose pull && sudo docker compose up -d`、健康检查与回滚步骤。未经当前任务
+  明确授权，不得对生产服务器或生产数据库执行这些步骤。
 
 ## 修改后的最低验证
 
