@@ -1,3 +1,6 @@
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createPinia, setActivePinia } from 'pinia'
 import { mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -197,9 +200,23 @@ describe('approved production surface', () => {
     const store = useAdminStore(); store.token = 'token'; store.sites = [site()]; store.selectedSiteId = 'site-a'; store.comments = []; store.counts = { published: 0, deleted: 0 }
     const wrapper = mount(App, { global: { plugins: [pinia] } })
     const text = wrapper.text()
-    for (const forbidden of ['用户注册', 'Count', 'management key', '站点管理密钥', '待审核', '批准所选', '拒绝所选']) expect(text).not.toContain(forbidden)
+    for (const forbidden of ['用户注册', 'Count', 'management key', '站点管理密钥', '待审核', '批准所选', '拒绝所选', '配色预览']) expect(text).not.toContain(forbidden)
     expect(text).toContain('评论管理')
     expect(text).toContain('站点管理')
     expect(text).toContain('通知设置')
+  })
+
+  it('uses auto color scheme with comment-aligned dark tokens and no persisted theme switcher', () => {
+    const here = path.dirname(fileURLToPath(import.meta.url))
+    const html = fs.readFileSync(path.join(here, '../index.html'), 'utf8')
+    const css = fs.readFileSync(path.join(here, 'style.css'), 'utf8')
+    expect(html).toContain('data-theme="auto"')
+    expect(html).toContain('content="light dark"')
+    expect(css).toContain('@media (prefers-color-scheme: dark)')
+    expect(css).toMatch(/html\[data-theme="auto"\][\s\S]*--paper: rgb\(26, 29, 32\)/)
+    expect(css).toContain('--surface: rgb(34, 38, 42)')
+    expect(css).toContain('--ink: rgb(242, 236, 226)')
+    expect(html).not.toMatch(/localStorage|sessionStorage/)
+    expect(css).not.toMatch(/localStorage|sessionStorage/)
   })
 })
