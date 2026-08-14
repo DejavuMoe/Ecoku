@@ -2,16 +2,25 @@ name: ecoku
 
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:${ECOKU_VERSION:-v0.1.0-rc.1}"
+    image: "git.via.moe/dejavu/ecoku:${ECOKU_VERSION:-v0.1.0-rc.2}"
     init: true
     restart: unless-stopped
     env_file:
-      - ./deploy/ecoku.env
+      - ./ecoku.env
     ports:
       - "127.0.0.1:12123:12123"
     volumes:
-      - ./deploy/config.yaml:/app/config.yaml:ro
-      - ecoku-data:/data
+      - type: bind
+        source: ./config.yaml
+        target: /app/config.yaml
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./data
+        target: /data
+        bind:
+          create_host_path: false
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,nodev,size=16m
@@ -26,6 +35,3 @@ services:
       retries: 3
       start_period: 10s
     stop_grace_period: 30s
-
-volumes:
-  ecoku-data:

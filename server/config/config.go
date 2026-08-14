@@ -39,11 +39,19 @@ var (
 // Config is the complete server configuration.
 type Config struct {
 	Site          SiteConfig             `yaml:"site"`
+	Client        ClientConfig           `yaml:"client"`
 	RateLimit     RateLimitConfig        `yaml:"rate_limit"`
 	Sites         []RegisteredSiteConfig `yaml:"sites"`
 	Admin         AdminConfig            `yaml:"admin"`
 	Notifications NotificationsConfig    `yaml:"notifications"`
 	Database      DatabaseConfig         `yaml:"database"`
+}
+
+// ClientConfig controls the optional browser assets served by the Go process.
+// Keeping this path explicit avoids making source-only development depend on
+// frontend build output that may not exist yet.
+type ClientConfig struct {
+	StaticDir string `yaml:"static_dir"`
 }
 
 // SiteConfig contains process-level settings. Browser origins belong to each
@@ -190,6 +198,7 @@ func applyDefaults(loaded *Config) {
 	for i := range loaded.Site.TrustedProxies {
 		loaded.Site.TrustedProxies[i] = strings.TrimSpace(loaded.Site.TrustedProxies[i])
 	}
+	loaded.Client.StaticDir = strings.TrimSpace(loaded.Client.StaticDir)
 
 	if loaded.RateLimit.WindowSeconds == 0 {
 		loaded.RateLimit.WindowSeconds = 60
@@ -701,6 +710,13 @@ func GetAdminStaticDir() string {
 		return ""
 	}
 	return strings.TrimSpace(GlobalConfig.Admin.StaticDir)
+}
+
+func GetClientStaticDir() string {
+	if GlobalConfig == nil {
+		return ""
+	}
+	return strings.TrimSpace(GlobalConfig.Client.StaticDir)
 }
 
 func GetDatabaseConfig() *DatabaseConfig {

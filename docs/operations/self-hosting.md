@@ -1,13 +1,13 @@
 # Ecoku 首次自托管指南
 
 Ecoku 由一个 Go 进程提供公开 API、管理员 API、通知队列、健康检查和 `/admin/` 管理端，
-只使用 SQLite3。浏览器 SDK 由内容站点自行托管。本指南分别给出一般二进制和 Docker Compose
+`/client/ecoku-loader.js`、`/client/ecoku.umd.js`，只使用 SQLite3。本指南分别给出一般二进制和 Docker Compose
 部署，并在后半部分共用首次初始化、站点创建和 Twikoo 导入步骤。
 
 ## 1. 选择部署方式
 
 - **一般二进制**：适合已有 systemd、希望直接管理进程和文件权限的 Linux 服务器。
-- **Docker Compose**：适合直接拉取 Forgejo 已发布镜像，并用只读根文件系统和命名卷管理运行环境的服务器。
+- **Docker Compose**：适合直接拉取 Forgejo 已发布镜像，并用只读根文件系统和部署目录绑定挂载管理运行环境的服务器。
 
 两种方式不能共用同一个正在运行的 SQLite 文件。先选定一种方式，再完成全部初始化步骤。
 
@@ -29,15 +29,26 @@ chmod 600 ecoku.env
 
 - 管理员用户名、bcrypt cost 不低于 10 的密码哈希和独立 token key；
 - 独立的 32 字节通知加密主密钥；
-- 管理端对外 Origin，例如 `https://comments.example.com`；
+- 管理端对外 Origin，例如 `https://ecoku.via.moe`；
 - SQLite、日志和管理端静态文件的实际绝对路径；
 - `trusted_proxies: []`，除非已经验证反向代理的精确 socket 地址或最小 CIDR。
 
 推荐先把模板中的示例站点改成 `sites: []`，启动后通过管理端添加站点。若保留 YAML 站点，
 它只会在空数据库初始化时作为种子写入；以后修改 YAML 不会覆盖数据库中的站点。
 
-可用 `openssl rand -base64 48` 生成随机 key。bcrypt 应通过受保护的交互提示生成，例如
-`htpasswd -nB admin`；不要把明文密码写进命令参数。每个 Origin 必须是完整的
+可用 `openssl rand -base64 48` 生成随机 key。容器内置的 `hash-password` 子命令从标准输入读取
+明文并只输出 bcrypt 哈希，不会把密码放入进程参数：
+
+```bash
+read -rsp '设置 Ecoku 管理员密码: ' ECOKU_ADMIN_PASSWORD; echo
+printf '%s\n' "$ECOKU_ADMIN_PASSWORD" | \
+  docker run --rm -i --entrypoint /app/ecoku-server \
+  git.via.moe/dejavu/ecoku:v0.1.0-rc.2 hash-password
+unset ECOKU_ADMIN_PASSWORD
+```
+
+将输出完整复制到 `ECOKU_ADMIN_PASSWORD_HASH='...'`，并设置一个非空
+`ECOKU_ADMIN_USERNAME`。Ecoku 没有默认账号或默认密码，也不会把管理员写入 SQLite。每个 Origin 必须是完整的
 `http/https + 主机 + 可选端口`，不能包含路径、通配符或尾部斜杠。
 
 ## 3. 一般二进制部署
@@ -48,6 +59,7 @@ chmod 600 ecoku.env
 corepack enable
 pnpm install --frozen-lockfile
 pnpm --dir packages/admin build
+pnpm --dir packages/client build
 
 cd server
 CGO_ENABLED=0 go build -trimpath -o ../ecoku-server .
@@ -64,16 +76,20 @@ database:
     path: "/var/lib/ecoku/ecoku.sqlite3"
 admin:
   static_dir: "/opt/ecoku/admin"
+client:
+  static_dir: "/opt/ecoku/client"
 ```
 
 再在 Linux 上建立独立用户和目录；以下路径可按实际环境调整：
 
 ```bash
 sudo useradd --system --home /var/lib/ecoku --shell /usr/sbin/nologin ecoku
-sudo install -d -o root -g ecoku -m 0750 /etc/ecoku /opt/ecoku/admin
+sudo install -d -o root -g ecoku -m 0750 /etc/ecoku /opt/ecoku/admin /opt/ecoku/client
 sudo install -d -o ecoku -g ecoku -m 0750 /var/lib/ecoku
 sudo install -o root -g ecoku -m 0750 ecoku-server /opt/ecoku/ecoku-server
 sudo cp -a packages/admin/dist/. /opt/ecoku/admin/
+sudo install -o root -g ecoku -m 0640 packages/client/dist/ecoku.umd.js /opt/ecoku/client/ecoku.umd.js
+sudo install -o root -g ecoku -m 0640 packages/client/dist/ecoku-loader.js /opt/ecoku/client/ecoku-loader.js
 sudo chown -R root:ecoku /opt/ecoku/admin
 sudo chmod -R u=rwX,g=rX,o= /opt/ecoku/admin
 sudo install -o root -g ecoku -m 0640 config.yaml /etc/ecoku/config.yaml
@@ -118,35 +134,82 @@ curl --fail http://127.0.0.1:12123/api/health
 
 ## 4. Docker Compose 部署
 
-根 `compose.yaml` 不在部署服务器构建源码，只拉取精确版本
-`git.via.moe/dejavu/ecoku:v0.1.0-rc.1`。Compose 使用 UID/GID `10001`，只读绑定的配置必须对该用户
-可读。把配置放回仓库的 `deploy/` 目录后执行：
+生产服务器不需要仓库目录，也不在服务器构建源码。先建立一个独立部署目录；此后的全部命令都在
+该目录中执行：
 
 ```bash
-cp config.yaml deploy/config.yaml
-cp ecoku.env deploy/ecoku.env
-chmod 644 deploy/config.yaml
-chmod 600 deploy/ecoku.env
+sudo install -d -o "$USER" -g "$USER" -m 0750 /opt/ecoku
+cd /opt/ecoku
+mkdir -p data backups
+```
 
-docker login git.via.moe --username dejavu
+从已检出的私有仓库安全复制 `compose.yaml`、`deploy/config.yaml.example` 和
+`deploy/ecoku.env.example` 到此目录，分别命名为 `compose.yaml`、`config.yaml`、`ecoku.env`。
+例如在保存源码的工作站执行（替换生产 SSH 主机）：
+
+```bash
+scp compose.yaml ops@production:/opt/ecoku/compose.yaml
+scp deploy/config.yaml.example ops@production:/opt/ecoku/config.yaml
+scp deploy/ecoku.env.example ops@production:/opt/ecoku/ecoku.env
+```
+生产目录最终只有运行所需文件：
+
+```text
+/opt/ecoku/
+├── compose.yaml
+├── config.yaml
+├── ecoku.env
+├── data/
+└── backups/
+```
+
+根 `compose.yaml` 只拉取精确版本 `git.via.moe/dejavu/ecoku:v0.1.0-rc.2`。Forgejo 容器包为
+公开包时不需要 `docker login`；若以后改为私有包，再使用只授予该包读取权限的细粒度令牌交互登录。
+
+先编辑 `config.yaml`：
+
+- `notifications.instance_public_url: "https://ecoku.via.moe"`；
+- `admin.allowed_origins` 只包含 `https://ecoku.via.moe`；
+- `sites: []`，首次登录后从管理端添加站点；
+- 保留 `client.static_dir: "/app/client"`、SQLite `/data/ecoku.sqlite3` 和日志 `/data/ecoku.log`。
+
+再编辑 `ecoku.env`。为每个 key 单独生成随机值，并按上一节交互生成管理员哈希；不要复用 key，
+不要留下空值。完成后设置绑定挂载权限：
+
+```bash
+sudo chown "$USER":10001 config.yaml
+sudo chmod 0640 config.yaml
+sudo chown "$USER":"$USER" ecoku.env
+sudo chmod 0600 ecoku.env
+sudo chown -R 10001:10001 data
+sudo chmod 0750 data
+sudo chown "$USER":"$USER" backups
+sudo chmod 0700 backups
+
 docker compose config --quiet
 docker compose pull
 docker compose up -d
 docker compose ps
 curl --fail http://127.0.0.1:12123/api/health
+curl --fail --head http://127.0.0.1:12123/client/ecoku-loader.js
+curl --fail --head http://127.0.0.1:12123/client/ecoku.umd.js
 ```
 
-`docker login` 会交互式读取 Forgejo 细粒度令牌，不要把令牌写进参数或 shell 历史。Compose 默认固定
-首个 RC；以后验收新版本时，在同一 shell 中设置 `ECOKU_VERSION=vX.Y.Z` 后依次执行
+Compose 文件仍使用服务级 `volumes:` 语法声明绑定挂载，但没有顶层命名卷：宿主的 `./config.yaml`
+映射为只读 `/app/config.yaml`，宿主的 `./data/` 映射为可写 `/data/`。`create_host_path: false`
+会在路径遗漏时直接报错，避免 Docker 静默创建错误类型的目录。不要删除、移动或让其他实例同时写
+`./data/`。
+
+Compose 默认固定当前 RC；以后验收新版本时，在同一 shell 中设置 `ECOKU_VERSION=vX.Y.Z` 后依次执行
 `docker compose pull` 和 `docker compose up -d`。不要使用浮动 `latest`。
 
-空数据卷会初始化为当前 schema。非空但无版本、版本或校验和不匹配的数据库会拒绝启动；当前
+空 `./data/` 会初始化为当前 schema。非空但无版本、版本或校验和不匹配的数据库会拒绝启动；当前
 版本不自动迁移历史 schema。默认 Compose 只绑定 `127.0.0.1:12123`，应由同机 Caddy、Nginx
 或其他反向代理提供 TLS。
 
 ## 5. 首次启动后的初始化
 
-1. 确认 `/api/health` 返回成功，并确认反向代理的 `https://comments.example.com/admin/` 可访问。
+1. 确认 `/api/health` 返回成功，并确认反向代理的 `https://ecoku.via.moe/admin/` 可访问。
 2. 使用环境文件中对应的管理员用户名和明文密码登录；服务器保存的是 bcrypt 哈希，不提供默认密码。
 3. 打开「站点管理」并新建站点：
    - **站点 ID**：浏览器 SDK 使用的稳定标识，创建后不要随意改动；
@@ -188,20 +251,28 @@ sudo systemctl start ecoku
 
 ```bash
 docker compose stop ecoku
-mkdir -p ./backups
-chmod 700 ./backups
-docker compose cp ecoku:/data/ecoku.sqlite3 ./backups/ecoku-before-twikoo.sqlite3
+sudo cp --reflink=auto --preserve=mode,timestamps \
+  ./data/ecoku.sqlite3 ./backups/ecoku-before-twikoo.sqlite3
+sudo chown "$USER":"$USER" ./backups/ecoku-before-twikoo.sqlite3
+chmod 600 ./backups/ecoku-before-twikoo.sqlite3
 sha256sum ./backups/ecoku-before-twikoo.sqlite3 \
   > ./backups/ecoku-before-twikoo.sqlite3.sha256
 chmod 600 ./backups/ecoku-before-twikoo.sqlite3*
 
+mkdir -p ./import
+chmod 700 ./import
+sudo install -o 10001 -g 10001 -m 0600 \
+  /private/path/twikoo-comment.json ./import/twikoo-comment.json
+
 docker compose run --rm --no-deps \
-  --volume /absolute/path/twikoo-comment.json:/tmp/twikoo-comment.json:ro \
+  --volume "$(pwd)/import/twikoo-comment.json:/tmp/twikoo-comment.json:ro" \
   ecoku import-twikoo --site blog --file /tmp/twikoo-comment.json --dry-run
 
 docker compose run --rm --no-deps \
-  --volume /absolute/path/twikoo-comment.json:/tmp/twikoo-comment.json:ro \
+  --volume "$(pwd)/import/twikoo-comment.json:/tmp/twikoo-comment.json:ro" \
   ecoku import-twikoo --site blog --file /tmp/twikoo-comment.json
+sudo rm -f ./import/twikoo-comment.json
+rmdir ./import
 docker compose start ecoku
 ```
 
@@ -214,6 +285,9 @@ docker compose logs --tail=100 ecoku
 
 再登录管理端核对总数、时间范围、页面分布和深层回复。源数据中的无效邮箱或网址会影响回复通知；
 是否保留、清空或修正应在导入前明确决定，不能在没有备份的情况下直接批量修改。
+
+完成后在公开站点抽查根评论和多层回复，并确认导入没有触发 SMTP 或 Telegram 历史通知。保留离线
+原始导出和带哈希的 SQLite 备份，不要把 `import/` 留在长期运行目录。
 
 ## 7. TLS、代理与安全边界
 

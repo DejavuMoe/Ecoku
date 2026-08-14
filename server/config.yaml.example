@@ -11,6 +11,11 @@ site:
   # 默认不信任任何代理。部署反向代理后只能填写明确的 IP 或 CIDR。
   trusted_proxies: []
 
+# 可选。设置后由 Go 直接提供 /client/ecoku-loader.js 与 /client/ecoku.umd.js。
+# 源码开发时应先构建 packages/client；容器固定使用 /app/client。
+client:
+  static_dir: "../packages/client/dist"
+
 # 单进程、固定窗口限流；进程重启后计数清空。
 rate_limit:
   window_seconds: 60

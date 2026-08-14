@@ -7,6 +7,7 @@ Release 或推送镜像。仓库当前也没有 Git 元数据，因此无法形�
 
 - ESM：`dist/ecoku.es.js`
 - 浏览器 `<script>` UMD：`dist/ecoku.umd.js`，全局名 `Ecoku`
+- 静态站点加载器：`dist/ecoku-loader.js`，由 Ecoku 服务端与 UMD 同源托管
 - CommonJS：`dist/ecoku.cjs`
 - TypeScript：`dist/ecoku.d.ts`
 

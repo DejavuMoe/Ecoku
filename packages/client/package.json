@@ -36,7 +36,7 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run build:lib",
-    "build:lib": "vite build --mode lib && node scripts/sync-cjs.mjs && npm run build:types",
+    "build:lib": "vite build --mode lib && vite build --config vite.loader.config.ts && node scripts/sync-cjs.mjs && npm run build:types",
     "build:types": "tsc --project tsconfig.build.json",
     "preview": "vite preview",
     "test": "vitest run",

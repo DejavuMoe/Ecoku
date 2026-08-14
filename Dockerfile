@@ -4,7 +4,7 @@ ARG ECOKU_VERSION=development
 ARG ECOKU_REVISION=unknown
 ARG ECOKU_SOURCE=""
 
-FROM node:24.18.0-alpine3.24 AS admin-build
+FROM node:24.18.0-alpine3.24 AS frontend-build
 WORKDIR /src
 RUN corepack enable
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -13,7 +13,9 @@ COPY packages/client/package.json packages/client/package.json
 RUN --mount=type=cache,id=ecoku-pnpm,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
 COPY packages/admin packages/admin
-RUN pnpm --dir packages/admin build
+COPY packages/client packages/client
+RUN pnpm --dir packages/client build \
+    && pnpm --dir packages/admin build
 
 FROM golang:1.26.5-alpine3.24 AS server-build
 WORKDIR /src
@@ -38,12 +40,13 @@ LABEL org.opencontainers.image.title="Ecoku" \
 RUN apk add --no-cache ca-certificates tzdata \
     && addgroup -S -g 10001 ecoku \
     && adduser -S -D -H -u 10001 -G ecoku ecoku \
-    && install -d -o ecoku -g ecoku -m 0750 /app /app/admin /data
+    && install -d -o ecoku -g ecoku -m 0750 /app /app/admin /app/client /data
 WORKDIR /app
 COPY --from=server-build --chown=ecoku:ecoku /out/ecoku-server /app/ecoku-server
-COPY --from=admin-build --chown=ecoku:ecoku /src/packages/admin/dist /app/admin
+COPY --from=frontend-build --chown=ecoku:ecoku /src/packages/admin/dist /app/admin
+COPY --from=frontend-build --chown=ecoku:ecoku /src/packages/client/dist/ecoku.umd.js /app/client/ecoku.umd.js
+COPY --from=frontend-build --chown=ecoku:ecoku /src/packages/client/dist/ecoku-loader.js /app/client/ecoku-loader.js
 USER 10001:10001
 EXPOSE 12123
-VOLUME ["/data"]
 STOPSIGNAL SIGTERM
 ENTRYPOINT ["/app/ecoku-server"]

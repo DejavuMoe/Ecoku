@@ -19,7 +19,7 @@
 - Git remote：`ssh://git@ssh.via.moe/dejavu/Ecoku.git`；
 - Forgejo Web/Registry：`git.via.moe`；
 - 镜像：`git.via.moe/dejavu/ecoku`；
-- 首个候选版本：`v0.1.0-rc.1`，必须与根 `VERSION` 的 `0.1.0-rc.1` 一致；
+- 当前候选版本：`v0.1.0-rc.2`，必须与根 `VERSION` 的 `0.1.0-rc.2` 一致；
 - 默认分支：`master`。
 
 Forgejo 容器镜像格式为 `{registry}/{owner}/{image}`。镜像名与仓库名匹配，Dockerfile 还写入
@@ -106,9 +106,9 @@ Registry 登录使用 PAT，不使用账户密码。不要把令牌放进仓库�
 推送配置文件会触发首条 pipeline，具体查看方式见 Woodpecker
 [First pipeline](https://woodpecker-ci.org/docs/usage/intro)。
 
-## 7. 发布首个 RC
+## 7. 发布当前 RC
 
-只有普通 push 的 `test` 已通过，才创建带注释 tag `v0.1.0-rc.1`。tag pipeline 会先检查：
+只有普通 push 的 `test` 已通过，才创建带注释 tag `v0.1.0-rc.2`。tag pipeline 会先检查：
 
 - tag 满足 SemVer；
 - 去掉前导 `v` 后与根 `VERSION` 完全一致；
@@ -117,12 +117,12 @@ Registry 登录使用 PAT，不使用账户密码。不要把令牌放进仓库�
 成功顺序为：
 
 1. `test`；
-2. 原生 Agent 分别推送 `v0.1.0-rc.1-amd64` 和 `v0.1.0-rc.1-arm64`；
-3. `publish-manifest` 合成 `v0.1.0-rc.1`；
+2. 原生 Agent 分别推送 `v0.1.0-rc.2-amd64` 和 `v0.1.0-rc.2-arm64`；
+3. `publish-manifest` 合成 `v0.1.0-rc.2`；
 4. Forgejo Packages 显示 `dejavu/ecoku` 及该版本。
 
 默认不发布 `latest`。两个架构后缀标签是可追溯中间产物；部署只使用
-`git.via.moe/dejavu/ecoku:v0.1.0-rc.1`。
+`git.via.moe/dejavu/ecoku:v0.1.0-rc.2`。
 
 ## 8. 发布后验收
 
@@ -130,13 +130,13 @@ Registry 登录使用 PAT，不使用账户密码。不要把令牌放进仓库�
 
 ```bash
 docker login git.via.moe --username dejavu
-docker buildx imagetools inspect git.via.moe/dejavu/ecoku:v0.1.0-rc.1
-docker pull --platform linux/amd64 git.via.moe/dejavu/ecoku:v0.1.0-rc.1
-docker pull --platform linux/arm64 git.via.moe/dejavu/ecoku:v0.1.0-rc.1
+docker buildx imagetools inspect git.via.moe/dejavu/ecoku:v0.1.0-rc.2
+docker pull --platform linux/amd64 git.via.moe/dejavu/ecoku:v0.1.0-rc.2
+docker pull --platform linux/arm64 git.via.moe/dejavu/ecoku:v0.1.0-rc.2
 ```
 
 manifest 必须同时列出 `linux/amd64` 与 `linux/arm64`。再按
-[首次 RC 验收](./first-release.md)使用独立临时配置和数据卷运行 AMD64 容器，验证健康、管理端、
+[RC 验收](./first-release.md)使用独立临时配置和绑定数据目录运行 AMD64 容器，验证健康、管理端、
 SQLite 初始化和重启持久性；不要让两个架构容器共享 SQLite 文件。
 
 ## 9. 失败处理与边界

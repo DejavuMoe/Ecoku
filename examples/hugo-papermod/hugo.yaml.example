@@ -1,5 +1,6 @@
 params:
   comments: true
   ecoku:
-    server_url: "https://comments.example.com"
+    # 不要以 / 结尾；加载器与 UMD 均由 Ecoku 容器直接提供。
+    server_url: "https://ecoku.via.moe"
     site_id: "blog"
