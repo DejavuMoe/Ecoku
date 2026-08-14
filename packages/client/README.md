@@ -22,11 +22,16 @@ const Ecoku = require('ecoku')
 ```
 
 ```html
-<script src="/vendor/ecoku.umd.js"></script>
+<script src="https://ecoku.example/client/ecoku.umd.js"></script>
 <script>
   const comments = new Ecoku({ /* explicit configuration */ })
 </script>
 ```
+
+The production Ecoku image also exposes `/client/ecoku-loader.js`. Static sites
+can use the loader with declarative `data-ecoku-comments` attributes instead of
+copying the UMD bundle into each site. See the repository static-site integration
+guide for the complete contract.
 
 ## Mount a comment surface
 

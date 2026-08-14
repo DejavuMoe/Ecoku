@@ -1,7 +1,8 @@
-# 首个 RC 推送与 CI/CD 验收
+# RC 推送与 CI/CD 验收
 
-本清单用于第一次把源码推送到私有 Forgejo 仓库，并验证 Woodpecker 测试、原生 AMD64/ARM64
-构建、Forgejo Container Registry 和生产 Compose。它不会授权 CI 连接部署服务器或修改数据库。
+`v0.1.0-rc.1` 已完成第一次私有 Forgejo/Woodpecker 构建。本清单继续用于后续候选版本，验证
+Woodpecker 测试、原生 AMD64/ARM64 构建、Forgejo Container Registry 和生产 Compose。它不会
+授权 CI 连接部署服务器或修改数据库。当前源码候选为 `v0.1.0-rc.2`。
 
 ## 1. 本地发布门槛
 
@@ -21,9 +22,9 @@ Pop-Location
 
 然后核对：
 
-- `VERSION`、`package.json` 与计划 tag 都是 `0.1.0-rc.1`；
+- `VERSION`、`package.json` 与计划 tag 都是 `0.1.0-rc.2`；
 - `deploy/config.yaml`、`deploy/ecoku.env`、数据库、日志、备份、`node_modules`、构建产物和
-  `test_site/` 均不会进入首次提交；
+  本地测试站点均不会进入候选版本提交；
 - `compose.yaml` 只有 `image:`，没有 `build:`，并固定 Forgejo RC 镜像；
 - `docker compose config --quiet` 能在准备好私有部署文件后通过；
 - `CHANGELOG.md` 已记录候选版本边界。
@@ -59,7 +60,7 @@ git add --all
 git status --short
 git diff --cached --check
 git diff --cached --name-only
-git commit -m "chore: prepare Ecoku v0.1.0-rc.1"
+git commit -m "chore: prepare Ecoku v0.1.0-rc.2"
 
 git remote add origin ssh://git@ssh.via.moe/dejavu/Ecoku.git
 git remote -v
@@ -82,15 +83,15 @@ git push -u origin master
 
 失败时只修复源码并重新 push；不要提前创建 tag。
 
-## 5. 创建首个 RC tag
+## 5. 创建新的 RC tag
 
 首次 push 的测试通过后执行：
 
 ```powershell
 git status --short
-git tag -a v0.1.0-rc.1 -m "Ecoku v0.1.0-rc.1"
-git show --no-patch --decorate v0.1.0-rc.1
-git push origin v0.1.0-rc.1
+git tag -a v0.1.0-rc.2 -m "Ecoku v0.1.0-rc.2"
+git show --no-patch --decorate v0.1.0-rc.2
+git push origin v0.1.0-rc.2
 ```
 
 工作区必须干净，tag 必须指向刚通过 CI 的提交。不要使用 `--force`，不要删除并重建已推送 tag。
@@ -100,9 +101,9 @@ git push origin v0.1.0-rc.1
 按依赖顺序确认：
 
 1. `test` 再次通过，版本和 tag 校验通过；
-2. AMD64 产物为 `git.via.moe/dejavu/ecoku:v0.1.0-rc.1-amd64`；
-3. ARM64 产物为 `git.via.moe/dejavu/ecoku:v0.1.0-rc.1-arm64`；
-4. manifest 产物为 `git.via.moe/dejavu/ecoku:v0.1.0-rc.1`；
+2. AMD64 产物为 `git.via.moe/dejavu/ecoku:v0.1.0-rc.2-amd64`；
+3. ARM64 产物为 `git.via.moe/dejavu/ecoku:v0.1.0-rc.2-arm64`；
+4. manifest 产物为 `git.via.moe/dejavu/ecoku:v0.1.0-rc.2`；
 5. manifest 同时列出 `linux/amd64` 和 `linux/arm64`；
 6. Forgejo 包已关联到 `dejavu/Ecoku`，包可见性符合私有项目要求；
 7. 镜像 OCI 标签中的 version、revision 和 source 与 tag 提交一致。
@@ -129,7 +130,7 @@ docker compose logs --tail=100 ecoku
 
 ## 8. 完成定义
 
-只有下列证据同时存在，首个 RC 才算通过：
+只有下列证据同时存在，当前 RC 才算通过：
 
 - 本地测试和构建通过；
 - push pipeline 通过；

@@ -29,59 +29,48 @@ Ecoku 是面向自托管场景的多站点纯文本评论系统。当前版本�
 3. 按[Caddy / Nginx 反向代理](docs/operations/reverse-proxy.md)配置 TLS，检查 `/api/health`，
    登录 `/admin/`，在「站点管理」中添加站点并填写精确允许来源；
 4. 若从 Twikoo 迁移，在该站点仍为空时停服、备份、预检并执行一次导入；
-5. 将浏览器 SDK 放进内容站点自己的静态目录，再按[一般静态网站接入指南](docs/integrations/static-site.md)
-   传入相同的站点 ID 和稳定页面 key。
+5. 由内容站点直接引用 Ecoku 容器提供的 `/client/ecoku-loader.js`，再按
+   [一般静态网站接入指南](docs/integrations/static-site.md)传入相同的站点 ID 和稳定页面 key。
 
 完整的文件权限、systemd、Compose、首次初始化和 Twikoo 导入命令均在
 [自托管指南](docs/operations/self-hosting.md)中，不能用此摘要替代备份与权限步骤。
 
 ## Hugo 站点接入示例
 
-下面以仓库中可跟踪的 `examples/hugo-papermod` 最小示例为例。生产站点应把构建后的浏览器 SDK
-放在 Hugo 自己的静态目录，不从第三方 CDN 加载。`test_site/` 只用于本机端到端验收，已从版本库
-发布内容中排除。
+下面以仓库中可跟踪的 `examples/hugo-papermod` 最小示例为例。生产镜像同源提供加载器与 UMD，
+Hugo 不需要保存或同步 SDK 副本。
 
-1. 构建 SDK：
-
-   ```powershell
-   pnpm --dir packages/client build
-   ```
-
-2. 把 `packages/client/dist/ecoku.umd.js` 复制到 Hugo 的
-   `static/vendor/ecoku.umd.js`。
-
-3. 在 Hugo 配置中声明服务端和站点 ID：
+1. 在 Hugo 配置中声明服务端和站点 ID：
 
    ```yaml
    params:
      comments: true
      ecoku:
-       server_url: "https://comments.example.com"
+       server_url: "https://ecoku.via.moe"
        site_id: "blog"
    ```
 
-4. 在主题的评论 partial 中输出容器和同源初始化脚本。页面 key 与文章标题必须由 Hugo 明确传入：
+2. 把 [`comments.html`](examples/hugo-papermod/layouts/_partials/comments.html) 合并到主题实际使用的
+   评论 partial。页面 key 与文章标题必须由 Hugo 明确传入：
 
    ```html
    <section
      id="ecoku-comment-shell"
+     data-ecoku-comments
      data-server-url="{{ site.Params.ecoku.server_url }}"
      data-site-id="{{ site.Params.ecoku.site_id }}"
      data-page-key="{{ .RelPermalink }}"
      data-page-title="{{ .Title }}"
    >
-     <div id="tcomment"></div>
+     <div data-ecoku-mount></div>
    </section>
-   <script src="/js/ecoku-comments.js" defer></script>
+   <script src="{{ site.Params.ecoku.server_url }}/client/ecoku-loader.js" defer></script>
    ```
 
-   生产模板必须使用 Hugo 的上下文转义能力，不要把访客输入拼进属性或脚本。完整的延迟加载、
-   失败重试实现见
-   [`comments.html`](examples/hugo-papermod/layouts/_partials/comments.html) 和
-   [`ecoku-comments.js`](examples/hugo-papermod/static/js/ecoku-comments.js)。初始化器采用同源外部脚本，
-   无需为严格 CSP 开启 `unsafe-inline` 脚本。
+   生产模板必须使用 Hugo 的上下文转义能力，不要把访客输入拼进属性或脚本。加载器会从相同
+   Ecoku Origin 获取 UMD，并负责滚动到附近后加载、失败提示和重试；页面不需要行内初始化脚本。
 
-5. 在管理端创建站点，填写相同的站点 ID、规范站点 URL 和浏览器实际 Origin。站点名称可留空；
+3. 在管理端创建站点，填写相同的站点 ID、规范站点 URL 和浏览器实际 Origin。站点名称可留空；
    留空时通知与管理端自动使用 URL 的域名。浏览器不能接收 management key。
 
 非 Hugo 网站、多个页面 key 的生成规则、SDK 升级和 CORS 验证见
@@ -97,7 +86,6 @@ Ecoku 是面向自托管场景的多站点纯文本评论系统。当前版本�
 - `deploy/`、`docs/operations/`：自托管配置与运维说明；
 - `.woodpecker/`：测试、双架构镜像构建和 manifest 发布工作流；
 - `VERSION`、`CHANGELOG.md`：服务端容器发布版本与候选版本变更记录；
-- `test_site/`：本机真实主题验收场，不属于可分发源码。
 
 更完整的所有权和发布边界见[仓库目录约定](docs/architecture/repository-layout.md)。
 

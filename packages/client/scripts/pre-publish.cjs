@@ -9,6 +9,7 @@ console.log('🔍 Pre-publish validation...');
 const requiredFiles = [
     'dist/ecoku.es.js',
     'dist/ecoku.umd.js',
+    'dist/ecoku-loader.js',
     'dist/ecoku.cjs',
     'dist/ecoku.d.ts',
     'README.md',
@@ -44,7 +45,7 @@ requiredFields.forEach(field => {
 });
 
 // 检查文件大小
-const distFiles = ['dist/ecoku.es.js', 'dist/ecoku.umd.js', 'dist/ecoku.cjs'];
+const distFiles = ['dist/ecoku.es.js', 'dist/ecoku.umd.js', 'dist/ecoku-loader.js', 'dist/ecoku.cjs'];
 console.log('\n📊 File sizes:');
 
 distFiles.forEach(file => {

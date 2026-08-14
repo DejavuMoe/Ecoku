@@ -28,7 +28,10 @@ vm.runInNewContext(umdSource, browserGlobal, { filename: 'ecoku.umd.js' })
 assert.equal(typeof browserGlobal.globalThis.Ecoku, 'function', 'UMD script must install globalThis.Ecoku')
 assert.deepEqual(Object.keys(browserGlobal.globalThis), ['Ecoku'], 'UMD script must expose only the Ecoku library global')
 
-for (const path of ['dist/ecoku.es.js', 'dist/ecoku.umd.js', 'dist/ecoku.cjs', 'dist/ecoku.d.ts']) {
+const loaderSource = await readFile(new URL('dist/ecoku-loader.js', packageRoot), 'utf8')
+assert.match(loaderSource, /ecoku\.umd\.js/, 'hosted loader must resolve the UMD asset')
+
+for (const path of ['dist/ecoku.es.js', 'dist/ecoku.umd.js', 'dist/ecoku-loader.js', 'dist/ecoku.cjs', 'dist/ecoku.d.ts']) {
   const content = await readFile(new URL(path, packageRoot))
   assert.ok(content.length > 0, `${path} must not be empty`)
 }

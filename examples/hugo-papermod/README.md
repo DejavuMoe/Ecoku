@@ -9,7 +9,6 @@
 examples/hugo-papermod/
 ├── hugo.yaml.example
 ├── layouts/_partials/comments.html
-├── static/js/ecoku-comments.js
 └── assets/css/extended/ecoku.css
 ```
 
@@ -17,22 +16,16 @@ examples/hugo-papermod/
 
 ```powershell
 Copy-Item examples/hugo-papermod/layouts/_partials/comments.html SITE/layouts/_partials/comments.html
-Copy-Item examples/hugo-papermod/static/js/ecoku-comments.js SITE/static/js/ecoku-comments.js
 Copy-Item examples/hugo-papermod/assets/css/extended/ecoku.css SITE/assets/css/extended/ecoku.css
 ```
 
-将 `hugo.yaml.example` 中的 `params` 合并进站点配置。然后在 Ecoku 仓库构建 SDK，并把构建产物
-复制到站点自己的静态目录：
-
-```powershell
-pnpm --dir packages/client build
-New-Item -ItemType Directory -Force SITE/static/vendor | Out-Null
-Copy-Item packages/client/dist/ecoku.umd.js SITE/static/vendor/ecoku.umd.js
-```
+将 `hugo.yaml.example` 中的 `params` 合并进站点配置。运行镜像会直接提供
+`/client/ecoku-loader.js` 与 `/client/ecoku.umd.js`，Hugo 站点不再保存或同步 SDK 副本。
 
 PaperMod 的文章模板需要调用 `{{ partial "comments.html" . }}`。示例 partial 明确把
-`.RelPermalink` 作为稳定页面 key、`.Title` 作为文章标题传给 SDK，并以外部同源脚本延迟加载，
-无需给严格 CSP 增加 `unsafe-inline`。
+`.RelPermalink` 作为稳定页面 key、`.Title` 作为文章标题传给 SDK，并以外部脚本延迟加载。
+若站点设置 CSP，`script-src` 和 `connect-src` 必须精确允许 Ecoku 的 HTTPS Origin；当前 SDK
+样式边界另见试用前就绪清单，不能把“无行内初始化脚本”误写成完整严格 CSP 兼容。
 
 最后在 Ecoku 管理端创建相同的 `site_id`，并把 Hugo 本地预览与正式站点的实际 Origin 逐行加入
 允许来源。浏览器端不应包含 management key、管理员 token 或通知凭据。

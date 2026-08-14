@@ -24,6 +24,11 @@ func NewRouter() (*gin.Engine, error) {
 		return nil, err
 	}
 	r.Use(middleware.RequestLogger(), middleware.Recovery(), middleware.Cors())
+	if directory := config.GetClientStaticDir(); directory != "" {
+		if err := registerClientStatic(r, directory); err != nil {
+			return nil, err
+		}
+	}
 	if config.IsAdminEnabled() {
 		if err := registerAdminStatic(r, config.GetAdminStaticDir()); err != nil {
 			return nil, err
@@ -117,6 +122,46 @@ func NewRouter() (*gin.Engine, error) {
 	}
 
 	return r, nil
+}
+
+func registerClientStatic(router *gin.Engine, configuredDirectory string) error {
+	directory := strings.TrimSpace(configuredDirectory)
+	if directory == "" {
+		return fmt.Errorf("client.static_dir 不能为空")
+	}
+	absoluteDirectory, err := filepath.Abs(directory)
+	if err != nil {
+		return fmt.Errorf("解析 client.static_dir: %w", err)
+	}
+	assetNames := []string{"ecoku.umd.js", "ecoku-loader.js"}
+	assetPaths := make(map[string]string, len(assetNames))
+	for _, name := range assetNames {
+		path := filepath.Join(absoluteDirectory, name)
+		info, statErr := os.Stat(path)
+		if statErr != nil || !info.Mode().IsRegular() {
+			return fmt.Errorf("client.static_dir 缺少 %s", name)
+		}
+		assetPaths[name] = path
+	}
+
+	clientStatic := router.Group("/client")
+	clientStatic.Use(func(c *gin.Context) {
+		c.Header("Cache-Control", "public, max-age=3600")
+		c.Header("Cross-Origin-Resource-Policy", "cross-origin")
+		c.Header("Referrer-Policy", "no-referrer")
+		c.Header("X-Content-Type-Options", "nosniff")
+		c.Next()
+	})
+	for name, path := range assetPaths {
+		assetPath := path
+		clientStatic.GET("/"+name, func(c *gin.Context) {
+			c.File(assetPath)
+		})
+		clientStatic.HEAD("/"+name, func(c *gin.Context) {
+			c.File(assetPath)
+		})
+	}
+	return nil
 }
 
 func registerAdminStatic(router *gin.Engine, configuredDirectory string) error {

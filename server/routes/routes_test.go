@@ -5,11 +5,67 @@ import (
 	"ecoku-server/model"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
 )
+
+func TestClientStaticAssetsAreServedWithCrossOriginSafeHeaders(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	configureRoutesTest(t)
+	directory := t.TempDir()
+	for name, body := range map[string]string{
+		"ecoku.umd.js":    "globalThis.Ecoku = function () {};",
+		"ecoku-loader.js": "void 0;",
+	} {
+		if err := os.WriteFile(filepath.Join(directory, name), []byte(body), 0o600); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+	config.GlobalConfig.Client.StaticDir = directory
+	router, err := NewRouter()
+	if err != nil {
+		t.Fatalf("new router: %v", err)
+	}
+
+	for _, name := range []string{"ecoku.umd.js", "ecoku-loader.js"} {
+		request := httptest.NewRequest(http.MethodGet, "/client/"+name, nil)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, request)
+		if recorder.Code != http.StatusOK {
+			t.Fatalf("GET %s status = %d", name, recorder.Code)
+		}
+		if recorder.Header().Get("Cross-Origin-Resource-Policy") != "cross-origin" {
+			t.Fatalf("GET %s missing cross-origin resource policy", name)
+		}
+		if recorder.Header().Get("Cache-Control") != "public, max-age=3600" {
+			t.Fatalf("GET %s unexpected cache policy", name)
+		}
+
+		head := httptest.NewRequest(http.MethodHead, "/client/"+name, nil)
+		headRecorder := httptest.NewRecorder()
+		router.ServeHTTP(headRecorder, head)
+		if headRecorder.Code != http.StatusOK || headRecorder.Body.Len() != 0 {
+			t.Fatalf("HEAD %s status=%d body=%d", name, headRecorder.Code, headRecorder.Body.Len())
+		}
+	}
+}
+
+func TestClientStaticAssetsMustBeComplete(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	configureRoutesTest(t)
+	directory := t.TempDir()
+	if err := os.WriteFile(filepath.Join(directory, "ecoku.umd.js"), []byte("void 0;"), 0o600); err != nil {
+		t.Fatalf("write asset: %v", err)
+	}
+	config.GlobalConfig.Client.StaticDir = directory
+	if _, err := NewRouter(); err == nil || !strings.Contains(err.Error(), "ecoku-loader.js") {
+		t.Fatalf("missing loader error = %v", err)
+	}
+}
 
 func configureRoutesTest(t *testing.T, trustedProxies ...string) {
 	t.Helper()

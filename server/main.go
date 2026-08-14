@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"ecoku-server/config"
 	"ecoku-server/importer"
@@ -10,16 +11,28 @@ import (
 	"ecoku-server/routes"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
+	"strings"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
-	if len(os.Args) > 1 && os.Args[1] == "import-twikoo" {
-		if err := runTwikooImport(os.Args[2:]); err != nil {
-			log.Fatalf("Twikoo 导入失败: %v", err)
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "import-twikoo":
+			if err := runTwikooImport(os.Args[2:]); err != nil {
+				log.Fatalf("Twikoo 导入失败: %v", err)
+			}
+			return
+		case "hash-password":
+			if err := runPasswordHash(os.Stdin, os.Stdout); err != nil {
+				log.Fatalf("管理员密码哈希生成失败: %v", err)
+			}
+			return
 		}
-		return
 	}
 	// 初始化配置文件
 	config.InitConfigFile()
@@ -35,6 +48,28 @@ func main() {
 	}
 	// 初始化路由
 	routes.InitRouter()
+}
+
+func runPasswordHash(reader io.Reader, writer io.Writer) error {
+	password, err := bufio.NewReader(reader).ReadString('\n')
+	if err != nil && err != io.EOF {
+		return fmt.Errorf("读取密码: %w", err)
+	}
+	password = strings.TrimSuffix(strings.TrimSuffix(password, "\n"), "\r")
+	if password == "" {
+		return fmt.Errorf("密码不能为空")
+	}
+	if len(password) > 4096 {
+		return fmt.Errorf("密码过长")
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return fmt.Errorf("生成 bcrypt 哈希: %w", err)
+	}
+	if _, err := fmt.Fprintln(writer, string(hash)); err != nil {
+		return fmt.Errorf("输出哈希: %w", err)
+	}
+	return nil
 }
 
 func runTwikooImport(arguments []string) error {

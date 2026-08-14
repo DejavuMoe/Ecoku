@@ -27,7 +27,7 @@ Tracked integration references:
 
 - `examples/hugo-papermod/layouts/_partials/comments.html`
 - `examples/hugo-papermod/assets/css/extended/ecoku.css`
-- `examples/hugo-papermod/static/js/ecoku-comments.js`
+- the runtime-hosted `/client/ecoku-loader.js` and `/client/ecoku.umd.js`
 
 Revision 2 replaced the heavy global focus ring with field-local focus
 treatment, changed the near-black submit button to a paper-surface action,

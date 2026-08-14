@@ -1,7 +1,7 @@
 # Caddy / Nginx 反向代理
 
 生产 Compose 只把 Ecoku 发布到 `127.0.0.1:12123`。外部浏览器应只访问 TLS 域名，例如
-`https://comments.example.com`，不能直接暴露容器端口。
+`https://ecoku.via.moe`，不能直接暴露容器端口。
 
 ## 1. 共同前置条件
 
@@ -9,7 +9,7 @@
 2. 放行 TCP 80/443，并确认其他服务没有占用端口。
 3. 保持 Compose 的 `127.0.0.1:12123:12123`，不要改成 `0.0.0.0`。
 4. 把 `config.yaml` 中 `admin.allowed_origins` 与 `notifications.instance_public_url` 设置为
-   `https://comments.example.com`。
+   `https://ecoku.via.moe`。
 5. 内容站点自己的 Origin（例如 `https://blog.example.com`）只加入对应站点的允许来源，不加入
    管理端白名单。
 
@@ -18,7 +18,7 @@
 下面的 Caddyfile 会自动申请并续期公开 TLS 证书：
 
 ```caddyfile
-comments.example.com {
+ecoku.via.moe {
     encode zstd gzip
     reverse_proxy 127.0.0.1:12123
 }
@@ -43,7 +43,7 @@ Caddy 自动设置标准 `X-Forwarded-*` 头。自动 HTTPS 的域名、DNS 和�
 server {
     listen 80;
     listen [::]:80;
-    server_name comments.example.com;
+    server_name ecoku.via.moe;
 
     return 308 https://$host$request_uri;
 }
@@ -52,10 +52,10 @@ server {
     listen 443 ssl;
     listen [::]:443 ssl;
     http2 on;
-    server_name comments.example.com;
+    server_name ecoku.via.moe;
 
-    ssl_certificate /etc/letsencrypt/live/comments.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/comments.example.com/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/ecoku.via.moe/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ecoku.via.moe/privkey.pem;
 
     client_max_body_size 1m;
 
@@ -95,9 +95,11 @@ Ecoku 默认 `trusted_proxies: []`，因此转发头不会改变内存限流所�
 
 ```bash
 curl --fail --show-error http://127.0.0.1:12123/api/health
-curl --fail --show-error --ipv4 https://comments.example.com/api/health
-curl --fail --show-error --ipv6 https://comments.example.com/api/health
-curl --fail --show-error https://comments.example.com/admin/ > /dev/null
+curl --fail --show-error --ipv4 https://ecoku.via.moe/api/health
+curl --fail --show-error --ipv6 https://ecoku.via.moe/api/health
+curl --fail --show-error https://ecoku.via.moe/admin/ > /dev/null
+curl --fail --show-error --head https://ecoku.via.moe/client/ecoku-loader.js
+curl --fail --show-error --head https://ecoku.via.moe/client/ecoku.umd.js
 ```
 
 没有公网 IPv6 或 AAAA 时，IPv6 项列为条件性验证，不能伪造通过。最后用浏览器检查：
