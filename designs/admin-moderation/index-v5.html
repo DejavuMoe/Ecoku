@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ecoku 评论管理台 · 站点与通知模板原型</title>
+  <title>Ecoku 评论管理台 · 站点与通知设置原型</title>
   <style>
     :root {
       --paper: rgb(250, 249, 245);
@@ -442,13 +442,13 @@
     .page-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
     .page-heading p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
     .sites-grid { display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 24px; }
-    .site-list-panel, .site-form-panel, .channel-card, .template-panel {
+    .site-list-panel, .site-form-panel, .channel-card {
       border: 1px solid var(--line-soft);
       border-radius: var(--radius);
       background: var(--surface);
     }
     .panel-heading { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 16px; padding: 0 18px; border-bottom: 1px solid var(--line-soft); }
-    .panel-heading h2, .channel-head h2, .template-panel h2 { margin: 0; font-size: 16px; font-weight: 700; }
+    .panel-heading h2, .channel-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
     .site-list { display: grid; }
     .site-list-item {
       display: grid;
@@ -535,23 +535,6 @@
     .chip-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .chip-remove { display: grid; width: 18px; height: 18px; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; line-height: 1; }
     .chip-remove:hover { background: var(--deleted-bg); }
-    .template-panel { margin-top: 24px; padding: 20px; }
-    .template-links { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
-    .template-link {
-      display: grid;
-      min-width: 0;
-      min-height: 92px;
-      align-content: space-between;
-      padding: 14px;
-      border: 1px solid var(--line-soft);
-      border-radius: 10px;
-      color: inherit;
-      background: var(--paper);
-      text-decoration: none;
-    }
-    .template-link:hover { border-color: var(--line); background: var(--wash-translucent); }
-    .template-link strong { font-size: 13px; }
-    .template-link span { color: var(--muted); font-size: 12px; }
 
     .preview-controller {
       position: fixed;
@@ -625,7 +608,6 @@
       .notification-column { width: calc(100% - 28px); padding-top: 24px; }
       .form-row { grid-template-columns: minmax(0, 1fr); gap: 5px; }
       .form-label { padding-top: 0; }
-      .template-links { grid-template-columns: minmax(0, 1fr); }
       .preview-controller { right: 10px; bottom: 10px; width: 190px; }
     }
     @media (max-width: 680px) {
@@ -647,7 +629,7 @@
       .review-actions { flex-wrap: wrap; }
       .review-actions .danger-button { margin-left: 0; }
       .page-heading { align-items: start; }
-      .site-form-panel, .channel-content, .template-panel { padding-right: 16px; padding-left: 16px; }
+      .site-form-panel, .channel-content { padding-right: 16px; padding-left: 16px; }
       .channel-head { align-items: start; padding: 14px 16px; }
       .switch-label { align-items: start; }
       .channel-actions { flex-wrap: wrap; }
@@ -984,16 +966,6 @@
             <div class="notification-column">
               <header class="page-heading"><div><h1 id="notifications-title">通知设置</h1><p>配置新评论通知的投递渠道，保存后立即生效。</p></div></header>
               <div class="channel-stack">${emailCard({ enabled, configured, validation })}${telegramCard({ enabled, configured, validation })}</div>
-              <section class="template-panel" aria-labelledby="template-title">
-                <h2 id="template-title">通知模板</h2>
-                <div class="template-links">
-                  <a class="template-link" href="email-blogger-new-comment-v5.html" target="_blank" rel="noopener"><strong>博主新评论邮件</strong><span>打开预览</span></a>
-                  <a class="template-link" href="email-blogger-new-reply-v5.html" target="_blank" rel="noopener"><strong>博主新回复邮件</strong><span>打开预览</span></a>
-                  <a class="template-link" href="email-visitor-reply-v5.html" target="_blank" rel="noopener"><strong>访客回复邮件</strong><span>打开预览</span></a>
-                  <a class="template-link" href="email-domain-fallback-v5.html" target="_blank" rel="noopener"><strong>站点名称回落邮件</strong><span>打开预览</span></a>
-                  <a class="template-link" href="telegram-notification-v5.html" target="_blank" rel="noopener"><strong>Telegram 消息</strong><span>打开预览</span></a>
-                </div>
-              </section>
             </div>
           </section>`;
         bindNotifications();

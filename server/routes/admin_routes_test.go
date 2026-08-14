@@ -46,16 +46,8 @@ func setupAdminTest(t *testing.T) adminEnvironment {
 	if err := os.MkdirAll(filepath.Join(staticDir, "assets"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Join(staticDir, "templates"), 0o700); err != nil {
-		t.Fatal(err)
-	}
 	if err := os.WriteFile(filepath.Join(staticDir, "index.html"), []byte("<!doctype html>"), 0o600); err != nil {
 		t.Fatal(err)
-	}
-	for _, name := range []string{"email-blogger-new-comment.html", "email-blogger-new-reply.html", "email-visitor-reply.html", "telegram-notification.html"} {
-		if err := os.WriteFile(filepath.Join(staticDir, "templates", name), []byte("<!doctype html>"), 0o600); err != nil {
-			t.Fatal(err)
-		}
 	}
 	if err := config.ApplyConfig(&config.Config{
 		Sites: []config.RegisteredSiteConfig{
@@ -113,6 +105,23 @@ func TestAdminStaticCSPAllowsStyleAttributesWithoutInlineScripts(t *testing.T) {
 	}
 	if !strings.Contains(csp, "script-src 'self'") || !strings.Contains(csp, "style-src 'self'") {
 		t.Fatalf("administrator UI lost its self-only script/style policy: %q", csp)
+	}
+}
+
+func TestAdminNotificationTemplatePreviewsAreNotPublic(t *testing.T) {
+	env := setupAdminTest(t)
+	for _, name := range []string{
+		"email-blogger-new-comment.html",
+		"email-blogger-new-reply.html",
+		"email-visitor-reply.html",
+		"telegram-notification.html",
+	} {
+		request := httptest.NewRequest(http.MethodGet, "/admin/templates/"+name, nil)
+		recorder := httptest.NewRecorder()
+		env.router.ServeHTTP(recorder, request)
+		if recorder.Code != http.StatusNotFound {
+			t.Fatalf("template %s status=%d, want 404", name, recorder.Code)
+		}
 	}
 }
 

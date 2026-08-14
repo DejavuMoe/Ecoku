@@ -1,12 +1,14 @@
 package routes
 
 import (
+	"context"
 	"ecoku-server/config"
 	adminhandler "ecoku-server/handle/admin"
 	"ecoku-server/handle/app"
 	"ecoku-server/handle/comment"
 	"ecoku-server/middleware"
 	"ecoku-server/utils"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -183,23 +185,6 @@ func registerAdminStatic(router *gin.Engine, configuredDirectory string) error {
 	if err != nil || !assetsInfo.IsDir() {
 		return fmt.Errorf("admin.static_dir 缺少 assets 目录")
 	}
-	templatesPath := filepath.Join(absoluteDirectory, "templates")
-	templateNames := []string{
-		"email-blogger-new-comment.html",
-		"email-blogger-new-reply.html",
-		"email-visitor-reply.html",
-		"telegram-notification.html",
-	}
-	templatePaths := make(map[string]string, len(templateNames))
-	for _, name := range templateNames {
-		path := filepath.Join(templatesPath, name)
-		info, statErr := os.Stat(path)
-		if statErr != nil || !info.Mode().IsRegular() {
-			return fmt.Errorf("admin.static_dir 缺少通知模板 %s", name)
-		}
-		templatePaths[name] = path
-	}
-
 	adminStatic := router.Group("/admin")
 	adminStatic.Use(adminStaticSecurityHeaders())
 	adminStatic.GET("", func(c *gin.Context) {
@@ -208,15 +193,6 @@ func registerAdminStatic(router *gin.Engine, configuredDirectory string) error {
 	adminStatic.GET("/", func(c *gin.Context) {
 		c.Header("Cache-Control", "no-store")
 		c.File(indexPath)
-	})
-	adminStatic.GET("/templates/:name", func(c *gin.Context) {
-		path, ok := templatePaths[c.Param("name")]
-		if !ok {
-			c.Status(http.StatusNotFound)
-			return
-		}
-		c.Header("Cache-Control", "no-store")
-		c.File(path)
 	})
 	adminStatic.StaticFS("/assets", gin.Dir(assetsPath, false))
 	return nil
@@ -227,12 +203,6 @@ func adminStaticSecurityHeaders() gin.HandlerFunc {
 		// Keep scripts strict while allowing browser accessibility/annotation tools
 		// to apply transient style attributes to the administrator UI.
 		contentSecurityPolicy := "default-src 'self'; base-uri 'none'; connect-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'"
-		if strings.HasPrefix(c.Request.URL.Path, "/admin/templates/") {
-			// These built-in, immutable preview documents contain the inline CSS
-			// and interaction script approved in the static prototype. They are served
-			// from an explicit allowlist and cannot load remote resources.
-			contentSecurityPolicy = "default-src 'none'; base-uri 'none'; connect-src 'none'; form-action 'none'; frame-ancestors 'none'; img-src data:; object-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'"
-		}
 		c.Header("Content-Security-Policy", contentSecurityPolicy)
 		c.Header("Referrer-Policy", "no-referrer")
 		c.Header("X-Content-Type-Options", "nosniff")
@@ -244,10 +214,10 @@ func adminStaticSecurityHeaders() gin.HandlerFunc {
 	}
 }
 
-func InitRouter() {
+func RunServer(ctx context.Context) error {
 	r, err := NewRouter()
 	if err != nil {
-		log.Fatalln("路由初始化失败：", err)
+		return fmt.Errorf("路由初始化失败: %w", err)
 	}
 	log.Println("Server starting on :" + config.Port)
 	server := &http.Server{
@@ -259,7 +229,27 @@ func InitRouter() {
 		IdleTimeout:       60 * time.Second,
 		MaxHeaderBytes:    64 * 1024,
 	}
-	if err := server.ListenAndServe(); err != nil {
-		log.Fatalln("服务器启动失败：", err)
+	shutdownDone := make(chan error, 1)
+	go func() {
+		<-ctx.Done()
+		shutdownContext, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		shutdownDone <- server.Shutdown(shutdownContext)
+	}()
+
+	if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		return fmt.Errorf("服务器启动失败: %w", err)
+	}
+	if ctx.Err() != nil {
+		if err := <-shutdownDone; err != nil {
+			return fmt.Errorf("服务器优雅关闭失败: %w", err)
+		}
+	}
+	return nil
+}
+
+func InitRouter() {
+	if err := RunServer(context.Background()); err != nil {
+		log.Fatalln(err)
 	}
 }

@@ -152,15 +152,6 @@ async function sendTestTelegram() {
         </section>
       </div>
 
-      <section class="template-panel" aria-labelledby="template-title">
-        <h2 id="template-title">通知模板</h2>
-        <div class="template-links">
-          <a class="template-link" href="/admin/templates/email-blogger-new-comment.html" target="_blank" rel="noopener"><strong>博主新评论邮件</strong><span>打开预览</span></a>
-          <a class="template-link" href="/admin/templates/email-blogger-new-reply.html" target="_blank" rel="noopener"><strong>博主新回复邮件</strong><span>打开预览</span></a>
-          <a class="template-link" href="/admin/templates/email-visitor-reply.html" target="_blank" rel="noopener"><strong>访客回复邮件</strong><span>打开预览</span></a>
-          <a class="template-link" href="/admin/templates/telegram-notification.html" target="_blank" rel="noopener"><strong>Telegram 消息</strong><span>打开预览</span></a>
-        </div>
-      </section>
     </div>
   </section>
 </template>

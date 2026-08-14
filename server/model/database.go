@@ -13,6 +13,8 @@ import (
 
 var DB *gorm.DB
 
+const sqliteBusyTimeoutMilliseconds = 5000
+
 // InitDatabase opens the configured SQLite3 database and only bootstraps a
 // truly empty database. Existing unversioned or outdated databases are rejected
 // and must be backed up before an explicitly authorized rebuild.
@@ -48,6 +50,9 @@ func OpenSQLiteDatabase(path string) (*gorm.DB, error) {
 		return nil, err
 	}
 	if err := configureSQLiteConnection(database); err != nil {
+		if sqlDatabase, openErr := database.DB(); openErr == nil {
+			_ = sqlDatabase.Close()
+		}
 		return nil, err
 	}
 	return database, nil
@@ -58,21 +63,100 @@ func configureSQLiteConnection(database *gorm.DB) error {
 	if err != nil {
 		return fmt.Errorf("读取 SQLite 连接: %w", err)
 	}
-	// SQLite PRAGMA settings are connection-local. Keeping one connection makes
-	// foreign-key enforcement deterministic for every request and import.
+	// Most SQLite PRAGMA settings are connection-local. Keeping one connection
+	// makes foreign-key enforcement, busy waiting and durability settings
+	// deterministic for every request and import. WAL still lets readers in
+	// other processes proceed while this process writes, without widening the
+	// unmeasured in-process concurrency boundary for RC3.
 	sqlDatabase.SetMaxOpenConns(1)
 	sqlDatabase.SetMaxIdleConns(1)
+	if err := database.Exec("PRAGMA busy_timeout = 5000").Error; err != nil {
+		return fmt.Errorf("设置 SQLite 忙等待: %w", err)
+	}
+	var journalMode string
+	if err := database.Raw("PRAGMA journal_mode = WAL").Scan(&journalMode).Error; err != nil {
+		return fmt.Errorf("启用 SQLite WAL: %w", err)
+	}
+	if !strings.EqualFold(journalMode, "wal") {
+		return fmt.Errorf("SQLite WAL 未启用: journal_mode=%q", journalMode)
+	}
+	if err := database.Exec("PRAGMA synchronous = NORMAL").Error; err != nil {
+		return fmt.Errorf("设置 SQLite 同步级别: %w", err)
+	}
 	if err := database.Exec("PRAGMA foreign_keys = ON").Error; err != nil {
 		return fmt.Errorf("启用 SQLite 外键: %w", err)
 	}
-	var enabled int
-	if err := database.Raw("PRAGMA foreign_keys").Scan(&enabled).Error; err != nil {
+
+	var busyTimeout, synchronous, foreignKeys int
+	if err := database.Raw("PRAGMA busy_timeout").Scan(&busyTimeout).Error; err != nil {
+		return fmt.Errorf("验证 SQLite 忙等待: %w", err)
+	}
+	if busyTimeout != sqliteBusyTimeoutMilliseconds {
+		return fmt.Errorf("SQLite 忙等待未生效: busy_timeout=%d", busyTimeout)
+	}
+	if err := database.Raw("PRAGMA synchronous").Scan(&synchronous).Error; err != nil {
+		return fmt.Errorf("验证 SQLite 同步级别: %w", err)
+	}
+	if synchronous != 1 {
+		return fmt.Errorf("SQLite 同步级别未设为 NORMAL: synchronous=%d", synchronous)
+	}
+	if err := database.Raw("PRAGMA foreign_keys").Scan(&foreignKeys).Error; err != nil {
 		return fmt.Errorf("验证 SQLite 外键: %w", err)
 	}
-	if enabled != 1 {
+	if foreignKeys != 1 {
 		return fmt.Errorf("SQLite 外键未启用")
 	}
 	return nil
+}
+
+// CloseDatabase checkpoints WAL after request and background workers have
+// stopped, then closes the process-wide connection pool. This makes a stopped
+// container safe to back up as one SQLite database file.
+func CloseDatabase() error {
+	if DB == nil {
+		return nil
+	}
+	database := DB
+	if err := CloseSQLiteDatabase(database); err != nil {
+		return err
+	}
+	DB = nil
+	return nil
+}
+
+// CloseSQLiteDatabase is exported for isolated command paths and tests.
+func CloseSQLiteDatabase(database *gorm.DB) error {
+	if database == nil {
+		return nil
+	}
+	// Closing the pool must still be attempted if checkpointing reports an
+	// error. Otherwise a failed shutdown path can leave the database handle
+	// open and make an operator's subsequent cold backup unsafe.
+	var checkpointErr error
+	var checkpoint struct {
+		Busy         int `gorm:"column:busy"`
+		Log          int `gorm:"column:log"`
+		Checkpointed int `gorm:"column:checkpointed"`
+	}
+	if err := database.Raw("PRAGMA wal_checkpoint(TRUNCATE)").Scan(&checkpoint).Error; err != nil {
+		checkpointErr = fmt.Errorf("执行 SQLite WAL checkpoint: %w", err)
+	} else if checkpoint.Busy != 0 {
+		checkpointErr = fmt.Errorf("SQLite WAL checkpoint 忙碌: log=%d checkpointed=%d", checkpoint.Log, checkpoint.Checkpointed)
+	}
+	sqlDatabase, err := database.DB()
+	if err != nil {
+		if checkpointErr != nil {
+			return fmt.Errorf("%v；读取 SQLite 连接: %w", checkpointErr, err)
+		}
+		return fmt.Errorf("读取 SQLite 连接: %w", err)
+	}
+	if err := sqlDatabase.Close(); err != nil {
+		if checkpointErr != nil {
+			return fmt.Errorf("%v；关闭 SQLite 连接: %w", checkpointErr, err)
+		}
+		return fmt.Errorf("关闭 SQLite 连接: %w", err)
+	}
+	return checkpointErr
 }
 
 func databaseGORMConfig() *gorm.Config {

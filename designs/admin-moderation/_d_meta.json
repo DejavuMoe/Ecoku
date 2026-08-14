@@ -45,7 +45,7 @@
           "path": "index-v5.html",
           "createdAt": "2026-08-13T14:44:30.000Z",
           "status": "approved",
-          "subtitle": "Approved always-published comment management, concise site form, and site-aware recipient notification templates",
+          "subtitle": "Approved always-published comment management, concise site form, and notification settings without public template previews",
           "viewport": {
             "width": 1440,
             "height": 900
@@ -55,5 +55,5 @@
     }
   },
   "createdAt": "2026-08-12T22:31:10.516Z",
-  "updatedAt": "2026-08-13T15:15:33.000Z"
+  "updatedAt": "2026-08-14T12:10:17.878Z"
 }

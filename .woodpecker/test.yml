@@ -29,5 +29,7 @@ steps:
     commands:
       - 'echo "$${CI_COMMIT_TAG}" | grep -Eq "^v(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$$"'
       - 'grep -Fx "$${CI_COMMIT_TAG#v}" VERSION'
+      - 'grep -Fx "    image: \"git.via.moe/dejavu/ecoku:$${CI_COMMIT_TAG}\"" compose.yaml'
+      - '! grep -Fq "ECOKU_VERSION" compose.yaml'
     when:
       event: tag

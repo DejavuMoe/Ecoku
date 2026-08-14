@@ -14,7 +14,7 @@ Ecoku 是面向自托管场景的多站点纯文本评论系统。当前版本�
 - [首次 RC 推送与 CI/CD 验收](docs/operations/first-release.md)
 - [自托管指南](docs/operations/self-hosting.md)
 - [Caddy / Nginx 反向代理](docs/operations/reverse-proxy.md)
-- [SQLite 备份、重建与恢复](docs/operations/backup-and-upgrade.md)
+- [SQLite 备份、升级、重建与恢复](docs/operations/backup-and-upgrade.md)
 - [Forgejo + Woodpecker CI 与多架构镜像发布](docs/operations/woodpecker-ci.md)
 - [试用前就绪检查、性能与资源复用](docs/operations/pretrial-readiness.md)
 - [一般静态网站接入](docs/integrations/static-site.md)
@@ -99,7 +99,7 @@ Twikoo 导入只适用于已经创建、但还没有任何评论的 Ecoku 站点
 等价命令与完整恢复步骤见[自托管指南](docs/operations/self-hosting.md#6-添加站点后首次导入-twikoo)：
 
 ```bash
-docker compose run --rm --no-deps \
+sudo docker compose run --rm --no-deps \
   --volume /absolute/path/twikoo-comment.json:/tmp/twikoo-comment.json:ro \
   ecoku import-twikoo --site blog --file /tmp/twikoo-comment.json --dry-run
 ```
