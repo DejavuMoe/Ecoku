@@ -9,7 +9,7 @@
     {
       "id": "article-plain-thread-comments",
       "prototype": {
-        "entry": "index-v11.html",
+        "entry": "index-v13.html",
         "states": [
           "light",
           "dark",
@@ -52,7 +52,9 @@
           "paper-service-error",
           "shared-reply-composer",
           "equal-width-collapse",
-          "blogger-badge"
+          "blogger-badge",
+          "adaptive-turnstile",
+          "turnstile-composer-slot"
         ]
       },
       "production": {
@@ -72,7 +74,7 @@
     {
       "id": "article-comment-form-configuration",
       "prototype": {
-        "entry": "index-v11.html",
+        "entry": "index-v13.html",
         "states": [
           "email-required",
           "email-optional",
@@ -90,7 +92,9 @@
           "left-aligned-character-count",
           "compact-publish-action",
           "shared-reply-composer",
-          "blogger-badge"
+          "blogger-badge",
+          "adaptive-turnstile",
+          "turnstile-composer-slot"
         ]
       },
       "production": {
@@ -111,6 +115,35 @@
         ]
       },
       "status": "implemented"
+    },
+    {
+      "id": "article-comment-turnstile",
+      "prototype": {
+        "entry": "index-v13.html",
+        "states": [
+          "turnstile-auto",
+          "turnstile-interact",
+          "turnstile-cleared",
+          "turnstile-disabled",
+          "turnstile-unverified-submit",
+          "reply-turnstile",
+          "light",
+          "dark"
+        ]
+      },
+      "production": {
+        "routeOrWindow": "article comment surface",
+      "status": "pending",
+      "referenceFiles": [
+          "packages/client/src/comment.ts",
+          "packages/client/src/config.ts",
+          "packages/client/src/style.css",
+          "packages/client/src/fetch.ts",
+          "server/handle/comment/submit.go",
+          "server/handle/comment/list.go"
+        ]
+      },
+      "status": "approved"
     }
   ]
 }

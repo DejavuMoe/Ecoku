@@ -100,10 +100,28 @@
           "viewport": {
             "width": 720
           }
+        },
+        {
+          "path": "index-v12.html",
+          "createdAt": "2026-08-15T03:43:47.089Z",
+          "status": "approved",
+          "subtitle": "Approved: Turnstile slot on root and reply composers",
+          "viewport": {
+            "width": 720
+          }
+        },
+        {
+          "path": "index-v13.html",
+          "createdAt": "2026-08-15T03:57:58.564Z",
+          "status": "approved",
+          "subtitle": "Approved: adaptive Turnstile on root and reply composers",
+          "viewport": {
+            "width": 720
+          }
         }
       ]
     }
   },
   "createdAt": "2026-08-12T08:14:10.430Z",
-  "updatedAt": "2026-08-15T03:12:42.591Z"
+  "updatedAt": "2026-08-15T04:02:00.000Z"
 }

@@ -1,8 +1,10 @@
 # Plain thread comments prototype
 
 Approved design history for Ecoku's no-avatar, plain-text comment surface.
-`index-v11.html` is the current approved production baseline. `index-v10.html`
-and earlier files remain historical evidence.
+`index-v13.html` is the current approved production baseline: adaptive Turnstile
+on root and reply composers, without a widget-mode picker. `index-v12.html`
+keeps the earlier slot layout. `index-v11.html` and earlier files remain
+historical evidence. Preview-only toggles must not enter the SDK.
 
 ## Direction
 
@@ -213,5 +215,7 @@ node designs/plain-thread-comments/prototype-v11.test.mjs
 - Service unavailable and retry recovery.
 - Desktop at 1280x900 and mobile at 390x844.
 
-Status: `index-v11.html` is the approved production baseline. `index-v10.html`
-remains historical evidence.
+Status: `index-v13.html` is the approved production comment baseline: adaptive
+Turnstile on root and reply composers, no widget-mode picker. Preview-only
+toggles (simulate checkbox / Pre-clearance) must not enter the SDK.
+`index-v11.html` remains the previous baseline without Turnstile.

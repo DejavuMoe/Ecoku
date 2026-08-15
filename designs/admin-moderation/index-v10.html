@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Ecoku 评论管理 · Cloudflare Turnstile 全局验证</title>
+  <style>
+    :root {
+      --paper: rgb(250, 249, 245);
+      --surface: rgb(252, 251, 247);
+      --ink: rgb(20, 20, 19);
+      --ink-soft: rgb(58, 54, 44);
+      --muted: rgb(96, 91, 82);
+      --line: rgb(150, 143, 132);
+      --line-soft: rgba(20, 20, 19, 0.14);
+      --wash: rgb(243, 239, 231);
+      --wash-translucent: rgba(243, 239, 231, 0.76);
+      --accent: rgb(42, 83, 108);
+      --accent-hover: rgb(31, 67, 90);
+      --accent-text: rgb(250, 249, 245);
+      --approved: rgb(42, 102, 72);
+      --approved-bg: rgb(225, 240, 229);
+      --rejected: rgb(145, 54, 52);
+      --rejected-bg: rgb(246, 226, 223);
+      --warn: rgb(132, 96, 20);
+      --warn-bg: rgb(247, 236, 210);
+      --shadow: 0 18px 48px rgba(20, 20, 19, 0.1);
+      --radius: 14px;
+      --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+      --serif: "OPPO Serif SC", "Noto Serif CJK SC", "Songti SC", serif;
+      --mono: ui-monospace, "SFMono-Regular", "Cascadia Code", "Roboto Mono", monospace;
+      color-scheme: light dark;
+      font-family: var(--serif);
+    }
+    html[data-theme="light"] { color-scheme: light; }
+    html[data-theme="dark"] {
+      --paper: rgb(26, 29, 32);
+      --surface: rgb(34, 38, 42);
+      --ink: rgb(242, 236, 226);
+      --ink-soft: rgb(216, 209, 197);
+      --muted: rgb(188, 181, 169);
+      --line: rgb(109, 114, 120);
+      --line-soft: rgba(242, 236, 226, 0.14);
+      --wash: rgb(44, 48, 53);
+      --wash-translucent: rgba(48, 53, 58, 0.88);
+      --accent: rgb(148, 176, 196);
+      --accent-hover: rgb(168, 192, 208);
+      --accent-text: rgb(26, 29, 32);
+      --approved: rgb(148, 196, 168);
+      --approved-bg: rgba(42, 102, 72, 0.28);
+      --rejected: rgb(224, 156, 148);
+      --rejected-bg: rgba(145, 54, 52, 0.22);
+      --warn: rgb(232, 196, 120);
+      --warn-bg: rgba(132, 96, 20, 0.28);
+      --shadow: 0 18px 48px rgba(0, 0, 0, 0.36);
+      color-scheme: dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      html[data-theme="auto"] {
+        --paper: rgb(26, 29, 32);
+        --surface: rgb(34, 38, 42);
+        --ink: rgb(242, 236, 226);
+        --ink-soft: rgb(216, 209, 197);
+        --muted: rgb(188, 181, 169);
+        --line: rgb(109, 114, 120);
+        --line-soft: rgba(242, 236, 226, 0.14);
+        --wash: rgb(44, 48, 53);
+        --wash-translucent: rgba(48, 53, 58, 0.88);
+        --accent: rgb(148, 176, 196);
+        --accent-hover: rgb(168, 192, 208);
+        --accent-text: rgb(26, 29, 32);
+        --approved: rgb(148, 196, 168);
+        --approved-bg: rgba(42, 102, 72, 0.28);
+        --rejected: rgb(224, 156, 148);
+        --rejected-bg: rgba(145, 54, 52, 0.22);
+        --warn: rgb(232, 196, 120);
+        --warn-bg: rgba(132, 96, 20, 0.28);
+        --shadow: 0 18px 48px rgba(0, 0, 0, 0.36);
+        color-scheme: dark;
+      }
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { min-width: 320px; min-height: 100%; background: var(--paper); }
+    body { min-height: 100vh; margin: 0; color: var(--ink); background: var(--paper); font-size: 15px; line-height: 1.65; text-rendering: optimizeLegibility; }
+    button, input, textarea, select { color: inherit; font: inherit; }
+    button, select { cursor: pointer; }
+    button:disabled, input:disabled, select:disabled { cursor: not-allowed; }
+    [hidden] { display: none !important; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+    .skip-link { position: fixed; z-index: 200; top: 8px; left: 8px; padding: 7px 12px; border-radius: 999px; color: var(--accent-text); background: var(--accent); transform: translateY(-160%); }
+    .skip-link:focus { transform: translateY(0); }
+    .app-shell { display: grid; min-height: 100vh; grid-template-rows: 60px minmax(0, 1fr); }
+    .app-header { position: relative; z-index: 20; border-bottom: 1px solid var(--line-soft); background: var(--paper); }
+    .header-inner { display: flex; width: min(calc(100% - 48px), 1440px); height: 60px; margin: 0 auto; align-items: center; justify-content: space-between; gap: 28px; }
+    .header-start, .header-context, .primary-nav, .brand, .login-brand { display: flex; align-items: center; }
+    .header-start { min-width: 0; gap: 34px; }
+    .header-context { flex: 0 0 auto; gap: 12px; }
+    .primary-nav { align-self: stretch; gap: 24px; }
+    .brand { flex: 0 0 auto; gap: 10px; color: inherit; text-decoration: none; }
+    .brand-mark { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid var(--ink); border-radius: 50%; font-size: 18px; font-weight: 700; }
+    .brand-copy { display: grid; line-height: 1.05; }
+    .brand-copy strong { font-size: 19px; }
+    .brand-copy small { margin-top: 4px; color: var(--muted); font-size: 10px; letter-spacing: 0.08em; }
+    .nav-tab { position: relative; display: grid; height: 100%; place-items: center; padding: 0; color: var(--muted); font-size: 14px; text-decoration: none; white-space: nowrap; }
+    .nav-tab::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: transparent; content: ""; }
+    .nav-tab:hover, .nav-tab[aria-current="page"] { color: var(--ink); }
+    .nav-tab[aria-current="page"] { font-weight: 700; }
+    .nav-tab[aria-current="page"]::after { background: var(--accent); }
+    .site-pill { display: flex; min-width: 194px; min-height: 38px; align-items: center; justify-content: space-between; gap: 14px; padding: 0 13px 0 15px; border: 1px solid var(--line-soft); border-radius: 999px; background: var(--surface); font-size: 13px; }
+    .chevron { width: 8px; height: 8px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-2px) rotate(45deg); }
+    .logout-button { min-height: 36px; padding: 0 10px; border: 0; border-radius: 999px; color: var(--muted); background: transparent; font-size: 13px; }
+    .logout-button:hover { color: var(--ink); background: var(--wash); }
+
+    .auth-screen { display: grid; min-height: 100vh; place-items: center; padding: 40px 22px; }
+    .auth-shell { width: min(100%, 410px); }
+    .login-form { display: grid; gap: 17px; padding: 42px 0; }
+    .login-brand { gap: 11px; margin-bottom: 12px; }
+    .login-form h1 { margin: 0 0 7px; font-size: 26px; font-weight: 600; line-height: 1.3; }
+    .input-group { display: grid; gap: 7px; }
+    .input-group span { color: var(--ink-soft); font-size: 13px; font-weight: 600; }
+    .input-group input { width: 100%; height: 46px; padding: 0 13px; border: 1px solid var(--line-soft); border-radius: 10px; outline: 0; background: var(--surface); }
+    .input-group input:hover { border-color: var(--line); }
+    .input-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent); }
+    .form-error { margin: 0; padding: 9px 11px; border-radius: 9px; color: var(--rejected); background: var(--rejected-bg); font-size: 13px; }
+    .login-button { width: 100%; margin-top: 4px; }
+
+    .main-area { min-width: 0; padding: 38px 24px 84px; }
+    .page-heading { display: flex; align-items: start; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+    .page-heading h1 { margin: 0; font-size: 22px; line-height: 1.3; }
+    .page-heading p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+    .button { min-height: 38px; padding: 0 18px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-weight: 700; }
+    .button:hover:not(:disabled) { background: var(--wash); }
+    .button-primary { border-color: var(--accent); color: var(--accent-text); background: var(--accent); }
+    .button-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .button:disabled { opacity: 0.42; }
+
+    .notification-column { width: min(100%, 820px); margin: 0 auto; }
+    .channel-stack { display: grid; gap: 24px; }
+    .channel-card { border: 1px solid var(--line-soft); border-radius: var(--radius); background: var(--surface); }
+    .channel-head { display: flex; min-height: 60px; align-items: center; justify-content: space-between; gap: 18px; padding: 0 20px; border-bottom: 1px solid var(--line-soft); }
+    .channel-head h2 { margin: 0; font-size: 16px; font-weight: 700; }
+    .switch-label { display: inline-flex; align-items: center; gap: 9px; font-size: 12px; cursor: pointer; }
+    .switch-input { position: absolute; opacity: 0; pointer-events: none; }
+    .switch-track { position: relative; width: 36px; height: 20px; border: 1px solid var(--line); border-radius: 999px; background: var(--rejected-bg); transition: background 160ms ease; }
+    .switch-track::after { position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--line); content: ""; transition: transform 160ms ease, background 160ms ease; }
+    .switch-input:checked + .switch-track { border-color: var(--accent); background: var(--accent); }
+    .switch-input:checked + .switch-track::after { background: var(--accent-text); transform: translateX(16px); }
+    .switch-input:focus-visible + .switch-track { outline: 2px solid var(--accent); outline-offset: 3px; }
+    .channel-content { padding: 20px; transition: opacity 160ms ease; }
+    .channel-card[data-enabled="false"] .channel-content { opacity: 0.42; }
+    .channel-form { display: grid; gap: 14px; }
+    .form-row { display: grid; min-width: 0; grid-template-columns: 120px minmax(0, 1fr); align-items: start; gap: 14px; }
+    .form-label { padding-top: 8px; color: var(--muted); font-size: 13px; }
+    .field-stack { display: grid; min-width: 0; gap: 5px; }
+    .input { width: 100%; min-height: 38px; padding: 0 11px; border: 1px solid var(--line-soft); border-radius: 9px; background: var(--paper); font-family: var(--sans); font-size: 13px; }
+    .input:hover:not(:disabled) { border-color: var(--line); }
+    .input[aria-invalid="true"] { border-color: var(--rejected); }
+    .field-help, .field-error { margin: 0; font-size: 12px; }
+    .field-help { color: var(--muted); }
+    .field-error { color: var(--rejected); }
+    .channel-actions { display: flex; align-items: center; gap: 10px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line-soft); }
+    .channel-actions .save-button { margin-left: auto; }
+
+    .notice-warn { margin: 0; padding: 10px 12px; border-radius: 9px; color: var(--warn); background: var(--warn-bg); font-size: 12px; line-height: 1.5; }
+
+    .turnstile-slot { min-height: 65px; }
+    .turnstile-slot[data-mode="invisible"] { min-height: 0; height: 0; overflow: hidden; }
+    .turnstile-widget { display: flex; width: min(100%, 300px); height: 65px; align-items: center; gap: 12px; padding: 0 12px; border: 1px solid var(--line-soft); border-radius: 3px; background: var(--paper); font-family: var(--sans); font-size: 14px; }
+    .turnstile-check { display: grid; width: 24px; height: 24px; flex: 0 0 auto; place-items: center; padding: 0; border: 2px solid var(--line); border-radius: 4px; background: var(--surface); }
+    .turnstile-check[aria-pressed="true"] { border-color: var(--approved); background: var(--approved); color: var(--accent-text); }
+    .turnstile-check[data-busy="true"] { border-color: var(--accent); }
+    .turnstile-spinner { width: 16px; height: 16px; border: 2px solid var(--line-soft); border-top-color: var(--accent); border-radius: 50%; animation: spin 700ms linear infinite; }
+    .turnstile-label { flex: 1 1 auto; color: var(--ink-soft); }
+    .turnstile-brand { color: var(--muted); font-size: 10px; letter-spacing: 0.04em; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (prefers-reduced-motion: reduce) {
+      .turnstile-spinner { animation: none; }
+    }
+
+    .scenario-controller { position: fixed; z-index: 30; right: 18px; bottom: 18px; display: grid; width: 220px; gap: 7px; padding: 12px; border: 1px solid var(--line-soft); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+    .scenario-controller label { color: var(--muted); font-size: 11px; }
+    .scenario-controller select { min-height: 38px; padding: 0 10px; border: 1px solid var(--line-soft); border-radius: 9px; background: var(--surface); }
+    .scenario-controller .theme-note { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+
+    @media (max-width: 1023px) {
+      .header-inner { width: min(calc(100% - 28px), 760px); }
+      .brand-copy small, .site-pill, .header-context { display: none; }
+      .header-start { width: 100%; justify-content: space-between; gap: 18px; }
+      .primary-nav { gap: 16px; }
+      .main-area { padding: 24px 14px 100px; }
+      .form-row { grid-template-columns: 1fr; gap: 5px; }
+      .form-label { padding-top: 0; }
+      .scenario-controller { right: 10px; bottom: 10px; }
+    }
+    @media (max-width: 680px) {
+      .app-header { overflow-x: auto; }
+      .header-inner { width: max-content; min-width: calc(100% - 20px); }
+      .channel-head { align-items: start; padding: 14px 16px; }
+      .channel-actions { flex-wrap: wrap; }
+      .channel-actions .save-button { margin-left: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <div id="workspace"></div>
+
+  <aside class="scenario-controller" aria-label="原型场景" data-prototype-only="true">
+    <label for="scenario-select">原型场景</label>
+    <select id="scenario-select">
+      <option value="security-configured">安全 · 已配置</option>
+      <option value="security-empty">安全 · 未启用</option>
+      <option value="security-validation">安全 · 校验错误</option>
+      <option value="login-off">登录 · 未启用验证</option>
+      <option value="login-auto">登录 · 自动通过</option>
+      <option value="login-interact">登录 · 需要勾选</option>
+      <option value="login-skip">登录 · 已有 clearance</option>
+      <option value="login-failed">登录 · 验证失败</option>
+    </select>
+    <label for="theme-select">配色预览</label>
+    <select id="theme-select">
+      <option value="auto" selected>跟随系统</option>
+      <option value="light">浅色</option>
+      <option value="dark">深色</option>
+    </select>
+    <p class="theme-note">生产默认 auto，右下角预览控件不进入管理端。</p>
+  </aside>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const states = [
+        "security-configured",
+        "security-empty",
+        "security-validation",
+        "login-off",
+        "login-auto",
+        "login-interact",
+        "login-skip",
+        "login-failed"
+      ];
+      const workspace = document.getElementById("workspace");
+      const scenario = document.getElementById("scenario-select");
+      const themeSelect = document.getElementById("theme-select");
+
+      function currentState() {
+        const hash = window.location.hash.slice(1);
+        return states.includes(hash) ? hash : states[0];
+      }
+
+      function applyTheme(value) {
+        const theme = value === "light" || value === "dark" ? value : "auto";
+        document.documentElement.dataset.theme = theme;
+        themeSelect.value = theme;
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[character]);
+      }
+
+      function inputRow(label, id, type, value, options) {
+        const settings = options || {};
+        return `<div class="form-row"><label class="form-label" for="${id}">${label}</label><div class="field-stack"><input class="input" id="${id}" type="${type}" value="${escapeHtml(value)}" ${settings.placeholder ? `placeholder="${escapeHtml(settings.placeholder)}"` : ""} ${settings.error ? 'aria-invalid="true"' : ""}>${settings.help ? `<p class="field-help">${settings.help}</p>` : ""}${settings.error ? `<p class="field-error">${settings.error}</p>` : ""}</div></div>`;
+      }
+
+      function widgetMarkup(kind, widgetState) {
+        if (kind === "off" || kind === "skip") return "";
+        const busy = widgetState === "loading";
+        const success = widgetState === "success";
+        const failed = widgetState === "error";
+        const check = success
+          ? "✓"
+          : busy
+            ? `<span class="turnstile-spinner" aria-hidden="true"></span>`
+            : "";
+        const label = failed ? "验证失败，请重试" : success ? "已验证" : busy ? "正在验证…" : "确认您是真人";
+        return `<div class="turnstile-slot" data-kind="${kind}" data-state="${widgetState}"><div class="turnstile-widget" role="group" aria-label="Cloudflare Turnstile"><button class="turnstile-check" type="button" aria-pressed="${success ? "true" : "false"}" data-busy="${busy ? "true" : "false"}" aria-label="确认您是真人">${check}</button><span class="turnstile-label">${label}</span><span class="turnstile-brand" aria-hidden="true">Turnstile</span></div></div>`;
+      }
+
+      function appChrome(nav) {
+        return `
+          <div class="app-shell">
+            <header class="app-header">
+              <div class="header-inner">
+                <div class="header-start">
+                  <a class="brand" href="#security-configured" aria-label="Ecoku 评论管理首页">
+                    <span class="brand-mark" aria-hidden="true">E</span>
+                    <span class="brand-copy"><strong>Ecoku</strong><small>评论管理</small></span>
+                  </a>
+                  <nav class="primary-nav" aria-label="主导航">
+                    <a class="nav-tab" href="index-v5.html#comments-published">评论管理</a>
+                    <a class="nav-tab" href="index-v8.html#sites-blogger-configured">站点管理</a>
+                    <a class="nav-tab" href="index-v5.html#notifications-configured">通知设置</a>
+                    <a class="nav-tab" href="#security-configured" ${nav === "security" ? 'aria-current="page"' : ""}>安全</a>
+                  </nav>
+                </div>
+                <div class="header-context">
+                  <button class="site-pill" type="button"><span>Dejavu's Blog</span><span class="chevron" aria-hidden="true"></span></button>
+                  <button class="logout-button" type="button">退出登录</button>
+                </div>
+              </div>
+            </header>
+            <main class="main-area" id="main-content"></main>
+          </div>`;
+      }
+
+      function renderSecurity(state) {
+        const enabled = state !== "security-empty";
+        const validation = state === "security-validation";
+        workspace.innerHTML = appChrome("security");
+        const main = document.getElementById("main-content");
+        main.innerHTML = `
+          <section class="notification-column" aria-labelledby="security-title" data-screen-label="安全设置">
+            <header class="page-heading">
+              <div>
+                <h1 id="security-title">安全</h1>
+                <p>实例级 Cloudflare Turnstile，同时用于访客评论和管理员登录，不按站点分开。</p>
+              </div>
+            </header>
+            <div class="channel-stack">
+              <section class="channel-card" data-enabled="${enabled}">
+                <header class="channel-head">
+                  <h2>Cloudflare Turnstile</h2>
+                  <label class="switch-label">
+                    <input class="switch-input" id="turnstile-enabled" type="checkbox" ${enabled ? "checked" : ""}>
+                    <span class="switch-track" aria-hidden="true"></span>
+                    <span>启用验证</span>
+                  </label>
+                </header>
+                <div class="channel-content">
+                  <div class="channel-form">
+                    ${inputRow("Sitekey", "turnstile-sitekey", "text", enabled && !validation ? "0x4AAAAAAA00000000000000" : "", { error: validation ? "Sitekey 不能为空" : "" })}
+                    ${inputRow("Secret key", "turnstile-secret", "password", "", { placeholder: enabled && !validation ? "已设置，输入新值以更换" : "", error: validation ? "Secret key 不能为空" : "" })}
+                  </div>
+                  <footer class="channel-actions">
+                    <button class="button button-primary save-button" type="button">保存</button>
+                  </footer>
+                </div>
+              </section>
+            </div>
+          </section>`;
+
+        const card = main.querySelector(".channel-card");
+        const toggle = document.getElementById("turnstile-enabled");
+        function syncEnabled() {
+          const on = toggle.checked;
+          card.dataset.enabled = String(on);
+          card.querySelectorAll(".channel-content input, .channel-content button").forEach((control) => {
+            if (control === toggle) return;
+            control.disabled = !on;
+          });
+        }
+        toggle.addEventListener("change", syncEnabled);
+        syncEnabled();
+        main.querySelector(".save-button").addEventListener("click", (event) => event.preventDefault());
+      }
+
+      function renderLogin(state) {
+        const kind = state === "login-off"
+          ? "off"
+          : state === "login-skip"
+            ? "skip"
+            : state === "login-interact" || state === "login-failed"
+              ? "interact"
+              : "auto";
+        const widgetState = state === "login-failed"
+          ? "error"
+          : state === "login-auto"
+            ? "loading"
+            : "idle";
+        const error = state === "login-failed" ? "验证失败，请重试。" : "";
+        workspace.innerHTML = `
+          <main class="auth-screen" id="main-content" data-screen-label="管理员登录">
+            <section class="auth-shell" aria-labelledby="login-title">
+              <form class="login-form" id="login-form" novalidate>
+                <div class="login-brand" aria-hidden="true">
+                  <span class="brand-mark">E</span>
+                  <span class="brand-copy"><strong>Ecoku</strong><small>评论管理</small></span>
+                </div>
+                <h1 id="login-title">管理员登录</h1>
+                ${error ? `<p class="form-error" role="alert">${error}</p>` : ""}
+                <label class="input-group"><span>用户名</span><input name="username" type="text" autocomplete="username" maxlength="80" required value="admin"></label>
+                <label class="input-group"><span>密码</span><input name="password" type="password" autocomplete="current-password" required value="password"></label>
+                ${widgetMarkup(kind, widgetState)}
+                <button class="button button-primary login-button" type="submit">登录</button>
+              </form>
+            </section>
+          </main>`;
+
+        const form = document.getElementById("login-form");
+        const slot = form.querySelector(".turnstile-slot");
+        const check = form.querySelector(".turnstile-check");
+        form.addEventListener("submit", (event) => {
+          event.preventDefault();
+          if (kind === "off" || kind === "skip") {
+            window.location.hash = "security-configured";
+            return;
+          }
+          if (kind === "auto" && slot && slot.dataset.state !== "success") {
+            const button = form.querySelector(".login-button");
+            button.disabled = true;
+            button.textContent = "正在验证…";
+            window.setTimeout(() => {
+              button.disabled = false;
+              button.textContent = "登录";
+              window.location.hash = "security-configured";
+            }, 700);
+            return;
+          }
+          if (kind === "interact" && slot && slot.dataset.state !== "success") {
+            const existing = form.querySelector(".form-error");
+            if (existing) existing.remove();
+            const alert = document.createElement("p");
+            alert.className = "form-error";
+            alert.setAttribute("role", "alert");
+            alert.textContent = "请完成验证后再登录。";
+            form.querySelector("h1").insertAdjacentElement("afterend", alert);
+            return;
+          }
+          window.location.hash = "security-configured";
+        });
+        if (check && kind === "interact" && state !== "login-failed") {
+          check.addEventListener("click", () => {
+            slot.dataset.state = "success";
+            check.setAttribute("aria-pressed", "true");
+            check.textContent = "✓";
+            form.querySelector(".turnstile-label").textContent = "已验证";
+          });
+        }
+        if (kind === "auto" && slot) {
+          window.setTimeout(() => {
+            if (currentState() !== "login-auto") return;
+            slot.dataset.state = "success";
+            if (check) {
+              check.setAttribute("aria-pressed", "true");
+              check.dataset.busy = "false";
+              check.textContent = "✓";
+            }
+            const label = form.querySelector(".turnstile-label");
+            if (label) label.textContent = "已验证";
+          }, 900);
+        }
+      }
+
+      function render() {
+        const state = currentState();
+        scenario.value = state;
+        if (state.startsWith("login-")) renderLogin(state);
+        else renderSecurity(state);
+      }
+
+      themeSelect.addEventListener("change", () => applyTheme(themeSelect.value));
+      scenario.addEventListener("change", () => { window.location.hash = scenario.value; });
+      window.addEventListener("hashchange", render);
+      applyTheme("auto");
+      if (!states.includes(window.location.hash.slice(1))) window.location.hash = states[0];
+      else render();
+    }());
+  </script>
+</body>
+</html>
