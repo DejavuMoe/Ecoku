@@ -38,7 +38,7 @@ params:
   data-page-title="{{ .Title }}"
 >
   <div class="ecoku-loader" data-ecoku-loader role="status" aria-live="polite">
-    <p class="ecoku-loader-status" data-ecoku-status>评论区将在滚动到附近时加载。</p>
+    <p class="ecoku-loader-status" data-ecoku-status>正在加载评论…</p>
     <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新加载评论</button>
   </div>
   <div id="ecoku-mount" data-ecoku-mount></div>
