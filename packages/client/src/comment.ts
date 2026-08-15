@@ -76,7 +76,6 @@ export class CommentSurface {
   private readonly characterCount = createElement('span', 'ecoku-character-count', `0/${DEFAULT_COMMENT_FORM_CONFIG.lengthLimit}`)
   private readonly rootSubmit = createElement('button', 'ecoku-primary-button', zhCN.submitComment)
   private readonly statusLine = createElement('p', 'ecoku-status-line')
-  private readonly loadingState = createElement('p', 'ecoku-loading-state', zhCN.loading)
   private readonly emptyState = createElement('section', 'ecoku-empty-state')
   private readonly threadList = createElement('div', 'ecoku-thread-list')
   private readonly pagination = createElement('nav', 'ecoku-pagination')
@@ -159,9 +158,11 @@ export class CommentSurface {
     this.root.dataset.theme = this.config.theme
     this.root.setAttribute('lang', 'zh-CN')
 
-    const style = createElement('style')
-    style.textContent = styles
-    this.root.append(style)
+    if (!this.config.cssURL) {
+      const style = createElement('style')
+      style.textContent = styles
+      this.root.append(style)
+    }
 
     const section = createElement('section', 'ecoku-comment-section')
     section.setAttribute('aria-label', '评论区')
@@ -204,8 +205,6 @@ export class CommentSurface {
     this.statusLine.setAttribute('aria-atomic', 'true')
     this.statusLine.tabIndex = -1
 
-    this.loadingState.setAttribute('role', 'status')
-    this.loadingState.setAttribute('aria-live', 'polite')
     this.emptyState.hidden = true
     this.emptyState.append(createElement('p', '', this.formConfig.emptyMessage))
     this.threadList.setAttribute('role', 'list')
@@ -232,7 +231,6 @@ export class CommentSurface {
       this.rootForm,
       heading,
       this.statusLine,
-      this.loadingState,
       this.emptyState,
       this.threadList,
       this.pagination,
@@ -527,7 +525,6 @@ export class CommentSurface {
   private setInitialLoading(clearView: boolean): void {
     this.hideServiceError()
     if (!clearView) return
-    this.loadingState.hidden = false
     this.emptyState.hidden = true
     this.threadList.hidden = true
     this.pagination.hidden = true
@@ -558,7 +555,6 @@ export class CommentSurface {
 
   private renderComments(): void {
     this.closeReply(false)
-    this.loadingState.hidden = true
     this.threadList.replaceChildren()
     const byParent = new Map<number, CommentData[]>()
     const roots: CommentData[] = []

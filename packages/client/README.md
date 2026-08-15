@@ -10,7 +10,7 @@ plain-text, no-avatar, threaded comment surface.
 npm install ecoku
 ```
 
-Version 3 exposes the same default `Ecoku` constructor through ESM, CommonJS,
+Version 0.1.0 exposes the same default `Ecoku` constructor through ESM, CommonJS,
 and a browser UMD global:
 
 ```js
@@ -46,6 +46,7 @@ const comments = new Ecoku({
   pageTitle: 'Windows 11 IoT LTSC 养老指南',
   pageSize: 10,
   theme: 'auto', // auto | light | dark
+  // cssURL: 'https://comments.example.com/client/ecoku.unstyled.css',
 })
 
 await comments.init()
@@ -54,7 +55,8 @@ await comments.init()
 The caller must provide the canonical `pageKey`; `pageTitle` should be the
 human-readable article title used by notifications. The SDK never derives either
 value from the browser URL. Styles are bundled into the component; CSS custom properties
-inherit from the host page.
+inherit from the host page. Pass `cssURL` to skip injection and use a host stylesheet
+instead (`none` skips without loading a file).
 
 The server-authoritative site registry controls whether email and website are
 required and supplies the comment textarea placeholder. The SDK reads this
@@ -73,7 +75,8 @@ comments.destroy()
 `apiBaseUrl` remains a deprecated alias for `serverURL`. The former
 `ecoku-comment-*` DOM-template protocol is no longer supported; production
 integration must provide a dedicated container. This removal is the breaking
-change behind the 3.0.0 version. Replace legacy template elements with one empty
+change behind the 3.0.0 protocol rewrite. The published npm version is now 0.1.0.
+Replace legacy template elements with one empty
 container and pass that container together with `serverURL`, `siteId`, and
 `pageKey` to the constructor.
 

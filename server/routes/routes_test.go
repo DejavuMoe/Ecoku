@@ -18,8 +18,10 @@ func TestClientStaticAssetsAreServedWithCrossOriginSafeHeaders(t *testing.T) {
 	configureRoutesTest(t)
 	directory := t.TempDir()
 	for name, body := range map[string]string{
-		"ecoku.umd.js":    "globalThis.Ecoku = function () {};",
-		"ecoku-loader.js": "void 0;",
+		"ecoku.umd.js":         "globalThis.Ecoku = function () {};",
+		"ecoku-loader.js":      "void 0;",
+		"ecoku.css":            ".ecoku-comments{}",
+		"ecoku.unstyled.css":   ".ecoku-comments{}",
 	} {
 		if err := os.WriteFile(filepath.Join(directory, name), []byte(body), 0o600); err != nil {
 			t.Fatalf("write %s: %v", name, err)
@@ -31,7 +33,7 @@ func TestClientStaticAssetsAreServedWithCrossOriginSafeHeaders(t *testing.T) {
 		t.Fatalf("new router: %v", err)
 	}
 
-	for _, name := range []string{"ecoku.umd.js", "ecoku-loader.js"} {
+	for _, name := range []string{"ecoku.umd.js", "ecoku-loader.js", "ecoku.css", "ecoku.unstyled.css"} {
 		request := httptest.NewRequest(http.MethodGet, "/client/"+name, nil)
 		recorder := httptest.NewRecorder()
 		router.ServeHTTP(recorder, request)

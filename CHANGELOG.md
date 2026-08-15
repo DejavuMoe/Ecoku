@@ -5,6 +5,18 @@
 
 ## [Unreleased]
 
+### 变更
+
+- 评论区采用已批准的 v15：发表框/回复框与已发布正文同字号、同颜色、同行高；接入外壳不再显示
+  「正在加载评论…」，保留加载失败重试与「评论服务尚未配置」。
+- `[+]` / `[-]` 折叠控件提高选择器优先级，固定 16px 等宽，避免被宿主 `font: inherit` 撑成不等宽。
+- 管理端采用已批准的 v11 系统衬线栈：`Noto Serif SC`、`Noto Serif CJK SC`、`Songti SC`、`STSong`，
+  不加载网络字体。
+- 接入可指定 JS/CSS URL。默认仍注入样式；设置 `data-css-url` / `cssURL` 后不再注入。容器提供
+  `/client/ecoku.css` 与结构用 `/client/ecoku.unstyled.css`。Hugo 示例增加可选 `js_url` / `css_url`，
+  并补充通用 HTML 示例。
+- 浏览器 SDK npm 包版本改为 `0.1.0`。
+
 ## [0.1.0-rc.10] - 2026-08-15
 
 ### 变更

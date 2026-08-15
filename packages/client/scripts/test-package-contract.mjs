@@ -8,7 +8,7 @@ const packageRoot = new URL('../', import.meta.url)
 const metadata = JSON.parse(await readFile(new URL('package.json', packageRoot), 'utf8'))
 
 assert.equal(metadata.name, 'ecoku')
-assert.equal(metadata.version, '3.0.0')
+assert.equal(metadata.version, '0.1.0')
 assert.equal(metadata.type, 'module')
 assert.equal(metadata.main, './dist/ecoku.cjs')
 assert.equal(metadata.exports['.'].import, './dist/ecoku.es.js')

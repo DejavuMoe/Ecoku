@@ -32,6 +32,8 @@ export interface EcokuConfig {
   apiBaseUrl?: string
   pageSize?: number
   theme?: EcokuTheme
+  /** When set, skip injecting the default stylesheet. Use `none` to skip without loading a file. */
+  cssURL?: string
 }
 
 export interface ResolvedEcokuConfig {
@@ -42,6 +44,7 @@ export interface ResolvedEcokuConfig {
   serverURL: string
   pageSize: number
   theme: EcokuTheme
+  cssURL: string
 }
 
 const SITE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/
@@ -94,6 +97,28 @@ function normalizeServerURL(value: string): string {
   return parsed.toString()
 }
 
+export function normalizeCssURL(value?: string): string {
+  const cssURL = (value || '').trim()
+  if (!cssURL) return ''
+  if (cssURL === 'none' || cssURL === '-') return 'none'
+  if (cssURL.startsWith('/')) {
+    if (cssURL.includes('\\') || cssURL.includes('://')) {
+      throw new TypeError('Ecoku: cssURL path must be a root-relative http(s) stylesheet location.')
+    }
+    return cssURL
+  }
+  let parsed: URL
+  try {
+    parsed = new URL(cssURL)
+  } catch {
+    throw new TypeError('Ecoku: cssURL must be an absolute http or https URL, a root-relative path, or none.')
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
+    throw new TypeError('Ecoku: cssURL must be an absolute http or https URL without credentials.')
+  }
+  return parsed.toString()
+}
+
 export function resolveConfig(options: EcokuConfig): ResolvedEcokuConfig {
   if (!options || typeof options !== 'object') {
     throw new TypeError('Ecoku: configuration is required.')
@@ -133,5 +158,6 @@ export function resolveConfig(options: EcokuConfig): ResolvedEcokuConfig {
     serverURL: normalizeServerURL(preferredServerURL || legacyServerURL || ''),
     pageSize,
     theme,
+    cssURL: normalizeCssURL(options.cssURL),
   }
 }

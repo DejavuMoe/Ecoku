@@ -1,0 +1,97 @@
+/* Layout-only comment surface. Pair with data-css-url; the SDK will not inject default styles.
+   Add your own colors, fonts, and borders. Class names match the default stylesheet. */
+.ecoku-comments,
+.ecoku-comments * {
+  box-sizing: border-box;
+}
+
+.ecoku-comments [hidden] {
+  display: none !important;
+}
+
+.ecoku-comments {
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
+  font-family: inherit;
+}
+
+.ecoku-identity-grid,
+.ecoku-reply-identity-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ecoku-field,
+.ecoku-message-field {
+  display: block;
+  min-width: 0;
+}
+
+.ecoku-input,
+.ecoku-textarea {
+  width: 100%;
+  font: inherit;
+}
+
+.ecoku-textarea {
+  display: block;
+  min-height: calc(16px + 1.65em * 7);
+  resize: vertical;
+}
+
+.ecoku-composer-footer,
+.ecoku-section-heading,
+.ecoku-comment-meta,
+.ecoku-comment-meta-main,
+.ecoku-pagination {
+  display: flex;
+  align-items: center;
+}
+
+.ecoku-composer-footer,
+.ecoku-section-heading {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ecoku-turnstile-slot {
+  width: min(100%, 300px);
+}
+
+.ecoku-turnstile-slot:empty {
+  display: none;
+}
+
+.ecoku-comments .ecoku-collapse-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: content-box;
+  width: 16px;
+  min-width: 16px;
+  max-width: 16px;
+  height: 20px;
+  flex: 0 0 16px;
+  padding: 0;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
+
+.ecoku-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+@media (max-width: 620px) {
+  .ecoku-identity-grid,
+  .ecoku-reply-identity-grid {
+    grid-template-columns: 1fr;
+  }
+}

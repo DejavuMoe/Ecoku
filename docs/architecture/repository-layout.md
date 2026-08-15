@@ -6,7 +6,7 @@
 | 路径 | 所有权与用途 | 是否进入运行时镜像 |
 | --- | --- | --- |
 | `server/` | Go API、SQLite3、Twikoo 导入、通知与嵌入管理端 | 是 |
-| `packages/client/` | 可独立分发的浏览器 SDK，以及容器同源托管的加载器和 UMD | 是，仅复制构建后的 `ecoku-loader.js` 与 `ecoku.umd.js` |
+| `packages/client/` | 可独立分发的浏览器 SDK，以及容器同源托管的加载器、UMD 与可选 CSS | 是，仅复制构建后的 `ecoku-loader.js`、`ecoku.umd.js`、`ecoku.css` 与 `ecoku.unstyled.css` |
 | `packages/admin/` | Vue 管理端源码 | 仅构建后的 `dist` |
 | `designs/` | 当前设计基线、测试 fixture 与历史原型 | 否 |
 | `examples/` | 无私有数据的最小站点接入示例 | 否 |

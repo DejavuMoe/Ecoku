@@ -21,7 +21,7 @@
   --shadow: 0 18px 48px rgba(20, 20, 19, 0.1);
   --radius: 14px;
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
-  --serif: "OPPO Serif SC", "Noto Serif CJK SC", "Songti SC", serif;
+      --serif: "Noto Serif SC", "Noto Serif CJK SC", "Songti SC", "STSong", serif;
   --mono: ui-monospace, "SFMono-Regular", "Cascadia Code", "Roboto Mono", monospace;
   color-scheme: light dark;
   font-family: var(--serif);

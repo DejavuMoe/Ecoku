@@ -28,6 +28,7 @@ describe('browser runtime privacy boundary', () => {
     ]) {
       expect(runtimeSource).not.toMatch(forbidden)
     }
+    expect(runtimeSource).not.toContain('正在加载评论')
   })
 
   it('keeps dividers on root threads only and inherits the host typography contract', () => {
@@ -37,5 +38,8 @@ describe('browser runtime privacy boundary', () => {
     expect(styles).not.toMatch(/\.ecoku-comment-row\s*\{[^}]*border-bottom:/s)
     expect(styles).toMatch(/font-family:\s*inherit/)
     expect(styles).toContain('var(--theme,')
+    expect(styles).toMatch(/\.ecoku-comments \.ecoku-textarea/)
+    expect(styles).toMatch(/\.ecoku-comments \.ecoku-collapse-button/)
+    expect(styles).toContain('max-width: 16px')
   })
 })

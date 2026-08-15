@@ -1,6 +1,6 @@
 {
   "name": "ecoku",
-  "version": "3.0.0",
+  "version": "0.1.0",
   "description": "A lightweight browser client for the Ecoku self-hosted comment system",
   "keywords": [
     "comment",
@@ -36,7 +36,7 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run build:lib",
-    "build:lib": "vite build --mode lib && vite build --config vite.loader.config.ts && node scripts/sync-cjs.mjs && npm run build:types",
+    "build:lib": "vite build --mode lib && vite build --config vite.loader.config.ts && node scripts/sync-cjs.mjs && node scripts/copy-hosted-css.mjs && npm run build:types",
     "build:types": "tsc --project tsconfig.build.json",
     "preview": "vite preview",
     "test": "vitest run",

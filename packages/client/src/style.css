@@ -281,13 +281,18 @@
 
 .ecoku-textarea {
   display: block;
-  min-height: calc(16px + 1.5em * 7);
-  height: calc(16px + 1.5em * 7);
+  min-height: calc(16px + 1.65em * 7);
+  height: calc(16px + 1.65em * 7);
   padding: 8px 10px;
   resize: vertical;
+}
+
+.ecoku-comments .ecoku-textarea {
   color: var(--ecoku-content);
+  font-family: inherit;
   font-size: 15px;
-  line-height: 1.5;
+  font-weight: 400;
+  line-height: 1.65;
 }
 
 .ecoku-textarea::placeholder {
@@ -407,17 +412,6 @@
   display: none;
 }
 
-.ecoku-loading-state {
-  margin: 0 0 24px;
-  padding: 22px;
-  color: var(--ecoku-secondary);
-  border: 1px solid var(--ecoku-border-soft);
-  border-radius: 14px;
-  background: var(--ecoku-surface-muted);
-  font-size: 14px;
-  text-align: center;
-}
-
 .ecoku-service-error {
   margin: 0 0 16px;
   padding: 16px;
@@ -522,17 +516,19 @@
   gap: 8px;
 }
 
-.ecoku-collapse-button {
+.ecoku-comments .ecoku-collapse-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   box-sizing: content-box;
   width: 16px;
   min-width: 16px;
+  max-width: 16px;
   height: 20px;
-  flex: 0 0 auto;
+  flex: 0 0 16px;
   margin: 0;
   padding: 0;
+  overflow: hidden;
   color: var(--ecoku-secondary);
   border: 0;
   border-radius: 0;
@@ -546,7 +542,7 @@
   letter-spacing: 0;
 }
 
-.ecoku-collapse-button:hover:not(:disabled) {
+.ecoku-comments .ecoku-collapse-button:hover:not(:disabled) {
   color: var(--ecoku-primary);
   border: 0;
   background: transparent;
@@ -717,7 +713,7 @@ a.ecoku-reply-context:hover {
 
 .ecoku-reply-composer .ecoku-message-field .ecoku-textarea,
 .ecoku-reply-composer .ecoku-textarea {
-  min-height: calc(16px + 1.5em * 7);
+  min-height: calc(16px + 1.65em * 7);
   border: 0;
   background: transparent;
   box-shadow: none;

@@ -143,7 +143,7 @@ func registerClientStatic(router *gin.Engine, configuredDirectory string) error 
 	if err != nil {
 		return fmt.Errorf("解析 client.static_dir: %w", err)
 	}
-	assetNames := []string{"ecoku.umd.js", "ecoku-loader.js"}
+	assetNames := []string{"ecoku.umd.js", "ecoku-loader.js", "ecoku.css", "ecoku.unstyled.css"}
 	assetPaths := make(map[string]string, len(assetNames))
 	for _, name := range assetNames {
 		path := filepath.Join(absoluteDirectory, name)

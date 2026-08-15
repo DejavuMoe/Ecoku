@@ -237,6 +237,8 @@ describe('approved production surface', () => {
     expect(css).toMatch(/html\[data-theme="auto"\][\s\S]*--paper: rgb\(26, 29, 32\)/)
     expect(css).toContain('--surface: rgb(34, 38, 42)')
     expect(css).toContain('--ink: rgb(242, 236, 226)')
+    expect(css).toContain('--serif: "Noto Serif SC", "Noto Serif CJK SC", "Songti SC", "STSong", serif')
+    expect(css).not.toContain('OPPO Serif SC')
     expect(html).not.toMatch(/localStorage|sessionStorage/)
     expect(css).not.toMatch(/localStorage|sessionStorage/)
   })

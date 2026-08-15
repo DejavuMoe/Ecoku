@@ -1,5 +1,6 @@
 {{- $ecoku := site.Params.ecoku -}}
 {{- if and $ecoku $ecoku.server_url $ecoku.site_id -}}
+{{- $js := $ecoku.js_url | default (printf "%s/client/ecoku-loader.js" $ecoku.server_url) -}}
 <section
     id="ecoku-comments"
     class="ecoku-shell"
@@ -12,14 +13,15 @@
     data-page-title="{{ .Title }}"
     data-page-size="10"
     data-theme="auto"
+    {{- with $ecoku.css_url }} data-css-url="{{ . }}"{{ end }}
 >
-    <div class="ecoku-loader" data-ecoku-loader role="status" aria-live="polite">
-        <p class="ecoku-loader-status" data-ecoku-status>正在加载评论…</p>
+    <div class="ecoku-loader" data-ecoku-loader hidden>
+        <p class="ecoku-loader-status" data-ecoku-status></p>
         <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新加载评论</button>
     </div>
     <div id="ecoku-mount" data-ecoku-mount></div>
 </section>
-<script src="{{ $ecoku.server_url }}/client/ecoku-loader.js" defer></script>
+<script src="{{ $js }}" defer></script>
 {{- else -}}
 <section class="ecoku-shell" aria-label="评论区">
     <p class="ecoku-loader-status" role="status">评论服务尚未配置。</p>
