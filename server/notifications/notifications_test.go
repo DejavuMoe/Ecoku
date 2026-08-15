@@ -57,7 +57,16 @@ func TestBloggerIdentityNotificationMatrix(t *testing.T) {
 			if err := database.Exec(`UPDATE sites SET blogger_nickname = '站长', blogger_email = 'owner@example.test' WHERE id = 'site-a'`).Error; err != nil {
 				t.Fatal(err)
 			}
-			if err := database.Exec(`UPDATE notification_settings SET enabled = 1 WHERE channel IN ('email', 'telegram')`).Error; err != nil {
+			if _, err := SaveEmail(EmailConfig{
+				Enabled: true, Host: "smtp.example.com", Port: 465, Encryption: "tls",
+				Username: "mailer", Password: "password", FromAddress: "sender@example.com",
+				Recipients: []string{"admin@example.com"}, Revision: 1,
+			}); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := SaveTelegram(TelegramConfig{
+				Enabled: true, Token: "123:token", Targets: []string{"123456"}, Revision: 1,
+			}); err != nil {
 				t.Fatal(err)
 			}
 			var parentID *uint
