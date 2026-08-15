@@ -110,7 +110,12 @@ func pageURL(site model.Site, mark string) string {
 	if err != nil || base.Host == "" {
 		return site.SiteURL
 	}
-	reference, err := url.Parse(strings.TrimPrefix(strings.TrimSpace(mark), "/"))
+	mark = strings.TrimSpace(mark)
+	raw, err := url.Parse(mark)
+	if err != nil || raw.IsAbs() || raw.Scheme != "" || raw.Host != "" || raw.User != nil {
+		return site.SiteURL
+	}
+	reference, err := url.Parse(strings.TrimPrefix(mark, "/"))
 	if err != nil || reference.IsAbs() || reference.Scheme != "" || reference.Host != "" || reference.User != nil {
 		return site.SiteURL
 	}

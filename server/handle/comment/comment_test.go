@@ -192,7 +192,7 @@ func TestSubmitRejectsAbsolutePageKeys(t *testing.T) {
 		{name: "triple-slash", mark: "///evil.example/phish", code: http.StatusBadRequest},
 		{name: "javascript", mark: "javascript:alert(1)", code: http.StatusBadRequest},
 		{name: "same-site-absolute", mark: "https://a.example/post", code: http.StatusBadRequest},
-		{name: "newline", mark: "/post\n", code: http.StatusBadRequest},
+		{name: "embedded-newline", mark: "post\n/x", code: http.StatusBadRequest},
 		{name: "rooted-path", mark: "/post", code: http.StatusCreated},
 		{name: "plain-key", mark: "article-a", code: http.StatusCreated},
 		{name: "nested-key", mark: "article/stable-key", code: http.StatusCreated},
