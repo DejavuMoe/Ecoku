@@ -343,7 +343,8 @@ sudo docker compose ps
 
 ```html
 <section
-  id="ecoku-comment-shell"
+  id="ecoku-comments"
+  class="ecoku-shell"
   data-ecoku-comments
   data-server-url="https://comments.example.com"
   data-site-id="blog"
@@ -352,17 +353,27 @@ sudo docker compose ps
   data-page-size="10"
   data-theme="auto"
 >
-  <div data-ecoku-mount></div>
+  <div class="ecoku-loader" data-ecoku-loader role="status" aria-live="polite">
+    <p class="ecoku-loader-status" data-ecoku-status>评论区将在滚动到附近时加载。</p>
+    <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新加载评论</button>
+  </div>
+  <div id="ecoku-mount" data-ecoku-mount></div>
 </section>
 <script src="https://comments.example.com/client/ecoku-loader.js" defer></script>
 ```
 
+加载器以 `data-ecoku-*` 为准：外壳、挂载点、加载态、状态文案和重试按钮缺一则不会初始化。
+规范 id 为 `ecoku-comments` 与 `ecoku-mount`。当前加载器仍兼容旧的 `#tcomment` 与
+`.comment-loader` / `.comment-status` / `.comment-retry`，新站点不要再使用这些名称。
+
 `pageKey` 必须由站点生成器明确提供，不能包含查询参数，也不能随标题或域名变化；`pageTitle`
 用于通知中的文章标题。浏览器只接收公开配置，不得放入管理员 token 或 management key。
 
-当前 SDK 会把组件样式注入宿主页面。若站点使用严格 `style-src 'self'`，必须为 Ecoku 样式制定
-经过审核的 CSP 方案；不要仅为消除报错而全局放宽脚本策略。每次升级 SDK 后重新检查 CSP、控制台
-和网络请求，确认没有第三方 IP、头像、遥测或管理凭据。
+当前 SDK 会把评论区样式注入宿主页面，评论表面不需要再加载一份组件 CSS。可选的
+[`examples/hugo-papermod/assets/css/extended/ecoku.css`](../../examples/hugo-papermod/assets/css/extended/ecoku.css)
+只美化滚动加载前的外壳、状态文案和重试按钮。若站点使用严格 `style-src 'self'`，必须为 SDK
+注入样式制定经过审核的 CSP 方案；不要仅为消除报错而全局放宽脚本策略。每次升级 SDK 后重新检查
+CSP、控制台和网络请求，确认没有第三方 IP、头像、遥测或管理凭据。
 
 ### Hugo PaperMod
 
@@ -377,9 +388,9 @@ params:
 ```
 
 把仓库 [`examples/hugo-papermod/layouts/_partials/comments.html`](../../examples/hugo-papermod/layouts/_partials/comments.html)
-合并到主题实际使用的 comments partial；可选的宿主主题变量适配位于
-[`assets/css/extended/ecoku.css`](../../examples/hugo-papermod/assets/css/extended/ecoku.css)。生产模板应继续
-使用 `.RelPermalink` 作为页面 key、`.Title` 作为标题，并保留 Hugo 的上下文转义。
+合并到主题实际使用的 comments partial。生产模板应继续使用 `.RelPermalink` 作为页面 key、`.Title`
+作为标题，并保留 Hugo 的上下文转义。加载前外壳样式可选复制
+[`assets/css/extended/ecoku.css`](../../examples/hugo-papermod/assets/css/extended/ecoku.css)。
 
 上线前至少检查：首页以外的普通文章、无评论页、深层回复、根线程分页、移动端、回复通知、CORS
 拒绝未登记 Origin，以及刷新后 7 天加密身份恢复。访客身份只存于当前 Origin 的 IndexedDB；

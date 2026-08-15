@@ -69,6 +69,10 @@ function parseTheme(value: string | undefined): 'auto' | 'light' | 'dark' {
   return value === 'light' || value === 'dark' ? value : 'auto'
 }
 
+function queryShellPart<T extends HTMLElement>(shell: HTMLElement, current: string, legacy: string): T | null {
+  return shell.querySelector<T>(current) ?? shell.querySelector<T>(legacy)
+}
+
 export function setupEcokuLoader(
   documentRef: Document = document,
   windowRef: EcokuWindow = window,
@@ -76,10 +80,10 @@ export function setupEcokuLoader(
 ): void {
   const shells = Array.from(documentRef.querySelectorAll<HTMLElement>('[data-ecoku-comments]'))
   for (const shell of shells) {
-    const mount = shell.querySelector<HTMLElement>('[data-ecoku-mount]')
-    const loader = shell.querySelector<HTMLElement>('.comment-loader')
-    const status = shell.querySelector<HTMLElement>('.comment-status')
-    const retry = shell.querySelector<HTMLButtonElement>('.comment-retry')
+    const mount = queryShellPart<HTMLElement>(shell, '[data-ecoku-mount]', '#tcomment')
+    const loader = queryShellPart<HTMLElement>(shell, '[data-ecoku-loader]', '.comment-loader')
+    const status = queryShellPart<HTMLElement>(shell, '[data-ecoku-status]', '.comment-status')
+    const retry = queryShellPart<HTMLButtonElement>(shell, '[data-ecoku-retry]', '.comment-retry')
     const serverURL = shell.dataset.serverUrl?.trim() || ''
     const siteId = shell.dataset.siteId?.trim() || ''
     const pageKey = shell.dataset.pageKey?.trim() || ''

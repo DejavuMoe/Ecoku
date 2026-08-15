@@ -1,18 +1,20 @@
-.comment-shell {
+/* Optional host chrome for the deferred-load shell.
+   The comment surface itself is styled by the injected SDK stylesheet. */
+.ecoku-shell {
     margin-top: 2.75rem;
     min-height: 8rem;
 }
 
-.comment-loader {
+.ecoku-loader {
     padding: 1.25rem 0;
     color: var(--secondary);
 }
 
-.comment-status {
+.ecoku-loader-status {
     margin: 0;
 }
 
-.comment-retry {
+.ecoku-loader-retry {
     margin-top: 0.75rem;
     padding: 0.55rem 0.9rem;
     border: 1px solid var(--tertiary);
@@ -23,22 +25,22 @@
     font: inherit;
 }
 
-.comment-retry:hover {
+.ecoku-loader-retry:hover {
     border-color: var(--secondary);
 }
 
-.comment-retry:focus-visible {
+.ecoku-loader-retry:focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 3px;
 }
 
-.comment-retry[hidden],
-.comment-loader[hidden] {
+.ecoku-loader-retry[hidden],
+.ecoku-loader[hidden] {
     display: none;
 }
 
 @media (max-width: 640px) {
-    .comment-shell {
+    .ecoku-shell {
         margin-top: 2rem;
     }
 }

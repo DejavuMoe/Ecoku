@@ -1,8 +1,8 @@
 {{- $ecoku := site.Params.ecoku -}}
 {{- if and $ecoku $ecoku.server_url $ecoku.site_id -}}
 <section
-    id="ecoku-comment-shell"
-    class="comment-shell"
+    id="ecoku-comments"
+    class="ecoku-shell"
     data-ecoku-comments
     aria-label="评论区"
     aria-busy="false"
@@ -13,15 +13,15 @@
     data-page-size="10"
     data-theme="auto"
 >
-    <div class="comment-loader" role="status" aria-live="polite">
-        <p class="comment-status">评论区将在滚动到附近时加载。</p>
-        <button class="comment-retry" type="button" hidden>重新加载评论</button>
+    <div class="ecoku-loader" data-ecoku-loader role="status" aria-live="polite">
+        <p class="ecoku-loader-status" data-ecoku-status>评论区将在滚动到附近时加载。</p>
+        <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新加载评论</button>
     </div>
-    <div id="tcomment" data-ecoku-mount></div>
+    <div id="ecoku-mount" data-ecoku-mount></div>
 </section>
 <script src="{{ $ecoku.server_url }}/client/ecoku-loader.js" defer></script>
 {{- else -}}
-<section class="comment-shell" aria-label="评论区">
-    <p class="comment-status" role="status">评论服务尚未配置。</p>
+<section class="ecoku-shell" aria-label="评论区">
+    <p class="ecoku-loader-status" role="status">评论服务尚未配置。</p>
 </section>
 {{- end -}}

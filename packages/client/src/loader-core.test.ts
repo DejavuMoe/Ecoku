@@ -48,9 +48,9 @@ describe('Ecoku hosted loader', () => {
       <section data-ecoku-comments data-server-url="https://ecoku.example"
         data-site-id="blog" data-page-key="/posts/test/" data-page-title="测试"
         data-page-size="12" data-theme="dark" aria-busy="false">
-        <div class="comment-loader"><span class="comment-status"></span>
-          <button class="comment-retry" type="button" hidden></button></div>
-        <div data-ecoku-mount></div>
+        <div data-ecoku-loader><span data-ecoku-status></span>
+          <button data-ecoku-retry type="button" hidden></button></div>
+        <div id="ecoku-mount" data-ecoku-mount></div>
       </section>`
     const init = vi.fn().mockResolvedValue(undefined)
     const Constructor = vi.fn(function (this: { init: typeof init }) {
@@ -70,5 +70,55 @@ describe('Ecoku hosted loader', () => {
       theme: 'dark',
     }))
     expect(document.querySelector('[data-ecoku-comments]')?.getAttribute('aria-busy')).toBe('false')
+  })
+
+  it('still initializes legacy Twikoo-era class names until hosts migrate', async () => {
+    class ImmediateIntersectionObserver implements IntersectionObserver {
+      readonly root = null
+      readonly rootMargin = '0px'
+      readonly scrollMargin = '0px'
+      readonly thresholds = [0]
+      private readonly callback: IntersectionObserverCallback
+
+      constructor(callback: IntersectionObserverCallback) {
+        this.callback = callback
+      }
+
+      disconnect(): void {}
+
+      observe(target: Element): void {
+        this.callback([
+          { isIntersecting: true, target } as IntersectionObserverEntry,
+        ], this)
+      }
+
+      takeRecords(): IntersectionObserverEntry[] {
+        return []
+      }
+
+      unobserve(): void {}
+    }
+    Object.defineProperty(window, 'IntersectionObserver', {
+      configurable: true,
+      value: ImmediateIntersectionObserver,
+    })
+    document.body.innerHTML = `
+      <section data-ecoku-comments data-server-url="https://ecoku.example"
+        data-site-id="blog" data-page-key="/posts/legacy/">
+        <div class="comment-loader"><span class="comment-status"></span>
+          <button class="comment-retry" type="button" hidden></button></div>
+        <div id="tcomment"></div>
+      </section>`
+    const init = vi.fn().mockResolvedValue(undefined)
+    const Constructor = vi.fn(function (this: { init: typeof init }) {
+      this.init = init
+    })
+    ;(window as Window & { Ecoku?: unknown }).Ecoku = Constructor
+
+    setupEcokuLoader(document, window, 'https://ecoku.example/client/ecoku-loader.js')
+    await vi.waitFor(() => expect(init).toHaveBeenCalledOnce())
+    expect(Constructor).toHaveBeenCalledWith(expect.objectContaining({
+      pageKey: '/posts/legacy/',
+    }))
   })
 })
