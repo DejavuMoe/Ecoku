@@ -246,7 +246,7 @@ func validateEmail(input EmailConfig, hasSecret bool) error {
 	if input.Host == "" || len(input.Host) > 255 || input.Port < 1 || input.Port > 65535 {
 		return fmt.Errorf("%w: SMTP 服务器或端口无效", ErrValidation)
 	}
-	if input.Encryption != "tls" && input.Encryption != "starttls" && input.Encryption != "none" {
+	if input.Encryption != "tls" && input.Encryption != "starttls" {
 		return fmt.Errorf("%w: 加密方式无效", ErrValidation)
 	}
 	if input.Enabled && strings.TrimSpace(config.GetNotificationsConfig().InstancePublicURL) == "" {

@@ -29,9 +29,10 @@ type Site struct {
 	Placeholder     string    `gorm:"column:placeholder"`
 	CommentLimit    int       `gorm:"column:comment_limit"`
 	EmptyMessage    string    `gorm:"column:empty_message"`
-	BloggerNickname string    `gorm:"column:blogger_nickname"`
-	BloggerEmail    string    `gorm:"column:blogger_email"`
-	BloggerBadge    string    `gorm:"column:blogger_badge"`
+	BloggerNickname       string    `gorm:"column:blogger_nickname"`
+	BloggerEmail          string    `gorm:"column:blogger_email"`
+	BloggerBadge          string    `gorm:"column:blogger_badge"`
+	BloggerPassphraseHash string    `gorm:"column:blogger_passphrase_hash"`
 	Revision        uint      `gorm:"column:revision"`
 	CreatedAt       time.Time `gorm:"column:created_at"`
 	UpdatedAt       time.Time `gorm:"column:updated_at"`
@@ -49,11 +50,13 @@ type SiteWrite struct {
 	Placeholder     string
 	CommentLimit    int
 	EmptyMessage    string
-	BloggerNickname string
-	BloggerEmail    string
-	BloggerBadge    string
-	AllowedOrigins  []string
-	Revision        uint
+	BloggerNickname       string
+	BloggerEmail          string
+	BloggerBadge          string
+	BloggerPassphraseHash string
+	UpdatePassphrase      bool
+	AllowedOrigins        []string
+	Revision              uint
 }
 
 func ListSites() ([]Site, error) {
@@ -120,7 +123,8 @@ func CreateSite(input SiteWrite, now time.Time) (Site, error) {
 			Placeholder: input.Placeholder, CommentLimit: input.CommentLimit,
 			EmptyMessage: input.EmptyMessage, BloggerNickname: input.BloggerNickname,
 			BloggerEmail: input.BloggerEmail, BloggerBadge: input.BloggerBadge,
-			Revision: 1, CreatedAt: now, UpdatedAt: now,
+			BloggerPassphraseHash: input.BloggerPassphraseHash,
+			Revision:              1, CreatedAt: now, UpdatedAt: now,
 		}
 		if err := tx.Create(&created).Error; err != nil {
 			return err
@@ -138,22 +142,26 @@ func UpdateSite(siteID string, input SiteWrite, now time.Time) (Site, error) {
 		return Site{}, fmt.Errorf("database unavailable")
 	}
 	err := DB.Transaction(func(tx *gorm.DB) error {
+		updates := map[string]any{
+			"site_url": input.SiteURL, "domain": input.Domain,
+			"name":             input.Name,
+			"default_sort":     input.DefaultSort,
+			"email_required":   input.EmailRequired,
+			"website_required": input.WebsiteRequired,
+			"placeholder":      input.Placeholder,
+			"comment_limit":    input.CommentLimit,
+			"empty_message":    input.EmptyMessage,
+			"blogger_nickname": input.BloggerNickname,
+			"blogger_email":    input.BloggerEmail,
+			"blogger_badge":    input.BloggerBadge,
+			"revision":         gorm.Expr("revision + 1"), "updated_at": now,
+		}
+		if input.UpdatePassphrase {
+			updates["blogger_passphrase_hash"] = input.BloggerPassphraseHash
+		}
 		result := tx.Model(&Site{}).
 			Where("id = ? AND revision = ?", siteID, input.Revision).
-			Updates(map[string]any{
-				"site_url": input.SiteURL, "domain": input.Domain,
-				"name":             input.Name,
-				"default_sort":     input.DefaultSort,
-				"email_required":   input.EmailRequired,
-				"website_required": input.WebsiteRequired,
-				"placeholder":      input.Placeholder,
-				"comment_limit":    input.CommentLimit,
-				"empty_message":    input.EmptyMessage,
-				"blogger_nickname": input.BloggerNickname,
-				"blogger_email":    input.BloggerEmail,
-				"blogger_badge":    input.BloggerBadge,
-				"revision":         gorm.Expr("revision + 1"), "updated_at": now,
-			})
+			Updates(updates)
 		if result.Error != nil {
 			return result.Error
 		}
@@ -167,7 +175,17 @@ func UpdateSite(siteID string, input SiteWrite, now time.Time) (Site, error) {
 			}
 			return ErrSiteConflict
 		}
-		return replaceSiteOrigins(tx, siteID, input.AllowedOrigins)
+		if err := replaceSiteOrigins(tx, siteID, input.AllowedOrigins); err != nil {
+			return err
+		}
+		var hash string
+		if err := tx.Raw("SELECT blogger_passphrase_hash FROM sites WHERE id = ?", siteID).Scan(&hash).Error; err != nil {
+			return err
+		}
+		if strings.TrimSpace(input.BloggerNickname) != "" && strings.TrimSpace(hash) != "" {
+			return BackfillHistoricalBloggerComments(tx, siteID)
+		}
+		return nil
 	})
 	if err != nil {
 		return Site{}, err
@@ -176,6 +194,8 @@ func UpdateSite(siteID string, input SiteWrite, now time.Time) (Site, error) {
 }
 
 func (site Site) IsBloggerComment(username string, email *string) bool {
+	// Historical nick+email equality is only used to backfill comments.is_blogger.
+	// Public lists and notification enqueue read the stored flag.
 	nickname := strings.TrimSpace(site.BloggerNickname)
 	configuredEmail := strings.TrimSpace(site.BloggerEmail)
 	if nickname == "" || configuredEmail == "" || email == nil {

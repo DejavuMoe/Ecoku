@@ -25,10 +25,6 @@ func (worker *Worker) Wait() {
 }
 
 func EnqueueNewComment(tx *gorm.DB, comment model.Comment) error {
-	var site model.Site
-	if err := tx.Where("id = ?", comment.SiteID).First(&site).Error; err != nil {
-		return err
-	}
 	emailRow, err := loadSetting(tx, ChannelEmail)
 	if err != nil {
 		return err
@@ -37,14 +33,26 @@ func EnqueueNewComment(tx *gorm.DB, comment model.Comment) error {
 	if err != nil {
 		return err
 	}
-	if !isBloggerComment(site, comment) && emailRow.Enabled {
-		if err := enqueue(tx, EventBloggerEmail, comment.ID); err != nil {
+	if !comment.IsBlogger && emailRow.Enabled {
+		emailConfig, err := emailFromRow(emailRow, false)
+		if err != nil {
 			return err
 		}
+		for _, recipient := range emailConfig.Recipients {
+			if err := enqueue(tx, EventBloggerEmail, comment.ID, recipient); err != nil {
+				return err
+			}
+		}
 	}
-	if !isBloggerComment(site, comment) && telegramRow.Enabled {
-		if err := enqueue(tx, EventBloggerTelegram, comment.ID); err != nil {
+	if !comment.IsBlogger && telegramRow.Enabled {
+		telegramConfig, err := telegramFromRow(telegramRow, false)
+		if err != nil {
 			return err
+		}
+		for _, target := range telegramConfig.Targets {
+			if err := enqueue(tx, EventBloggerTelegram, comment.ID, target); err != nil {
+				return err
+			}
 		}
 	}
 	if comment.ParentID == nil || !emailRow.Enabled {
@@ -54,30 +62,29 @@ func EnqueueNewComment(tx *gorm.DB, comment model.Comment) error {
 	if err := tx.Where("id = ? AND site_id = ? AND mark = ?", *comment.ParentID, comment.SiteID, comment.Mark).First(&parent).Error; err != nil {
 		return err
 	}
-	if parent.DeletedAt != nil || parent.Email == nil || strings.TrimSpace(*parent.Email) == "" || isBloggerComment(site, parent) {
+	if parent.DeletedAt != nil || parent.IsBlogger || parent.Email == nil || strings.TrimSpace(*parent.Email) == "" {
 		return nil
 	}
 	if comment.Email != nil && strings.EqualFold(strings.TrimSpace(*comment.Email), strings.TrimSpace(*parent.Email)) {
 		return nil
 	}
-	return enqueue(tx, EventVisitorReply, comment.ID)
+	return enqueue(tx, EventVisitorReply, comment.ID, strings.TrimSpace(*parent.Email))
 }
 
-func isBloggerComment(site model.Site, comment model.Comment) bool {
-	return site.IsBloggerComment(comment.Username, comment.Email)
-}
-
-func enqueue(tx *gorm.DB, eventType string, commentID uint) error {
+func enqueue(tx *gorm.DB, eventType string, commentID uint, target string) error {
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return fmt.Errorf("notification target is empty")
+	}
 	now := time.Now().UTC()
 	return tx.Exec(`INSERT INTO notification_outbox
-  (event_type, comment_id, status, attempts, available_at, locked_at, last_error_code, created_at, updated_at, sent_at)
-  VALUES (?, ?, 'pending', 0, ?, NULL, NULL, ?, ?, NULL)
-  ON CONFLICT(event_type, comment_id) DO NOTHING`, eventType, commentID, now, now, now).Error
+  (event_type, comment_id, target, status, attempts, available_at, locked_at, last_error_code, created_at, updated_at, sent_at)
+  VALUES (?, ?, ?, 'pending', 0, ?, NULL, NULL, ?, ?, NULL)
+  ON CONFLICT(event_type, comment_id, target) DO NOTHING`, eventType, commentID, target, now, now, now).Error
 }
 
 func StartWorker(ctx context.Context) (*Worker, error) {
-	cutoff := time.Now().UTC().Add(-10 * time.Minute)
-	if err := model.DB.Table("notification_outbox").Where("status = 'processing' AND locked_at < ?", cutoff).Updates(map[string]any{
+	if err := model.DB.Table("notification_outbox").Where("status = 'processing'").Updates(map[string]any{
 		"status": "failed", "locked_at": nil, "last_error_code": "worker_recovered",
 		"available_at": time.Now().UTC(), "updated_at": time.Now().UTC(),
 	}).Error; err != nil {
@@ -178,15 +185,12 @@ func deliverEvent(ctx context.Context, event outboxRow) error {
 	}
 	switch event.EventType {
 	case EventBloggerEmail:
-		if isBloggerComment(site, comment) {
+		if strings.TrimSpace(event.Target) == "" || event.Target == "*" {
 			return errDeliveryCancelled
 		}
 		row, err := loadSetting(model.DB, ChannelEmail)
 		if err != nil {
 			return err
-		}
-		if !row.Enabled {
-			return errDeliveryCancelled
 		}
 		settings, err := emailFromRow(row, true)
 		if err != nil {
@@ -196,22 +200,14 @@ func deliverEvent(ctx context.Context, event outboxRow) error {
 		if err != nil {
 			return err
 		}
-		for _, recipient := range settings.Recipients {
-			if err := sendSMTPMessage(ctx, settings, recipient, message); err != nil {
-				return err
-			}
-		}
-		return nil
+		return sendSMTPMessage(ctx, settings, event.Target, message)
 	case EventBloggerTelegram:
-		if isBloggerComment(site, comment) {
+		if strings.TrimSpace(event.Target) == "" || event.Target == "*" {
 			return errDeliveryCancelled
 		}
 		row, err := loadSetting(model.DB, ChannelTelegram)
 		if err != nil {
 			return err
-		}
-		if !row.Enabled {
-			return errDeliveryCancelled
 		}
 		settings, err := telegramFromRow(row, true)
 		if err != nil {
@@ -221,41 +217,30 @@ func deliverEvent(ctx context.Context, event outboxRow) error {
 		if err != nil {
 			return err
 		}
-		for _, target := range settings.Targets {
-			if err := sendTelegramMessage(ctx, settings.Token, target, message); err != nil {
-				return err
-			}
-		}
-		return nil
+		return sendTelegramMessage(ctx, settings.Token, event.Target, message)
 	case EventVisitorReply:
 		if comment.ParentID == nil || comment.DeletedAt != nil {
+			return errDeliveryCancelled
+		}
+		if strings.TrimSpace(event.Target) == "" || event.Target == "*" {
 			return errDeliveryCancelled
 		}
 		var parent model.Comment
 		if err := model.DB.Where("id = ? AND site_id = ? AND mark = ?", *comment.ParentID, comment.SiteID, comment.Mark).First(&parent).Error; err != nil {
 			return errDeliveryCancelled
 		}
-		if parent.Email == nil || strings.TrimSpace(*parent.Email) == "" || parent.DeletedAt != nil {
-			return errDeliveryCancelled
-		}
-		if isBloggerComment(site, parent) {
-			return errDeliveryCancelled
-		}
-		if comment.Email != nil && strings.EqualFold(strings.TrimSpace(*comment.Email), strings.TrimSpace(*parent.Email)) {
+		if parent.DeletedAt != nil {
 			return errDeliveryCancelled
 		}
 		row, err := loadSetting(model.DB, ChannelEmail)
 		if err != nil {
 			return err
 		}
-		if !row.Enabled {
-			return errDeliveryCancelled
-		}
 		settings, err := emailFromRow(row, true)
 		if err != nil {
 			return err
 		}
-		return sendSMTPMessage(ctx, settings, strings.TrimSpace(*parent.Email), renderReplyEmail(comment, parent, site, pageURL(site, comment.Mark)))
+		return sendSMTPMessage(ctx, settings, event.Target, renderReplyEmail(comment, parent, site, pageURL(site, comment.Mark)))
 	default:
 		return errDeliveryCancelled
 	}

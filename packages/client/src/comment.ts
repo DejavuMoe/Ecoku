@@ -896,11 +896,18 @@ export class CommentSurface {
         }
         draft.turnstileToken = token
       }
-      await submitComment(this.config, draft, this.submitController.signal)
+      const submitted = await submitComment(this.config, draft, this.submitController.signal)
       if (this.destroyed || revision !== this.pageRevision || pageKey !== this.config.pageKey) return
       const widget = reply ? this.activeReply?.widget : this.rootWidget
       widget?.reset()
-      await saveVisitorIdentity(this.config.serverURL, this.config.siteId, identity)
+      if (submitted.data.isBlogger || this.looksLikeBloggerProofAttempt(identity)) {
+        if (submitted.data.isBlogger) {
+          this.nickname.value = ''
+          this.updateRootFormState()
+        }
+      } else {
+        await saveVisitorIdentity(this.config.serverURL, this.config.siteId, identity)
+      }
       if (reply) this.closeReply(false)
       else {
         this.rootContent.value = ''
@@ -1049,14 +1056,16 @@ export class CommentSurface {
       if (focus) nickname.focus()
       return zhCN.nicknameTooLong
     }
-    const emailValid = (!this.formConfig.emailRequired && identity.email === '')
+    const emailValid = this.looksLikeBloggerProofAttempt(identity)
+      || (!this.formConfig.emailRequired && identity.email === '')
       || (identity.email !== '' && isEmailForClient(identity.email))
     if (!emailValid) {
       email.setAttribute('aria-invalid', 'true')
       if (focus) email.focus()
       return this.formConfig.emailRequired ? zhCN.emailRequiredInvalid : zhCN.emailInvalid
     }
-    const websiteValid = (!this.formConfig.websiteRequired && identity.url === '')
+    const websiteValid = this.looksLikeBloggerProofAttempt(identity)
+      || (!this.formConfig.websiteRequired && identity.url === '')
       || (identity.url !== '' && Boolean(safeHTTPURL(identity.url)))
     if (!websiteValid) {
       website.setAttribute('aria-invalid', 'true')
@@ -1066,7 +1075,14 @@ export class CommentSurface {
     return null
   }
 
-  private identityIsValid(identity: IdentityDraft): boolean {
+  private looksLikeBloggerProofAttempt(identity: IdentityDraft): boolean {
+    return this.formConfig.bloggerProofEnabled
+      && Boolean(identity.username)
+      && identity.email === ''
+      && identity.url === ''
+  }
+
+  private identityIsCompleteGuest(identity: IdentityDraft): boolean {
     return Boolean(identity.username)
       && codePointLength(identity.username) <= MAX_NICKNAME_LENGTH
       && ((!this.formConfig.emailRequired && identity.email === '')
@@ -1075,9 +1091,17 @@ export class CommentSurface {
         || (identity.url !== '' && Boolean(safeHTTPURL(identity.url))))
   }
 
+  private identityIsValid(identity: IdentityDraft): boolean {
+    if (this.looksLikeBloggerProofAttempt(identity)) {
+      return codePointLength(identity.username) <= MAX_NICKNAME_LENGTH
+    }
+    return this.identityIsCompleteGuest(identity)
+  }
+
   private firstInvalidIdentityControl(reply: ActiveReply): HTMLInputElement | null {
     const identity = this.identityFromControls(reply.nickname, reply.email, reply.website)
     if (!identity.username || codePointLength(identity.username) > MAX_NICKNAME_LENGTH) return reply.nickname
+    if (this.looksLikeBloggerProofAttempt(identity)) return null
     if (!((!this.formConfig.emailRequired && identity.email === '')
       || (identity.email !== '' && isEmailForClient(identity.email)))) return reply.email
     if (!((!this.formConfig.websiteRequired && identity.url === '')
@@ -1086,7 +1110,7 @@ export class CommentSurface {
   }
 
   private updateReplyIdentityMode(reply: ActiveReply): void {
-    reply.identityGrid.hidden = this.identityIsValid(
+    reply.identityGrid.hidden = this.identityIsCompleteGuest(
       this.identityFromControls(reply.nickname, reply.email, reply.website),
     )
   }

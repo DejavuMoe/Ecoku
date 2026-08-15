@@ -8,7 +8,9 @@ site:
   # 日志文件路径
   log_path: "./data/log.txt"
 
-  # 本地开发保持为空。Compose 推荐拓扑同样保持为空，不要填 0.0.0.0/0。
+  # 空列表表示所有访客共用一个限流桶。生产若经本机 Caddy 反代到 127.0.0.1:12123
+  # 且需要按真实访客限流，填 Docker 网关 /32，例如 172.17.0.1/32。
+  # 不要填 0.0.0.0/0 或 ::/0。
   trusted_proxies: []
 
 # 可选。设置后由 Go 直接提供 /client/ecoku-loader.js、ecoku.umd.js、ecoku.css 与 ecoku.unstyled.css。
@@ -61,7 +63,7 @@ notifications:
 # SQLite3 数据库配置。Ecoku P2 起不再支持 MySQL。
 database:
   sqlite:
-    # 数据库文件路径。当前版本仅接受空数据库或本版本创建的数据库。
+    # 数据库文件路径。空库会按顺序初始化到最新 schema；已有库只接受本版本迁移链上的顺序升级。
     path: "./data/ecoku.bin"
 
 # 独立管理员认证。默认关闭；启用后缺少任何凭据都会导致启动失败。

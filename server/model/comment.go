@@ -13,6 +13,7 @@ type Comment struct {
 	Email     *string    `gorm:"column:email;size:254"`
 	URL       *string    `gorm:"column:url;size:2048"`
 	Content   string     `gorm:"column:content;type:text;not null"`
+	IsBlogger bool       `gorm:"column:is_blogger"`
 	DeletedAt *time.Time `gorm:"column:deleted_at"`
 	CreatedAt time.Time  `gorm:"column:created_at;not null"`
 	UpdatedAt time.Time  `gorm:"column:updated_at;not null"`

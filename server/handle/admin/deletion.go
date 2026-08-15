@@ -71,6 +71,7 @@ func tombstoneComment(siteID string, commentID uint, deletedAt time.Time) (model
 				"email":      nil,
 				"url":        nil,
 				"content":    "",
+				"is_blogger": false,
 				"deleted_at": deletedAt,
 				"updated_at": deletedAt,
 			})

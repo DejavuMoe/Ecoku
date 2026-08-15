@@ -41,8 +41,9 @@ func main() {
 	config.InitConfigFile()
 	// 初始化日志系统
 	logs.InitLogger()
-	// 初始化数据库
-	model.InitDatabase()
+	if err := model.InitDatabase(); err != nil {
+		log.Fatalf("数据库初始化失败: %v", err)
+	}
 	if err := notifications.ValidateStoredSecrets(); err != nil {
 		log.Fatalf("通知凭据校验失败: %v", err)
 	}
@@ -103,7 +104,9 @@ func runTwikooImport(arguments []string) (resultErr error) {
 	}
 	config.InitConfigFile()
 	logs.InitLogger()
-	model.InitDatabase()
+	if err := model.InitDatabase(); err != nil {
+		return err
+	}
 	defer func() {
 		if err := model.CloseDatabase(); err != nil && resultErr == nil {
 			resultErr = fmt.Errorf("关闭导入数据库: %w", err)

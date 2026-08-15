@@ -67,8 +67,10 @@ admin:
     - "https://comments.example.com"
 ```
 
-其余项与示例保持一致。`trusted_proxies` 保持 `[]`：限流只用容器看到的直接连接地址，本机反代
-不必填 `127.0.0.1/32`。不要填 `0.0.0.0/0`。
+其余项与示例保持一致。限流默认只用容器看到的直接连接地址。若本机 Caddy 反代到
+`127.0.0.1:12123` 且需要按真实访客限流，把 `trusted_proxies` 设为 Docker 网关 `/32`
+（先 `sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}'`），
+并让 Caddy **覆盖** `X-Forwarded-For`。留空则所有访客共用一个限流桶。不要填 `0.0.0.0/0` 或 `::/0`。
 
 ## 3. 首次初始化管理员
 
@@ -163,14 +165,20 @@ curl --fail --head http://127.0.0.1:12123/client/ecoku.umd.js
 
 ## 5. Caddy 或 Nginx 反向代理
 
-把 HTTPS 终止在本机反代，上游指向 `127.0.0.1:12123`。不必改 `app/config.yaml` 里的 `trusted_proxies`。
+把 HTTPS 终止在本机反代，上游指向 `127.0.0.1:12123`。`/api/health` 只表示进程可响应。
+
+若要按真实客户端限流（拓扑 1），Caddy 必须覆盖而不是追加 `X-Forwarded-For`，并把 Ecoku 的
+`trusted_proxies` 设为 Docker 网关 `/32`。拓扑 2（CDN → Caddy）仍只让 Ecoku 信任该网关，由 Caddy
+写入 CDN 提供的 Connecting-IP。拓扑 3 保持 `trusted_proxies: []`，所有访客共用一个限流桶。
 
 ### Caddy
 
 ```caddyfile
 comments.example.com {
     encode zstd gzip
-    reverse_proxy 127.0.0.1:12123
+    reverse_proxy 127.0.0.1:12123 {
+        header_up X-Forwarded-For {remote_host}
+    }
 }
 ```
 
@@ -215,7 +223,7 @@ curl --fail --head https://comments.example.com/client/ecoku-loader.js
 - 站点名称：例如 `Example Blog`，留空时回落到 URL 域名；
 - 允许来源：每行一个完整 Origin，例如 `https://blog.example.com`；
 - 默认排序、邮箱/网站要求、评论框文案、字符上限和无评论文案；
-- 博主昵称与博主邮箱：必须同时设置或同时留空，仅用于识别博主本人和通知去重。
+- 博主昵称、博主邮箱与博主口令：昵称与邮箱必须同时设置或同时留空；启用时必须设置口令。口令不会回显。公开评论区昵称栏填写口令即可发表为博主，评论显示配置昵称、可选标志和站点 URL 链接，无头像。升级后保存口令会按昵称+邮箱回填历史博主评论。
 
 默认通知判定由服务端执行，不在管理端展示说明表：
 
@@ -228,8 +236,8 @@ curl --fail --head https://comments.example.com/client/ecoku-loader.js
 | 博主 | 访客 | 仅向被回复访客邮箱发送回复通知 |
 | 博主 | 博主 | 不发送 |
 
-昵称与邮箱必须共同匹配才视为博主；邮箱比较不区分大小写，昵称去除首尾空白后精确比较。
-SMTP、Telegram 与接收目标仍在实例级「通知设置」中配置。密码和 Bot Token 不会明文回显。
+昵称与邮箱必须共同匹配才用于历史回填；公开徽章和通知去重读取存储的 `is_blogger`。邮箱比较不区分大小写，昵称去除首尾空白后精确比较。
+SMTP 只允许 TLS 或 STARTTLS。SMTP、Telegram 与接收目标仍在实例级「通知设置」中配置。密码和 Bot Token 不会明文回显。
 
 ## 7. 添加站点后首次导入 Twikoo
 
@@ -368,10 +376,13 @@ data/ecoku.sqlite3-shm
 不要在服务运行时只复制主文件。最简单可靠的备份是正常停服后确认边车文件已经 checkpoint：
 
 ```bash
+set -euo pipefail
 sudo docker compose down
 sudo test ! -e ./data/ecoku.sqlite3-wal
 sudo test ! -e ./data/ecoku.sqlite3-shm
 
+umask 077
+mkdir -p ./backups
 backup_stamp="$(date +%Y%m%d-%H%M%S)"
 sudo cp --reflink=auto --preserve=mode,timestamps \
   ./data/ecoku.sqlite3 "./backups/ecoku-${backup_stamp}.sqlite3"
@@ -379,9 +390,10 @@ sudo chown "$USER":"$USER" "./backups/ecoku-${backup_stamp}.sqlite3"
 chmod 600 "./backups/ecoku-${backup_stamp}.sqlite3"
 sha256sum "./backups/ecoku-${backup_stamp}.sqlite3" \
   > "./backups/ecoku-${backup_stamp}.sqlite3.sha256"
+sudo cp --preserve=mode,timestamps ./compose.yaml "./backups/compose-${backup_stamp}.yaml"
+sudo cp --preserve=mode,timestamps ./app/config.yaml "./backups/config-${backup_stamp}.yaml"
+sudo cp --preserve=mode,timestamps ./ecoku.env "./backups/ecoku-${backup_stamp}.env"
 ```
-
-还应备份 `compose.yaml`、`app/config.yaml` 和 `ecoku.env`；环境文件与数据库都属于私密备份。
 
 升级顺序：
 
@@ -405,8 +417,8 @@ curl --fail http://127.0.0.1:12123/api/health
 显式 schema 迁移在原 `data/ecoku.sqlite3` 文件内按版本事务执行。成功后只增加
 `schema_migrations` 记录；不会自动删除旧数据库、业务数据、WAL 边车文件或 `backups/` 中的备份。
 失败的版本不会被记为完成，服务会拒绝启动。不存在单独的“v1 数据库”可供自动清理，也不得手工
-删除迁移历史或伪造版本。含实例级 Turnstile 的未发版会把 schema 从 v3 升到 v4；升级前必须冷备份，
-已写入 v4 的库不能只换回旧镜像。
+删除迁移历史或伪造版本。含博主口令与按目标拆分 outbox 的版本会把 schema 从 v4 升到 v5；升级前必须冷备份，
+已写入 v5 的库不能只换回旧镜像，必须用停服前的整库备份恢复。
 
 ### Cloudflare Turnstile
 
@@ -423,6 +435,39 @@ Secret key 使用与通知相同的 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 加密�
 需要回滚时先停止失败版本，保留现场副本，把 Compose 恢复到旧镜像 tag，再用停服前备份替换
 `data/ecoku.sqlite3`，恢复 `10001:10001` 权限后启动。若新版本已经写入旧程序不认识的 schema，
 绝不能只回退镜像而继续使用已升级数据库。
+
+```bash
+set -euo pipefail
+sudo docker compose down
+# 保留失败现场，勿覆盖停服前备份
+sudo cp --preserve=mode,timestamps ./data/ecoku.sqlite3 "./backups/ecoku-failed-$(date +%Y%m%d-%H%M%S).sqlite3"
+sudo rm -f ./data/ecoku.sqlite3 ./data/ecoku.sqlite3-wal ./data/ecoku.sqlite3-shm
+sudo cp --preserve=mode,timestamps "./backups/ecoku-${backup_stamp}.sqlite3" ./data/ecoku.sqlite3
+sudo chown 10001:10001 ./data/ecoku.sqlite3
+sudo chmod 600 ./data/ecoku.sqlite3
+# 把 compose.yaml 的 image 改回旧精确 tag 后：
+sudo docker compose up -d
+sudo docker compose ps
+curl --fail http://127.0.0.1:12123/api/health
+```
+
+停服后若要查看当前库布局（只读）：
+
+```bash
+python3 - <<'PY'
+import sqlite3
+db = sqlite3.connect("./data/ecoku.sqlite3")
+print("migrations:")
+for row in db.execute("SELECT version, name FROM schema_migrations ORDER BY version"):
+    print(row)
+print("comments columns:")
+for row in db.execute("PRAGMA table_info(comments)"):
+    print(row)
+print("outbox columns:")
+for row in db.execute("PRAGMA table_info(notification_outbox)"):
+    print(row)
+PY
+```
 
 ### 已有实例补充 `TZ`
 
@@ -453,8 +498,8 @@ sudo docker compose exec ecoku wget -q -O- http://127.0.0.1:12123/api/health
 - `sudo docker compose ps` 显示 `healthy`；
 - 公网 `/api/health`、`/admin/`、加载器和 UMD 均为 HTTPS；
 - 管理员能登录，刷新后需要重新登录；
-- 站点 ID、URL、名称、允许来源、表单配置、博主身份和评论区标志保存后可读回；
-- 公共列表不含邮箱或管理字段；博主评论只多一个公开标志与 `isBlogger`；未登记 Origin 被 CORS 拒绝；
+- 站点 ID、URL、名称、允许来源、表单配置、博主身份（含口令已设置状态，不明文）和评论区标志保存后可读回；
+- 公共列表不含邮箱或管理字段；博主评论只多一个公开标志、`isBlogger` 和站点 URL 链接；未登记 Origin 被 CORS 拒绝；
 - 根评论、内联回复、7 天身份恢复、Unicode 上限和根线程分页符合预期；
 - 评论时间按容器 `TZ` 显示，悬停为 IANA 加偏移；未设置 `TZ` 时为 `Asia/Shanghai`；
 - SMTP/Telegram 测试和真实通知去重符合默认矩阵；

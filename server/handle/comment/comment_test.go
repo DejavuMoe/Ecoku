@@ -99,7 +99,7 @@ func TestPublicListMarksBloggerWithoutExposingEmail(t *testing.T) {
 	if err := model.DB.Exec(`UPDATE sites SET blogger_nickname = '站长', blogger_email = 'owner@example.test', blogger_badge = '[OP]' WHERE id = 'site-a'`).Error; err != nil {
 		t.Fatal(err)
 	}
-	createComment(t, model.Comment{SiteID: "site-a", Mark: "/post", Username: "站长", Email: ptr("OWNER@example.test"), Content: "博主留言"})
+	createComment(t, model.Comment{SiteID: "site-a", Mark: "/post", Username: "站长", Email: ptr("OWNER@example.test"), Content: "博主留言", IsBlogger: true})
 	createComment(t, model.Comment{SiteID: "site-a", Mark: "/post", Username: "站长", Email: ptr("visitor@example.test"), Content: "同名访客"})
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/list?siteId=site-a&key=/post", nil))
@@ -197,6 +197,8 @@ func TestSubmitRejectsAbsolutePageKeys(t *testing.T) {
 		{name: "plain-key", mark: "article-a", code: http.StatusCreated},
 		{name: "nested-key", mark: "article/stable-key", code: http.StatusCreated},
 		{name: "permalink", mark: "/posts/test/", code: http.StatusCreated},
+		{name: "query", mark: "/posts/test/?utm=1", code: http.StatusBadRequest},
+		{name: "fragment", mark: "/posts/test/#section", code: http.StatusBadRequest},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			if got := postJSON(t, router, validSubmission("site-a", test.mark, 0)).Code; got != test.code {
@@ -317,5 +319,56 @@ func TestSubmitRequiresTurnstileWhenEnabled(t *testing.T) {
 	recorder = postJSON(t, router, ok)
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("valid token status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+}
+
+func TestSubmitBloggerPassphraseRewritesIdentity(t *testing.T) {
+	router := setupCommentTest(t)
+	hash, err := model.HashBloggerPassphrase("correct-horse-battery")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := model.DB.Exec(`UPDATE sites SET blogger_nickname = '站长', blogger_email = 'owner@example.test', blogger_passphrase_hash = ? WHERE id = 'site-a'`, hash).Error; err != nil {
+		t.Fatal(err)
+	}
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/list?siteId=site-a&key=/post", nil))
+	var list commentListEnvelope
+	if err := json.Unmarshal(recorder.Body.Bytes(), &list); err != nil {
+		t.Fatal(err)
+	}
+	if !list.Data.FormConfig.BloggerProofEnabled {
+		t.Fatal("formConfig should advertise blogger proof")
+	}
+	body := map[string]any{"siteId": "site-a", "mark": "/post", "content": "你好", "username": "correct-horse-battery", "parent": 0}
+	created := postJSON(t, router, body)
+	if created.Code != http.StatusCreated {
+		t.Fatalf("status=%d body=%s", created.Code, created.Body.String())
+	}
+	if strings.Contains(created.Body.String(), "correct-horse-battery") {
+		t.Fatal("passphrase echoed in submit response")
+	}
+	var response struct {
+		Data struct {
+			ID        uint `json:"id"`
+			IsBlogger bool `json:"isBlogger"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(created.Body.Bytes(), &response); err != nil {
+		t.Fatal(err)
+	}
+	if !response.Data.IsBlogger {
+		t.Fatal("submit response missing isBlogger")
+	}
+	var stored model.Comment
+	if err := model.DB.First(&stored, response.Data.ID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if stored.Username != "站长" || stored.Email == nil || *stored.Email != "owner@example.test" || stored.URL == nil || *stored.URL != "https://a.example" || !stored.IsBlogger {
+		t.Fatalf("stored=%#v", stored)
+	}
+	wrong := map[string]any{"siteId": "site-a", "mark": "/post", "content": "你好", "username": "wrong-passphrase", "parent": 0}
+	if got := postJSON(t, router, wrong).Code; got != http.StatusBadRequest {
+		t.Fatalf("mistyped passphrase without email status=%d", got)
 	}
 }

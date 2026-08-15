@@ -46,14 +46,15 @@ func GetComments(c *gin.Context) {
 		return
 	}
 	formConfig := config.CommentFormConfig{
-		EmailRequired:    site.EmailRequired,
-		WebsiteRequired:  site.WebsiteRequired,
-		Placeholder:      site.Placeholder,
-		DefaultSort:      site.DefaultSort,
-		LengthLimit:      site.CommentLimit,
-		EmptyMessage:     site.EmptyMessage,
-		BloggerBadge:     site.BloggerBadge,
-		TurnstileSitekey: sitekey,
+		EmailRequired:       site.EmailRequired,
+		WebsiteRequired:     site.WebsiteRequired,
+		Placeholder:         site.Placeholder,
+		DefaultSort:         site.DefaultSort,
+		LengthLimit:         site.CommentLimit,
+		EmptyMessage:        site.EmptyMessage,
+		BloggerBadge:        site.BloggerBadge,
+		TurnstileSitekey:    sitekey,
+		BloggerProofEnabled: site.BloggerProofConfigured(),
 	}
 	key := strings.TrimSpace(c.Query("key"))
 	if key == "" || textLength(key) > maxPageKeyLength {
@@ -135,7 +136,7 @@ func GetComments(c *gin.Context) {
 			UpdatedAt: item.UpdatedAt.UTC().Format(time.RFC3339Nano),
 			Username:  username,
 			URL:       website,
-			IsBlogger: !deleted && site.IsBloggerComment(item.Username, item.Email),
+			IsBlogger: !deleted && item.IsBlogger,
 		})
 	}
 

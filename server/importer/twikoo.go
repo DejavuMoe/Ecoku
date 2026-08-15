@@ -150,6 +150,9 @@ func ImportTwikoo(ctx context.Context, database *gorm.DB, reader io.Reader, opti
 			}
 			break
 		}
+		if err := model.BackfillHistoricalBloggerComments(tx, siteID); err != nil {
+			return fmt.Errorf("backfill imported blogger comments: %w", err)
+		}
 		if options.DryRun {
 			return errDryRun
 		}
@@ -244,10 +247,11 @@ func prepareTwikooComments(siteID string, source []twikooComment) ([]preparedTwi
 
 func normalizePageKey(raw string) (string, error) {
 	value := strings.TrimSpace(raw)
-	if parsed, err := url.Parse(value); err == nil && parsed.IsAbs() {
-		value = parsed.EscapedPath()
-		if parsed.RawQuery != "" {
-			value += "?" + parsed.RawQuery
+	if parsed, err := url.Parse(value); err == nil {
+		if parsed.EscapedPath() != "" || parsed.IsAbs() {
+			value = parsed.EscapedPath()
+		} else if idx := strings.IndexAny(value, "?#"); idx >= 0 {
+			value = value[:idx]
 		}
 	}
 	if value == "" {
@@ -258,6 +262,9 @@ func normalizePageKey(raw string) (string, error) {
 	}
 	if utf8.RuneCountInString(value) > 512 {
 		return "", fmt.Errorf("page key exceeds 512 characters")
+	}
+	if strings.ContainsAny(value, "?#") {
+		return "", fmt.Errorf("page key must not contain a query or fragment")
 	}
 	return value, nil
 }

@@ -63,14 +63,14 @@ func TestBloggerIdentityNotificationMatrix(t *testing.T) {
 			var parentID *uint
 			if test.parent != "" {
 				parentEmail := test.parentMail
-				parent := model.Comment{SiteID: "site-a", Mark: "/article", PageTitle: "文章", Username: test.parent, Email: &parentEmail, Content: "parent"}
+				parent := model.Comment{SiteID: "site-a", Mark: "/article", PageTitle: "文章", Username: test.parent, Email: &parentEmail, Content: "parent", IsBlogger: test.parent == "站长"}
 				if err := database.Create(&parent).Error; err != nil {
 					t.Fatal(err)
 				}
 				parentID = &parent.ID
 			}
 			submitterEmail := test.submitterMail
-			comment := model.Comment{SiteID: "site-a", Mark: "/article", PageTitle: "文章", ParentID: parentID, Username: test.submitter, Email: &submitterEmail, Content: "comment"}
+			comment := model.Comment{SiteID: "site-a", Mark: "/article", PageTitle: "文章", ParentID: parentID, Username: test.submitter, Email: &submitterEmail, Content: "comment", IsBlogger: test.submitter == "站长"}
 			if err := database.Transaction(func(tx *gorm.DB) error {
 				if err := tx.Create(&comment).Error; err != nil {
 					return err
@@ -212,8 +212,95 @@ func TestNotificationTemplatesUseSiteNameArticleTitleAndEscapeText(t *testing.T)
 	if visitor.Subject != "你在 Dejavu's Blog 的评论收到了回复" {
 		t.Fatalf("visitor subject=%q", visitor.Subject)
 	}
+	if !strings.Contains(blogger.HTML, "#ecoku-comment-1") || !strings.Contains(visitor.HTML, "#ecoku-comment-2") {
+		t.Fatalf("missing comment anchors blogger=%s visitor=%s", blogger.HTML, visitor.HTML)
+	}
+	emptyTitle := model.Comment{ID: 3, SiteID: "site-a", Mark: "/untitled", Username: "访客", Content: "无标题"}
+	untitled, err := renderBloggerEmail(emptyTitle, site)
+	if err != nil || !strings.Contains(untitled.HTML, "这篇文章") {
+		t.Fatalf("empty title=%#v err=%v", untitled, err)
+	}
 	telegram, err := renderTelegram(reply, site)
 	if err != nil || strings.Contains(telegram, "审核") || !strings.Contains(telegram, "您在 Dejavu&#39;s Blog 上有新回复") {
 		t.Fatalf("telegram=%q err=%v", telegram, err)
+	}
+	if !strings.Contains(telegram, "原评论") {
+		t.Fatalf("telegram missing parent context: %q", telegram)
+	}
+}
+
+func TestOutboxStoresOneRowPerTargetAndSkipsDuplicates(t *testing.T) {
+	database := setupNotificationTest(t)
+	if _, err := SaveEmail(EmailConfig{Enabled: true, Host: "smtp.example.com", Port: 465, Encryption: "tls", Username: "mailer", Password: "password", FromAddress: "sender@example.com", Recipients: []string{"one@example.test", "two@example.test"}, Revision: 1}); err != nil {
+		t.Fatal(err)
+	}
+	email := "visitor@example.test"
+	comment := model.Comment{SiteID: "site-a", Mark: "/article", Username: "访客", Email: &email, Content: "comment"}
+	if err := database.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&comment).Error; err != nil {
+			return err
+		}
+		return EnqueueNewComment(tx, comment)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Transaction(func(tx *gorm.DB) error { return EnqueueNewComment(tx, comment) }); err != nil {
+		t.Fatal(err)
+	}
+	var targets []string
+	if err := database.Table("notification_outbox").Where("event_type = ?", EventBloggerEmail).Order("target ASC").Pluck("target", &targets).Error; err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(targets, []string{"one@example.test", "two@example.test"}) {
+		t.Fatalf("targets=%v", targets)
+	}
+}
+
+func TestStartWorkerRecoversAllProcessingRows(t *testing.T) {
+	database := setupNotificationTest(t)
+	email := "visitor@example.test"
+	comment := model.Comment{SiteID: "site-a", Mark: "/article", Username: "访客", Email: &email, Content: "comment"}
+	if err := database.Create(&comment).Error; err != nil {
+		t.Fatal(err)
+	}
+	now := comment.CreatedAt
+	if err := database.Exec(`INSERT INTO notification_outbox
+  (event_type, comment_id, target, status, attempts, available_at, locked_at, last_error_code, created_at, updated_at, sent_at)
+  VALUES (?, ?, ?, 'processing', 1, ?, ?, NULL, ?, ?, NULL)`, EventBloggerEmail, comment.ID, "owner@example.test", now, now, now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	worker, err := StartWorker(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	worker.Wait()
+	var status, code string
+	if err := database.Raw(`SELECT status, last_error_code FROM notification_outbox WHERE comment_id = ?`, comment.ID).Row().Scan(&status, &code); err != nil {
+		t.Fatal(err)
+	}
+	if status != "failed" || code != "worker_recovered" {
+		t.Fatalf("status=%q code=%q", status, code)
+	}
+}
+
+func TestSMTPPayloadUsesRandomBoundaryAndQuotedPrintable(t *testing.T) {
+	first, err := buildSMTPPayload("from@example.test", "to@example.test", emailMessage{Subject: "标题", Text: "plain", HTML: "<p>html</p>"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := buildSMTPPayload("from@example.test", "to@example.test", emailMessage{Subject: "标题", Text: "plain", HTML: "<p>html</p>"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(first), "Content-Transfer-Encoding: quoted-printable") {
+		t.Fatalf("missing quoted-printable: %s", first)
+	}
+	if strings.Contains(string(first), "ecoku-boundary-7f53") {
+		t.Fatal("fixed MIME boundary is still in use")
+	}
+	if string(first) == string(second) {
+		t.Fatal("MIME boundary was not randomized")
 	}
 }

@@ -56,6 +56,7 @@ function listResponse(
       emptyMessage?: string
       bloggerBadge?: string
       turnstileSitekey?: string
+      bloggerProofEnabled?: boolean
     }
     timeZone?: string
   } = {},
@@ -351,6 +352,62 @@ describe('approved production comment surface', () => {
     }))
     await client.reload()
     expect(container.querySelector('.ecoku-blogger-badge')).toBeNull()
+  })
+
+  it('lets a blogger submit only a passphrase and does not store it as visitor identity', async () => {
+    const posts: Record<string, unknown>[] = []
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      const url = new URL(String(input))
+      if (url.pathname.endsWith('/api/comment/submit')) {
+        posts.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
+        return jsonResponse(201, { id: 12, isBlogger: true }, 'submitted')
+      }
+      return listResponse([], {
+        formConfig: {
+          emailRequired: true,
+          websiteRequired: false,
+          placeholder: zhCN.commentPlaceholder,
+          bloggerProofEnabled: true,
+        },
+      })
+    })
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    const form = container.querySelector<HTMLFormElement>('.ecoku-composer')!
+    setValue(container.querySelector<HTMLInputElement>('input[type="text"]')!, 'correct-horse-battery')
+    setValue(container.querySelector<HTMLTextAreaElement>('.ecoku-composer .ecoku-textarea')!, 'Blogger note')
+    await submitForm(form)
+    await vi.waitFor(() => expect(posts).toHaveLength(1))
+    expect(posts[0]).toMatchObject({
+      username: 'correct-horse-battery',
+      content: 'Blogger note',
+    })
+    expect(posts[0]).not.toHaveProperty('email')
+    expect(posts[0]).not.toHaveProperty('url')
+    expect(saveVisitorIdentity).not.toHaveBeenCalled()
+    await vi.waitFor(() => {
+      expect(container.querySelector<HTMLInputElement>('input[type="text"]')?.value).toBe('')
+    })
+  })
+
+  it('keeps the reply identity grid visible when only a passphrase-like nickname is filled', async () => {
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(listResponse(
+      [comment(1, 0, 'existing root')],
+      {
+        formConfig: {
+          emailRequired: true,
+          websiteRequired: false,
+          placeholder: zhCN.commentPlaceholder,
+          bloggerProofEnabled: true,
+        },
+      },
+    ))
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    setValue(container.querySelector<HTMLInputElement>('.ecoku-composer input[type="text"]')!, 'correct-horse-battery')
+    container.querySelector<HTMLButtonElement>('[data-comment-id="1"] .ecoku-text-action')!.click()
+    const reply = container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!
+    expect(reply.querySelector<HTMLElement>('.ecoku-reply-identity-grid')?.hidden).toBe(false)
   })
 
   it('renders a 52-comment fixture with complete one-to-six-level semantics and the approved count-only heading', async () => {

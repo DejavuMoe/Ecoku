@@ -78,7 +78,7 @@ func validPageKey(value string) bool {
 
 func pageKeyHasNoLocation(value string) bool {
 	parsed, err := url.Parse(value)
-	return err == nil && parsed.Scheme == "" && parsed.Host == "" && parsed.User == nil && !parsed.IsAbs()
+	return err == nil && parsed.Scheme == "" && parsed.Host == "" && parsed.User == nil && !parsed.IsAbs() && parsed.RawQuery == "" && parsed.Fragment == ""
 }
 
 func validEmail(value string) bool {

@@ -9,6 +9,7 @@ export interface CommentFormConfig {
   emptyMessage: string
   bloggerBadge: string
   turnstileSitekey: string
+  bloggerProofEnabled: boolean
 }
 
 export const DEFAULT_COMMENT_FORM_CONFIG: Readonly<CommentFormConfig> = Object.freeze({
@@ -20,6 +21,7 @@ export const DEFAULT_COMMENT_FORM_CONFIG: Readonly<CommentFormConfig> = Object.f
   emptyMessage: '还没有评论\n成为第一个留下评论的人。',
   bloggerBadge: '[博主]',
   turnstileSitekey: '',
+  bloggerProofEnabled: false,
 })
 
 export interface EcokuConfig {

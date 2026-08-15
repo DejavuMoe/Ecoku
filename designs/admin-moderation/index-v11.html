@@ -280,11 +280,11 @@
                   <div class="form-row"><label class="form-label" for="site-empty-message">无评论文案</label><div class="field-stack"><textarea class="textarea" id="site-empty-message">还没有评论\n成为第一个留下评论的人。</textarea></div></div>
 
                   <section class="subsection" aria-labelledby="blogger-identity-title">
-                    <div class="subsection-heading"><h3 id="blogger-identity-title">博主身份</h3><p>用于识别博主本人提交的评论；昵称与邮箱需同时填写。评论区只展示下方标志，不会公开邮箱。</p></div>
-                    ${inputRow("博主昵称", "blogger-name", "text", bloggerName, { error: validationMessage })}
-                    ${inputRow("博主邮箱", "blogger-email", "email", bloggerEmail, { error: validationMessage, help: "仅用于私有身份匹配，不会公开" })}
+                    <div class="subsection-heading"><h3 id="blogger-identity-title">博主身份</h3><p>公开评论只显示下方昵称、可选标志，以及指向站点 URL 的链接。邮箱只用于通知去重和历史评论回填。评论区昵称栏填写口令即可发表为博主。</p></div>
+                    ${inputRow("博主昵称", "blogger-name", "text", bloggerName, { error: validationMessage, help: "评论区公开显示，并通过站点 URL 链接" })}
+                    ${inputRow("博主邮箱", "blogger-email", "email", bloggerEmail, { error: validationMessage, help: "仅用于通知去重与历史评论回填，不会公开邮箱" })}
+                    ${inputRow("博主口令", "blogger-passphrase", "password", "", { error: validation ? "启用博主身份时必须设置口令" : "", help: configured ? "已设置；留空则保持不变。评论区昵称栏填写口令即可发表为博主。" : "12–80 个字符。评论区昵称栏填写此口令即可发表为博主；口令不会回显。" })}
                     ${inputRow("评论区标志", "blogger-badge", "text", configured || validation ? "[博主]" : "", { help: "显示在博主评论昵称之后，例如 [博主] 或 [OP]。留空则不显示。" })}
-                    ${configured ? `<div class="form-row"><span class="form-label">当前匹配</span><div class="identity-summary"><span class="identity-chip">Dejavu Moe</span><span class="identity-chip">admin@dejavu.moe</span></div></div>` : ""}
                   </section>
 
                   <div class="form-actions"><button class="button button-primary" type="submit">保存站点</button></div>
