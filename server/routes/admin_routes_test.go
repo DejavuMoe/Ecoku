@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"ecoku-server/config"
 	"ecoku-server/model"
+	"ecoku-server/turnstile"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -105,6 +106,55 @@ func TestAdminStaticCSPAllowsStyleAttributesWithoutInlineScripts(t *testing.T) {
 	}
 	if !strings.Contains(csp, "script-src 'self'") || !strings.Contains(csp, "style-src 'self'") {
 		t.Fatalf("administrator UI lost its self-only script/style policy: %q", csp)
+	}
+	if !strings.Contains(csp, "https://challenges.cloudflare.com") || !strings.Contains(csp, "frame-src https://challenges.cloudflare.com") {
+		t.Fatalf("administrator UI cannot load Turnstile: %q", csp)
+	}
+}
+
+func TestAdminTurnstileSettingsAndLoginChallenge(t *testing.T) {
+	env := setupAdminTest(t)
+	unauthenticated := requestJSON(t, env.router, http.MethodGet, "/api/admin/login-config", adminTestOrigin, "", nil)
+	if unauthenticated.Code != http.StatusOK || !strings.Contains(unauthenticated.Body.String(), `"turnstileSitekey":""`) {
+		t.Fatalf("empty login-config=%d %s", unauthenticated.Code, unauthenticated.Body.String())
+	}
+	saved := requestJSON(t, env.router, http.MethodPut, "/api/admin/turnstile", adminTestOrigin, "Bearer "+env.token, map[string]any{
+		"enabled": true, "sitekey": "public-sitekey", "secret": "secret-private", "revision": 1,
+	})
+	if saved.Code != http.StatusOK {
+		t.Fatalf("save=%d %s", saved.Code, saved.Body.String())
+	}
+	if strings.Contains(saved.Body.String(), "secret-private") {
+		t.Fatalf("secret echoed: %s", saved.Body.String())
+	}
+	configResponse := requestJSON(t, env.router, http.MethodGet, "/api/admin/login-config", adminTestOrigin, "", nil)
+	if configResponse.Code != http.StatusOK || !strings.Contains(configResponse.Body.String(), `"turnstileSitekey":"public-sitekey"`) {
+		t.Fatalf("login-config=%d %s", configResponse.Code, configResponse.Body.String())
+	}
+	blocked := requestJSON(t, env.router, http.MethodPost, "/api/admin/login", adminTestOrigin, "", map[string]any{
+		"username": "instance-admin", "password": "test-admin-password",
+	})
+	if blocked.Code != http.StatusBadRequest || !strings.Contains(blocked.Body.String(), "验证失败，请重试") {
+		t.Fatalf("login without token=%d %s", blocked.Code, blocked.Body.String())
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		_ = json.NewEncoder(w).Encode(map[string]any{"success": r.FormValue("response") == "good-token"})
+	}))
+	t.Cleanup(server.Close)
+	restore := turnstile.ConfigureSiteverify(server.URL, server.Client())
+	t.Cleanup(restore)
+	wrongPassword := requestJSON(t, env.router, http.MethodPost, "/api/admin/login", adminTestOrigin, "", map[string]any{
+		"username": "instance-admin", "password": "wrong-password", "turnstileToken": "good-token",
+	})
+	if wrongPassword.Code != http.StatusUnauthorized {
+		t.Fatalf("wrong password after challenge=%d %s", wrongPassword.Code, wrongPassword.Body.String())
+	}
+	ok := requestJSON(t, env.router, http.MethodPost, "/api/admin/login", adminTestOrigin, "", map[string]any{
+		"username": "instance-admin", "password": "test-admin-password", "turnstileToken": "good-token",
+	})
+	if ok.Code != http.StatusOK {
+		t.Fatalf("login with token=%d %s", ok.Code, ok.Body.String())
 	}
 }
 

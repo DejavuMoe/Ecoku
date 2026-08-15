@@ -3,6 +3,7 @@ package comment
 import (
 	"ecoku-server/model"
 	"ecoku-server/notifications"
+	"ecoku-server/turnstile"
 	"ecoku-server/utils"
 	"encoding/json"
 	"errors"
@@ -15,14 +16,15 @@ import (
 )
 
 type SubmitCommentRequest struct {
-	SiteID    string      `json:"siteId"`
-	Mark      string      `json:"mark"`
-	PageTitle string      `json:"pageTitle,omitempty"`
-	Content   string      `json:"content"`
-	Username  string      `json:"username"`
-	Email     string      `json:"email"`
-	Parent    FlexibleInt `json:"parent,omitempty"`
-	URL       string      `json:"url,omitempty"`
+	SiteID         string      `json:"siteId"`
+	Mark           string      `json:"mark"`
+	PageTitle      string      `json:"pageTitle,omitempty"`
+	Content        string      `json:"content"`
+	Username       string      `json:"username"`
+	Email          string      `json:"email"`
+	Parent         FlexibleInt `json:"parent,omitempty"`
+	URL            string      `json:"url,omitempty"`
+	TurnstileToken string      `json:"turnstileToken,omitempty"`
 }
 
 // FlexibleInt keeps compatibility with older clients that sent parent as a
@@ -108,6 +110,15 @@ func SubmitComment(c *gin.Context) {
 	}
 	if (site.WebsiteRequired && website == "") || !validWebsiteURL(website) {
 		utils.SendError(c, http.StatusBadRequest, "网址无效，仅支持 http 或 https")
+		return
+	}
+
+	if err := turnstile.Verify(c.Request.Context(), req.TurnstileToken); err != nil {
+		if errors.Is(err, turnstile.ErrFailed) {
+			utils.SendError(c, http.StatusBadRequest, "请完成验证后再发布。")
+			return
+		}
+		utils.SendError(c, http.StatusInternalServerError, "验证服务暂时不可用")
 		return
 	}
 

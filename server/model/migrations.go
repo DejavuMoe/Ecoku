@@ -13,17 +13,20 @@ import (
 )
 
 const (
-	LatestSchemaVersion             = 3
-	freshSchemaVersion              = 1
-	freshSchemaName                 = "fresh_published_comments"
-	freshSchemaDefinition           = "sqlite3:fresh-v1:published-comments:site-display-config:notifications:tombstones"
-	bloggerIdentitySchemaVersion    = 2
-	bloggerIdentitySchemaName       = "site_blogger_identity"
-	bloggerIdentitySchemaDefinition = "sqlite3:v2:sites-blogger-nickname-email"
-	bloggerBadgeSchemaVersion       = 3
-	bloggerBadgeSchemaName          = "site_blogger_badge"
-	bloggerBadgeSchemaDefinition    = "sqlite3:v3:sites-blogger-badge"
-	DefaultBloggerBadge             = "[博主]"
+	LatestSchemaVersion               = 4
+	freshSchemaVersion                = 1
+	freshSchemaName                   = "fresh_published_comments"
+	freshSchemaDefinition             = "sqlite3:fresh-v1:published-comments:site-display-config:notifications:tombstones"
+	bloggerIdentitySchemaVersion      = 2
+	bloggerIdentitySchemaName         = "site_blogger_identity"
+	bloggerIdentitySchemaDefinition   = "sqlite3:v2:sites-blogger-nickname-email"
+	bloggerBadgeSchemaVersion         = 3
+	bloggerBadgeSchemaName            = "site_blogger_badge"
+	bloggerBadgeSchemaDefinition      = "sqlite3:v3:sites-blogger-badge"
+	turnstileSettingsSchemaVersion    = 4
+	turnstileSettingsSchemaName       = "instance_turnstile_settings"
+	turnstileSettingsSchemaDefinition = "sqlite3:v4:turnstile-settings"
+	DefaultBloggerBadge               = "[博主]"
 )
 
 type schemaMigration struct {
@@ -222,9 +225,10 @@ func validateKnownSchemaHistory(database *gorm.DB) (int, error) {
 		name       string
 		definition string
 	}{
-		freshSchemaVersion:           {name: freshSchemaName, definition: freshSchemaDefinition},
-		bloggerIdentitySchemaVersion: {name: bloggerIdentitySchemaName, definition: bloggerIdentitySchemaDefinition},
-		bloggerBadgeSchemaVersion:    {name: bloggerBadgeSchemaName, definition: bloggerBadgeSchemaDefinition},
+		freshSchemaVersion:             {name: freshSchemaName, definition: freshSchemaDefinition},
+		bloggerIdentitySchemaVersion:   {name: bloggerIdentitySchemaName, definition: bloggerIdentitySchemaDefinition},
+		bloggerBadgeSchemaVersion:      {name: bloggerBadgeSchemaName, definition: bloggerBadgeSchemaDefinition},
+		turnstileSettingsSchemaVersion: {name: turnstileSettingsSchemaName, definition: turnstileSettingsSchemaDefinition},
 	}
 	for index, row := range rows {
 		version := index + 1
@@ -254,6 +258,10 @@ func migrateSchema(database *gorm.DB, currentVersion int) error {
 			}
 		case bloggerBadgeSchemaVersion:
 			if err := migrateSiteBloggerBadge(database); err != nil {
+				return err
+			}
+		case turnstileSettingsSchemaVersion:
+			if err := migrateTurnstileSettings(database); err != nil {
 				return err
 			}
 		default:
@@ -300,6 +308,34 @@ VALUES (?, ?, ?, ?)`, bloggerBadgeSchemaVersion, bloggerBadgeSchemaName,
 	})
 }
 
+func migrateTurnstileSettings(database *gorm.DB) error {
+	return database.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec(`CREATE TABLE turnstile_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  enabled INTEGER NOT NULL DEFAULT 0 CHECK (enabled IN (0, 1)),
+  sitekey TEXT NOT NULL DEFAULT '' CHECK (length(sitekey) <= 255),
+  secret_cipher BLOB NULL,
+  revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1),
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL
+)`).Error; err != nil {
+			return fmt.Errorf("迁移 Turnstile 设置表: %w", err)
+		}
+		now := time.Now().UTC()
+		if err := tx.Exec(`INSERT INTO turnstile_settings
+  (id, enabled, sitekey, secret_cipher, revision, created_at, updated_at)
+  VALUES (1, 0, '', NULL, 1, ?, ?)`, now, now).Error; err != nil {
+			return fmt.Errorf("初始化 Turnstile 设置: %w", err)
+		}
+		if err := tx.Exec(`INSERT INTO schema_migrations (version, name, checksum, applied_at)
+VALUES (?, ?, ?, ?)`, turnstileSettingsSchemaVersion, turnstileSettingsSchemaName,
+			schemaChecksum(turnstileSettingsSchemaDefinition), now).Error; err != nil {
+			return fmt.Errorf("记录 schema 版本 %d: %w", turnstileSettingsSchemaVersion, err)
+		}
+		return nil
+	})
+}
+
 func validateCurrentSchema(database *gorm.DB) error {
 	currentVersion, err := validateKnownSchemaHistory(database)
 	if err != nil {
@@ -308,7 +344,7 @@ func validateCurrentSchema(database *gorm.DB) error {
 	if currentVersion != LatestSchemaVersion {
 		return fmt.Errorf("数据库 schema 版本 %d 未升级到 %d", currentVersion, LatestSchemaVersion)
 	}
-	for _, table := range []string{"sites", "site_origins", "comments", "notification_settings", "notification_outbox"} {
+	for _, table := range []string{"sites", "site_origins", "comments", "notification_settings", "notification_outbox", "turnstile_settings"} {
 		exists, err := hasTable(database, table)
 		if err != nil || !exists {
 			return fmt.Errorf("数据库缺少当前 schema 表 %s", table)

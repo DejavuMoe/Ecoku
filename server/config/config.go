@@ -99,13 +99,14 @@ type CommentConfig struct {
 // CommentFormConfig is the public, non-secret subset of one site's comment
 // form configuration. It is safe to return to the browser SDK.
 type CommentFormConfig struct {
-	EmailRequired   bool   `json:"emailRequired"`
-	WebsiteRequired bool   `json:"websiteRequired"`
-	Placeholder     string `json:"placeholder"`
-	DefaultSort     string `json:"defaultSort"`
-	LengthLimit     int    `json:"lengthLimit"`
-	EmptyMessage    string `json:"emptyMessage"`
-	BloggerBadge    string `json:"bloggerBadge"`
+	EmailRequired    bool   `json:"emailRequired"`
+	WebsiteRequired  bool   `json:"websiteRequired"`
+	Placeholder      string `json:"placeholder"`
+	DefaultSort      string `json:"defaultSort"`
+	LengthLimit      int    `json:"lengthLimit"`
+	EmptyMessage     string `json:"emptyMessage"`
+	BloggerBadge     string `json:"bloggerBadge"`
+	TurnstileSitekey string `json:"turnstileSitekey"`
 }
 
 type DatabaseConfig struct {
@@ -633,13 +634,14 @@ func GetCommentFormConfig(siteID string) (CommentFormConfig, bool) {
 		return CommentFormConfig{}, false
 	}
 	return CommentFormConfig{
-		EmailRequired:   *site.Comment.EmailRequired,
-		WebsiteRequired: *site.Comment.WebsiteRequired,
-		Placeholder:     site.Comment.Placeholder,
-		DefaultSort:     site.Comment.DefaultSort,
-		LengthLimit:     site.Comment.LengthLimit,
-		EmptyMessage:    site.Comment.EmptyMessage,
-		BloggerBadge:    DefaultBloggerBadge,
+		EmailRequired:    *site.Comment.EmailRequired,
+		WebsiteRequired:  *site.Comment.WebsiteRequired,
+		Placeholder:      site.Comment.Placeholder,
+		DefaultSort:      site.Comment.DefaultSort,
+		LengthLimit:      site.Comment.LengthLimit,
+		EmptyMessage:     site.Comment.EmptyMessage,
+		BloggerBadge:     DefaultBloggerBadge,
+		TurnstileSitekey: "",
 	}, true
 }
 

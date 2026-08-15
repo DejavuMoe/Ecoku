@@ -55,6 +55,7 @@ function listResponse(
       lengthLimit?: number
       emptyMessage?: string
       bloggerBadge?: string
+      turnstileSitekey?: string
     }
     timeZone?: string
   } = {},
@@ -691,6 +692,53 @@ describe('approved production comment surface', () => {
     await initial
     expect(container.textContent).toContain('new page comment')
     expect(container.textContent).not.toContain('obsolete comment')
+  })
+
+  it('keeps the Turnstile slot empty unless the public formConfig includes a sitekey', async () => {
+    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse([])))
+    await client.init()
+    expect(container.querySelector('.ecoku-turnstile-slot')?.childElementCount).toBe(0)
+    client.destroy()
+  })
+
+  it('mounts Turnstile in the composer and sends the one-time token with the comment', async () => {
+    const render = vi.fn((_container: HTMLElement, options: Record<string, unknown>) => {
+      queueMicrotask(() => (options.callback as ((token: string) => void) | undefined)?.('cf-token'))
+      return 'widget-1'
+    })
+    vi.stubGlobal('turnstile', {
+      render,
+      reset: vi.fn(),
+      remove: vi.fn(),
+      getResponse: () => 'cf-token',
+      execute: vi.fn(),
+    })
+    const posts: unknown[] = []
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      const url = new URL(String(input))
+      if (url.pathname.endsWith('/api/comment/submit')) {
+        posts.push(JSON.parse(String(init?.body)))
+        return jsonResponse(201, { id: 11 })
+      }
+      return listResponse([], {
+        formConfig: {
+          emailRequired: true,
+          websiteRequired: false,
+          placeholder: zhCN.commentPlaceholder,
+          defaultSort: 'newest',
+          lengthLimit: 1000,
+          emptyMessage: '还没有评论\n成为第一个留下评论的人。',
+          turnstileSitekey: 'public-sitekey',
+        },
+      })
+    })
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    await vi.waitFor(() => expect(render).toHaveBeenCalled())
+    await submitForm(fillIdentityAndContent(container, 'Verified comment'))
+    await vi.waitFor(() => expect(posts).toHaveLength(1))
+    expect(posts[0]).toMatchObject({ content: 'Verified comment', turnstileToken: 'cf-token' })
+    expect(JSON.stringify(posts[0])).not.toContain('secret')
   })
 
   it('stores visitor identity through the seven-day encrypted store without cookies, localStorage, or URL writes', async () => {

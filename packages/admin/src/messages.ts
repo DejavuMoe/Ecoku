@@ -20,6 +20,9 @@ export const messages = {
   siteUpdated: '站点设置已保存。',
   emailSaved: '电子邮件通知已保存。',
   telegramSaved: 'Telegram 通知已保存。',
+  turnstileSaved: '验证设置已保存。',
+  loginChallengeFailed: '验证失败，请重试。',
+  loginChallengeRequired: '请完成验证后再登录。',
   noSites: '当前实例还没有站点。',
 } as const
 

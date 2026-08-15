@@ -2,6 +2,7 @@ package admin
 
 import (
 	"ecoku-server/config"
+	"ecoku-server/turnstile"
 	"ecoku-server/utils"
 	"errors"
 	"io"
@@ -19,8 +20,9 @@ const (
 )
 
 type loginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username       string `json:"username"`
+	Password       string `json:"password"`
+	TurnstileToken string `json:"turnstileToken"`
 }
 
 type loginResponse struct {
@@ -44,6 +46,15 @@ func Login(c *gin.Context) {
 	credentials, available := config.GetAdminCredentials()
 	if !available {
 		utils.SendError(c, http.StatusInternalServerError, "管理员认证不可用")
+		return
+	}
+
+	if err := turnstile.Verify(c.Request.Context(), request.TurnstileToken); err != nil {
+		if errors.Is(err, turnstile.ErrFailed) {
+			utils.SendError(c, http.StatusBadRequest, "验证失败，请重试。")
+			return
+		}
+		utils.SendError(c, http.StatusInternalServerError, "验证服务暂时不可用")
 		return
 	}
 

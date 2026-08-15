@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"ecoku-server/config"
 	"ecoku-server/model"
+	"ecoku-server/turnstile"
+	"encoding/base64"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -224,4 +226,69 @@ func postJSON(t *testing.T, router http.Handler, body map[string]any) *httptest.
 	recorder := httptest.NewRecorder()
 	router.ServeHTTP(recorder, request)
 	return recorder
+}
+
+func enableCommentTurnstile(t *testing.T, successToken string) {
+	t.Helper()
+	t.Setenv("ECOKU_COMMENT_TURNSTILE_KEY", base64.RawStdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef")))
+	emailOptional := false
+	websiteRequired := true
+	if err := config.ApplyConfig(&config.Config{
+		Sites: []config.RegisteredSiteConfig{
+			{ID: "site-a", SiteURL: "https://a.example", AllowedOrigins: []string{"https://a.example"}, ManagementKeyEnv: "ECOKU_COMMENT_SITE_A_KEY", Comment: config.CommentConfig{LengthLimit: 4}},
+			{ID: "site-b", SiteURL: "https://b.example", AllowedOrigins: []string{"https://b.example"}, ManagementKeyEnv: "ECOKU_COMMENT_SITE_B_KEY", Comment: config.CommentConfig{EmailRequired: &emailOptional, WebsiteRequired: &websiteRequired, Placeholder: "分享你的想法", DefaultSort: "oldest", LengthLimit: 321, EmptyMessage: "暂时没有评论"}},
+		},
+		Notifications: config.NotificationsConfig{EncryptionKeyEnv: "ECOKU_COMMENT_TURNSTILE_KEY"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := turnstile.Save(turnstile.Settings{Enabled: true, Sitekey: "public-sitekey", Secret: "secret-private", Revision: 1}); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+		_ = json.NewEncoder(w).Encode(map[string]any{"success": r.FormValue("response") == successToken})
+	}))
+	t.Cleanup(server.Close)
+	restore := turnstile.ConfigureSiteverify(server.URL, server.Client())
+	t.Cleanup(restore)
+}
+
+func TestPublicListExposesTurnstileSitekeyWithoutSecret(t *testing.T) {
+	router := setupCommentTest(t)
+	enableCommentTurnstile(t, "ok")
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/list?siteId=site-b&key=/empty", nil))
+	var envelope commentListEnvelope
+	if err := json.Unmarshal(recorder.Body.Bytes(), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	if envelope.Data.FormConfig.TurnstileSitekey != "public-sitekey" {
+		t.Fatalf("form=%#v", envelope.Data.FormConfig)
+	}
+	if strings.Contains(recorder.Body.String(), "secret-private") {
+		t.Fatal("secret leaked in public list")
+	}
+}
+
+func TestSubmitRequiresTurnstileWhenEnabled(t *testing.T) {
+	router := setupCommentTest(t)
+	enableCommentTurnstile(t, "good-token")
+	missing := validSubmission("site-a", "/post", 0)
+	recorder := postJSON(t, router, missing)
+	if recorder.Code != http.StatusBadRequest || !strings.Contains(recorder.Body.String(), "请完成验证后再发布") {
+		t.Fatalf("missing token status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	invalid := validSubmission("site-a", "/post", 0)
+	invalid["turnstileToken"] = "bad-token"
+	recorder = postJSON(t, router, invalid)
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("invalid token status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	ok := validSubmission("site-a", "/post", 0)
+	ok["turnstileToken"] = "good-token"
+	recorder = postJSON(t, router, ok)
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("valid token status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
 }

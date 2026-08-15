@@ -64,6 +64,7 @@ func NewRouter() (*gin.Engine, error) {
 				middleware.RateLimit("admin_login"),
 				adminhandler.Login,
 			)
+			admin.GET("/login-config", adminhandler.GetLoginConfig)
 
 			protected := admin.Group("")
 			protected.Use(middleware.AdminAuthentication())
@@ -82,6 +83,13 @@ func NewRouter() (*gin.Engine, error) {
 				adminhandler.UpdateSite,
 			)
 			protected.GET("/notifications", middleware.RequireInstanceAdmin(), adminhandler.GetNotificationSettings)
+			protected.GET("/turnstile", middleware.RequireInstanceAdmin(), adminhandler.GetTurnstileSettings)
+			protected.PUT(
+				"/turnstile",
+				middleware.RequireInstanceAdmin(),
+				middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
+				adminhandler.SaveTurnstileSettings,
+			)
 			protected.PUT(
 				"/notifications/email",
 				middleware.RequireInstanceAdmin(), middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
@@ -202,7 +210,7 @@ func adminStaticSecurityHeaders() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Keep scripts strict while allowing browser accessibility/annotation tools
 		// to apply transient style attributes to the administrator UI.
-		contentSecurityPolicy := "default-src 'self'; base-uri 'none'; connect-src 'self'; font-src 'self'; form-action 'self'; frame-ancestors 'none'; img-src 'self' data:; object-src 'none'; script-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'"
+		contentSecurityPolicy := "default-src 'self'; base-uri 'none'; connect-src 'self' https://challenges.cloudflare.com; font-src 'self'; form-action 'self'; frame-ancestors 'none'; frame-src https://challenges.cloudflare.com; img-src 'self' data:; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; style-src-attr 'unsafe-inline'"
 		c.Header("Content-Security-Policy", contentSecurityPolicy)
 		c.Header("Referrer-Policy", "no-referrer")
 		c.Header("X-Content-Type-Options", "nosniff")

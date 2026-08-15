@@ -9,6 +9,7 @@ import (
 	"ecoku-server/model"
 	"ecoku-server/notifications"
 	"ecoku-server/routes"
+	"ecoku-server/turnstile"
 	"flag"
 	"fmt"
 	"io"
@@ -44,6 +45,9 @@ func main() {
 	model.InitDatabase()
 	if err := notifications.ValidateStoredSecrets(); err != nil {
 		log.Fatalf("通知凭据校验失败: %v", err)
+	}
+	if err := turnstile.ValidateStoredSecret(); err != nil {
+		log.Fatalf("Turnstile 凭据校验失败: %v", err)
 	}
 	runtimeContext, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	worker, err := notifications.StartWorker(runtimeContext)

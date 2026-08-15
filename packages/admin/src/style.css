@@ -109,6 +109,7 @@ a { color: inherit; }
 .form-error, .inline-error { color: var(--danger); background: var(--danger-bg); }
 .form-error { margin: 0; padding: 9px 11px; border-radius: 9px; font-size: 13px; }
 .login-button { width: 100%; margin-top: 4px; }
+.turnstile-slot:empty { display: none; }
 
 .app-shell { display: grid; min-height: 100vh; grid-template-rows: 60px minmax(0, 1fr); }
 .app-header { position: relative; z-index: 40; border-bottom: 1px solid var(--line-soft); background: var(--paper); }

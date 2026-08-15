@@ -3,6 +3,7 @@ package comment
 import (
 	"ecoku-server/config"
 	"ecoku-server/model"
+	"ecoku-server/turnstile"
 	"ecoku-server/utils"
 	"math"
 	"net/http"
@@ -39,14 +40,20 @@ func GetComments(c *gin.Context) {
 		utils.SendError(c, http.StatusInternalServerError, "读取评论表单配置失败")
 		return
 	}
+	sitekey, err := turnstile.PublicSitekey()
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "读取验证配置失败")
+		return
+	}
 	formConfig := config.CommentFormConfig{
-		EmailRequired:   site.EmailRequired,
-		WebsiteRequired: site.WebsiteRequired,
-		Placeholder:     site.Placeholder,
-		DefaultSort:     site.DefaultSort,
-		LengthLimit:     site.CommentLimit,
-		EmptyMessage:    site.EmptyMessage,
-		BloggerBadge:    site.BloggerBadge,
+		EmailRequired:    site.EmailRequired,
+		WebsiteRequired:  site.WebsiteRequired,
+		Placeholder:      site.Placeholder,
+		DefaultSort:      site.DefaultSort,
+		LengthLimit:      site.CommentLimit,
+		EmptyMessage:     site.EmptyMessage,
+		BloggerBadge:     site.BloggerBadge,
+		TurnstileSitekey: sitekey,
 	}
 	key := strings.TrimSpace(c.Query("key"))
 	if key == "" || textLength(key) > maxPageKeyLength {

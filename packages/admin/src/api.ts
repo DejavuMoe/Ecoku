@@ -9,6 +9,7 @@ import type {
   SiteSummary,
   SiteWrite,
   TelegramNotificationSettings,
+  TurnstileSettings,
 } from './types'
 
 interface ResponseEnvelope<T> {
@@ -163,6 +164,17 @@ function mapEmail(value: unknown): EmailNotificationSettings {
   }
 }
 
+function mapTurnstile(value: unknown): TurnstileSettings {
+  const raw = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+  return {
+    enabled: raw.enabled === true,
+    sitekey: text(raw.sitekey),
+    secret: '',
+    secretSet: raw.secret_set === true,
+    revision: number(raw.revision, 1),
+  }
+}
+
 function mapTelegram(value: unknown): TelegramNotificationSettings {
   const raw = value && typeof value === 'object' ? value as Record<string, unknown> : {}
   return {
@@ -172,9 +184,23 @@ function mapTelegram(value: unknown): TelegramNotificationSettings {
   }
 }
 
+function turnstilePayload(settings: TurnstileSettings) {
+  return {
+    enabled: settings.enabled,
+    sitekey: settings.sitekey,
+    secret: settings.secret,
+    revision: settings.revision,
+  }
+}
+
 export const adminApi = {
-  async login(username: string, password: string, signal?: AbortSignal): Promise<AdminSession> {
-    const raw = await request<Record<string, unknown>>('/api/admin/login', { method: 'POST', body: JSON.stringify({ username, password }), signal })
+  async getLoginConfig(signal?: AbortSignal): Promise<{ turnstileSitekey: string }> {
+    const raw = await request<Record<string, unknown>>('/api/admin/login-config', { method: 'GET', signal })
+    return { turnstileSitekey: text(raw.turnstileSitekey) }
+  },
+
+  async login(username: string, password: string, turnstileToken = '', signal?: AbortSignal): Promise<AdminSession> {
+    const raw = await request<Record<string, unknown>>('/api/admin/login', { method: 'POST', body: JSON.stringify({ username, password, turnstileToken }), signal })
     const token = text(raw.token)
     const expiresAt = text(raw.expires_at)
     if (!token || !expiresAt || raw.token_type !== 'Bearer') throw new ApiError(500, 'invalid-session')
@@ -252,4 +278,15 @@ export const adminApi = {
   async testTelegram(token: string, settings: TelegramNotificationSettings): Promise<void> {
     await request('/api/admin/notifications/telegram/test', { method: 'POST', body: JSON.stringify(telegramPayload(settings)) }, token, true)
   },
+
+  async getTurnstile(token: string): Promise<TurnstileSettings> {
+    const raw = await request<unknown>('/api/admin/turnstile', { method: 'GET' }, token)
+    return mapTurnstile(raw)
+  },
+
+  async saveTurnstile(token: string, settings: TurnstileSettings): Promise<TurnstileSettings> {
+    const raw = await request<unknown>('/api/admin/turnstile', { method: 'PUT', body: JSON.stringify(turnstilePayload(settings)) }, token)
+    return mapTurnstile(raw)
+  },
 }
+

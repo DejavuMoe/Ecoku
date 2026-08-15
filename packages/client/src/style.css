@@ -306,6 +306,14 @@
   border-color: #b84343;
 }
 
+.ecoku-turnstile-slot {
+  margin: 10px 0 0;
+}
+
+.ecoku-turnstile-slot:empty {
+  display: none;
+}
+
 .ecoku-composer-footer {
   display: flex;
   align-items: center;

@@ -109,8 +109,13 @@ func TestV1DatabaseMigratesInPlaceWithoutLosingBusinessData(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4}) {
 		t.Fatalf("migration history mismatch: %v", versions)
+	}
+	var turnstileCount int64
+	database.Table("turnstile_settings").Where("id = 1 AND enabled = 0 AND sitekey = ''").Count(&turnstileCount)
+	if turnstileCount != 1 {
+		t.Fatal("turnstile settings were not initialized")
 	}
 }
 
@@ -171,10 +176,10 @@ func TestV2DatabaseMigratesBloggerBadgeInPlace(t *testing.T) {
 	}
 
 	if err := PrepareDatabaseForStartup(database); err != nil {
-		t.Fatalf("migrate v2 to v3: %v", err)
+		t.Fatalf("migrate v2 to current: %v", err)
 	}
 	if err := PrepareDatabaseForStartup(database); err != nil {
-		t.Fatalf("repeat v3 startup: %v", err)
+		t.Fatalf("repeat current startup: %v", err)
 	}
 
 	var site Site
@@ -188,7 +193,71 @@ func TestV2DatabaseMigratesBloggerBadgeInPlace(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4}) {
+		t.Fatalf("migration history mismatch: %v", versions)
+	}
+	var turnstileCount int64
+	database.Table("turnstile_settings").Where("id = 1 AND enabled = 0 AND sitekey = ''").Count(&turnstileCount)
+	if turnstileCount != 1 {
+		t.Fatal("turnstile settings were not initialized")
+	}
+}
+
+func TestV3DatabaseMigratesTurnstileSettingsInPlace(t *testing.T) {
+	t.Setenv("ECOKU_MODEL_SITE_KEY", strings.Repeat("m", 32))
+	if err := config.ApplyConfig(&config.Config{Sites: []config.RegisteredSiteConfig{{
+		ID: "site-a", SiteURL: "https://example.test", AllowedOrigins: []string{"https://example.test"},
+		ManagementKeyEnv: "ECOKU_MODEL_SITE_KEY", Name: "Example",
+	}}}); err != nil {
+		t.Fatal(err)
+	}
+	database, err := OpenSQLiteDatabase(t.TempDir() + "/v3.sqlite3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDatabase, _ := database.DB()
+	t.Cleanup(func() { _ = sqlDatabase.Close() })
+	if err := createFreshSchema(database); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrateSiteBloggerIdentity(database); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrateSiteBloggerBadge(database); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Exec(`UPDATE sites SET blogger_nickname = '站长', blogger_email = 'owner@example.test', blogger_badge = '[OP]' WHERE id = 'site-a'`).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	if err := PrepareDatabaseForStartup(database); err != nil {
+		t.Fatalf("migrate v3 to v4: %v", err)
+	}
+	if err := PrepareDatabaseForStartup(database); err != nil {
+		t.Fatalf("repeat v4 startup: %v", err)
+	}
+
+	var site Site
+	if err := database.Where("id = ?", "site-a").First(&site).Error; err != nil {
+		t.Fatal(err)
+	}
+	if site.BloggerNickname != "站长" || site.BloggerEmail != "owner@example.test" || site.BloggerBadge != "[OP]" {
+		t.Fatalf("v3 data changed during v4 migration: %#v", site)
+	}
+	var enabled int
+	var sitekey string
+	var revision int
+	if err := database.Raw(`SELECT enabled, sitekey, revision FROM turnstile_settings WHERE id = 1`).Row().Scan(&enabled, &sitekey, &revision); err != nil {
+		t.Fatal(err)
+	}
+	if enabled != 0 || sitekey != "" || revision != 1 {
+		t.Fatalf("turnstile defaults mismatch enabled=%d sitekey=%q revision=%d", enabled, sitekey, revision)
+	}
+	var versions []int
+	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 }
@@ -198,7 +267,7 @@ func TestFreshSchemaInitializesAndIsRepeatable(t *testing.T) {
 	if err := PrepareDatabaseForStartup(DB); err != nil {
 		t.Fatalf("repeat startup: %v", err)
 	}
-	for _, table := range []string{"sites", "site_origins", "comments", "notification_settings", "notification_outbox"} {
+	for _, table := range []string{"sites", "site_origins", "comments", "notification_settings", "notification_outbox", "turnstile_settings"} {
 		if ok, err := hasTable(DB, table); err != nil || !ok {
 			t.Fatalf("missing %s: %v", table, err)
 		}
