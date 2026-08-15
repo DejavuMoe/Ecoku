@@ -5,7 +5,7 @@
 
 ## 评论体验
 
-- `designs/plain-thread-comments/index-v15.html` 是评论区当前已批准的设计基线；更早版本仅保留为历史原型。预览里的「模拟需要勾选 / Pre-clearance」开关不得进入生产 SDK。身份输入与标签同为 12px、正文色；根评论与回复输入与已发布正文同为 15px、正文色、1.65 行高；`[+]` 与 `[-]` 等宽 16px，且其字号/字体不得被宿主 `font: inherit` 覆盖。Turnstile 宿主槽不超过 300px，不覆盖 Cloudflare iframe 内部样式。接入外壳不显示「正在加载评论…」，保留加载失败重试与「评论服务尚未配置」。
+- `designs/plain-thread-comments/index-v15.html` 是评论区当前已批准的设计基线；更早版本仅保留为历史原型。预览里的「模拟需要勾选 / Pre-clearance」开关不得进入生产 SDK。身份输入与标签同为 12px、正文色；根评论与回复输入与已发布正文同为 15px、正文色、1.65 行高；`[+]` 与 `[-]` 等宽完整显示（3ch），且其字号/字体不得被宿主 `font: inherit` 覆盖。Turnstile 宿主槽不超过 300px，不覆盖 Cloudflare iframe 内部样式。接入外壳不显示「正在加载评论…」，保留加载失败重试与「评论服务尚未配置」。
 - 评论正文永久按纯文本处理；不解释 HTML 或 Markdown。
 - MVP 不提供头像、赞踩、反应或富文本工具。
 - 回复采用多层线程语义。

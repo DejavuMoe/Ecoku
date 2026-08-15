@@ -521,14 +521,13 @@
   align-items: center;
   justify-content: center;
   box-sizing: content-box;
-  width: 16px;
-  min-width: 16px;
-  max-width: 16px;
+  width: 3ch;
+  min-width: 3ch;
   height: 20px;
-  flex: 0 0 16px;
+  flex: 0 0 3ch;
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
   color: var(--ecoku-secondary);
   border: 0;
   border-radius: 0;
@@ -540,6 +539,7 @@
   font-variant-numeric: tabular-nums;
   line-height: 20px;
   letter-spacing: 0;
+  white-space: nowrap;
 }
 
 .ecoku-comments .ecoku-collapse-button:hover:not(:disabled) {
