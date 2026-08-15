@@ -44,9 +44,6 @@ interface ActiveReply {
   email: HTMLInputElement
   website: HTMLInputElement
   identityGrid: HTMLDivElement
-  identitySummary: HTMLParagraphElement
-  identitySummaryName: HTMLElement
-  identityChange: HTMLButtonElement
   textarea: HTMLTextAreaElement
   turnstileSlot: HTMLDivElement
   widget: TurnstileWidget | null
@@ -736,14 +733,6 @@ export class CommentSurface {
     this.closeReply(false)
     const form = createElement('form', 'ecoku-composer ecoku-reply-composer')
     form.noValidate = true
-    const headingRow = createElement('div', 'ecoku-reply-heading-row')
-    const identityChange = createElement('button', 'ecoku-identity-change', zhCN.changeIdentity)
-    identityChange.type = 'button'
-    const identitySummary = createElement('p', 'ecoku-reply-identity-summary')
-    const identitySummaryName = createElement('strong')
-    identitySummary.append(identitySummaryName)
-    headingRow.append(identitySummary, identityChange)
-
     const nickname = createElement('input', 'ecoku-input')
     const email = createElement('input', 'ecoku-input')
     const website = createElement('input', 'ecoku-input')
@@ -786,7 +775,7 @@ export class CommentSurface {
     end.append(cancel, submit)
     footer.append(counter, end)
     const turnstileSlot = createElement('div', 'ecoku-turnstile-slot')
-    form.append(headingRow, identityGrid, messageLabel, turnstileSlot, error, footer)
+    form.append(identityGrid, messageLabel, turnstileSlot, error, footer)
     slot.append(form)
     const reply: ActiveReply = {
       parentId: comment.id,
@@ -796,9 +785,6 @@ export class CommentSurface {
       email,
       website,
       identityGrid,
-      identitySummary,
-      identitySummaryName,
-      identityChange,
       textarea,
       turnstileSlot,
       widget: null,
@@ -821,12 +807,6 @@ export class CommentSurface {
       counter.textContent = `${length}/${this.formConfig.lengthLimit}`
       this.updateReplyFormState(reply)
       this.clearError(error, textarea)
-    })
-    identityChange.addEventListener('click', () => {
-      identityGrid.hidden = false
-      identitySummary.hidden = true
-      identityChange.hidden = true
-      nickname.focus()
     })
     cancel.addEventListener('click', () => this.closeReply(true))
     form.addEventListener('submit', (event) => void this.handleReplySubmit(event))
@@ -1110,12 +1090,9 @@ export class CommentSurface {
   }
 
   private updateReplyIdentityMode(reply: ActiveReply): void {
-    const identity = this.identityFromControls(reply.nickname, reply.email, reply.website)
-    const ready = this.identityIsValid(identity)
-    reply.identityGrid.hidden = ready
-    reply.identitySummary.hidden = !ready
-    reply.identityChange.hidden = !ready
-    reply.identitySummaryName.textContent = ready ? zhCN.replyAs(identity.username) : ''
+    reply.identityGrid.hidden = this.identityIsValid(
+      this.identityFromControls(reply.nickname, reply.email, reply.website),
+    )
   }
 
   private updateReplyFormState(reply: ActiveReply): void {
