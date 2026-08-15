@@ -312,6 +312,81 @@ func TestSiteWritePersistsBloggerBadge(t *testing.T) {
 	}
 }
 
+func TestSiteUpdateBackfillsHistoricalBloggerComments(t *testing.T) {
+	env := setupAdminTest(t)
+	ownerEmail := "OWNER@example.test"
+	if err := model.DB.Exec(`UPDATE sites SET blogger_nickname = '站长', blogger_email = 'owner@example.test' WHERE id = 'site-a'`).Error; err != nil {
+		t.Fatal(err)
+	}
+	historical := model.Comment{SiteID: "site-a", Mark: "/post", Username: "站长", Email: &ownerEmail, Content: "历史博主"}
+	guest := model.Comment{SiteID: "site-a", Mark: "/post", Username: "访客", Content: "普通访客"}
+	if err := model.DB.Create(&historical).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := model.DB.Create(&guest).Error; err != nil {
+		t.Fatal(err)
+	}
+	site := requestJSON(t, env.router, http.MethodGet, "/api/admin/sites/site-a", adminTestOrigin, "Bearer "+env.token, nil)
+	if site.Code != http.StatusOK {
+		t.Fatalf("get site=%d %s", site.Code, site.Body.String())
+	}
+	var siteEnvelope struct {
+		Data struct {
+			Site struct {
+				Revision uint `json:"revision"`
+			} `json:"site"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(site.Body.Bytes(), &siteEnvelope); err != nil {
+		t.Fatal(err)
+	}
+	updated := requestJSON(t, env.router, http.MethodPut, "/api/admin/sites/site-a", adminTestOrigin, "Bearer "+env.token, map[string]any{
+		"site_url": "https://a.example", "allowed_origins": []string{"https://a.example"},
+		"blogger_nickname": "站长", "blogger_email": "owner@example.test",
+		"blogger_passphrase": "correct-horse-battery", "revision": siteEnvelope.Data.Site.Revision,
+	})
+	if updated.Code != http.StatusOK {
+		t.Fatalf("update=%d %s", updated.Code, updated.Body.String())
+	}
+	var flagged, plain int64
+	if err := model.DB.Model(&model.Comment{}).Where("id = ? AND is_blogger = 1", historical.ID).Count(&flagged).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := model.DB.Model(&model.Comment{}).Where("id = ? AND is_blogger = 0", guest.ID).Count(&plain).Error; err != nil {
+		t.Fatal(err)
+	}
+	if flagged != 1 || plain != 1 {
+		t.Fatalf("backfill mismatch flagged=%d plain=%d", flagged, plain)
+	}
+}
+
+func TestSiteCreateDoesNotBackfillOtherSiteComments(t *testing.T) {
+	env := setupAdminTest(t)
+	ownerEmail := "owner@example.test"
+	if err := model.DB.Exec(`UPDATE sites SET blogger_nickname = '', blogger_email = '' WHERE id = 'site-a'`).Error; err != nil {
+		t.Fatal(err)
+	}
+	historical := model.Comment{SiteID: "site-a", Mark: "/legacy", Username: "站长", Email: &ownerEmail, Content: "升级前博主"}
+	if err := model.DB.Create(&historical).Error; err != nil {
+		t.Fatal(err)
+	}
+	created := requestJSON(t, env.router, http.MethodPost, "/api/admin/sites", adminTestOrigin, "Bearer "+env.token, map[string]any{
+		"id": "site-backfill", "site_url": "https://backfill.example", "allowed_origins": []string{"https://backfill.example"},
+		"blogger_nickname": "站长", "blogger_email": "owner@example.test",
+		"blogger_passphrase": "correct-horse-battery",
+	})
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create=%d %s", created.Code, created.Body.String())
+	}
+	var flagged int64
+	if err := model.DB.Model(&model.Comment{}).Where("id = ? AND is_blogger = 1", historical.ID).Count(&flagged).Error; err != nil {
+		t.Fatal(err)
+	}
+	if flagged != 0 {
+		t.Fatalf("create should not backfill comments on other sites, got=%d", flagged)
+	}
+}
+
 func requestJSON(t *testing.T, handler http.Handler, method, path, origin, authorization string, body any) *httptest.ResponseRecorder {
 	t.Helper()
 	var reader *bytes.Reader
