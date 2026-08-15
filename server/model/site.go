@@ -31,6 +31,7 @@ type Site struct {
 	EmptyMessage    string    `gorm:"column:empty_message"`
 	BloggerNickname string    `gorm:"column:blogger_nickname"`
 	BloggerEmail    string    `gorm:"column:blogger_email"`
+	BloggerBadge    string    `gorm:"column:blogger_badge"`
 	Revision        uint      `gorm:"column:revision"`
 	CreatedAt       time.Time `gorm:"column:created_at"`
 	UpdatedAt       time.Time `gorm:"column:updated_at"`
@@ -50,6 +51,7 @@ type SiteWrite struct {
 	EmptyMessage    string
 	BloggerNickname string
 	BloggerEmail    string
+	BloggerBadge    string
 	AllowedOrigins  []string
 	Revision        uint
 }
@@ -117,8 +119,8 @@ func CreateSite(input SiteWrite, now time.Time) (Site, error) {
 			EmailRequired: input.EmailRequired, WebsiteRequired: input.WebsiteRequired,
 			Placeholder: input.Placeholder, CommentLimit: input.CommentLimit,
 			EmptyMessage: input.EmptyMessage, BloggerNickname: input.BloggerNickname,
-			BloggerEmail: input.BloggerEmail,
-			Revision:     1, CreatedAt: now, UpdatedAt: now,
+			BloggerEmail: input.BloggerEmail, BloggerBadge: input.BloggerBadge,
+			Revision: 1, CreatedAt: now, UpdatedAt: now,
 		}
 		if err := tx.Create(&created).Error; err != nil {
 			return err
@@ -149,6 +151,7 @@ func UpdateSite(siteID string, input SiteWrite, now time.Time) (Site, error) {
 				"empty_message":    input.EmptyMessage,
 				"blogger_nickname": input.BloggerNickname,
 				"blogger_email":    input.BloggerEmail,
+				"blogger_badge":    input.BloggerBadge,
 				"revision":         gorm.Expr("revision + 1"), "updated_at": now,
 			})
 		if result.Error != nil {
@@ -170,6 +173,16 @@ func UpdateSite(siteID string, input SiteWrite, now time.Time) (Site, error) {
 		return Site{}, err
 	}
 	return getSite(DB, siteID)
+}
+
+func (site Site) IsBloggerComment(username string, email *string) bool {
+	nickname := strings.TrimSpace(site.BloggerNickname)
+	configuredEmail := strings.TrimSpace(site.BloggerEmail)
+	if nickname == "" || configuredEmail == "" || email == nil {
+		return false
+	}
+	return strings.TrimSpace(username) == nickname &&
+		strings.EqualFold(strings.TrimSpace(*email), configuredEmail)
 }
 
 func ListPublicOrigins() ([]string, error) {

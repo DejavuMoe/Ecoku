@@ -4,9 +4,13 @@
 
 - 实现以当前源码为准；产品/安全/隐私以 `docs/product/constraints.md` 为准；部署以
   `docs/operations/self-hosting.md` 为准。`docs/progress/` 只是历史验收，不约束当前实现。
-- 评论区基线 `designs/plain-thread-comments/index-v10.html`；管理端基线
-  `designs/admin-moderation/index-v7.html`。生产管理端不得展示通知判定预览或通知模板预览。
+- 评论区基线 `designs/plain-thread-comments/index-v11.html`；管理端基线
+  `designs/admin-moderation/index-v8.html`。生产管理端不得展示通知判定预览或通知模板预览。
 - 边界不清时先查源码和上述文档，再集中向用户确认。不要把原型 mock、测试文案或设计标注带进生产。
+- 改运行时、部署契约、接入 markup、配置键、环境变量或用户可见行为后，按改动同步文档，不要留到发版才补：
+  产品/隐私边界写 `docs/product/constraints.md`；部署、Compose、环境变量和升级写
+  `docs/operations/self-hosting.md` 与 `deploy/` 模板；公开接入片段写根 `README.md` 与 `examples/`；
+  未发版行为只追加 `CHANGELOG.md` 的 `[Unreleased]`，不得改写已发布章节。本文件只保留约定。
 
 ## 产品边界
 

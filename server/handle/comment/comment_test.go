@@ -92,6 +92,46 @@ func TestPublicListReturnsDeepPublishedTreeWithoutPrivateFields(t *testing.T) {
 	}
 }
 
+func TestPublicListMarksBloggerWithoutExposingEmail(t *testing.T) {
+	router := setupCommentTest(t)
+	if err := model.DB.Exec(`UPDATE sites SET blogger_nickname = '站长', blogger_email = 'owner@example.test', blogger_badge = '[OP]' WHERE id = 'site-a'`).Error; err != nil {
+		t.Fatal(err)
+	}
+	createComment(t, model.Comment{SiteID: "site-a", Mark: "/post", Username: "站长", Email: ptr("OWNER@example.test"), Content: "博主留言"})
+	createComment(t, model.Comment{SiteID: "site-a", Mark: "/post", Username: "站长", Email: ptr("visitor@example.test"), Content: "同名访客"})
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/list?siteId=site-a&key=/post", nil))
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	var envelope commentListEnvelope
+	if err := json.Unmarshal(recorder.Body.Bytes(), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	if envelope.Data.FormConfig.BloggerBadge != "[OP]" {
+		t.Fatalf("badge=%q", envelope.Data.FormConfig.BloggerBadge)
+	}
+	if len(envelope.Data.Data) != 2 {
+		t.Fatalf("comments=%d", len(envelope.Data.Data))
+	}
+	byContent := map[string]map[string]any{}
+	for _, item := range envelope.Data.Data {
+		content, _ := item["content"].(string)
+		byContent[content] = item
+	}
+	if byContent["博主留言"]["isBlogger"] != true || byContent["同名访客"]["isBlogger"] != false {
+		t.Fatalf("isBlogger mismatch: %#v", envelope.Data.Data)
+	}
+	for _, item := range envelope.Data.Data {
+		if _, exists := item["email"]; exists {
+			t.Fatalf("public DTO contains email: %#v", item)
+		}
+	}
+	if strings.Contains(recorder.Body.String(), "owner@example.test") || strings.Contains(recorder.Body.String(), "visitor@example.test") {
+		t.Fatal("public response leaked email")
+	}
+}
+
 func TestSubmitPublishesImmediatelyAndValidatesParentScope(t *testing.T) {
 	router := setupCommentTest(t)
 	parent := createComment(t, model.Comment{SiteID: "site-a", Mark: "/post", Username: "根", Content: "根"})
@@ -145,7 +185,7 @@ func TestSiteFormConfigurationAndUnicodeLengthLimit(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &envelope); err != nil {
 		t.Fatal(err)
 	}
-	want := config.CommentFormConfig{EmailRequired: false, WebsiteRequired: true, Placeholder: "分享你的想法", DefaultSort: "oldest", LengthLimit: 321, EmptyMessage: "暂时没有评论"}
+	want := config.CommentFormConfig{EmailRequired: false, WebsiteRequired: true, Placeholder: "分享你的想法", DefaultSort: "oldest", LengthLimit: 321, EmptyMessage: "暂时没有评论", BloggerBadge: config.DefaultBloggerBadge}
 	if envelope.Data.FormConfig != want {
 		t.Fatalf("form=%#v", envelope.Data.FormConfig)
 	}

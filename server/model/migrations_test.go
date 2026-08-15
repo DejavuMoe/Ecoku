@@ -85,7 +85,7 @@ func TestV1DatabaseMigratesInPlaceWithoutLosingBusinessData(t *testing.T) {
 	if err := database.Where("id = ?", "site-a").First(&site).Error; err != nil {
 		t.Fatal(err)
 	}
-	if site.Name != "Example" || site.BloggerNickname != "" || site.BloggerEmail != "" {
+	if site.Name != "Example" || site.BloggerNickname != "" || site.BloggerEmail != "" || site.BloggerBadge != DefaultBloggerBadge {
 		t.Fatalf("site migration mismatch: %#v", site)
 	}
 	var setting struct {
@@ -109,7 +109,7 @@ func TestV1DatabaseMigratesInPlaceWithoutLosingBusinessData(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 }
@@ -143,6 +143,53 @@ func TestFailedV2MigrationDoesNotRecordCompletion(t *testing.T) {
 	database.Raw("SELECT COUNT(*) FROM pragma_table_info('sites') WHERE name = 'blogger_email'").Scan(&bloggerEmail)
 	if bloggerEmail != 0 {
 		t.Fatal("failed migration left a partial blogger_email column")
+	}
+}
+
+func TestV2DatabaseMigratesBloggerBadgeInPlace(t *testing.T) {
+	t.Setenv("ECOKU_MODEL_SITE_KEY", strings.Repeat("m", 32))
+	if err := config.ApplyConfig(&config.Config{Sites: []config.RegisteredSiteConfig{{
+		ID: "site-a", SiteURL: "https://example.test", AllowedOrigins: []string{"https://example.test"},
+		ManagementKeyEnv: "ECOKU_MODEL_SITE_KEY", Name: "Example",
+	}}}); err != nil {
+		t.Fatal(err)
+	}
+	database, err := OpenSQLiteDatabase(t.TempDir() + "/v2.sqlite3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDatabase, _ := database.DB()
+	t.Cleanup(func() { _ = sqlDatabase.Close() })
+	if err := createFreshSchema(database); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrateSiteBloggerIdentity(database); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Exec(`UPDATE sites SET blogger_nickname = '站长', blogger_email = 'owner@example.test' WHERE id = 'site-a'`).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	if err := PrepareDatabaseForStartup(database); err != nil {
+		t.Fatalf("migrate v2 to v3: %v", err)
+	}
+	if err := PrepareDatabaseForStartup(database); err != nil {
+		t.Fatalf("repeat v3 startup: %v", err)
+	}
+
+	var site Site
+	if err := database.Where("id = ?", "site-a").First(&site).Error; err != nil {
+		t.Fatal(err)
+	}
+	if site.BloggerNickname != "站长" || site.BloggerEmail != "owner@example.test" || site.BloggerBadge != DefaultBloggerBadge {
+		t.Fatalf("blogger badge migration mismatch: %#v", site)
+	}
+	var versions []int
+	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(versions, []int{1, 2, 3}) {
+		t.Fatalf("migration history mismatch: %v", versions)
 	}
 }
 

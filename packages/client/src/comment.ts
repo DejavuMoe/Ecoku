@@ -372,6 +372,28 @@ export class CommentSurface {
     return label
   }
 
+  private renderAuthor(comment: CommentData): HTMLElement {
+    const website = comment.url ? safeHTTPURL(comment.url) : null
+    let author: HTMLElement
+    if (website) {
+      const link = createElement('a', 'ecoku-comment-author', comment.username)
+      link.href = website.toString()
+      link.target = '_blank'
+      link.rel = 'nofollow ugc noopener noreferrer'
+      link.referrerPolicy = 'no-referrer'
+      author = link
+    } else {
+      author = createElement('span', 'ecoku-comment-author', comment.username)
+    }
+    const badgeText = this.formConfig.bloggerBadge
+    if (!comment.isBlogger || !badgeText) return author
+    const wrap = createElement('span', 'ecoku-comment-author-wrap')
+    const badge = createElement('span', 'ecoku-blogger-badge', badgeText)
+    badge.title = '博主'
+    wrap.append(author, badge)
+    return wrap
+  }
+
   private applyTimeZone(value?: string): void {
     this.timeZone = resolveTimeZone(value)
   }
@@ -572,17 +594,7 @@ export class CommentSurface {
     if (comment.deleted) {
       metaMain.append(createElement('span', 'ecoku-comment-author', zhCN.deletedAuthor))
     } else {
-      const website = comment.url ? safeHTTPURL(comment.url) : null
-      if (website) {
-        const author = createElement('a', 'ecoku-comment-author', comment.username)
-        author.href = website.toString()
-        author.target = '_blank'
-        author.rel = 'nofollow ugc noopener noreferrer'
-        author.referrerPolicy = 'no-referrer'
-        metaMain.append(author)
-      } else {
-        metaMain.append(createElement('span', 'ecoku-comment-author', comment.username))
-      }
+      metaMain.append(this.renderAuthor(comment))
     }
 
     const timeLink = createElement('a', 'ecoku-comment-time')
@@ -683,7 +695,7 @@ export class CommentSurface {
     if (this.activeReply && this.replyHasUnsavedInput(this.activeReply)
       && !window.confirm(zhCN.discardReplyDraft)) return
     this.closeReply(false)
-    const form = createElement('form', 'ecoku-reply-composer')
+    const form = createElement('form', 'ecoku-composer ecoku-reply-composer')
     form.noValidate = true
     const headingRow = createElement('div', 'ecoku-reply-heading-row')
     const identityChange = createElement('button', 'ecoku-identity-change', zhCN.changeIdentity)
@@ -702,7 +714,7 @@ export class CommentSurface {
     nickname.required = true
     email.required = this.formConfig.emailRequired
     website.required = this.formConfig.websiteRequired
-    const identityGrid = createElement('div', 'ecoku-reply-identity-grid')
+    const identityGrid = createElement('div', 'ecoku-identity-grid ecoku-reply-identity-grid')
     identityGrid.append(
       this.field(zhCN.nickname, nickname),
       this.field(zhCN.email, email),
@@ -715,21 +727,26 @@ export class CommentSurface {
     textarea.maxLength = this.formConfig.lengthLimit
     textarea.rows = COMPOSER_ROWS
     textarea.placeholder = zhCN.replyPlaceholder
+    const messageLabel = createElement('label', 'ecoku-message-field')
+    const visuallyHidden = createElement('span', 'ecoku-visually-hidden', zhCN.submitReply)
+    messageLabel.append(visuallyHidden, textarea)
     const error = createElement('p', 'ecoku-form-error')
     error.id = `ecoku-reply-error-${this.instanceId}-${comment.id}`
     error.setAttribute('role', 'alert')
     error.tabIndex = -1
     error.hidden = true
     textarea.setAttribute('aria-describedby', error.id)
-    const footer = createElement('div', 'ecoku-reply-footer')
+    const footer = createElement('div', 'ecoku-composer-footer ecoku-reply-footer')
     const counter = createElement('span', 'ecoku-character-count', `0/${this.formConfig.lengthLimit}`)
+    const end = createElement('div', 'ecoku-composer-end')
     const cancel = createElement('button', 'ecoku-secondary-button', zhCN.cancel)
     cancel.type = 'button'
     const submit = createElement('button', 'ecoku-primary-button', zhCN.submitReply)
     submit.type = 'submit'
     submit.disabled = true
-    footer.append(counter, cancel, submit)
-    form.append(headingRow, identityGrid, textarea, error, footer)
+    end.append(cancel, submit)
+    footer.append(counter, end)
+    form.append(headingRow, identityGrid, messageLabel, error, footer)
     slot.append(form)
     const reply: ActiveReply = {
       parentId: comment.id,

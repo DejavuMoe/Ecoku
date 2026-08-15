@@ -228,6 +228,26 @@ func TestSiteWriteContractOmitsDerivedDomainAndReviewMode(t *testing.T) {
 	}
 }
 
+func TestSiteWritePersistsBloggerBadge(t *testing.T) {
+	env := setupAdminTest(t)
+	payload := map[string]any{
+		"id": "site-badge", "site_url": "https://badge.example",
+		"allowed_origins":  []string{"https://badge.example"},
+		"blogger_nickname": "站长", "blogger_email": "owner@example.test",
+		"blogger_badge": "[OP]",
+	}
+	created := requestJSON(t, env.router, http.MethodPost, "/api/admin/sites", adminTestOrigin, "Bearer "+env.token, payload)
+	if created.Code != http.StatusCreated {
+		t.Fatalf("create=%d %s", created.Code, created.Body.String())
+	}
+	if !strings.Contains(created.Body.String(), `"blogger_badge":"[OP]"`) {
+		t.Fatalf("missing badge: %s", created.Body.String())
+	}
+	if !strings.Contains(created.Body.String(), `"blogger_email":"owner@example.test"`) {
+		t.Fatalf("admin DTO missing private blogger email: %s", created.Body.String())
+	}
+}
+
 func requestJSON(t *testing.T, handler http.Handler, method, path, origin, authorization string, body any) *httptest.ResponseRecorder {
 	t.Helper()
 	var reader *bytes.Reader

@@ -64,13 +64,7 @@ func EnqueueNewComment(tx *gorm.DB, comment model.Comment) error {
 }
 
 func isBloggerComment(site model.Site, comment model.Comment) bool {
-	nickname := strings.TrimSpace(site.BloggerNickname)
-	email := strings.TrimSpace(site.BloggerEmail)
-	if nickname == "" || email == "" || comment.Email == nil {
-		return false
-	}
-	return strings.TrimSpace(comment.Username) == nickname &&
-		strings.EqualFold(strings.TrimSpace(*comment.Email), email)
+	return site.IsBloggerComment(comment.Username, comment.Email)
 }
 
 func enqueue(tx *gorm.DB, eventType string, commentID uint) error {
