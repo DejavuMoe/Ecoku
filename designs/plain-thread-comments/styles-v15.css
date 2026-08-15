@@ -1,0 +1,63 @@
+@import url("./styles-v14.css");
+
+/* Composer text matches published comment body, beating `textarea { font: inherit }`. */
+.comment-section .composer-textarea,
+.comment-section .message-field textarea,
+.comment-copy {
+  color: var(--content);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.65;
+}
+
+.comment-section .composer-textarea::placeholder,
+.comment-section .message-field textarea::placeholder {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--secondary) 68%, transparent);
+}
+
+.ecoku-shell {
+  margin-top: 0;
+}
+
+.ecoku-loader,
+.ecoku-unconfigured {
+  margin: 0 0 16px;
+  padding: 16px;
+  color: var(--content);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--entry) 72%, var(--theme));
+}
+
+.ecoku-loader-status,
+.ecoku-unconfigured {
+  margin: 0;
+  color: var(--content);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.ecoku-loader-retry {
+  margin-top: 12px;
+  min-height: 32px;
+  padding: 0 13px;
+  color: var(--primary);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: var(--entry);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+
+.ecoku-loader-retry:hover {
+  border-color: var(--border);
+}
+
+.ecoku-loader[hidden],
+.ecoku-unconfigured[hidden],
+#embed-mount[hidden] {
+  display: none !important;
+}

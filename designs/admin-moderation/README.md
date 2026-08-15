@@ -1,7 +1,9 @@
 # Ecoku 管理端设计基线
 
 本目录保存 Ecoku 管理端的已批准设计证据、脱敏 fixture 与发送模板设计基线。
-`index-v8.html` 是当前已批准且应当映射到生产管理端的站点配置与配色基线；评论管理、通知设置和仅供服务端渲染参考的通知模板继续沿用 v5。`index-v10.html` 是已批准的实例级 Cloudflare Turnstile 设置与管理员登录验证（只配置 Sitekey / Secret key，无帮助文案、无控制台说明、无小组件模式选择）。原型文件本身不调用真实 API，也不进入运行时镜像。
+`index-v11.html` 是站点配置的当前已批准基线：在 v8 的站点表单上把管理端衬线改为系统字体栈
+`Noto Serif SC` / `Noto Serif CJK SC` / `Songti SC` / `STSong`，不加载网络字体。
+评论管理、通知设置和仅供服务端渲染参考的通知模板继续沿用 v5。`index-v10.html` 是已批准的实例级 Cloudflare Turnstile 设置与管理员登录验证（只配置 Sitekey / Secret key，无帮助文案、无控制台说明、无小组件模式选择）。原型文件本身不调用真实 API，也不进入运行时镜像。
 
 ## 当前产品边界
 
@@ -41,6 +43,7 @@
 
 ## 文件
 
+- `index-v11.html`：已批准的管理端系统衬线栈（站点配置，沿用 v8 表单）；
 - `index-v10.html`：已批准的实例级 Cloudflare Turnstile 设置与管理员登录验证（Sitekey / Secret key，不选择小组件模式）；
 - `index-v9.html`：上一版待审稿，含已撤销的小组件模式选择；
 - `index-v8.html`：当前已批准站点配置、博主身份、评论区标志与 `auto` 配色设计基线；
@@ -60,12 +63,12 @@
 从 `designs` 的父目录启动静态 HTTP 服务，然后打开：
 
 ```text
-http://127.0.0.1:4311/admin-moderation/index-v10.html
+http://127.0.0.1:4311/admin-moderation/index-v11.html
 ```
 
 执行无依赖静态契约测试：
 
 ```text
-node designs/admin-moderation/index-v9.test.mjs
+node designs/admin-moderation/index-v11.test.mjs
 node designs/admin-moderation/index-v10.test.mjs
 ```

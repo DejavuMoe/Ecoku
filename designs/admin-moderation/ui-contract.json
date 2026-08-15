@@ -7,6 +7,10 @@
   },
   "sourceReferences": [
     {
+      "path": "designs/admin-moderation/index-v11.html",
+      "role": "current approved system serif stack on the site form: Noto Serif SC / Noto Serif CJK SC / Songti SC / STSong, no webfont"
+    },
+    {
       "path": "designs/admin-moderation/index-v10.html",
       "role": "current approved instance-level Turnstile Sitekey/Secret key without widget-mode picker or Cloudflare console copy"
     },
@@ -16,7 +20,7 @@
     },
     {
       "path": "designs/admin-moderation/index-v8.html",
-      "role": "current approved per-site blogger identity, public blogger badge, and auto light/dark baseline without a notification decision preview"
+      "role": "previous approved per-site blogger identity, public blogger badge, and auto light/dark baseline without a notification decision preview"
     },
     {
       "path": "designs/admin-moderation/index-v7.html",
@@ -96,7 +100,7 @@
     {
       "id": "admin-site-management",
       "prototype": {
-        "entry": "index-v8.html",
+        "entry": "index-v11.html",
         "states": [
           "sites-list",
           "sites-new",
@@ -111,7 +115,8 @@
           "blogger-badge",
           "theme-auto",
           "theme-light",
-          "theme-dark"
+          "theme-dark",
+          "system-serif-stack"
         ]
       },
       "production": {
