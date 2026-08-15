@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### 修复
+
+- 管理端登录和评论区加载 Cloudflare Turnstile 时不再对带 `async` 的 `api.js` 调用
+  `turnstile.ready()`。先前该调用会抛错且 Promise 挂起，登录页验证槽不出现，提交后提示
+  「请完成验证后再登录」。
+
 ## [0.1.0-rc.8] - 2026-08-15
 
 ### 变更
