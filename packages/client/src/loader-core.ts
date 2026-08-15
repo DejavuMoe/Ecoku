@@ -138,19 +138,6 @@ export function setupEcokuLoader(
     }
 
     retry.addEventListener('click', initialize)
-    const Observer = (windowRef as EcokuWindow & {
-      IntersectionObserver?: typeof IntersectionObserver
-    }).IntersectionObserver
-    if (typeof Observer === 'function') {
-      const observer = new Observer((entries: IntersectionObserverEntry[]) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          observer.disconnect()
-          void initialize()
-        }
-      }, { rootMargin: '400px' })
-      observer.observe(shell)
-    } else {
-      void initialize()
-    }
+    void initialize()
   }
 }

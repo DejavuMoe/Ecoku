@@ -15,35 +15,6 @@ describe('Ecoku hosted loader', () => {
   })
 
   it('initializes every declared comment mount without embedding credentials', async () => {
-    class ImmediateIntersectionObserver implements IntersectionObserver {
-      readonly root = null
-      readonly rootMargin = '0px'
-      readonly scrollMargin = '0px'
-      readonly thresholds = [0]
-      private readonly callback: IntersectionObserverCallback
-
-      constructor(callback: IntersectionObserverCallback) {
-        this.callback = callback
-      }
-
-      disconnect(): void {}
-
-      observe(target: Element): void {
-        this.callback([
-          { isIntersecting: true, target } as IntersectionObserverEntry,
-        ], this)
-      }
-
-      takeRecords(): IntersectionObserverEntry[] {
-        return []
-      }
-
-      unobserve(): void {}
-    }
-    Object.defineProperty(window, 'IntersectionObserver', {
-      configurable: true,
-      value: ImmediateIntersectionObserver,
-    })
     document.body.innerHTML = `
       <section data-ecoku-comments data-server-url="https://ecoku.example"
         data-site-id="blog" data-page-key="/posts/test/" data-page-title="测试"
@@ -72,36 +43,42 @@ describe('Ecoku hosted loader', () => {
     expect(document.querySelector('[data-ecoku-comments]')?.getAttribute('aria-busy')).toBe('false')
   })
 
-  it('still initializes legacy Twikoo-era class names until hosts migrate', async () => {
-    class ImmediateIntersectionObserver implements IntersectionObserver {
+  it('starts loading immediately without waiting for intersection', async () => {
+    class IdleIntersectionObserver implements IntersectionObserver {
       readonly root = null
       readonly rootMargin = '0px'
       readonly scrollMargin = '0px'
       readonly thresholds = [0]
-      private readonly callback: IntersectionObserverCallback
-
-      constructor(callback: IntersectionObserverCallback) {
-        this.callback = callback
-      }
-
       disconnect(): void {}
-
-      observe(target: Element): void {
-        this.callback([
-          { isIntersecting: true, target } as IntersectionObserverEntry,
-        ], this)
-      }
-
+      observe(): void {}
       takeRecords(): IntersectionObserverEntry[] {
         return []
       }
-
       unobserve(): void {}
     }
     Object.defineProperty(window, 'IntersectionObserver', {
       configurable: true,
-      value: ImmediateIntersectionObserver,
+      value: IdleIntersectionObserver,
     })
+    document.body.innerHTML = `
+      <section data-ecoku-comments data-server-url="https://ecoku.example"
+        data-site-id="blog" data-page-key="/posts/eager/">
+        <div data-ecoku-loader><span data-ecoku-status>评论区将在滚动到附近时加载。</span>
+          <button data-ecoku-retry type="button" hidden></button></div>
+        <div data-ecoku-mount></div>
+      </section>`
+    const init = vi.fn().mockResolvedValue(undefined)
+    const Constructor = vi.fn(function (this: { init: typeof init }) {
+      this.init = init
+    })
+    ;(window as Window & { Ecoku?: unknown }).Ecoku = Constructor
+
+    setupEcokuLoader(document, window, 'https://ecoku.example/client/ecoku-loader.js')
+    await vi.waitFor(() => expect(init).toHaveBeenCalledOnce())
+    expect(document.querySelector('[data-ecoku-status]')?.textContent).toBe('正在加载评论…')
+  })
+
+  it('still initializes legacy Twikoo-era class names until hosts migrate', async () => {
     document.body.innerHTML = `
       <section data-ecoku-comments data-server-url="https://ecoku.example"
         data-site-id="blog" data-page-key="/posts/legacy/">

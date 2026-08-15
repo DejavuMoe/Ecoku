@@ -356,7 +356,7 @@ sudo docker compose ps
   data-theme="auto"
 >
   <div class="ecoku-loader" data-ecoku-loader role="status" aria-live="polite">
-    <p class="ecoku-loader-status" data-ecoku-status>评论区将在滚动到附近时加载。</p>
+    <p class="ecoku-loader-status" data-ecoku-status>正在加载评论…</p>
     <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新加载评论</button>
   </div>
   <div id="ecoku-mount" data-ecoku-mount></div>
@@ -373,7 +373,7 @@ sudo docker compose ps
 
 当前 SDK 会把评论区样式注入宿主页面，评论表面不需要再加载一份组件 CSS。可选的
 [`examples/hugo-papermod/assets/css/extended/ecoku.css`](../../examples/hugo-papermod/assets/css/extended/ecoku.css)
-只美化滚动加载前的外壳、状态文案和重试按钮。若站点使用严格 `style-src 'self'`，必须为 SDK
+只美化 SDK 初始化前的外壳、状态文案和重试按钮。若站点使用严格 `style-src 'self'`，必须为 SDK
 注入样式制定经过审核的 CSP 方案；不要仅为消除报错而全局放宽脚本策略。每次升级 SDK 后重新检查
 CSP、控制台和网络请求，确认没有第三方 IP、头像、遥测或管理凭据。
 
