@@ -1,0 +1,90 @@
+@import url("./styles-v11.css");
+
+.config-text select {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  color: var(--content);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  outline: 0;
+  background: var(--theme);
+  font: inherit;
+}
+
+.config-text select:focus-visible {
+  border-color: var(--border);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 6%, transparent);
+}
+
+.turnstile-slot {
+  margin: 10px 0 0;
+}
+
+.turnstile-slot[data-mode="invisible"],
+.turnstile-slot[hidden] {
+  display: none;
+}
+
+.turnstile-widget {
+  display: flex;
+  width: min(100%, 300px);
+  height: 65px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--entry) 88%, var(--theme));
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.turnstile-check {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  background: var(--entry);
+  color: var(--theme);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.turnstile-check[aria-pressed="true"] {
+  border-color: #2a6648;
+  background: #2a6648;
+  color: #faf9f5;
+}
+
+.turnstile-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border-soft);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: ecoku-turnstile-spin 700ms linear infinite;
+}
+
+.turnstile-label {
+  flex: 1 1 auto;
+  color: var(--content);
+}
+
+.turnstile-brand {
+  color: var(--secondary);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+@keyframes ecoku-turnstile-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .turnstile-spinner { animation: none; }
+}

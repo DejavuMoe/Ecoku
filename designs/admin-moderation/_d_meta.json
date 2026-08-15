@@ -80,10 +80,30 @@
             "width": 1440,
             "height": 900
           }
+        },
+        {
+          "path": "index-v9.html",
+          "createdAt": "2026-08-15T03:43:47.016Z",
+          "status": "needs-review",
+          "subtitle": "Needs-review: instance-level Turnstile for comments and admin login",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          }
+        },
+        {
+          "path": "index-v10.html",
+          "createdAt": "2026-08-15T03:57:58.633Z",
+          "status": "approved",
+          "subtitle": "Approved: Turnstile Sitekey and Secret key only",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          }
         }
       ]
     }
   },
   "createdAt": "2026-08-12T22:31:10.516Z",
-  "updatedAt": "2026-08-15T03:12:42.649Z"
+  "updatedAt": "2026-08-15T04:02:00.000Z"
 }

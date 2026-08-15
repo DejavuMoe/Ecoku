@@ -7,6 +7,14 @@
   },
   "sourceReferences": [
     {
+      "path": "designs/admin-moderation/index-v10.html",
+      "role": "current approved instance-level Turnstile Sitekey/Secret key without widget-mode picker or Cloudflare console copy"
+    },
+    {
+      "path": "designs/admin-moderation/index-v9.html",
+      "role": "superseded review candidate that duplicated Cloudflare widget modes"
+    },
+    {
       "path": "designs/admin-moderation/index-v8.html",
       "role": "current approved per-site blogger identity, public blogger badge, and auto light/dark baseline without a notification decision preview"
     },
@@ -122,6 +130,52 @@
         ]
       },
       "status": "implemented"
+    },
+    {
+      "id": "admin-security-turnstile",
+      "prototype": {
+        "entry": "index-v10.html",
+        "states": [
+          "security-configured",
+          "security-empty",
+          "security-validation",
+          "theme-auto",
+          "theme-light",
+          "theme-dark"
+        ]
+      },
+      "production": {
+        "routeOrWindow": "/admin/",
+        "status": "pending",
+        "referenceFiles": [
+          "packages/admin/src/App.vue",
+          "packages/admin/src/style.css"
+        ]
+      },
+      "status": "approved"
+    },
+    {
+      "id": "admin-login-turnstile",
+      "prototype": {
+        "entry": "index-v10.html",
+        "states": [
+          "login-off",
+          "login-auto",
+          "login-interact",
+          "login-skip",
+          "login-failed"
+        ]
+      },
+      "production": {
+        "routeOrWindow": "/admin/",
+        "status": "pending",
+        "referenceFiles": [
+          "packages/admin/src/App.vue",
+          "packages/admin/src/style.css",
+          "packages/admin/src/api.ts"
+        ]
+      },
+      "status": "approved"
     },
     {
       "id": "admin-notification-settings",

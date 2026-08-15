@@ -1,0 +1,5 @@
+@import url("./styles-v12.css");
+
+.turnstile-slot[data-cleared="true"] {
+  display: none;
+}
