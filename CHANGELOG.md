@@ -5,11 +5,20 @@
 
 ## [Unreleased]
 
+## [0.1.0-rc.9] - 2026-08-15
+
 ### 修复
 
 - 管理端登录和评论区加载 Cloudflare Turnstile 时不再对带 `async` 的 `api.js` 调用
   `turnstile.ready()`。先前该调用会抛错且 Promise 挂起，登录页验证槽不出现，提交后提示
   「请完成验证后再登录」。
+
+### 升级边界
+
+- 本版本不改变 SQLite schema，仍为 v4；
+- 从 `v0.1.0-rc.8` 升级必须先停服做冷备份，再把 `compose.yaml` 的精确镜像 tag 改为
+  `v0.1.0-rc.9`，然后 `sudo docker compose pull && sudo docker compose up -d`；
+- 回滚时改回 `v0.1.0-rc.8`。本次未写入新 schema，一般不必替换数据库；若启动失败，仍用停服前备份恢复。
 
 ## [0.1.0-rc.8] - 2026-08-15
 
@@ -145,3 +154,4 @@
 [0.1.0-rc.6]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.6
 [0.1.0-rc.7]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.7
 [0.1.0-rc.8]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.8
+[0.1.0-rc.9]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.9
