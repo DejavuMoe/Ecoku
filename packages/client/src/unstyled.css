@@ -69,14 +69,14 @@
   align-items: center;
   justify-content: center;
   box-sizing: content-box;
-  width: 16px;
-  min-width: 16px;
-  max-width: 16px;
+  width: 3ch;
+  min-width: 3ch;
   height: 20px;
-  flex: 0 0 16px;
+  flex: 0 0 3ch;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .ecoku-visually-hidden {
