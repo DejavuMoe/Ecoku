@@ -64,6 +64,23 @@ func requireRegisteredSite(c *gin.Context, rawSiteID string, requireOrigin bool)
 	return siteID, true
 }
 
+func validPageKey(value string) bool {
+	if value == "" || textLength(value) > maxPageKeyLength {
+		return false
+	}
+	for _, r := range value {
+		if r < 0x20 || r == 0x7f || r == '\\' {
+			return false
+		}
+	}
+	return pageKeyHasNoLocation(value) && pageKeyHasNoLocation(strings.TrimPrefix(value, "/"))
+}
+
+func pageKeyHasNoLocation(value string) bool {
+	parsed, err := url.Parse(value)
+	return err == nil && parsed.Scheme == "" && parsed.Host == "" && parsed.User == nil && !parsed.IsAbs()
+}
+
 func validEmail(value string) bool {
 	if value == "" || textLength(value) > maxEmailLength {
 		return false

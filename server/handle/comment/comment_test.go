@@ -179,6 +179,33 @@ func TestSubmitPublishesImmediatelyAndValidatesParentScope(t *testing.T) {
 	}
 }
 
+func TestSubmitRejectsAbsolutePageKeys(t *testing.T) {
+	router := setupCommentTest(t)
+	for _, test := range []struct {
+		name string
+		mark string
+		code int
+	}{
+		{name: "https", mark: "https://evil.example/phish", code: http.StatusBadRequest},
+		{name: "http", mark: "http://evil.example/phish", code: http.StatusBadRequest},
+		{name: "protocol-relative", mark: "//evil.example/phish", code: http.StatusBadRequest},
+		{name: "triple-slash", mark: "///evil.example/phish", code: http.StatusBadRequest},
+		{name: "javascript", mark: "javascript:alert(1)", code: http.StatusBadRequest},
+		{name: "same-site-absolute", mark: "https://a.example/post", code: http.StatusBadRequest},
+		{name: "newline", mark: "/post\n", code: http.StatusBadRequest},
+		{name: "rooted-path", mark: "/post", code: http.StatusCreated},
+		{name: "plain-key", mark: "article-a", code: http.StatusCreated},
+		{name: "nested-key", mark: "article/stable-key", code: http.StatusCreated},
+		{name: "permalink", mark: "/posts/test/", code: http.StatusCreated},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := postJSON(t, router, validSubmission("site-a", test.mark, 0)).Code; got != test.code {
+				t.Fatalf("status=%d mark=%q", got, test.mark)
+			}
+		})
+	}
+}
+
 func TestSiteFormConfigurationAndUnicodeLengthLimit(t *testing.T) {
 	router := setupCommentTest(t)
 	recorder := httptest.NewRecorder()
