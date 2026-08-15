@@ -82,10 +82,19 @@
           "viewport": {
             "width": 720
           }
+        },
+        {
+          "path": "index-v10.html",
+          "createdAt": "2026-08-15T00:59:04.609Z",
+          "status": "approved",
+          "subtitle": "Approved denser meta row, text collapse, IANA timestamps, and shared seven-line composers",
+          "viewport": {
+            "width": 720
+          }
         }
       ]
     }
   },
   "createdAt": "2026-08-12T08:14:10.430Z",
-  "updatedAt": "2026-08-14T18:27:09.038Z"
+  "updatedAt": "2026-08-15T01:33:03.683Z"
 }

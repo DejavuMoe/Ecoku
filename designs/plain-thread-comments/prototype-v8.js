@@ -209,7 +209,8 @@
     const author = commentElement.querySelector(".comment-author")?.textContent.trim() || "该评论者";
     form.dataset.parentId = String(commentId);
     form.querySelector(".reply-parent-id").value = String(commentId);
-    form.querySelector("[data-reply-author]").textContent = author;
+    const authorLabel = form.querySelector("[data-reply-author]");
+    if (authorLabel) authorLabel.textContent = author;
     form.elements.nickname.value = root.nickname.value;
     form.elements.email.value = root.email.value;
     form.elements.website.value = root.website.value;

@@ -1,0 +1,179 @@
+@import url("./styles-v9.css");
+
+.section-title {
+  color: var(--primary);
+  font-size: 20px;
+  font-variation-settings: "wght" 650;
+  line-height: 32px;
+}
+
+.sort-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: max-content;
+  min-width: 100%;
+  padding: 8px;
+}
+
+.sort-option {
+  min-height: 32px;
+  padding: 0 12px;
+}
+
+.message-field textarea,
+.reply-composer-v8 textarea[name="comment"],
+.composer-textarea {
+  min-height: calc(16px + 1.5em * 7);
+  height: calc(16px + 1.5em * 7);
+  padding: 8px 10px;
+  font-size: 15px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.message-field textarea::placeholder,
+.reply-composer-v8 textarea[name="comment"]::placeholder,
+.composer-textarea::placeholder,
+textarea::placeholder {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--secondary) 68%, transparent);
+}
+
+.reply-composer-v8 {
+  padding: 13px;
+}
+
+.reply-heading,
+.reply-heading-row:not(:has(.identity-change:not([hidden]))) {
+  display: none;
+}
+
+.reply-toolbar .secondary-button,
+.reply-toolbar .primary-button,
+.composer-footer .primary-button {
+  min-height: 32px;
+  padding: 0 13px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.comment-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 20px;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.comment-meta-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  min-width: 0;
+  flex: 0 1 auto;
+  gap: 8px;
+}
+
+.comment-author {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.comment-time {
+  font-family: "Maple Mono Normal", "Maple Mono NF CN", ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+}
+
+.reply-context,
+.folded-summary {
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.collapse-button,
+.collapse-placeholder {
+  display: inline;
+  width: auto;
+  min-width: 0;
+  height: auto;
+  min-height: 0;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.collapse-placeholder {
+  display: none;
+}
+
+.collapse-button {
+  color: var(--secondary);
+  font-family: ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0;
+}
+
+.collapse-button::before,
+.collapse-button::after,
+.collapse-button[aria-expanded="false"]::before,
+.collapse-button[aria-expanded="false"]::after,
+.collapse-placeholder::before {
+  content: none;
+  display: none;
+}
+
+.collapse-button:hover {
+  color: var(--primary);
+  border: 0;
+  background: transparent;
+}
+
+.comment-copy {
+  margin-top: 2px;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.comment-actions {
+  display: none;
+}
+
+.comment-meta .reply-action {
+  display: inline;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  height: auto;
+  min-height: 0;
+  color: var(--secondary);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 20px;
+  vertical-align: baseline;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--secondary) 55%, transparent);
+  text-underline-offset: 3px;
+}
+
+.comment-meta .reply-action:hover {
+  color: var(--primary);
+  text-decoration-color: color-mix(in srgb, var(--primary) 55%, transparent);
+  background: transparent;
+}

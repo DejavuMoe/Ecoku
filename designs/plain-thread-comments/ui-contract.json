@@ -9,7 +9,7 @@
     {
       "id": "article-plain-thread-comments",
       "prototype": {
-        "entry": "index-v9.html",
+        "entry": "index-v10.html",
         "states": [
           "light",
           "dark",
@@ -33,10 +33,13 @@
           "plain-configurable-empty-copy",
           "service-error",
           "service-recovered",
-          "equal-size-thread-controls",
-          "leaf-dot-control",
-          "bottom-left-reply-action",
-          "utc8-absolute-timestamps",
+          "text-thread-collapse",
+          "meta-inline-reply-text",
+          "collapse-after-time",
+          "shared-composer-textarea",
+          "iana-timezone-tooltip",
+          "larger-comment-count",
+          "separated-sort-options",
           "root-thread-pagination",
           "direct-inline-reply-identity",
           "encrypted-seven-day-identity",
@@ -45,7 +48,6 @@
           "compact-identity-fields",
           "left-aligned-character-count",
           "compact-publish-action",
-          "quieter-reply-action",
           "count-and-sort-below-composer",
           "paper-service-error"
         ]
@@ -67,7 +69,7 @@
     {
       "id": "article-comment-form-configuration",
       "prototype": {
-        "entry": "index-v9.html",
+        "entry": "index-v10.html",
         "states": [
           "email-required",
           "email-optional",
