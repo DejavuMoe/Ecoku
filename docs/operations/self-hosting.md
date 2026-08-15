@@ -172,6 +172,7 @@ ECOKU_NOTIFICATION_ENCRYPTION_KEY="$(openssl rand -base64 32)"
 
 {
   printf "GIN_MODE='release'\n"
+  printf "TZ='Asia/Shanghai'\n"
   printf "ECOKU_ADMIN_USERNAME='%s'\n" "$ECOKU_ADMIN_USERNAME"
   printf "ECOKU_ADMIN_PASSWORD_HASH='%s'\n" "$ECOKU_ADMIN_PASSWORD_HASH"
   printf "ECOKU_ADMIN_TOKEN_KEY='%s'\n" "$ECOKU_ADMIN_TOKEN_KEY"
@@ -182,8 +183,9 @@ unset ECOKU_PASSWORD_FIRST ECOKU_PASSWORD_SECOND ECOKU_ADMIN_PASSWORD_HASH
 unset ECOKU_ADMIN_TOKEN_KEY ECOKU_NOTIFICATION_ENCRYPTION_KEY ECOKU_IMAGE
 ```
 
-这些环境变量仅包含首次安装与长期密钥。站点、评论表单和通知渠道配置均由管理端写入 SQLite，
-不要在环境文件或 YAML 中重复维护。
+这些环境变量仅包含首次安装、容器时区与长期密钥。站点、评论表单和通知渠道配置均由管理端写入 SQLite，
+不要在环境文件或 YAML 中重复维护。`TZ` 使用 IANA 名称，控制公共评论时间显示；未设置时回退
+`Asia/Shanghai`。
 
 设置权限并校验：
 

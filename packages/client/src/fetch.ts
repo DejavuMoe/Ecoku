@@ -3,7 +3,7 @@ import {
   type CommentFormConfig,
   type ResolvedEcokuConfig,
 } from './config'
-import { isAbortError } from './util'
+import { isAbortError, resolveTimeZone } from './util'
 
 export type CommentSort = 'oldest' | 'newest'
 
@@ -48,6 +48,7 @@ export interface CommentPage {
   pageSize: number
   pageCount: number
   formConfig: CommentFormConfig
+  timeZone: string
 }
 
 interface ResponseEnvelope<T> {
@@ -64,6 +65,7 @@ interface RawCommentListPayload {
   pageSize?: unknown
   pageCount?: unknown
   formConfig?: unknown
+  timeZone?: unknown
 }
 
 export class EcokuRequestError extends Error {
@@ -215,6 +217,7 @@ export async function fetchComments(
     pageSize: asPositiveInteger(payload.pageSize, config.pageSize),
     pageCount: asNonNegativeInteger(payload.pageCount, 0),
     formConfig: normalizeFormConfig(payload.formConfig),
+    timeZone: resolveTimeZone(typeof payload.timeZone === 'string' ? payload.timeZone : ''),
   }
 }
 
