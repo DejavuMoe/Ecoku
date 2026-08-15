@@ -118,10 +118,19 @@
           "viewport": {
             "width": 720
           }
+        },
+        {
+          "path": "index-v14.html",
+          "createdAt": "2026-08-15T05:10:00.000Z",
+          "status": "approved",
+          "subtitle": "Approved: 12px identity inputs, 300px Turnstile, no saved-identity heading",
+          "viewport": {
+            "width": 720
+          }
         }
       ]
     }
   },
   "createdAt": "2026-08-12T08:14:10.430Z",
-  "updatedAt": "2026-08-15T04:02:00.000Z"
+  "updatedAt": "2026-08-15T05:10:00.000Z"
 }
