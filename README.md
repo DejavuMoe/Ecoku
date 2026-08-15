@@ -29,14 +29,19 @@ params:
 
 ```html
 <section
-  id="ecoku-comment-shell"
+  id="ecoku-comments"
+  class="ecoku-shell"
   data-ecoku-comments
   data-server-url="{{ site.Params.ecoku.server_url }}"
   data-site-id="{{ site.Params.ecoku.site_id }}"
   data-page-key="{{ .RelPermalink }}"
   data-page-title="{{ .Title }}"
 >
-  <div data-ecoku-mount></div>
+  <div class="ecoku-loader" data-ecoku-loader role="status" aria-live="polite">
+    <p class="ecoku-loader-status" data-ecoku-status>评论区将在滚动到附近时加载。</p>
+    <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新加载评论</button>
+  </div>
+  <div id="ecoku-mount" data-ecoku-mount></div>
 </section>
 <script src="{{ site.Params.ecoku.server_url }}/client/ecoku-loader.js" defer></script>
 ```

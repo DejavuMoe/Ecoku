@@ -27,7 +27,7 @@ the parent font and maps its component tokens to PaperMod's `--theme`, `--entry`
 Tracked integration references:
 
 - `examples/hugo-papermod/layouts/_partials/comments.html`
-- `examples/hugo-papermod/assets/css/extended/ecoku.css`
+- `examples/hugo-papermod/assets/css/extended/ecoku.css`（可选，仅加载前外壳）
 - the runtime-hosted `/client/ecoku-loader.js` and `/client/ecoku.umd.js`
 
 Revision 2 replaced the heavy global focus ring with field-local focus

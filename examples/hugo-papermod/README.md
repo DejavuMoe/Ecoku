@@ -19,13 +19,15 @@ Copy-Item examples/hugo-papermod/layouts/_partials/comments.html SITE/layouts/_p
 Copy-Item examples/hugo-papermod/assets/css/extended/ecoku.css SITE/assets/css/extended/ecoku.css
 ```
 
-将 `hugo.yaml.example` 中的 `params` 合并进站点配置。运行镜像会直接提供
-`/client/ecoku-loader.js` 与 `/client/ecoku.umd.js`，Hugo 站点不再保存或同步 SDK 副本。
+`ecoku.css` 只美化加载前外壳，可以不复制；评论区外观由 SDK 注入。将 `hugo.yaml.example` 中的
+`params` 合并进站点配置。运行镜像会直接提供 `/client/ecoku-loader.js` 与 `/client/ecoku.umd.js`，
+Hugo 站点不再保存或同步 SDK 副本。
 
-PaperMod 的文章模板需要调用 `{{ partial "comments.html" . }}`。示例 partial 明确把
-`.RelPermalink` 作为稳定页面 key、`.Title` 作为文章标题传给 SDK，并以外部脚本延迟加载。
-若站点设置 CSP，`script-src` 和 `connect-src` 必须精确允许 Ecoku 的 HTTPS Origin；当前 SDK
-样式边界另见试用前就绪清单，不能把“无行内初始化脚本”误写成完整严格 CSP 兼容。
+PaperMod 的文章模板需要调用 `{{ partial "comments.html" . }}`。示例 partial 使用
+`id="ecoku-comments"` / `id="ecoku-mount"` 和 `data-ecoku-*` 标记，把 `.RelPermalink` 作为稳定
+页面 key、`.Title` 作为文章标题传给 SDK，并以外部脚本延迟加载。若站点设置 CSP，`script-src`
+和 `connect-src` 必须精确允许 Ecoku 的 HTTPS Origin；当前 SDK 样式边界另见试用前就绪清单，
+不能把“无行内初始化脚本”误写成完整严格 CSP 兼容。
 
 最后在 Ecoku 管理端创建相同的 `site_id`，并把 Hugo 本地预览与正式站点的实际 Origin 逐行加入
 允许来源。浏览器端不应包含 management key、管理员 token 或通知凭据。

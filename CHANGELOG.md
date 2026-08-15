@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+### 变更
+
+- 宿主接入改为 `data-ecoku-*` 选择器，外壳与挂载点 id 为 `ecoku-comments` / `ecoku-mount`，
+  去掉 Twikoo 遗留的 `tcomment`。加载器暂时仍识别旧的 `#tcomment` 与 `.comment-*` 类名。
+- 宿主 `ecoku.css` 仅用于滚动加载前的外壳，评论区样式仍由 SDK 注入。
+
 ## [0.1.0-rc.6] - 2026-08-15
 
 ### 变更
