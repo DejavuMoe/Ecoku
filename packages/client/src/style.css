@@ -272,7 +272,11 @@
   min-height: 32px;
   height: 32px;
   padding: 0 9px;
-  font-size: 13px;
+}
+
+.ecoku-comments .ecoku-input {
+  color: var(--ecoku-content);
+  font-size: 12px;
 }
 
 .ecoku-textarea {
@@ -307,6 +311,7 @@
 }
 
 .ecoku-turnstile-slot {
+  width: min(100%, 300px);
   margin: 10px 0 0;
 }
 
@@ -701,42 +706,6 @@ a.ecoku-reply-context:hover {
   border-color: var(--ecoku-border-soft);
   background: var(--ecoku-entry);
   box-shadow: none;
-}
-
-.ecoku-reply-heading-row {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 7px;
-}
-
-.ecoku-reply-heading-row:not(:has(.ecoku-identity-change:not([hidden]))) {
-  display: none;
-}
-
-.ecoku-reply-identity-summary {
-  margin: 0;
-  color: var(--ecoku-secondary);
-  font-size: 12px;
-}
-
-.ecoku-reply-identity-summary strong {
-  color: var(--ecoku-primary);
-  font-weight: 600;
-}
-
-.ecoku-identity-change {
-  flex: 0 0 auto;
-  min-height: 28px;
-  padding: 0;
-  color: var(--ecoku-secondary);
-  border: 0;
-  background: transparent;
-  font-size: 12px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 .ecoku-reply-identity-grid {

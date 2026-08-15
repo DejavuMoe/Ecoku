@@ -483,6 +483,8 @@ describe('approved production comment surface', () => {
     expect(container.querySelector('.ecoku-root-identity-error')).toBeNull()
     expect(reply.textContent).not.toContain('回复 Author 1')
     expect(reply.querySelector('.ecoku-reply-heading')).toBeNull()
+    expect(reply.querySelector('.ecoku-reply-identity-summary')).toBeNull()
+    expect(reply.querySelector('.ecoku-identity-change')).toBeNull()
     expect(reply.querySelector('.ecoku-primary-button')?.textContent).toBe(zhCN.submitReply)
     expect(Number(reply.querySelector('textarea')?.rows)).toBe(7)
     expect(Number(container.querySelector<HTMLTextAreaElement>('.ecoku-composer textarea')?.rows)).toBe(7)
@@ -552,8 +554,10 @@ describe('approved production comment surface', () => {
     container.querySelector<HTMLButtonElement>('[data-comment-id="1"] .ecoku-text-action')!.click()
     const reply = container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!
     expect(reply.querySelector<HTMLElement>('.ecoku-reply-identity-grid')?.hidden).toBe(true)
-    expect(reply.querySelector('.ecoku-reply-identity-summary')?.textContent).toContain('以 Returning Guest 回复')
-    expect(reply.querySelector('.ecoku-reply-identity-summary')?.textContent).not.toContain('returning@example.com')
+    expect(reply.querySelector('.ecoku-reply-identity-summary')).toBeNull()
+    expect(reply.querySelector('.ecoku-identity-change')).toBeNull()
+    expect(reply.textContent).not.toContain('以 Returning Guest 回复')
+    expect(reply.textContent).not.toContain('更换')
     expect(document.activeElement).toBe(reply.querySelector('textarea'))
   })
 

@@ -12,8 +12,6 @@ export const zhCN = Object.freeze({
   cancel: '取消',
   reply: '回复',
   replyTo: (author: string) => `@${author}`,
-  replyAs: (author: string) => `以 ${author} 回复`,
-  changeIdentity: '更换',
   discardReplyDraft: '当前回复尚未提交，切换将丢失已填写内容。是否继续？',
   replyTarget: '查看被回复的评论',
   loading: '正在加载评论…',
