@@ -2,6 +2,7 @@ package routes
 
 import (
 	"ecoku-server/config"
+	"ecoku-server/middleware"
 	"ecoku-server/model"
 	"net/http"
 	"net/http/httptest"
@@ -166,7 +167,7 @@ func TestCommentRouteEnforcesBodyLimitAndConfiguredRateLimit(t *testing.T) {
 		t.Fatalf("new router: %v", err)
 	}
 
-	largeRequest := httptest.NewRequest(http.MethodPost, "/api/comment/submit", strings.NewReader(strings.Repeat("x", 17*1024)))
+	largeRequest := httptest.NewRequest(http.MethodPost, "/api/comment/submit", strings.NewReader(strings.Repeat("x", int(middleware.MaxCommentRequestBodyBytes)+1)))
 	largeRequest.Header.Set("Origin", "https://a.example")
 	largeRecorder := httptest.NewRecorder()
 	router.ServeHTTP(largeRecorder, largeRequest)
