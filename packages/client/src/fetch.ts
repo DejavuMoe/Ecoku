@@ -16,6 +16,7 @@ export interface CommentData {
   site_id: string
   parent: number
   deleted: boolean
+  isBlogger: boolean
   created_at?: string
   updated_at?: string
 }
@@ -96,6 +97,12 @@ function normalizeFormConfig(value: unknown): CommentFormConfig {
     ? Number(raw.lengthLimit) : DEFAULT_COMMENT_FORM_CONFIG.lengthLimit
   const emptyMessage = typeof raw.emptyMessage === 'string' && raw.emptyMessage.trim()
     ? raw.emptyMessage.trim() : DEFAULT_COMMENT_FORM_CONFIG.emptyMessage
+  let bloggerBadge = DEFAULT_COMMENT_FORM_CONFIG.bloggerBadge
+  if (typeof raw.bloggerBadge === 'string') {
+    const trimmed = raw.bloggerBadge.trim()
+    if (trimmed === '') bloggerBadge = ''
+    else if (Array.from(trimmed).length <= 16 && !/[\r\n]/.test(trimmed)) bloggerBadge = trimmed
+  }
   return {
     emailRequired: typeof raw.emailRequired === 'boolean'
       ? raw.emailRequired
@@ -109,6 +116,7 @@ function normalizeFormConfig(value: unknown): CommentFormConfig {
     defaultSort,
     lengthLimit,
     emptyMessage,
+    bloggerBadge,
   }
 }
 
@@ -137,6 +145,7 @@ function normalizeComment(value: unknown, config: ResolvedEcokuConfig): CommentD
     site_id: typeof raw.site_id === 'string' ? raw.site_id : config.siteId,
     parent,
     deleted,
+    isBlogger: !deleted && raw.isBlogger === true,
     created_at: typeof raw.created_at === 'string' ? raw.created_at : undefined,
     updated_at: typeof raw.updated_at === 'string' ? raw.updated_at : undefined,
   }

@@ -13,13 +13,17 @@ import (
 )
 
 const (
-	LatestSchemaVersion             = 2
+	LatestSchemaVersion             = 3
 	freshSchemaVersion              = 1
 	freshSchemaName                 = "fresh_published_comments"
 	freshSchemaDefinition           = "sqlite3:fresh-v1:published-comments:site-display-config:notifications:tombstones"
 	bloggerIdentitySchemaVersion    = 2
 	bloggerIdentitySchemaName       = "site_blogger_identity"
 	bloggerIdentitySchemaDefinition = "sqlite3:v2:sites-blogger-nickname-email"
+	bloggerBadgeSchemaVersion       = 3
+	bloggerBadgeSchemaName          = "site_blogger_badge"
+	bloggerBadgeSchemaDefinition    = "sqlite3:v3:sites-blogger-badge"
+	DefaultBloggerBadge             = "[博主]"
 )
 
 type schemaMigration struct {
@@ -220,6 +224,7 @@ func validateKnownSchemaHistory(database *gorm.DB) (int, error) {
 	}{
 		freshSchemaVersion:           {name: freshSchemaName, definition: freshSchemaDefinition},
 		bloggerIdentitySchemaVersion: {name: bloggerIdentitySchemaName, definition: bloggerIdentitySchemaDefinition},
+		bloggerBadgeSchemaVersion:    {name: bloggerBadgeSchemaName, definition: bloggerBadgeSchemaDefinition},
 	}
 	for index, row := range rows {
 		version := index + 1
@@ -245,6 +250,10 @@ func migrateSchema(database *gorm.DB, currentVersion int) error {
 		switch version {
 		case bloggerIdentitySchemaVersion:
 			if err := migrateSiteBloggerIdentity(database); err != nil {
+				return err
+			}
+		case bloggerBadgeSchemaVersion:
+			if err := migrateSiteBloggerBadge(database); err != nil {
 				return err
 			}
 		default:
@@ -275,6 +284,22 @@ VALUES (?, ?, ?, ?)`, bloggerIdentitySchemaVersion, bloggerIdentitySchemaName,
 	})
 }
 
+func migrateSiteBloggerBadge(database *gorm.DB) error {
+	return database.Transaction(func(tx *gorm.DB) error {
+		statement := `ALTER TABLE sites ADD COLUMN blogger_badge TEXT NOT NULL DEFAULT '[博主]' CHECK (length(blogger_badge) <= 64)`
+		if err := tx.Exec(statement).Error; err != nil {
+			return fmt.Errorf("迁移站点博主标志字段: %w", err)
+		}
+		now := time.Now().UTC()
+		if err := tx.Exec(`INSERT INTO schema_migrations (version, name, checksum, applied_at)
+VALUES (?, ?, ?, ?)`, bloggerBadgeSchemaVersion, bloggerBadgeSchemaName,
+			schemaChecksum(bloggerBadgeSchemaDefinition), now).Error; err != nil {
+			return fmt.Errorf("记录 schema 版本 %d: %w", bloggerBadgeSchemaVersion, err)
+		}
+		return nil
+	})
+}
+
 func validateCurrentSchema(database *gorm.DB) error {
 	currentVersion, err := validateKnownSchemaHistory(database)
 	if err != nil {
@@ -289,7 +314,7 @@ func validateCurrentSchema(database *gorm.DB) error {
 			return fmt.Errorf("数据库缺少当前 schema 表 %s", table)
 		}
 	}
-	for _, column := range []string{"blogger_nickname", "blogger_email"} {
+	for _, column := range []string{"blogger_nickname", "blogger_email", "blogger_badge"} {
 		var count int64
 		if err := database.Raw("SELECT COUNT(*) FROM pragma_table_info('sites') WHERE name = ?", column).Scan(&count).Error; err != nil || count != 1 {
 			return fmt.Errorf("数据库缺少当前 schema 字段 sites.%s", column)

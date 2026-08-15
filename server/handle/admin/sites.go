@@ -23,6 +23,7 @@ const (
 	maximumEmptyMessage    = 240
 	maximumBloggerNickname = 80
 	maximumBloggerEmail    = 254
+	maximumBloggerBadge    = 16
 )
 
 type SiteDTO struct {
@@ -38,6 +39,7 @@ type SiteDTO struct {
 	EmptyMessage    string   `json:"empty_message"`
 	BloggerNickname string   `json:"blogger_nickname"`
 	BloggerEmail    string   `json:"blogger_email"`
+	BloggerBadge    string   `json:"blogger_badge"`
 	Revision        uint     `json:"revision"`
 	CreatedAt       string   `json:"created_at"`
 	UpdatedAt       string   `json:"updated_at"`
@@ -56,6 +58,7 @@ type SiteWriteRequest struct {
 	EmptyMessage    string   `json:"empty_message"`
 	BloggerNickname string   `json:"blogger_nickname"`
 	BloggerEmail    string   `json:"blogger_email"`
+	BloggerBadge    string   `json:"blogger_badge"`
 	Revision        uint     `json:"revision"`
 }
 
@@ -240,12 +243,18 @@ func validateSiteWrite(c *gin.Context, request SiteWriteRequest, creating bool) 
 			return model.SiteWrite{}, false
 		}
 	}
+	bloggerBadge := strings.TrimSpace(request.BloggerBadge)
+	if utf8.RuneCountInString(bloggerBadge) > maximumBloggerBadge || strings.ContainsAny(bloggerBadge, "\r\n") {
+		utils.SendError(c, http.StatusBadRequest, "评论区标志无效")
+		return model.SiteWrite{}, false
+	}
 	return model.SiteWrite{
 		ID: id, SiteURL: siteURL, Domain: strings.ToLower(parsed.Hostname()),
 		Name: name, DefaultSort: defaultSort, EmailRequired: emailRequired,
 		WebsiteRequired: websiteRequired, Placeholder: placeholder,
 		CommentLimit: commentLimit, EmptyMessage: emptyMessage,
 		BloggerNickname: bloggerNickname, BloggerEmail: bloggerEmail,
+		BloggerBadge:   bloggerBadge,
 		AllowedOrigins: origins, Revision: request.Revision,
 	}, true
 }
@@ -258,7 +267,8 @@ func siteDTO(site model.Site) SiteDTO {
 		WebsiteRequired: site.WebsiteRequired, Placeholder: site.Placeholder,
 		CommentLimit: site.CommentLimit, EmptyMessage: site.EmptyMessage,
 		BloggerNickname: site.BloggerNickname, BloggerEmail: site.BloggerEmail,
-		Revision: site.Revision, CreatedAt: site.CreatedAt.UTC().Format(time.RFC3339Nano),
+		BloggerBadge: site.BloggerBadge,
+		Revision:     site.Revision, CreatedAt: site.CreatedAt.UTC().Format(time.RFC3339Nano),
 		UpdatedAt: site.UpdatedAt.UTC().Format(time.RFC3339Nano),
 	}
 }

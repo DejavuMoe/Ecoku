@@ -39,8 +39,9 @@ Ecoku/
 
 ## 2. 准备 Compose 与公开配置
 
-复制仓库根 `compose.yaml` 和 `deploy/config.yaml.example`。私有仓库尚未公开时，可以从自己的
-受控文件服务下载；下面仅用占位直链表达来源：
+复制仓库根 `compose.yaml` 和 `deploy/config.yaml.example`。不要改写端口、挂载或加固项去“对齐文档”；
+文档以这两个仓库文件为准。私有仓库尚未公开时，可以从自己的受控文件服务下载；下面仅用占位直链
+表达来源：
 
 ```bash
 curl --fail --show-error --location \
@@ -51,87 +52,23 @@ curl --fail --show-error --location \
   --output app/config.yaml
 ```
 
-`compose.yaml` 必须固定精确镜像版本，并保持三个简短绑定挂载：
+`compose.yaml` 已固定精确镜像版本，并把服务端口绑到宿主机 `127.0.0.1:12123`。公网只应打到本机
+Caddy 或 Nginx；不要把 `12123` 改成 `0.0.0.0`。保持三个绑定挂载：`./app/config.yaml`、
+`./app/logs`、`./data`，以及 `env_file: ./ecoku.env`。
+
+把 `deploy/config.yaml.example` 复制为 `app/config.yaml` 后，只改公开网址和管理端来源：
 
 ```yaml
-name: ecoku
-
-services:
-  ecoku:
-    image: "<REGISTRY_HOST>/<OWNER>/ecoku:<VERSION>"
-    init: true
-    restart: unless-stopped
-    env_file:
-      - ./ecoku.env
-    ports:
-      - "127.0.0.1:12123:12123"
-    volumes:
-      - ./app/config.yaml:/app/config.yaml:ro
-      - ./app/logs:/var/log/ecoku
-      - ./data:/data
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "5"
-    read_only: true
-    tmpfs:
-      - /tmp:rw,noexec,nosuid,nodev,size=16m
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--output-document=-", "http://127.0.0.1:12123/api/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    stop_grace_period: 30s
-```
-
-编辑 `app/config.yaml`：
-
-```yaml
-site:
-  port: 12123
-  # 始终写入 stdout，供 docker compose logs 跟随。普通文件路径会额外保留进程内轮转副本。
-  log_path: "/var/log/ecoku/ecoku.log"
-  trusted_proxies:
-    - "127.0.0.1/32"
-
-client:
-  static_dir: "/app/client"
-
-rate_limit:
-  window_seconds: 60
-  comment_submit: 5
-  comment_delete: 30
-  admin_login: 5
-  notification_test: 5
-
 notifications:
-  encryption_key_env: "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
   instance_public_url: "https://comments.example.com"
 
-database:
-  sqlite:
-    path: "/data/ecoku.sqlite3"
-
 admin:
-  enabled: true
-  static_dir: "/app/admin"
-  username_env: "ECOKU_ADMIN_USERNAME"
-  password_hash_env: "ECOKU_ADMIN_PASSWORD_HASH"
-  token_key_env: "ECOKU_ADMIN_TOKEN_KEY"
-  token_ttl_minutes: 480
   allowed_origins:
     - "https://comments.example.com"
 ```
 
-只有当 Caddy/Nginx 与 Ecoku 同机、Ecoku 只绑定 `127.0.0.1`，并且反向代理覆盖客户端传来的
-转发头时，才信任 `127.0.0.1/32`。其他拓扑必须填写 Ecoku 直接 socket 对端的精确 IP/CIDR；
-不得信任 `0.0.0.0/0` 或任意 `X-Forwarded-For`。
+其余项与示例保持一致。`trusted_proxies` 保持 `[]`：限流只用容器看到的直接连接地址，本机反代
+不必填 `127.0.0.1/32`。不要填 `0.0.0.0/0`。
 
 ## 3. 首次初始化管理员
 
@@ -170,6 +107,7 @@ ECOKU_ADMIN_PASSWORD_HASH="$(
 ECOKU_ADMIN_TOKEN_KEY="$(openssl rand -hex 32)"
 ECOKU_NOTIFICATION_ENCRYPTION_KEY="$(openssl rand -base64 32)"
 
+# TZ 使用 IANA 名称，按机房修改；默认与未设置时的回退值相同。
 {
   printf "GIN_MODE='release'\n"
   printf "TZ='Asia/Shanghai'\n"
@@ -184,8 +122,11 @@ unset ECOKU_ADMIN_TOKEN_KEY ECOKU_NOTIFICATION_ENCRYPTION_KEY ECOKU_IMAGE
 ```
 
 这些环境变量仅包含首次安装、容器时区与长期密钥。站点、评论表单和通知渠道配置均由管理端写入 SQLite，
-不要在环境文件或 YAML 中重复维护。`TZ` 使用 IANA 名称，控制公共评论时间显示；未设置时回退
-`Asia/Shanghai`。
+不要在环境文件或 YAML 中重复维护。
+
+`TZ` 是标准容器时区（IANA 名称），由 Compose 的 `env_file` 注入进程。它控制公共评论时间与悬停文案，
+未设置时回退 `Asia/Shanghai`。不要把 `TZ` 写进 `app/config.yaml`，也不必为它改 Compose 挂载或端口。
+已有实例补 `TZ` 的步骤见第 9 节。
 
 设置权限并校验：
 
@@ -221,6 +162,8 @@ curl --fail --head http://127.0.0.1:12123/client/ecoku.umd.js
 访问日志；日志仍不得包含 IP、UA、凭据或评论正文。
 
 ## 5. Caddy 或 Nginx 反向代理
+
+把 HTTPS 终止在本机反代，上游指向 `127.0.0.1:12123`。不必改 `app/config.yaml` 里的 `trusted_proxies`。
 
 ### Caddy
 
@@ -428,11 +371,12 @@ sha256sum "./backups/ecoku-${backup_stamp}.sqlite3" \
 
 升级顺序：
 
-1. 阅读 `CHANGELOG.md`，确认目标 tag、schema 与目录变化；
+1. 阅读 `CHANGELOG.md`，确认目标 tag、schema、环境变量与目录变化；
 2. 正常停服并完成上面的数据库与配置备份；
 3. 把 `compose.yaml` 的精确镜像 tag 改为新版本，并补上当前仓库中的 `logging` 段（若旧文件没有）；
-4. 拉取、启动，用 `sudo docker compose logs -f ecoku` 观察启动与迁移日志，确认健康状态；
-5. 验证管理登录、站点配置、公开评论、提交、回复与通知。
+4. 若该版本要求新的环境变量（例如 `TZ`），写入 `ecoku.env` 后再启动；不要写进 `config.yaml`；
+5. 拉取、启动，用 `sudo docker compose logs -f ecoku` 观察启动与迁移日志，确认健康状态；
+6. 验证管理登录、站点配置、公开评论时间与悬停时区、提交、回复与通知。
 
 ```bash
 sudo docker compose config --quiet
@@ -446,20 +390,46 @@ curl --fail http://127.0.0.1:12123/api/health
 显式 schema 迁移在原 `data/ecoku.sqlite3` 文件内按版本事务执行。成功后只增加
 `schema_migrations` 记录；不会自动删除旧数据库、业务数据、WAL 边车文件或 `backups/` 中的备份。
 失败的版本不会被记为完成，服务会拒绝启动。不存在单独的“v1 数据库”可供自动清理，也不得手工
-删除迁移历史或伪造版本。
+删除迁移历史或伪造版本。含评论区博主标志的未发版会把 schema 从 v2 升到 v3；升级前必须冷备份，
+已写入 v3 的库不能只换回旧镜像。
 
 需要回滚时先停止失败版本，保留现场副本，把 Compose 恢复到旧镜像 tag，再用停服前备份替换
 `data/ecoku.sqlite3`，恢复 `10001:10001` 权限后启动。若新版本已经写入旧程序不认识的 schema，
 绝不能只回退镜像而继续使用已升级数据库。
+
+### 已有实例补充 `TZ`
+
+`TZ` 只写在 `ecoku.env`。当前 `compose.yaml` 已通过 `env_file` 注入全部环境变量，因此不必改
+Compose 服务定义、端口、挂载或 `app/config.yaml`。
+
+在含评论时区代码的镜像上（`CHANGELOG.md` `[Unreleased]` 合并进某次 tag 之后）：
+
+```bash
+umask 077
+# 按机房填写 IANA 名称。新加坡示例：
+printf "\nTZ='Asia/Singapore'\n" >> ecoku.env
+sudo chmod 0600 ./ecoku.env
+sudo docker compose config --quiet
+sudo docker compose up -d
+sudo docker compose exec ecoku wget -q -O- http://127.0.0.1:12123/api/health
+```
+
+改 `ecoku.env` 后必须重建容器，正在运行的进程不会自动重读该文件。验证公开评论时间与悬停提示
+（例如 `Asia/Singapore UTC+8`）。未设置 `TZ` 时评论时间回退 `Asia/Shanghai`。
+
+若生产仍运行 `v0.1.0-rc.7`，先加入 `TZ` 再 `up -d` 只会把变量送进容器，**不会**改变评论区时间
+格式；要等含上述变更的新镜像 tag。该版本也未改 schema，升级仍是停服冷备份 → 改精确镜像 tag →
+`sudo docker compose pull && sudo docker compose up -d`。
 
 ## 10. 验收清单
 
 - `sudo docker compose ps` 显示 `healthy`；
 - 公网 `/api/health`、`/admin/`、加载器和 UMD 均为 HTTPS；
 - 管理员能登录，刷新后需要重新登录；
-- 站点 ID、URL、名称、允许来源、表单配置和博主身份保存后可读回；
-- 公共列表不含邮箱或管理字段；未登记 Origin 被 CORS 拒绝；
+- 站点 ID、URL、名称、允许来源、表单配置、博主身份和评论区标志保存后可读回；
+- 公共列表不含邮箱或管理字段；博主评论只多一个公开标志与 `isBlogger`；未登记 Origin 被 CORS 拒绝；
 - 根评论、内联回复、7 天身份恢复、Unicode 上限和根线程分页符合预期；
+- 评论时间按容器 `TZ` 显示，悬停为 IANA 加偏移；未设置 `TZ` 时为 `Asia/Shanghai`；
 - SMTP/Telegram 测试和真实通知去重符合默认矩阵；
 - SQLite、WAL、日志、环境文件和备份均未进入公开目录、Git 或镜像层；
 - 已完成一次可校验的冷备份与恢复演练。

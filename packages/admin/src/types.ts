@@ -15,6 +15,7 @@ export interface SiteSummary {
   emptyMessage: string
   bloggerNickname: string
   bloggerEmail: string
+  bloggerBadge: string
   revision: number
   createdAt: string
   updatedAt: string

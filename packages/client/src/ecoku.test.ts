@@ -54,6 +54,7 @@ function listResponse(
       defaultSort?: 'oldest' | 'newest'
       lengthLimit?: number
       emptyMessage?: string
+      bloggerBadge?: string
     }
     timeZone?: string
   } = {},
@@ -294,6 +295,40 @@ describe('approved production comment surface', () => {
     expect(parent.parentElement?.querySelector<HTMLElement>('.ecoku-children')?.hidden).toBe(true)
   })
 
+  it('shows a blogger badge after matching nicknames and hides it when the mark is empty', async () => {
+    const comments = [
+      comment(1, 0, 'blogger note', { username: 'Dejavu Moe', url: 'https://blog.example.test/', isBlogger: true }),
+      comment(2, 0, 'guest note', { username: '访客', isBlogger: false }),
+    ]
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(listResponse(comments, {
+      formConfig: {
+        emailRequired: true,
+        websiteRequired: false,
+        placeholder: zhCN.commentPlaceholder,
+        bloggerBadge: '[OP]',
+      },
+    }))
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+
+    const blogger = container.querySelector('[data-comment-id="1"]')!
+    const guest = container.querySelector('[data-comment-id="2"]')!
+    expect(blogger.querySelector('.ecoku-comment-author')?.textContent).toBe('Dejavu Moe')
+    expect(blogger.querySelector('.ecoku-blogger-badge')?.textContent).toBe('[OP]')
+    expect(guest.querySelector('.ecoku-blogger-badge')).toBeNull()
+
+    fetchMock.mockResolvedValue(listResponse(comments, {
+      formConfig: {
+        emailRequired: true,
+        websiteRequired: false,
+        placeholder: zhCN.commentPlaceholder,
+        bloggerBadge: '',
+      },
+    }))
+    await client.reload()
+    expect(container.querySelector('.ecoku-blogger-badge')).toBeNull()
+  })
+
   it('renders a 52-comment fixture with complete one-to-six-level semantics and the approved count-only heading', async () => {
     const comments: RawComment[] = [comment(1, 0, 'root level one')]
     for (let id = 2; id <= 6; id += 1) comments.push(comment(id, id - 1, `nested level ${id}`))
@@ -450,6 +485,11 @@ describe('approved production comment surface', () => {
     expect(reply.querySelector('.ecoku-primary-button')?.textContent).toBe(zhCN.submitReply)
     expect(Number(reply.querySelector('textarea')?.rows)).toBe(7)
     expect(Number(container.querySelector<HTMLTextAreaElement>('.ecoku-composer textarea')?.rows)).toBe(7)
+    expect(reply.classList.contains('ecoku-composer')).toBe(true)
+    expect(reply.querySelector('.ecoku-identity-grid')).not.toBeNull()
+    expect(reply.querySelector('.ecoku-message-field textarea')).not.toBeNull()
+    expect(reply.querySelector('.ecoku-composer-footer')?.firstElementChild?.classList.contains('ecoku-character-count')).toBe(true)
+    expect(reply.querySelector('.ecoku-composer-end .ecoku-secondary-button')?.textContent).toBe(zhCN.cancel)
   })
 
   it('submits an inline reply with the identity entered beside that reply and remembers it after success', async () => {

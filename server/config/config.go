@@ -29,6 +29,7 @@ const (
 	DefaultCommentSort              = "newest"
 	DefaultCommentLimit             = 1000
 	DefaultEmptyMessage             = "还没有评论\n成为第一个留下评论的人。"
+	DefaultBloggerBadge             = "[博主]"
 )
 
 var (
@@ -104,6 +105,7 @@ type CommentFormConfig struct {
 	DefaultSort     string `json:"defaultSort"`
 	LengthLimit     int    `json:"lengthLimit"`
 	EmptyMessage    string `json:"emptyMessage"`
+	BloggerBadge    string `json:"bloggerBadge"`
 }
 
 type DatabaseConfig struct {
@@ -637,6 +639,7 @@ func GetCommentFormConfig(siteID string) (CommentFormConfig, bool) {
 		DefaultSort:     site.Comment.DefaultSort,
 		LengthLimit:     site.Comment.LengthLimit,
 		EmptyMessage:    site.Comment.EmptyMessage,
+		BloggerBadge:    DefaultBloggerBadge,
 	}, true
 }
 

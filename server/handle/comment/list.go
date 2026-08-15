@@ -1,6 +1,7 @@
 package comment
 
 import (
+	"ecoku-server/config"
 	"ecoku-server/model"
 	"ecoku-server/utils"
 	"math"
@@ -23,6 +24,7 @@ type PublicCommentResponse struct {
 	UpdatedAt string  `json:"updated_at"`
 	Username  string  `json:"username"`
 	URL       *string `json:"url,omitempty"`
+	IsBlogger bool    `json:"isBlogger"`
 }
 
 // GetComments returns published root threads and every published descendant of
@@ -37,14 +39,15 @@ func GetComments(c *gin.Context) {
 		utils.SendError(c, http.StatusInternalServerError, "读取评论表单配置失败")
 		return
 	}
-	formConfig := struct {
-		EmailRequired   bool   `json:"emailRequired"`
-		WebsiteRequired bool   `json:"websiteRequired"`
-		Placeholder     string `json:"placeholder"`
-		DefaultSort     string `json:"defaultSort"`
-		LengthLimit     int    `json:"lengthLimit"`
-		EmptyMessage    string `json:"emptyMessage"`
-	}{site.EmailRequired, site.WebsiteRequired, site.Placeholder, site.DefaultSort, site.CommentLimit, site.EmptyMessage}
+	formConfig := config.CommentFormConfig{
+		EmailRequired:   site.EmailRequired,
+		WebsiteRequired: site.WebsiteRequired,
+		Placeholder:     site.Placeholder,
+		DefaultSort:     site.DefaultSort,
+		LengthLimit:     site.CommentLimit,
+		EmptyMessage:    site.EmptyMessage,
+		BloggerBadge:    site.BloggerBadge,
+	}
 	key := strings.TrimSpace(c.Query("key"))
 	if key == "" || textLength(key) > maxPageKeyLength {
 		utils.SendError(c, http.StatusBadRequest, "key 参数无效")
@@ -125,6 +128,7 @@ func GetComments(c *gin.Context) {
 			UpdatedAt: item.UpdatedAt.UTC().Format(time.RFC3339Nano),
 			Username:  username,
 			URL:       website,
+			IsBlogger: !deleted && site.IsBloggerComment(item.Username, item.Email),
 		})
 	}
 
