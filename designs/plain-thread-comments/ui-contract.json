@@ -133,17 +133,20 @@
       },
       "production": {
         "routeOrWindow": "article comment surface",
-      "status": "pending",
-      "referenceFiles": [
+        "status": "implemented",
+        "referenceFiles": [
           "packages/client/src/comment.ts",
           "packages/client/src/config.ts",
           "packages/client/src/style.css",
           "packages/client/src/fetch.ts",
+          "packages/client/src/turnstile.ts",
           "server/handle/comment/submit.go",
-          "server/handle/comment/list.go"
+          "server/handle/comment/list.go",
+          "server/turnstile/settings.go",
+          "server/turnstile/verify.go"
         ]
       },
-      "status": "approved"
+      "status": "implemented"
     }
   ]
 }

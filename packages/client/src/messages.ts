@@ -50,6 +50,7 @@ export const zhCN = Object.freeze({
   submit429: '提交过于频繁，请稍后再试。',
   submit500: '评论服务暂时无法保存内容，请稍后再试。',
   submitNetwork: '网络连接失败，评论尚未提交。',
+  challengeRequired: '请完成验证后再发布。',
   list403: '当前页面来源没有读取评论的权限。',
   list429: '请求过于频繁，请稍后重试。',
   listFailure: '无法加载评论，请稍后重试。',

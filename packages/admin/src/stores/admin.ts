@@ -2,13 +2,16 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { adminApi, ApiError } from '../api'
 import { messages } from '../messages'
-import type { CommentReview, CommentStatus, EmailNotificationSettings, MainView, NotificationSettings, SiteSummary, SiteWrite, TelegramNotificationSettings } from '../types'
+import type { CommentReview, CommentStatus, EmailNotificationSettings, MainView, NotificationSettings, SiteSummary, SiteWrite, TelegramNotificationSettings, TurnstileSettings } from '../types'
 
 function failureMessage(error: unknown, login = false): string {
   if (!(error instanceof ApiError)) return messages.genericError
   if (error.status === 0) return messages.networkError
   if (error.status === 401) return login ? messages.loginFailed : messages.sessionExpired
-  if (error.status === 400) return messages.invalidRequest
+  if (error.status === 400) {
+    if (login && error.message) return error.message
+    return messages.invalidRequest
+  }
   if (error.status === 403) return messages.forbidden
   if (error.status === 404) return messages.notFound
   if (error.status === 409) return messages.conflict
@@ -64,6 +67,9 @@ export const useAdminStore = defineStore('admin', () => {
   const emailTestMessage = ref('')
   const telegramTestState = ref<'idle' | 'success' | 'failure'>('idle')
   const telegramTestMessage = ref('')
+  const turnstileSettings = ref<TurnstileSettings | null>(null)
+  const turnstileBusy = ref(false)
+  const turnstileMessage = ref('')
   const authenticated = computed(() => token.value !== '')
   const selectedSite = computed(() => sites.value.find((site) => site.id === selectedSiteId.value) ?? null)
   let expiryTimer: ReturnType<typeof setTimeout> | undefined
@@ -85,19 +91,20 @@ export const useAdminStore = defineStore('admin', () => {
     if (!Number.isFinite(delay) || delay <= 0) return clearSession(messages.sessionExpired)
     expiryTimer = setTimeout(() => clearSession(messages.sessionExpired), Math.min(delay, 2_147_000_000))
   }
-  function fail(error: unknown, destination: 'queue' | 'action' | 'site' | 'notification') {
+  function fail(error: unknown, destination: 'queue' | 'action' | 'site' | 'notification' | 'security') {
     if (error instanceof ApiError && error.status === 401) return clearSession(messages.sessionExpired)
     const message = failureMessage(error)
     if (destination === 'queue') queueMessage.value = message
     else if (destination === 'action') actionMessage.value = message
     else if (destination === 'site') siteMessage.value = message
+    else if (destination === 'security') turnstileMessage.value = message
     else notificationMessage.value = message
   }
-  async function login(username: string, password: string) {
+  async function login(username: string, password: string, turnstileToken = '') {
     if (loginBusy.value) return false
     loginBusy.value = true; loginMessage.value = ''
     try {
-      const session = await adminApi.login(username, password)
+      const session = await adminApi.login(username, password, turnstileToken)
       token.value = session.token; expiresAt.value = session.expiresAt; armExpiry(session.expiresAt)
       await loadSites(true); return authenticated.value
     } catch (error) { clearSession(failureMessage(error, true)); return false }
@@ -108,6 +115,7 @@ export const useAdminStore = defineStore('admin', () => {
     view.value = next
     if (next === 'comments') await loadComments()
     else if (next === 'sites') await loadSites(false)
+    else if (next === 'security') await loadTurnstile()
     else await loadNotifications()
   }
   async function loadSites(loadCommentsAfter = false) {
@@ -203,9 +211,27 @@ export const useAdminStore = defineStore('admin', () => {
     catch (error) { telegramTestState.value = 'failure'; telegramTestMessage.value = testFailureMessage(error, 'telegram') }
     finally { notificationBusy.value = false }
   }
+  async function loadTurnstile() {
+    if (turnstileBusy.value) return
+    turnstileBusy.value = true; turnstileMessage.value = ''
+    try { turnstileSettings.value = await adminApi.getTurnstile(token.value) }
+    catch (error) { fail(error, 'security') }
+    finally { turnstileBusy.value = false }
+  }
+  async function saveTurnstile(settings: TurnstileSettings) {
+    turnstileBusy.value = true; turnstileMessage.value = ''
+    try {
+      const saved = await adminApi.saveTurnstile(token.value, settings)
+      turnstileSettings.value = saved
+      toastMessage.value = messages.turnstileSaved
+      return saved
+    } catch (error) { fail(error, 'security'); return null }
+    finally { turnstileBusy.value = false }
+  }
   return { token, expiresAt, loginBusy, loginMessage, authenticated, view, sites, selectedSiteId, selectedSite, siteBusy, siteMessage,
     status, sort, page, pageSize, pageCount, total, counts, comments, selectedComment, queueBusy, detailBusy, actionBusy, queueMessage, actionMessage, toastMessage,
     notificationSettings, notificationBusy, notificationMessage, emailTestState, emailTestMessage, telegramTestState, telegramTestMessage,
+    turnstileSettings, turnstileBusy, turnstileMessage,
     login, logout, switchView, loadSites, saveSite, loadComments, loadDetail, selectSite, selectStatus, toggleSort, selectPage, selectComment, mutateCurrent,
-    loadNotifications, saveEmail, saveTelegram, testEmail, testTelegram }
+    loadNotifications, saveEmail, saveTelegram, testEmail, testTelegram, loadTurnstile, saveTurnstile }
 })

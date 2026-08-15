@@ -8,6 +8,7 @@ export interface CommentFormConfig {
   lengthLimit: number
   emptyMessage: string
   bloggerBadge: string
+  turnstileSitekey: string
 }
 
 export const DEFAULT_COMMENT_FORM_CONFIG: Readonly<CommentFormConfig> = Object.freeze({
@@ -18,6 +19,7 @@ export const DEFAULT_COMMENT_FORM_CONFIG: Readonly<CommentFormConfig> = Object.f
   lengthLimit: 1000,
   emptyMessage: '还没有评论\n成为第一个留下评论的人。',
   bloggerBadge: '[博主]',
+  turnstileSitekey: '',
 })
 
 export interface EcokuConfig {

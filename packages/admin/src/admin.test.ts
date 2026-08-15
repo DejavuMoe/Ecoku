@@ -8,6 +8,7 @@ import App from './App.vue'
 import ChipInput from './components/ChipInput.vue'
 import CommentManagementView from './components/CommentManagementView.vue'
 import NotificationSettingsView from './components/NotificationSettingsView.vue'
+import SecurityView from './components/SecurityView.vue'
 import SiteManagementView from './components/SiteManagementView.vue'
 import { adminApi, ApiError } from './api'
 import { messages } from './messages'
@@ -156,6 +157,22 @@ describe('approved production surface', () => {
     expect(wrapper.find('.queue-time').text()).toBe('2026/08/13 09:02')
   })
 
+  it('renders instance Turnstile settings without Cloudflare console copy or plaintext secrets', () => {
+    const store = useAdminStore(); store.token = 'token'
+    store.turnstileSettings = { enabled: true, sitekey: '0x4AAAAAAA00000000000000', secret: '', secretSet: true, revision: 2 }
+    const wrapper = mount(SecurityView, { global: { plugins: [pinia] } })
+    expect(wrapper.text()).toContain('安全')
+    expect(wrapper.text()).toContain('Sitekey')
+    expect(wrapper.text()).toContain('Secret key')
+    expect(wrapper.text()).toContain('访客评论和管理员登录')
+    expect(wrapper.text()).not.toContain('公开标识')
+    expect(wrapper.text()).not.toContain('Cloudflare 控制台')
+    expect(wrapper.text()).not.toContain('Siteverify')
+    expect(wrapper.text()).not.toContain('Pre-clearance')
+    expect(wrapper.get('#turnstile-secret').attributes('placeholder')).toBe('已设置，输入新值以更换')
+    expect((wrapper.get('#turnstile-secret').element as HTMLInputElement).value).toBe('')
+  })
+
   it('shows only approved site fields and explains newline-separated origins', () => {
     const store = useAdminStore(); store.token = 'token'; store.sites = [site()]; store.selectedSiteId = 'site-a'
     const wrapper = mount(SiteManagementView, { global: { plugins: [pinia] } })
@@ -207,6 +224,7 @@ describe('approved production surface', () => {
     expect(text).toContain('评论管理')
     expect(text).toContain('站点管理')
     expect(text).toContain('通知设置')
+    expect(text).toContain('安全')
   })
 
   it('uses auto color scheme with comment-aligned dark tokens and no persisted theme switcher', () => {

@@ -27,6 +27,7 @@ export interface CommentDraft {
   url?: string
   content: string
   parent?: number
+  turnstileToken?: string
 }
 
 export interface CommentSubmission extends CommentDraft {
@@ -103,6 +104,11 @@ function normalizeFormConfig(value: unknown): CommentFormConfig {
     if (trimmed === '') bloggerBadge = ''
     else if (Array.from(trimmed).length <= 16 && !/[\r\n]/.test(trimmed)) bloggerBadge = trimmed
   }
+  let turnstileSitekey = ''
+  if (typeof raw.turnstileSitekey === 'string') {
+    const trimmed = raw.turnstileSitekey.trim()
+    if (trimmed && Array.from(trimmed).length <= 255 && !/[\r\n]/.test(trimmed)) turnstileSitekey = trimmed
+  }
   return {
     emailRequired: typeof raw.emailRequired === 'boolean'
       ? raw.emailRequired
@@ -117,6 +123,7 @@ function normalizeFormConfig(value: unknown): CommentFormConfig {
     lengthLimit,
     emptyMessage,
     bloggerBadge,
+    turnstileSitekey,
   }
 }
 
@@ -245,6 +252,7 @@ export async function submitComment(
   }
   if (draft.email) submission.email = draft.email
   if (draft.url) submission.url = draft.url
+  if (draft.turnstileToken) submission.turnstileToken = draft.turnstileToken
   const envelope = await requestJSON<{ id: number }>(apiURL(config, 'api/comment/submit'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

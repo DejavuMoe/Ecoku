@@ -19,6 +19,7 @@ import {
   type StoredVisitorIdentity,
 } from './identity-store'
 import { zhCN } from './messages'
+import { TurnstileWidget } from './turnstile'
 import {
   codePointLength,
   createElement,
@@ -47,6 +48,8 @@ interface ActiveReply {
   identitySummaryName: HTMLElement
   identityChange: HTMLButtonElement
   textarea: HTMLTextAreaElement
+  turnstileSlot: HTMLDivElement
+  widget: TurnstileWidget | null
   error: HTMLParagraphElement
   submit: HTMLButtonElement
 }
@@ -71,6 +74,7 @@ export class CommentSurface {
   private readonly email = createElement('input', 'ecoku-input')
   private readonly website = createElement('input', 'ecoku-input')
   private readonly rootContent = createElement('textarea', 'ecoku-textarea')
+  private readonly rootTurnstile = createElement('div', 'ecoku-turnstile-slot')
   private readonly rootError = createElement('p', 'ecoku-form-error')
   private readonly characterCount = createElement('span', 'ecoku-character-count', `0/${DEFAULT_COMMENT_FORM_CONFIG.lengthLimit}`)
   private readonly rootSubmit = createElement('button', 'ecoku-primary-button', zhCN.submitComment)
@@ -94,6 +98,8 @@ export class CommentSurface {
   private submitController: AbortController | null = null
   private refreshController: AbortController | null = null
   private activeReply: ActiveReply | null = null
+  private rootWidget: TurnstileWidget | null = null
+  private turnstileGeneration = 0
   private requestVersion = 0
   private pageRevision = 0
   private listBusy = false
@@ -146,6 +152,8 @@ export class CommentSurface {
     this.pageRevision += 1
     this.abortRequests()
     this.closeReply(false)
+    this.rootWidget?.remove()
+    this.rootWidget = null
     document.removeEventListener('pointerdown', this.handleDocumentPointerDown)
     this.root.remove()
   }
@@ -335,7 +343,7 @@ export class CommentSurface {
     this.rootSubmit.disabled = true
     end.append(this.rootSubmit)
     footer.append(this.characterCount, end)
-    this.rootForm.append(identityGrid, messageLabel, this.rootError, footer)
+    this.rootForm.append(identityGrid, messageLabel, this.rootTurnstile, this.rootError, footer)
     this.applyFormConfig(this.formConfig, false)
 
     for (const control of [this.nickname, this.email, this.website, this.rootContent]) {
@@ -421,6 +429,37 @@ export class CommentSurface {
       this.updateReplyFormState(this.activeReply)
     }
     this.updateRootFormState()
+    this.syncRootTurnstile()
+    if (this.activeReply) void this.syncReplyTurnstile(this.activeReply)
+  }
+
+  private syncRootTurnstile(): void {
+    const generation = ++this.turnstileGeneration
+    this.rootWidget?.remove()
+    this.rootWidget = null
+    this.rootTurnstile.replaceChildren()
+    const sitekey = this.formConfig.turnstileSitekey
+    if (!sitekey) return
+    void TurnstileWidget.mount(this.rootTurnstile, sitekey, this.config.theme).then((widget) => {
+      if (this.destroyed || generation !== this.turnstileGeneration) {
+        widget.remove()
+        return
+      }
+      this.rootWidget = widget
+    }).catch(() => undefined)
+  }
+
+  private async syncReplyTurnstile(reply: ActiveReply): Promise<void> {
+    reply.widget?.remove()
+    reply.widget = null
+    reply.turnstileSlot.replaceChildren()
+    const sitekey = this.formConfig.turnstileSitekey
+    if (!sitekey) return
+    try {
+      reply.widget = await TurnstileWidget.mount(reply.turnstileSlot, sitekey, this.config.theme)
+    } catch {
+      reply.widget = null
+    }
   }
 
   private syncSortUI(): void {
@@ -746,7 +785,8 @@ export class CommentSurface {
     submit.disabled = true
     end.append(cancel, submit)
     footer.append(counter, end)
-    form.append(headingRow, identityGrid, messageLabel, error, footer)
+    const turnstileSlot = createElement('div', 'ecoku-turnstile-slot')
+    form.append(headingRow, identityGrid, messageLabel, turnstileSlot, error, footer)
     slot.append(form)
     const reply: ActiveReply = {
       parentId: comment.id,
@@ -760,10 +800,13 @@ export class CommentSurface {
       identitySummaryName,
       identityChange,
       textarea,
+      turnstileSlot,
+      widget: null,
       error,
       submit,
     }
     this.activeReply = reply
+    void this.syncReplyTurnstile(reply)
     this.updateReplyIdentityMode(reply)
     for (const control of [nickname, email, website]) {
       control.addEventListener('input', () => {
@@ -794,7 +837,8 @@ export class CommentSurface {
 
   private closeReply(restoreFocus: boolean): void {
     if (!this.activeReply) return
-    const { form, trigger } = this.activeReply
+    const { form, trigger, widget } = this.activeReply
+    widget?.remove()
     this.activeReply = null
     form.remove()
     if (restoreFocus && trigger.isConnected) trigger.focus()
@@ -866,8 +910,20 @@ export class CommentSurface {
     this.setSubmissionControls(true, submitButton, reply)
     this.root.setAttribute('aria-busy', 'true')
     try {
+      if (this.formConfig.turnstileSitekey) {
+        const widget = reply ? this.activeReply?.widget : this.rootWidget
+        let token = ''
+        try { token = await widget?.waitForToken() ?? '' } catch { token = '' }
+        if (!token) {
+          this.showInlineError(errorElement, contentElement, zhCN.challengeRequired)
+          return
+        }
+        draft.turnstileToken = token
+      }
       await submitComment(this.config, draft, this.submitController.signal)
       if (this.destroyed || revision !== this.pageRevision || pageKey !== this.config.pageKey) return
+      const widget = reply ? this.activeReply?.widget : this.rootWidget
+      widget?.reset()
       await saveVisitorIdentity(this.config.serverURL, this.config.siteId, identity)
       if (reply) this.closeReply(false)
       else {
@@ -1128,7 +1184,9 @@ export class CommentSurface {
 
   private submissionErrorMessage(error: unknown): string {
     if (!(error instanceof EcokuRequestError)) return zhCN.submitNetwork
-    if (error.status === 400) return zhCN.submit400
+    if (error.status === 400) {
+      return error.message === zhCN.challengeRequired ? zhCN.challengeRequired : zhCN.submit400
+    }
     if (error.status === 403) return zhCN.submit403
     if (error.status === 413) return zhCN.submit413
     if (error.status === 429) return zhCN.submit429

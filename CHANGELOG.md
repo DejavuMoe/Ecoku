@@ -7,6 +7,10 @@
 
 ### 变更
 
+- 评论区采用已批准的 v13：根评论与回复发表框在正文下方挂载自适应 Cloudflare Turnstile；
+  未启用时不显示验证槽。公共列表增加 `formConfig.turnstileSitekey`（空字符串表示关闭），不含 Secret key。
+- 管理端增加已批准的「安全」页：实例级 Sitekey / Secret key，同时用于访客评论和管理员登录。
+  Secret key 加密存储，界面只显示「已设置」。管理员静态页 CSP 允许 `challenges.cloudflare.com`。
 - 评论区采用已批准的 v11：内联回复框与根评论发表框共用卡片与 32px 按钮；`[+]`/`[-]` 等宽；
   匹配博主身份的评论在昵称后显示可配置标志（默认 `[博主]`）。公共列表增加 `isBlogger` 与
   `formConfig.bloggerBadge`，不含邮箱。
@@ -19,6 +23,8 @@
 
 ### 升级边界
 
+- SQLite schema 从 v3 原文件内事务性升级到 v4，只增加实例级 `turnstile_settings` 和版本记录；
+  默认关闭，不挑战访客或管理员登录。启用前必须先在 Cloudflare 把管理端与全部评论站点主机名加入小组件；
 - SQLite schema 从 v2 原文件内事务性升级到 v3，只增加站点 `blogger_badge` 和版本记录；
   已有站点该字段默认为 `[博主]`，可在管理端改成 `[OP]` 等或留空关闭；
 - 已有实例在 `ecoku.env` 增加 `TZ='<IANA>'` 后，用当前 `compose.yaml` 的 `env_file` 重建容器即可，

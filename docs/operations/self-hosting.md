@@ -317,7 +317,9 @@ sudo docker compose ps
 当前 SDK 会把评论区样式注入宿主页面，评论表面不需要再加载一份组件 CSS。可选的
 [`examples/hugo-papermod/assets/css/extended/ecoku.css`](../../examples/hugo-papermod/assets/css/extended/ecoku.css)
 只美化 SDK 初始化前的外壳、状态文案和重试按钮。若站点使用严格 `style-src 'self'`，必须为 SDK
-注入样式制定经过审核的 CSP 方案；不要仅为消除报错而全局放宽脚本策略。每次升级 SDK 后重新检查
+注入样式制定经过审核的 CSP 方案；不要仅为消除报错而全局放宽脚本策略。若实例启用了 Cloudflare
+Turnstile，宿主 CSP 还必须允许 `https://challenges.cloudflare.com` 的 `script-src`、`frame-src`
+和 `connect-src`。每次升级 SDK 后重新检查
 CSP、控制台和网络请求，确认没有第三方 IP、头像、遥测或管理凭据。
 
 ### Hugo PaperMod
@@ -377,6 +379,7 @@ sha256sum "./backups/ecoku-${backup_stamp}.sqlite3" \
 4. 若该版本要求新的环境变量（例如 `TZ`），写入 `ecoku.env` 后再启动；不要写进 `config.yaml`；
 5. 拉取、启动，用 `sudo docker compose logs -f ecoku` 观察启动与迁移日志，确认健康状态；
 6. 验证管理登录、站点配置、公开评论时间与悬停时区、提交、回复与通知。
+   若启用了 Turnstile，再确认评论发表和管理员登录都能完成验证。
 
 ```bash
 sudo docker compose config --quiet
@@ -390,8 +393,20 @@ curl --fail http://127.0.0.1:12123/api/health
 显式 schema 迁移在原 `data/ecoku.sqlite3` 文件内按版本事务执行。成功后只增加
 `schema_migrations` 记录；不会自动删除旧数据库、业务数据、WAL 边车文件或 `backups/` 中的备份。
 失败的版本不会被记为完成，服务会拒绝启动。不存在单独的“v1 数据库”可供自动清理，也不得手工
-删除迁移历史或伪造版本。含评论区博主标志的未发版会把 schema 从 v2 升到 v3；升级前必须冷备份，
-已写入 v3 的库不能只换回旧镜像。
+删除迁移历史或伪造版本。含实例级 Turnstile 的未发版会把 schema 从 v3 升到 v4；升级前必须冷备份，
+已写入 v4 的库不能只换回旧镜像。
+
+### Cloudflare Turnstile
+
+Turnstile 是实例级开关，同时用于访客评论和管理员登录，不按站点分开。在 Cloudflare 控制台创建小组件后：
+
+1. 把管理端来源和所有评论站点来源都加入该小组件的主机名列表；
+2. 在管理端「安全」填入 Sitekey 与 Secret key 并启用；
+3. 小组件模式（托管 / 非交互式 / 不可见）只在 Cloudflare 配置，同一组密钥都兼容。
+
+「为已验证的访问者跳过将来的安全规则质询」（Pre-clearance）也只在 Cloudflare 控制台配置。`cf_clearance` 只跳过后续 Cloudflare 安全规则质询，不会让 Ecoku 跳过 Siteverify。评论区和登录页仍会调用小组件；需要交互时才出现勾选框。
+
+Secret key 使用与通知相同的 `ECOKU_NOTIFICATION_KEY` 加密。未配置该密钥时不能保存已启用的 Turnstile。
 
 需要回滚时先停止失败版本，保留现场副本，把 Compose 恢复到旧镜像 tag，再用停服前备份替换
 `data/ecoku.sqlite3`，恢复 `10001:10001` 权限后启动。若新版本已经写入旧程序不认识的 schema，

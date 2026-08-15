@@ -3,9 +3,13 @@ import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import CommentManagementView from './components/CommentManagementView.vue'
 import NotificationSettingsView from './components/NotificationSettingsView.vue'
+import SecurityView from './components/SecurityView.vue'
 import SiteManagementView from './components/SiteManagementView.vue'
 import { useAdminStore } from './stores/admin'
+import { adminApi } from './api'
 import type { MainView } from './types'
+import { TurnstileWidget } from './turnstile'
+import { messages } from './messages'
 
 const store = useAdminStore()
 const {
@@ -16,6 +20,9 @@ const {
 const username = ref('')
 const password = ref('')
 const usernameInput = ref<HTMLInputElement | null>(null)
+const loginSlot = ref<HTMLElement | null>(null)
+const loginSitekey = ref('')
+let loginWidget: TurnstileWidget | null = null
 const sitePicker = ref<HTMLElement | null>(null)
 const siteTrigger = ref<HTMLButtonElement | null>(null)
 const siteMenu = ref<HTMLElement | null>(null)
@@ -33,8 +40,15 @@ watch(toastMessage, (value) => {
 
 watch(authenticated, async (value) => {
   await nextTick()
-  if (value) siteTrigger.value?.focus()
-  else usernameInput.value?.focus()
+  if (value) {
+    loginWidget?.remove()
+    loginWidget = null
+    loginSitekey.value = ''
+    siteTrigger.value?.focus()
+  } else {
+    usernameInput.value?.focus()
+    await mountLoginChallenge()
+  }
 })
 
 watch(view, () => {
@@ -46,13 +60,47 @@ function handleDocumentPointerDown(event: PointerEvent) {
   if (siteMenuOpen.value && !sitePicker.value?.contains(event.target as Node)) siteMenuOpen.value = false
 }
 
-onMounted(() => document.addEventListener('pointerdown', handleDocumentPointerDown))
+onMounted(() => {
+  document.addEventListener('pointerdown', handleDocumentPointerDown)
+  if (!authenticated.value) void mountLoginChallenge()
+})
 onBeforeUnmount(() => {
   if (toastTimer !== undefined) clearTimeout(toastTimer)
   document.removeEventListener('pointerdown', handleDocumentPointerDown)
+  loginWidget?.remove()
+  loginWidget = null
 })
 
+async function mountLoginChallenge() {
+  loginWidget?.remove()
+  loginWidget = null
+  loginSitekey.value = ''
+  try {
+    const config = await adminApi.getLoginConfig()
+    loginSitekey.value = config.turnstileSitekey
+    await nextTick()
+    if (loginSitekey.value && loginSlot.value) {
+      loginWidget = await TurnstileWidget.mount(loginSlot.value, loginSitekey.value)
+    }
+  } catch {
+    loginSitekey.value = ''
+  }
+}
+
 async function submitLogin() {
+  if (loginSitekey.value) {
+    let token = ''
+    try { token = await loginWidget?.waitForToken() ?? '' } catch { token = '' }
+    if (!token) {
+      store.loginMessage = messages.loginChallengeRequired
+      return
+    }
+    const succeeded = await store.login(username.value.trim(), password.value, token)
+    password.value = ''
+    loginWidget?.reset()
+    if (succeeded) username.value = ''
+    return
+  }
   const succeeded = await store.login(username.value.trim(), password.value)
   password.value = ''
   if (succeeded) username.value = ''
@@ -121,6 +169,7 @@ function handleSiteMenuKeydown(event: KeyboardEvent) {
         <p v-if="loginMessage" class="form-error" role="alert">{{ loginMessage }}</p>
         <label class="input-group"><span>用户名</span><input ref="usernameInput" v-model="username" name="username" type="text" autocomplete="username" maxlength="80" required></label>
         <label class="input-group"><span>密码</span><input v-model="password" name="password" type="password" autocomplete="current-password" required></label>
+        <div v-if="loginSitekey" ref="loginSlot" class="turnstile-slot"></div>
         <button class="button button-primary login-button" type="submit" :disabled="loginBusy || !username.trim() || !password">{{ loginBusy ? '登录中…' : '登录' }}</button>
       </form>
     </section>
@@ -138,6 +187,7 @@ function handleSiteMenuKeydown(event: KeyboardEvent) {
             <button class="nav-tab" type="button" :aria-current="view === 'comments' ? 'page' : undefined" @click="switchView('comments')">评论管理</button>
             <button class="nav-tab" type="button" :aria-current="view === 'sites' ? 'page' : undefined" @click="switchView('sites')">站点管理</button>
             <button class="nav-tab" type="button" :aria-current="view === 'notifications' ? 'page' : undefined" @click="switchView('notifications')">通知设置</button>
+            <button class="nav-tab" type="button" :aria-current="view === 'security' ? 'page' : undefined" @click="switchView('security')">安全</button>
           </nav>
         </div>
         <div class="header-context">
@@ -171,7 +221,8 @@ function handleSiteMenuKeydown(event: KeyboardEvent) {
     <main id="main-content" class="main-area">
       <CommentManagementView v-if="view === 'comments'" :mobile-detail="mobileDetail" @mobile-detail="mobileDetail = $event" />
       <SiteManagementView v-else-if="view === 'sites'" />
-      <NotificationSettingsView v-else />
+      <NotificationSettingsView v-else-if="view === 'notifications'" />
+      <SecurityView v-else />
     </main>
   </div>
 

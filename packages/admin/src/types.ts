@@ -1,5 +1,5 @@
 export type CommentStatus = 'published' | 'deleted'
-export type MainView = 'comments' | 'sites' | 'notifications'
+export type MainView = 'comments' | 'sites' | 'notifications' | 'security'
 export type EmailEncryption = 'tls' | 'starttls' | 'none'
 
 export interface SiteSummary {
@@ -82,4 +82,16 @@ export interface TelegramNotificationSettings {
 export interface NotificationSettings {
   email: EmailNotificationSettings
   telegram: TelegramNotificationSettings
+}
+
+export interface TurnstileSettings {
+  enabled: boolean
+  sitekey: string
+  secret: string
+  secretSet: boolean
+  revision: number
+}
+
+export interface LoginConfig {
+  turnstileSitekey: string
 }

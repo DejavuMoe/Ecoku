@@ -1,4 +1,4 @@
-import type { EmailNotificationSettings, TelegramNotificationSettings } from './types'
+import type { EmailNotificationSettings, TelegramNotificationSettings, TurnstileSettings } from './types'
 
 export function formatDate(value: string): string {
   const parsed = new Date(value)
@@ -53,4 +53,12 @@ export function cloneEmailSettings(value: EmailNotificationSettings): EmailNotif
 
 export function cloneTelegramSettings(value: TelegramNotificationSettings): TelegramNotificationSettings {
   return { ...value, targets: [...value.targets], token: '' }
+}
+
+export function emptyTurnstileSettings(): TurnstileSettings {
+  return { enabled: false, sitekey: '', secret: '', secretSet: false, revision: 1 }
+}
+
+export function cloneTurnstileSettings(value: TurnstileSettings): TurnstileSettings {
+  return { ...value, secret: '' }
 }

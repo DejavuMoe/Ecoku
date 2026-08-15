@@ -146,13 +146,18 @@
       },
       "production": {
         "routeOrWindow": "/admin/",
-        "status": "pending",
+        "status": "implemented",
         "referenceFiles": [
           "packages/admin/src/App.vue",
-          "packages/admin/src/style.css"
+          "packages/admin/src/style.css",
+          "packages/admin/src/components/SecurityView.vue",
+          "packages/admin/src/api.ts",
+          "packages/admin/src/stores/admin.ts",
+          "server/handle/admin/turnstile.go",
+          "server/turnstile/settings.go"
         ]
       },
-      "status": "approved"
+      "status": "implemented"
     },
     {
       "id": "admin-login-turnstile",
@@ -168,14 +173,17 @@
       },
       "production": {
         "routeOrWindow": "/admin/",
-        "status": "pending",
+        "status": "implemented",
         "referenceFiles": [
           "packages/admin/src/App.vue",
           "packages/admin/src/style.css",
-          "packages/admin/src/api.ts"
+          "packages/admin/src/api.ts",
+          "packages/admin/src/turnstile.ts",
+          "server/handle/admin/auth.go",
+          "server/turnstile/verify.go"
         ]
       },
-      "status": "approved"
+      "status": "implemented"
     },
     {
       "id": "admin-notification-settings",
