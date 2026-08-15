@@ -83,7 +83,7 @@ async function mountLoginChallenge() {
       loginWidget = await TurnstileWidget.mount(loginSlot.value, loginSitekey.value)
     }
   } catch {
-    loginSitekey.value = ''
+    loginWidget = null
   }
 }
 

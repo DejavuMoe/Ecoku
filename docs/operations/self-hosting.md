@@ -404,7 +404,7 @@ Turnstile 是实例级开关，同时用于访客评论和管理员登录，不�
 2. 在管理端「安全」填入 Sitekey 与 Secret key 并启用；
 3. 小组件模式（托管 / 非交互式 / 不可见）只在 Cloudflare 配置，同一组密钥都兼容。
 
-「为已验证的访问者跳过将来的安全规则质询」（Pre-clearance）也只在 Cloudflare 控制台配置。`cf_clearance` 只跳过后续 Cloudflare 安全规则质询，不会让 Ecoku 跳过 Siteverify。评论区和登录页仍会调用小组件；需要交互时才出现勾选框。
+「为已验证的访问者跳过将来的安全规则质询」（Pre-clearance）也只在 Cloudflare 控制台配置。`cf_clearance` 只跳过后续 Cloudflare 安全规则质询，不会让 Ecoku 跳过 Siteverify。评论区和登录页仍会调用小组件；需要交互时才出现勾选框。若管理端或评论站点不在 Cloudflare 区域代理之后，应关闭 Pre-clearance：浏览器会向站点自身请求 `/cdn-cgi/challenge-platform/` 并得到 404，控制台出现 `aborting clearance redemption`；小组件仍可完成 Siteverify。
 
 Secret key 使用与通知相同的 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 加密。未配置该密钥时不能保存已启用的 Turnstile。
 

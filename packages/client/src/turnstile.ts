@@ -6,7 +6,6 @@ interface TurnstileAPI {
   remove(widgetId: string): void
   getResponse(widgetId: string): string
   execute(widgetId: string): void
-  ready?(callback: () => void): void
 }
 
 type TurnstileHost = Window & { turnstile?: TurnstileAPI }
@@ -22,19 +21,26 @@ function loadTurnstile(): Promise<TurnstileAPI> {
   if (existing) return Promise.resolve(existing)
   if (!scriptPromise) {
     scriptPromise = new Promise((resolve, reject) => {
-      const script = document.createElement('script')
-      script.src = SCRIPT_URL
-      script.async = true
-      script.onload = () => {
+      const fail = (error: Error) => {
+        scriptPromise = null
+        reject(error)
+      }
+      const finish = () => {
         const loaded = api()
         if (!loaded) {
-          reject(new Error('Turnstile API missing'))
+          fail(new Error('Turnstile API missing'))
           return
         }
-        if (typeof loaded.ready === 'function') loaded.ready(() => resolve(loaded))
-        else resolve(loaded)
+        resolve(loaded)
       }
-      script.onerror = () => reject(new Error('Turnstile script failed'))
+      const script = document.createElement('script')
+      script.src = SCRIPT_URL
+      // Dynamically inserted scripts default to async; Cloudflare forbids
+      // turnstile.ready() on async/defer tags, and a throw in onload would
+      // leave this promise pending. onload is enough for explicit render.
+      script.async = false
+      script.onload = finish
+      script.onerror = () => fail(new Error('Turnstile script failed'))
       document.head.append(script)
     })
   }
