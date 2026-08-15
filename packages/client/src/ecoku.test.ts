@@ -143,6 +143,10 @@ describe('approved production comment surface', () => {
     expect(() => resolveConfig({ ...valid, pageKey: '  ' })).toThrow(/pageKey/)
     expect(() => resolveConfig({ ...valid, pageSize: 101 })).toThrow(/pageSize/)
     expect(() => resolveConfig({ ...valid, theme: 'neon' as 'light' })).toThrow(/theme/)
+    expect(resolveConfig(valid).cssURL).toBe('')
+    expect(resolveConfig({ ...valid, cssURL: 'none' }).cssURL).toBe('none')
+    expect(resolveConfig({ ...valid, cssURL: 'https://cdn.example/theme.css' }).cssURL).toBe('https://cdn.example/theme.css')
+    expect(() => resolveConfig({ ...valid, cssURL: 'javascript:alert(1)' })).toThrow(/cssURL/)
   })
 
   it('renders the approved form without explanatory prompt copy', async () => {
@@ -159,6 +163,25 @@ describe('approved production comment surface', () => {
     expect(container.querySelector<HTMLTextAreaElement>('.ecoku-composer textarea')?.placeholder)
       .toBe(zhCN.commentPlaceholder)
     expect(container.querySelector('.ecoku-composer-guidance')).toBeNull()
+    expect(container.querySelector('.ecoku-comments style')).not.toBeNull()
+    expect(container.querySelector('.ecoku-loading-state')).toBeNull()
+  })
+
+  it('skips injected styles when cssURL is none', async () => {
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockResolvedValue(listResponse([])))
+    const container = document.createElement('div')
+    document.body.append(container)
+    const client = new Ecoku({
+      container,
+      serverURL: 'https://comments.example/base/',
+      siteId: 'site-a',
+      pageKey: 'article-a',
+      cssURL: 'none',
+    })
+    activeClients.push(client)
+    await client.init()
+    expect(container.querySelector('.ecoku-comments style')).toBeNull()
+    expect(container.querySelector('.ecoku-composer')).not.toBeNull()
   })
 
   it('applies site-configured optional email, required website, and custom placeholder to validation and submission', async () => {

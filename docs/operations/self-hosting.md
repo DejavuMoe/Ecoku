@@ -298,8 +298,8 @@ sudo docker compose ps
   data-page-size="10"
   data-theme="auto"
 >
-  <div class="ecoku-loader" data-ecoku-loader role="status" aria-live="polite">
-    <p class="ecoku-loader-status" data-ecoku-status>正在加载评论…</p>
+  <div class="ecoku-loader" data-ecoku-loader hidden>
+    <p class="ecoku-loader-status" data-ecoku-status></p>
     <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新加载评论</button>
   </div>
   <div id="ecoku-mount" data-ecoku-mount></div>
@@ -310,14 +310,23 @@ sudo docker compose ps
 加载器以 `data-ecoku-*` 为准：外壳、挂载点、加载态、状态文案和重试按钮缺一则不会初始化。
 规范 id 为 `ecoku-comments` 与 `ecoku-mount`。当前加载器仍兼容旧的 `#tcomment` 与
 `.comment-loader` / `.comment-status` / `.comment-retry`，新站点不要再使用这些名称。
+加载过程不显示「正在加载评论…」；失败时才展示状态文案和「重新加载评论」。未配置站点应渲染
+「评论服务尚未配置。」
 
 `pageKey` 必须由站点生成器明确提供，不能包含查询参数，也不能随标题或域名变化；`pageTitle`
 用于通知中的文章标题。浏览器只接收公开配置，不得放入管理员 token 或 management key。
 
-当前 SDK 会把评论区样式注入宿主页面，评论表面不需要再加载一份组件 CSS。可选的
+默认 SDK 会把评论区样式注入宿主页面。可选 `data-css-url`（Hugo 配置 `css_url`）后不再注入，
+加载器改为插入该样式表。容器提供 `/client/ecoku.css`（与默认注入相同）和
+`/client/ecoku.unstyled.css`（只保留结构）。`css_url: none` 表示完全自写 CSS。可选 `js_url`
+替换默认 `{server_url}/client/ecoku-loader.js`。自定义样式只作用于评论区前端。
+完整片段见 [`examples/html`](../../examples/html) 与
+[`examples/hugo-papermod`](../../examples/hugo-papermod)。
+
+可选的宿主
 [`examples/hugo-papermod/assets/css/extended/ecoku.css`](../../examples/hugo-papermod/assets/css/extended/ecoku.css)
-只美化 SDK 初始化前的外壳、状态文案和重试按钮。若站点使用严格 `style-src 'self'`，必须为 SDK
-注入样式制定经过审核的 CSP 方案；不要仅为消除报错而全局放宽脚本策略。若实例启用了 Cloudflare
+只美化失败/未配置外壳。若站点使用严格 `style-src 'self'`，必须为 SDK
+注入样式或你改用的外部 CSS 制定经过审核的 CSP 方案；不要仅为消除报错而全局放宽脚本策略。若实例启用了 Cloudflare
 Turnstile，宿主 CSP 还必须允许 `https://challenges.cloudflare.com` 的 `script-src`、`frame-src`
 和 `connect-src`。每次升级 SDK 后重新检查
 CSP、控制台和网络请求，确认没有第三方 IP、头像、遥测或管理凭据。
@@ -332,6 +341,8 @@ params:
   ecoku:
     server_url: "https://comments.example.com"
     site_id: "blog"
+    # js_url: "https://cdn.example.com/ecoku-loader.js"
+    # css_url: "https://comments.example.com/client/ecoku.unstyled.css"
 ```
 
 把仓库 [`examples/hugo-papermod/layouts/_partials/comments.html`](../../examples/hugo-papermod/layouts/_partials/comments.html)

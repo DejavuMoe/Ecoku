@@ -1,14 +1,14 @@
 # Ecoku 产品约束
 
-> 状态：P0～P4 历史阶段已验收；评论区 index-v14、后台站点配置 index-v8、安全/登录 index-v10 与服务端 v5 通知模板均已批准实施。
+> 状态：P0～P4 历史阶段已验收；评论区 index-v15、后台站点配置 index-v11、安全/登录 index-v10 与服务端 v5 通知模板均已批准实施。
 > 历史验收记录只描述当时版本，不约束当前直接发布模型。
 
 ## 评论体验
 
-- `designs/plain-thread-comments/index-v14.html` 是评论区当前已批准的设计基线；更早版本仅保留为历史原型。预览里的「模拟需要勾选 / Pre-clearance」开关不得进入生产 SDK。身份输入与标签同为 12px、正文色；Turnstile 宿主槽不超过 300px，不覆盖 Cloudflare iframe 内部样式。
+- `designs/plain-thread-comments/index-v15.html` 是评论区当前已批准的设计基线；更早版本仅保留为历史原型。预览里的「模拟需要勾选 / Pre-clearance」开关不得进入生产 SDK。身份输入与标签同为 12px、正文色；根评论与回复输入与已发布正文同为 15px、正文色、1.65 行高；`[+]` 与 `[-]` 等宽 16px，且其字号/字体不得被宿主 `font: inherit` 覆盖。Turnstile 宿主槽不超过 300px，不覆盖 Cloudflare iframe 内部样式。接入外壳不显示「正在加载评论…」，保留加载失败重试与「评论服务尚未配置」。
 - 评论正文永久按纯文本处理；不解释 HTML 或 Markdown。
 - MVP 不提供头像、赞踩、反应或富文本工具。
-- 回复采用多层线程语义；生产界面的视觉缩进上限在后续 UI 阶段确定。
+- 回复采用多层线程语义。
 - 删除评论保留墓碑及后代回复，使讨论上下文不被截断。
 - 已发布评论的墓碑继续参与公开线程和分页；公开 DTO 返回 `deleted: true`、
   固定昵称“已删除”和固定正文“[该评论已删除]”。不得向墓碑新增回复。
@@ -19,6 +19,7 @@
   不继承 Blog、PaperMod 或 Twikoo 文件映射。
 - 嵌入方必须显式提供容器、`serverURL`、`siteId` 和页面 `pageKey`；SDK 不猜测页面 key。
   `apiBaseUrl` 仅作为兼容别名保留并标记弃用，早期 DOM 属性扫描协议不再运行。
+  默认 SDK 注入评论区样式。可选 `cssURL`（加载器对应 `data-css-url`）为绝对 http(s) URL、根相对路径或 `none`：非空则不再注入。容器另提供 `/client/ecoku.css` 与只含结构的 `/client/ecoku.unstyled.css`。自定义样式只作用于评论区前端。加载器脚本默认 `{serverURL}/client/ecoku-loader.js`，站点也可改用自己的 JS URL。
 - `Ecoku` 默认导出保留 `init()`、`reload()`、`isInitialized()`，并提供
   `setPageKey()` 与 `destroy()`；同一容器同一时间只能由一个实例拥有。
 - 服务端公共列表按根线程分页；`total` 表示公开根线程数，`commentTotal` 表示从公开根节点可达的
@@ -68,9 +69,9 @@
 - 管理端包含登录、站点注册与评论表单配置、按 `published/deleted` 筛选的评论列表、详情、
   墓碑删除和无后代墓碑的彻底删除。不提供审核队列、用户管理、RBAC、Count 或站点密钥管理界面。
   另有实例级「安全」页，只配置 Turnstile 的启用开关、Sitekey 和 Secret key。
-- 管理端以 `designs/admin-moderation/index-v8.html` 为当前已批准站点配置与配色基线，安全与登录验证以 `index-v10.html` 为准，并沿用 v5 的评论管理、通知设置和发送模板设计；对应 v5 通知模板只供服务端投递时渲染，管理端不展示模板预览，也不公开模板静态页面。浏览器中的管理员 token 只保存在当前页面内存，
+- 管理端以 `designs/admin-moderation/index-v11.html` 为当前已批准站点配置、配色与系统衬线基线，安全与登录验证以 `index-v10.html` 为准，并沿用 v5 的评论管理、通知设置和发送模板设计；对应 v5 通知模板只供服务端投递时渲染，管理端不展示模板预览，也不公开模板静态页面。浏览器中的管理员 token 只保存在当前页面内存，
   不写入 localStorage、sessionStorage、cookie 或 URL。关闭或刷新页面后必须重新登录。
-- 管理端配色默认 `auto`，跟随系统 `prefers-color-scheme`；深色纸张、表面与正文 token 与评论区对齐。不提供主题切换器，也不把配色写入本地存储。
+- 管理端配色默认 `auto`，跟随系统 `prefers-color-scheme`；深色纸张、表面与正文 token 与评论区对齐。不提供主题切换器，也不把配色写入本地存储。衬线使用系统栈 `Noto Serif SC`、`Noto Serif CJK SC`、`Songti SC`、`STSong`，不加载网络字体。评论区前端继续 inherit 宿主字体。
 - 管理端是“评论管理”而非审核队列；已发布评论和公开墓碑使用
   `site_url + pageKey + #ecoku-comment-ID` 精确跳转。
 - 实例站点发现接口只接受管理员 Bearer token；`EcokuSite` management key 仅能调用所属站点的删除接口，
@@ -155,8 +156,8 @@
   管理端静态文件缺失时，启用管理员能力的服务必须启动失败。
 - 应用日志始终写入 stdout，供 `docker compose logs` 跟随；`site.log_path` 指向普通文件时额外由进程内轮转保留副本。
   空值、`stdout`、`-` 或 `/dev/stdout` 只写标准输出。日志仍不得包含 IP、UA、凭据、token 或评论正文。
-- 浏览器 SDK 的 npm 包名为 `ecoku`，P4 发布候选版本为 `3.0.0`，提供 ESM、CommonJS、UMD 和 TypeScript 声明；
-  根工作区为 private，自动化只生成发布候选构件，不创建 tag、release 或执行 npm publish。
+- 浏览器 SDK 的 npm 包名为 `ecoku`，版本为 `0.1.0`，提供 ESM、CommonJS、UMD 和 TypeScript 声明；
+  根工作区为 private，自动化只生成发布候选构件，不创建 tag、release 或执行 npm publish。容器版本仍以根 `VERSION` 为准。
 - 旧持久开发验收实例已经退役；其专用域名、IP、同步脚本、部署模板和登录指引不再属于当前
   测试范围。任何新的远程测试或部署环境都必须重新获得授权并使用独立配置。npm 发布、镜像推送、
   Git tag/Release 和其他真实环境迁移仍必须单独授权。

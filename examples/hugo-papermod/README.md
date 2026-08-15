@@ -19,9 +19,11 @@ Copy-Item examples/hugo-papermod/layouts/_partials/comments.html SITE/layouts/_p
 Copy-Item examples/hugo-papermod/assets/css/extended/ecoku.css SITE/assets/css/extended/ecoku.css
 ```
 
-`ecoku.css` 只美化加载前外壳，可以不复制；评论区外观由 SDK 注入。将 `hugo.yaml.example` 中的
-`params` 合并进站点配置。运行镜像会直接提供 `/client/ecoku-loader.js` 与 `/client/ecoku.umd.js`，
-Hugo 站点不再保存或同步 SDK 副本。
+`ecoku.css` 只美化失败/未配置外壳，可以不复制；默认评论区外观由 SDK 注入。将 `hugo.yaml.example` 中的
+`params` 合并进站点配置。可选 `js_url` / `css_url`：不填则用容器加载器并注入样式；填了 `css_url`
+后 SDK 不再注入。运行镜像提供 `/client/ecoku-loader.js`、`/client/ecoku.umd.js`、
+`/client/ecoku.css` 与 `/client/ecoku.unstyled.css`。Hugo 站点不再保存或同步 SDK 副本。
+其他静态生成器见 [`examples/html`](../html)。
 
 PaperMod 的文章模板需要调用 `{{ partial "comments.html" . }}`。示例 partial 使用
 `id="ecoku-comments"` / `id="ecoku-mount"` 和 `data-ecoku-*` 标记，把 `.RelPermalink` 作为稳定

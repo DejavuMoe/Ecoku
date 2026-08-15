@@ -18,7 +18,8 @@ Twikoo 导入与站点接入见 [Docker Compose 自托管指南](docs/operations
 
 ## 最小 Hugo 接入
 
-镜像同源提供 `/client/ecoku-loader.js` 与 `/client/ecoku.umd.js`，内容站点不需要复制 SDK。
+镜像同源提供 `/client/ecoku-loader.js`、`/client/ecoku.umd.js`，以及可选的
+`/client/ecoku.css` 与 `/client/ecoku.unstyled.css`。默认一段 HTML 即可接入，样式由 SDK 注入。
 
 ```yaml
 params:
@@ -26,6 +27,8 @@ params:
   ecoku:
     server_url: "https://comments.example.com"
     site_id: "blog"
+    # js_url: "https://cdn.example.com/ecoku-loader.js"
+    # css_url: "https://comments.example.com/client/ecoku.unstyled.css"
 ```
 
 ```html
@@ -38,8 +41,8 @@ params:
   data-page-key="{{ .RelPermalink }}"
   data-page-title="{{ .Title }}"
 >
-  <div class="ecoku-loader" data-ecoku-loader role="status" aria-live="polite">
-    <p class="ecoku-loader-status" data-ecoku-status>正在加载评论…</p>
+  <div class="ecoku-loader" data-ecoku-loader hidden>
+    <p class="ecoku-loader-status" data-ecoku-status></p>
     <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新加载评论</button>
   </div>
   <div id="ecoku-mount" data-ecoku-mount></div>
@@ -48,7 +51,7 @@ params:
 ```
 
 调用方必须明确提供稳定的页面 key；SDK 不从浏览器 URL 猜测。完整示例位于
-[`examples/hugo-papermod`](examples/hugo-papermod)。
+[`examples/hugo-papermod`](examples/hugo-papermod) 与 [`examples/html`](examples/html)。
 
 ## 仓库结构
 

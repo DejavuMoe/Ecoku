@@ -4,8 +4,8 @@
 
 - 实现以当前源码为准；产品/安全/隐私以 `docs/product/constraints.md` 为准；部署以
   `docs/operations/self-hosting.md` 为准。`docs/progress/` 只是历史验收，不约束当前实现。
-- 评论区基线 `designs/plain-thread-comments/index-v14.html`；管理端站点配置仍以
-  `designs/admin-moderation/index-v8.html` 为准，安全与登录验证以 `index-v10.html` 为准，
+- 评论区基线 `designs/plain-thread-comments/index-v15.html`；管理端站点配置以
+  `designs/admin-moderation/index-v11.html` 为准（系统衬线栈），安全与登录验证以 `index-v10.html` 为准，
   评论管理/通知设置仍沿用 v5。生产管理端不得展示通知判定预览或通知模板预览。
 - 边界不清时先查源码和上述文档，再集中向用户确认。不要把原型 mock、测试文案或设计标注带进生产。
 - 改运行时、部署契约、接入 markup、配置键、环境变量或用户可见行为后，按改动同步文档，不要留到发版才补：
@@ -49,17 +49,17 @@
 
 ## 验证
 
-按改动范围验证，未改动的包不必本地跑。回复中写明已跑项和未跑项。浏览器、生产主机和真实数据库
-不是默认门禁。全量矩阵由 tag 流水线执行，不要为“每次都测”阻塞。
+Woodpecker 在 `push` / `pull_request` / `tag` / `manual` 上已经跑 `pnpm verify:client`、
+`pnpm verify:admin`、`go test -count=1 ./...`、`go vet ./...` 和 server 构建；tag 再校验
+tag 与 `VERSION`、`compose.yaml` image。这些不要在本地重复跑，交给 CI。
 
-必须本地跑：
+本地只做 CI 覆盖不到的：
 
-| 改动 | 必须 |
+| 改动 | 本地 |
 | --- | --- |
-| `server/` 行为或 schema | 受影响包 `go test -count=1`；改迁移时加 fixture。发版且改了 server 时：`go test -count=1 ./...` 与 `go vet ./...` |
-| `packages/client` | `pnpm --dir packages/client test` 与 `type-check`；改构建或接入契约时再 `build` |
-| `packages/admin` | `pnpm --dir packages/admin test` 与 `type-check`；改构建时再 `build` |
 | 已批准原型 | 对应 `designs/**/*.test.mjs` |
 | 发版四项 | 核对 `VERSION`、根 `package.json`、`compose.yaml` image、`CHANGELOG` 一致 |
+| 改迁移 | 补 fixture（写测试，不是本地跑 `go test`） |
 
-文档、示例和本文件的纯约定修改不强制本地测试。
+浏览器、生产主机和真实数据库不是默认门禁。文档、示例和本文件的纯约定修改不强制本地测试。
+回复写明交由 CI 的项、本地已跑项和未跑项。

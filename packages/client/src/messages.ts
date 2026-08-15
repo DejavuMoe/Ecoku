@@ -14,7 +14,6 @@ export const zhCN = Object.freeze({
   replyTo: (author: string) => `@${author}`,
   discardReplyDraft: '当前回复尚未提交，切换将丢失已填写内容。是否继续？',
   replyTarget: '查看被回复的评论',
-  loading: '正在加载评论…',
   emptyTitle: '还没有评论',
   emptyBody: '成为第一个留下纯文本评论的人。',
   serviceErrorTitle: '评论暂时不可用',

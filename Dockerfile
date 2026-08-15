@@ -47,6 +47,8 @@ COPY --from=server-build --chown=ecoku:ecoku /out/ecoku-server /app/ecoku-server
 COPY --from=frontend-build --chown=ecoku:ecoku /src/packages/admin/dist /app/admin
 COPY --from=frontend-build --chown=ecoku:ecoku /src/packages/client/dist/ecoku.umd.js /app/client/ecoku.umd.js
 COPY --from=frontend-build --chown=ecoku:ecoku /src/packages/client/dist/ecoku-loader.js /app/client/ecoku-loader.js
+COPY --from=frontend-build --chown=ecoku:ecoku /src/packages/client/dist/ecoku.css /app/client/ecoku.css
+COPY --from=frontend-build --chown=ecoku:ecoku /src/packages/client/dist/ecoku.unstyled.css /app/client/ecoku.unstyled.css
 USER 10001:10001
 EXPOSE 12123
 STOPSIGNAL SIGTERM

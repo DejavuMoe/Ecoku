@@ -11,6 +11,7 @@ interface EcokuConstructor {
     pageTitle?: string
     pageSize?: number
     theme?: 'auto' | 'light' | 'dark'
+    cssURL?: string
   }): EcokuInstance
 }
 
@@ -69,6 +70,21 @@ function parseTheme(value: string | undefined): 'auto' | 'light' | 'dark' {
   return value === 'light' || value === 'dark' ? value : 'auto'
 }
 
+function parseCssURL(value: string | undefined): string | undefined {
+  const cssURL = value?.trim()
+  return cssURL || undefined
+}
+
+function ensureHostStylesheet(documentRef: Document, cssURL: string): void {
+  if (cssURL === 'none' || cssURL === '-') return
+  if (documentRef.querySelector('link[data-ecoku-css]')) return
+  const link = documentRef.createElement('link')
+  link.rel = 'stylesheet'
+  link.href = cssURL
+  link.dataset.ecokuCss = ''
+  documentRef.head.appendChild(link)
+}
+
 function queryShellPart<T extends HTMLElement>(shell: HTMLElement, current: string, legacy: string): T | null {
   return shell.querySelector<T>(current) ?? shell.querySelector<T>(legacy)
 }
@@ -106,10 +122,13 @@ export function setupEcokuLoader(
       if (loading || initialized) return
       loading = true
       retry.hidden = true
-      status.textContent = '正在加载评论…'
+      status.textContent = ''
+      loader.hidden = true
       shell.setAttribute('aria-busy', 'true')
       timeoutID = windowRef.setTimeout(() => showFailure(TIMEOUT_MESSAGE), 12000)
       try {
+        const cssURL = parseCssURL(shell.dataset.cssUrl)
+        if (cssURL) ensureHostStylesheet(documentRef, cssURL)
         const Constructor = await loadSDK(
           documentRef,
           windowRef,
@@ -123,6 +142,7 @@ export function setupEcokuLoader(
           pageTitle: shell.dataset.pageTitle?.trim(),
           pageSize: parsePageSize(shell.dataset.pageSize),
           theme: parseTheme(shell.dataset.theme),
+          cssURL,
         })
         await comments.init()
         windowRef.clearTimeout(timeoutID)

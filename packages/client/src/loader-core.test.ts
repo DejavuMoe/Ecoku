@@ -75,7 +75,8 @@ describe('Ecoku hosted loader', () => {
 
     setupEcokuLoader(document, window, 'https://ecoku.example/client/ecoku-loader.js')
     await vi.waitFor(() => expect(init).toHaveBeenCalledOnce())
-    expect(document.querySelector('[data-ecoku-status]')?.textContent).toBe('正在加载评论…')
+    expect(document.querySelector('[data-ecoku-status]')?.textContent).toBe('')
+    expect((document.querySelector('[data-ecoku-loader]') as HTMLElement | null)?.hidden).toBe(true)
   })
 
   it('still initializes legacy Twikoo-era class names until hosts migrate', async () => {
@@ -97,5 +98,30 @@ describe('Ecoku hosted loader', () => {
     expect(Constructor).toHaveBeenCalledWith(expect.objectContaining({
       pageKey: '/posts/legacy/',
     }))
+  })
+
+  it('loads a host stylesheet and skips injecting when data-css-url is set', async () => {
+    document.body.innerHTML = `
+      <section data-ecoku-comments data-server-url="https://ecoku.example"
+        data-site-id="blog" data-page-key="/posts/custom-css/"
+        data-css-url="https://cdn.example/ecoku.unstyled.css" aria-busy="false">
+        <div data-ecoku-loader hidden><span data-ecoku-status></span>
+          <button data-ecoku-retry type="button" hidden></button></div>
+        <div data-ecoku-mount></div>
+      </section>`
+    const init = vi.fn().mockResolvedValue(undefined)
+    const Constructor = vi.fn(function (this: { init: typeof init }) {
+      this.init = init
+    })
+    ;(window as Window & { Ecoku?: unknown }).Ecoku = Constructor
+
+    setupEcokuLoader(document, window, 'https://ecoku.example/client/ecoku-loader.js')
+    await vi.waitFor(() => expect(init).toHaveBeenCalledOnce())
+    expect(Constructor).toHaveBeenCalledWith(expect.objectContaining({
+      cssURL: 'https://cdn.example/ecoku.unstyled.css',
+    }))
+    const link = document.querySelector<HTMLLinkElement>('link[data-ecoku-css]')
+    expect(link?.href).toBe('https://cdn.example/ecoku.unstyled.css')
+    expect(link?.rel).toBe('stylesheet')
   })
 })

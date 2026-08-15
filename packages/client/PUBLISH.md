@@ -1,6 +1,6 @@
 # ecoku 发布候选检查
 
-P4 仅准备 3.0.0 发布候选；没有授权执行 `npm publish`、创建 Git tag、GitHub
+P4 曾以 3.0.0 作为协议破坏版本；当前 npm 包版本为 0.1.0。没有授权执行 `npm publish`、创建 Git tag、GitHub
 Release 或推送镜像。仓库当前也没有 Git 元数据，因此无法形成可追溯发布。
 
 ## 兼容性
@@ -8,6 +8,7 @@ Release 或推送镜像。仓库当前也没有 Git 元数据，因此无法形�
 - ESM：`dist/ecoku.es.js`
 - 浏览器 `<script>` UMD：`dist/ecoku.umd.js`，全局名 `Ecoku`
 - 静态站点加载器：`dist/ecoku-loader.js`，由 Ecoku 服务端与 UMD 同源托管
+- 容器另提供 `dist/ecoku.css` 与 `dist/ecoku.unstyled.css`
 - CommonJS：`dist/ecoku.cjs`
 - TypeScript：`dist/ecoku.d.ts`
 
