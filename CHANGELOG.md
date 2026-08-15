@@ -5,10 +5,19 @@
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-08-15
+
 ### 变更
 
 - 文档：新增 `docs/README.md` 索引与 `docs/development/local-setup.md` 本地开发指南；自托管指南补充目录、限流拓扑表、Cloudflare CDN 示例、`caddy fmt --overwrite`、定时冷备份与故障排查表。
 - 测试：管理端站点更新保存博主口令时回填历史 `is_blogger` 评论。
+
+### 升级边界
+
+- 本版本不改变 SQLite schema，仍为 v5；
+- 从 `v0.1.3` 升级必须先停服做冷备份，再把 `compose.yaml` 的精确镜像 tag 改为
+  `v0.1.4`，然后 `sudo docker compose pull && sudo docker compose up -d`；
+- 回滚时改回 `v0.1.3`。本次未写入新 schema，一般不必替换数据库；若启动失败，仍用停服前备份恢复。
 
 ## [0.1.3] - 2026-08-15
 
@@ -248,3 +257,4 @@
 [0.1.1]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.1
 [0.1.2]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.2
 [0.1.3]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.3
+[0.1.4]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.4
