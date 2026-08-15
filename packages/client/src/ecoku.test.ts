@@ -55,6 +55,7 @@ function listResponse(
       lengthLimit?: number
       emptyMessage?: string
     }
+    timeZone?: string
   } = {},
 ): Response {
   return jsonResponse(200, {
@@ -64,6 +65,7 @@ function listResponse(
     page: options.page ?? 1,
     pageSize: 3,
     pageCount: options.pageCount ?? (comments.length > 0 ? 1 : 0),
+    timeZone: options.timeZone ?? 'Asia/Shanghai',
     formConfig: options.formConfig ?? {
       emailRequired: true,
       websiteRequired: false,
@@ -251,35 +253,44 @@ describe('approved production comment surface', () => {
     expect(replyTarget?.getAttribute('href')).toBe('#ecoku-comment-5')
     expect(replyTarget?.title).toBe(zhCN.replyTarget)
     expect(rows[5]?.querySelectorAll('.ecoku-text-action')).toHaveLength(1)
-    expect(rows[5]?.querySelector('.ecoku-comment-meta .ecoku-text-action')).toBeNull()
-    expect(rows[5]?.querySelector('.ecoku-comment-actions .ecoku-text-action')?.textContent).toBe(zhCN.reply)
+    expect(rows[5]?.querySelector('.ecoku-comment-meta .ecoku-text-action')?.textContent).toBe(zhCN.reply)
+    expect(rows[5]?.querySelector('.ecoku-comment-actions')).toBeNull()
     const requestURL = new URL(String(fetchMock.mock.calls[0]?.[0]))
     expect(requestURL.searchParams.has('sort')).toBe(false)
   })
 
-  it('keeps fold controls aligned with leaf markers and exposes stable collapse state', async () => {
+  it('keeps fold controls after the timestamp and hides reply while collapsed', async () => {
     const comments = [
       comment(1, 0, 'root'),
       comment(2, 1, 'child'),
       comment(3, 0, 'leaf root'),
     ]
-    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse(comments)))
+    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse(comments, {
+      timeZone: 'Asia/Singapore',
+    })))
     await client.init()
 
     const parent = container.querySelector<HTMLElement>('[data-comment-id="1"]')!
     const leaf = container.querySelector<HTMLElement>('[data-comment-id="3"]')!
     const collapse = parent.querySelector<HTMLButtonElement>('.ecoku-collapse-button')!
-    expect(parent.querySelector('.ecoku-comment-meta')?.firstElementChild).toBe(collapse)
-    expect(leaf.querySelector('.ecoku-comment-meta')?.firstElementChild?.classList.contains('ecoku-collapse-placeholder')).toBe(true)
+    const timeLink = parent.querySelector<HTMLAnchorElement>('.ecoku-comment-time')!
+    const reply = parent.querySelector<HTMLButtonElement>('.ecoku-reply-action')!
+    expect(leaf.querySelector('.ecoku-collapse-button')).toBeNull()
+    expect(leaf.querySelector('.ecoku-collapse-placeholder')).toBeNull()
+    expect(timeLink.nextElementSibling).toBe(collapse)
+    expect(collapse.textContent).toBe('[-]')
     expect(collapse.getAttribute('aria-expanded')).toBe('true')
     expect(collapse.getAttribute('aria-label')).toBe(zhCN.collapse)
-    const timeLink = parent.querySelector<HTMLAnchorElement>('.ecoku-comment-time')!
-    expect(timeLink.textContent).toBe('2026/08/12 09:00')
-    expect(timeLink.title).toBe(zhCN.timeZone)
-    expect(timeLink.getAttribute('aria-label')).toBe('2026/08/12 09:00，UTC+8')
+    expect(timeLink.textContent).toBe('2026-08-12 09:00')
+    expect(timeLink.title).toBe('Asia/Singapore UTC+8')
+    expect(timeLink.getAttribute('aria-label')).toBe('2026-08-12 09:00, Asia/Singapore UTC+8')
+    expect(reply.hidden).toBe(false)
     collapse.click()
+    expect(collapse.textContent).toBe('[+]')
     expect(collapse.getAttribute('aria-expanded')).toBe('false')
     expect(collapse.getAttribute('aria-label')).toBe(zhCN.expand)
+    expect(reply.hidden).toBe(true)
+    expect(parent.querySelector('.ecoku-folded-summary')?.textContent).toBe('已折叠 1 条回复')
     expect(parent.parentElement?.querySelector<HTMLElement>('.ecoku-children')?.hidden).toBe(true)
   })
 
@@ -434,7 +445,11 @@ describe('approved production comment surface', () => {
     expect(document.activeElement).toBe(replyNickname)
     expect(rootNickname.value).toBe('')
     expect(container.querySelector('.ecoku-root-identity-error')).toBeNull()
-    expect(reply.textContent).toContain('回复 Author 1')
+    expect(reply.textContent).not.toContain('回复 Author 1')
+    expect(reply.querySelector('.ecoku-reply-heading')).toBeNull()
+    expect(reply.querySelector('.ecoku-primary-button')?.textContent).toBe(zhCN.submitReply)
+    expect(Number(reply.querySelector('textarea')?.rows)).toBe(7)
+    expect(Number(container.querySelector<HTMLTextAreaElement>('.ecoku-composer textarea')?.rows)).toBe(7)
   })
 
   it('submits an inline reply with the identity entered beside that reply and remembers it after success', async () => {

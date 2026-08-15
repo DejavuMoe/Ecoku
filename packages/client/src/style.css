@@ -109,9 +109,10 @@
 
 .ecoku-section-title {
   margin: 0;
-  color: var(--ecoku-content);
-  font-size: 12px;
+  color: var(--ecoku-primary);
+  font-size: 20px;
   font-weight: 600;
+  font-variation-settings: "wght" 650;
   line-height: 32px;
 }
 
@@ -164,10 +165,12 @@
   top: calc(100% + 7px);
   right: 0;
   z-index: 20;
-  display: grid;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   width: max-content;
   min-width: 100%;
-  padding: 5px;
+  padding: 8px;
   border: 1px solid var(--ecoku-border-soft);
   border-radius: 11px;
   background: var(--ecoku-entry);
@@ -176,7 +179,7 @@
 
 .ecoku-sort-option {
   min-height: 32px;
-  padding: 0 10px;
+  padding: 0 12px;
   color: var(--ecoku-content);
   border: 0;
   border-radius: 7px;
@@ -274,12 +277,18 @@
 
 .ecoku-textarea {
   display: block;
-  min-height: 116px;
-  padding: 11px 12px;
+  min-height: calc(16px + 1.5em * 7);
+  height: calc(16px + 1.5em * 7);
+  padding: 8px 10px;
   resize: vertical;
   color: var(--ecoku-content);
   font-size: 15px;
-  line-height: 1.65;
+  line-height: 1.5;
+}
+
+.ecoku-textarea::placeholder {
+  font-size: 12px;
+  color: color-mix(in srgb, var(--ecoku-secondary) 68%, transparent);
 }
 
 .ecoku-input:focus,
@@ -483,79 +492,56 @@
 
 .ecoku-comment-meta {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   min-height: 20px;
   min-width: 0;
-  gap: 7px;
+  gap: 8px;
   color: var(--ecoku-secondary);
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 20px;
 }
 
-.ecoku-collapse-button,
-.ecoku-collapse-placeholder {
-  display: grid;
-  width: 20px;
-  height: 20px;
-  min-width: 20px;
-  min-height: 20px;
-  flex: 0 0 20px;
-  margin: 0;
-  padding: 0;
-  place-items: center;
-  color: var(--ecoku-secondary);
-  border: 1px solid color-mix(in srgb, var(--ecoku-secondary) 58%, transparent);
-  border-radius: 4px;
-  background: transparent;
-  box-sizing: border-box;
+.ecoku-comment-meta-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  min-width: 0;
+  flex: 0 1 auto;
+  gap: 8px;
 }
 
 .ecoku-collapse-button {
-  position: relative;
-  font-size: 0;
-}
-
-.ecoku-collapse-button::before,
-.ecoku-collapse-button[aria-expanded="false"]::before {
-  width: 7px;
-  height: 1px;
-  background: currentColor;
-  content: "";
-}
-
-.ecoku-collapse-button::after {
-  position: absolute;
-  width: 1px;
-  height: 7px;
-  background: currentColor;
-  content: "";
-  opacity: 0;
-}
-
-.ecoku-collapse-button[aria-expanded="false"]::after {
-  opacity: 1;
-}
-
-.ecoku-collapse-placeholder::before {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: currentColor;
-  content: "";
-  opacity: 0.62;
+  display: inline;
+  width: auto;
+  min-width: 0;
+  height: auto;
+  min-height: 0;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  color: var(--ecoku-secondary);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font-family: ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 20px;
+  letter-spacing: 0;
 }
 
 .ecoku-collapse-button:hover:not(:disabled) {
   color: var(--ecoku-primary);
-  border-color: color-mix(in srgb, var(--ecoku-primary) 72%, transparent);
-  background: var(--ecoku-surface-muted);
+  border: 0;
+  background: transparent;
 }
 
 .ecoku-comment-author {
   min-width: 0;
   overflow: hidden;
   color: var(--ecoku-primary);
-  font-size: 14.5px;
+  font-size: 13px;
   font-weight: 600;
   line-height: 20px;
   text-overflow: ellipsis;
@@ -563,8 +549,7 @@
 }
 
 a.ecoku-comment-author:hover,
-.ecoku-comment-time:hover,
-.ecoku-text-action:hover:not(.ecoku-reply-action) {
+.ecoku-comment-time:hover {
   color: var(--ecoku-primary);
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -572,7 +557,9 @@ a.ecoku-comment-author:hover,
 
 .ecoku-comment-time {
   color: inherit;
-  font-size: 11.5px;
+  font-family: "Maple Mono Normal", "Maple Mono NF CN", ui-monospace, "Cascadia Code", "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
   line-height: 20px;
   text-decoration: none;
   white-space: nowrap;
@@ -584,7 +571,7 @@ a.ecoku-comment-author:hover,
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 20px;
 }
 
@@ -601,10 +588,10 @@ a.ecoku-reply-context:hover {
 }
 
 .ecoku-comment-copy {
-  margin-top: 4px;
+  margin-top: 2px;
   color: var(--ecoku-content);
-  font-size: 16px;
-  line-height: 1.72;
+  font-size: 15px;
+  line-height: 1.65;
 }
 
 .ecoku-comment-copy p {
@@ -618,14 +605,11 @@ a.ecoku-reply-context:hover {
 }
 
 .ecoku-comment-actions {
-  display: flex;
-  min-height: 26px;
-  align-items: center;
-  margin-top: 3px;
+  display: none;
 }
 
 .ecoku-text-action {
-  min-height: 26px;
+  min-height: 0;
   padding: 0;
   color: var(--ecoku-secondary);
   border: 0;
@@ -633,20 +617,33 @@ a.ecoku-reply-context:hover {
   font-size: 12px;
 }
 
-.ecoku-reply-action {
-  min-height: 22px;
-  color: color-mix(in srgb, var(--ecoku-secondary) 82%, var(--ecoku-theme));
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  text-decoration: none;
-}
-
-.ecoku-reply-action:hover {
+.ecoku-comment-meta .ecoku-reply-action {
+  display: inline;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  height: auto;
+  min-height: 0;
   color: var(--ecoku-secondary);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 20px;
+  vertical-align: baseline;
   text-decoration: underline;
   text-decoration-color: color-mix(in srgb, var(--ecoku-secondary) 55%, transparent);
   text-underline-offset: 3px;
+}
+
+.ecoku-comment-meta .ecoku-reply-action:hover:not(:disabled) {
+  color: var(--ecoku-primary);
+  text-decoration-color: color-mix(in srgb, var(--ecoku-primary) 55%, transparent);
+  background: transparent;
 }
 
 .ecoku-reply-composer {
@@ -667,15 +664,8 @@ a.ecoku-reply-context:hover {
   gap: 12px;
 }
 
-.ecoku-reply-heading {
-  min-width: 0;
-  margin: 0;
-  color: var(--ecoku-secondary);
-  font-size: 13px;
-}
-
-.ecoku-reply-heading strong {
-  color: var(--ecoku-primary);
+.ecoku-reply-heading-row:not(:has(.ecoku-identity-change:not([hidden]))) {
+  display: none;
 }
 
 .ecoku-reply-identity-summary {
@@ -708,7 +698,7 @@ a.ecoku-reply-context:hover {
 }
 
 .ecoku-reply-composer .ecoku-textarea {
-  min-height: 92px;
+  min-height: calc(16px + 1.5em * 7);
 }
 
 .ecoku-reply-footer {

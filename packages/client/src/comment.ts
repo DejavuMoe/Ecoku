@@ -22,13 +22,17 @@ import { zhCN } from './messages'
 import {
   codePointLength,
   createElement,
+  DEFAULT_DISPLAY_TIME_ZONE,
   formatCommentTime,
+  formatTimeZoneTitle,
   isAbortError,
   isEmailForClient,
+  resolveTimeZone,
   safeHTTPURL,
 } from './util'
 
 const MAX_NICKNAME_LENGTH = 80
+const COMPOSER_ROWS = 7
 let instanceSequence = 0
 
 interface ActiveReply {
@@ -85,6 +89,7 @@ export class CommentSurface {
   private commentTotal = 0
   private sort: CommentSort | undefined
   private formConfig: CommentFormConfig = { ...DEFAULT_COMMENT_FORM_CONFIG }
+  private timeZone = DEFAULT_DISPLAY_TIME_ZONE
   private listController: AbortController | null = null
   private submitController: AbortController | null = null
   private refreshController: AbortController | null = null
@@ -313,7 +318,7 @@ export class CommentSurface {
     const visuallyHidden = createElement('span', 'ecoku-visually-hidden', '评论内容')
     this.rootContent.name = 'comment'
     this.rootContent.maxLength = this.formConfig.lengthLimit
-    this.rootContent.rows = 5
+    this.rootContent.rows = COMPOSER_ROWS
     this.rootContent.required = true
     this.rootContent.placeholder = zhCN.commentPlaceholder
     messageLabel.append(visuallyHidden, this.rootContent)
@@ -367,6 +372,10 @@ export class CommentSurface {
     return label
   }
 
+  private applyTimeZone(value?: string): void {
+    this.timeZone = resolveTimeZone(value)
+  }
+
   private applyFormConfig(next: CommentFormConfig, initializeSort = true): void {
     this.formConfig = { ...next }
     this.email.required = next.emailRequired
@@ -414,6 +423,7 @@ export class CommentSurface {
       this.pageCount = result.pageCount
       this.rootTotal = result.rootTotal
       this.commentTotal = result.commentTotal
+      this.applyTimeZone(result.timeZone)
       this.applyFormConfig(result.formConfig)
       this.hideServiceError()
       this.renderComments()
@@ -554,28 +564,13 @@ export class CommentSurface {
     row.id = `ecoku-comment-${comment.id}`
     row.style.setProperty('--ecoku-depth', String(Math.min(depth, 3)))
     const meta = createElement('header', 'ecoku-comment-meta')
+    const metaMain = createElement('div', 'ecoku-comment-meta-main')
     const contentShell = createElement('div', 'ecoku-collapsible-content')
     const childrenContainer = createElement('div', 'ecoku-children')
     childrenContainer.setAttribute('role', 'group')
 
-    let collapse: HTMLButtonElement | null = null
-    const foldedSummary = createElement('span', 'ecoku-folded-summary')
-    foldedSummary.hidden = true
-    if (children.length > 0) {
-      collapse = createElement('button', 'ecoku-collapse-button')
-      collapse.type = 'button'
-      collapse.title = zhCN.collapse
-      collapse.setAttribute('aria-label', zhCN.collapse)
-      collapse.setAttribute('aria-expanded', 'true')
-      meta.append(collapse)
-    } else {
-      const placeholder = createElement('span', 'ecoku-collapse-placeholder')
-      placeholder.setAttribute('aria-hidden', 'true')
-      meta.append(placeholder)
-    }
-
     if (comment.deleted) {
-      meta.append(createElement('span', 'ecoku-comment-author', zhCN.deletedAuthor))
+      metaMain.append(createElement('span', 'ecoku-comment-author', zhCN.deletedAuthor))
     } else {
       const website = comment.url ? safeHTTPURL(comment.url) : null
       if (website) {
@@ -584,21 +579,50 @@ export class CommentSurface {
         author.target = '_blank'
         author.rel = 'nofollow ugc noopener noreferrer'
         author.referrerPolicy = 'no-referrer'
-        meta.append(author)
+        metaMain.append(author)
       } else {
-        meta.append(createElement('span', 'ecoku-comment-author', comment.username))
+        metaMain.append(createElement('span', 'ecoku-comment-author', comment.username))
       }
     }
 
     const timeLink = createElement('a', 'ecoku-comment-time')
     timeLink.href = `#${row.id}`
-    const timeLabel = formatCommentTime(comment.created_at)
+    const timeLabel = formatCommentTime(comment.created_at, this.timeZone)
+    const zoneTitle = formatTimeZoneTitle(this.timeZone)
     const time = createElement('time', '', timeLabel)
     if (comment.created_at) time.dateTime = comment.created_at
-    timeLink.title = zhCN.timeZone
-    timeLink.setAttribute('aria-label', `${timeLabel}，${zhCN.timeZone}`)
+    timeLink.title = zoneTitle
+    timeLink.setAttribute('aria-label', `${timeLabel}, ${zoneTitle}`)
     timeLink.append(time)
-    meta.append(timeLink)
+    metaMain.append(timeLink)
+
+    let collapse: HTMLButtonElement | null = null
+    const foldedSummary = createElement('span', 'ecoku-folded-summary')
+    foldedSummary.hidden = true
+    if (children.length > 0) {
+      collapse = createElement('button', 'ecoku-collapse-button', '[-]')
+      collapse.type = 'button'
+      collapse.title = zhCN.collapse
+      collapse.setAttribute('aria-label', zhCN.collapse)
+      collapse.setAttribute('aria-expanded', 'true')
+      metaMain.append(collapse)
+    }
+    metaMain.append(foldedSummary)
+
+    let replyContext: HTMLElement | null = null
+    if (depth >= 3 && comment.parent !== 0) {
+      const parent = byID.get(comment.parent)
+      if (parent) {
+        const replyTarget = createElement('a', 'ecoku-reply-context', zhCN.replyTo(parent.username))
+        replyTarget.href = `#ecoku-comment-${parent.id}`
+        replyTarget.title = zhCN.replyTarget
+        replyContext = replyTarget
+      } else {
+        replyContext = createElement('span', 'ecoku-reply-context', zhCN.replyTo('上级评论'))
+      }
+      metaMain.append(replyContext)
+    }
+
     let replySlot: HTMLElement | null = null
     let replyButton: HTMLButtonElement | null = null
     if (!comment.deleted) {
@@ -607,28 +631,14 @@ export class CommentSurface {
       trigger.type = 'button'
       replySlot = createElement('div', 'ecoku-reply-slot')
       trigger.addEventListener('click', () => this.openReply(comment, trigger, replySlot as HTMLElement))
+      metaMain.append(trigger)
     }
-    if (depth >= 3 && comment.parent !== 0) {
-      const parent = byID.get(comment.parent)
-      if (parent) {
-        const replyTarget = createElement('a', 'ecoku-reply-context', zhCN.replyTo(parent.username))
-        replyTarget.href = `#ecoku-comment-${parent.id}`
-        replyTarget.title = zhCN.replyTarget
-        meta.append(replyTarget)
-      } else {
-        meta.append(createElement('span', 'ecoku-reply-context', zhCN.replyTo('上级评论')))
-      }
-    }
-    meta.append(foldedSummary)
+
+    meta.append(metaMain)
 
     const copy = createElement('div', 'ecoku-comment-copy')
     copy.append(createElement('p', '', comment.deleted ? zhCN.deletedBody : comment.content))
     contentShell.append(copy)
-    if (replyButton) {
-      const actions = createElement('div', 'ecoku-comment-actions')
-      actions.append(replyButton)
-      contentShell.append(actions)
-    }
     if (replySlot) contentShell.append(replySlot)
 
     row.append(meta, contentShell)
@@ -645,6 +655,7 @@ export class CommentSurface {
         const collapsing = collapse?.getAttribute('aria-expanded') === 'true'
         collapse?.setAttribute('aria-expanded', String(!collapsing))
         if (collapse) {
+          collapse.textContent = collapsing ? '[+]' : '[-]'
           collapse.title = collapsing ? zhCN.expand : zhCN.collapse
           collapse.setAttribute('aria-label', collapse.title)
         }
@@ -652,6 +663,9 @@ export class CommentSurface {
         childrenContainer.hidden = collapsing
         foldedSummary.hidden = !collapsing
         foldedSummary.textContent = collapsing ? zhCN.collapsed(descendantCount) : ''
+        if (replyButton) replyButton.hidden = collapsing
+        if (replyContext) replyContext.hidden = collapsing
+        if (collapsing && this.activeReply?.parentId === comment.id) this.closeReply(false)
       })
     }
     return article
@@ -672,15 +686,12 @@ export class CommentSurface {
     const form = createElement('form', 'ecoku-reply-composer')
     form.noValidate = true
     const headingRow = createElement('div', 'ecoku-reply-heading-row')
-    const heading = createElement('p', 'ecoku-reply-heading')
-    const prefix = document.createTextNode('回复 ')
-    heading.append(prefix, createElement('strong', '', comment.username))
     const identityChange = createElement('button', 'ecoku-identity-change', zhCN.changeIdentity)
     identityChange.type = 'button'
     const identitySummary = createElement('p', 'ecoku-reply-identity-summary')
     const identitySummaryName = createElement('strong')
     identitySummary.append(identitySummaryName)
-    headingRow.append(heading, identityChange)
+    headingRow.append(identitySummary, identityChange)
 
     const nickname = createElement('input', 'ecoku-input')
     const email = createElement('input', 'ecoku-input')
@@ -702,7 +713,7 @@ export class CommentSurface {
     this.setIdentityControls(nickname, email, website, currentIdentity)
     const textarea = createElement('textarea', 'ecoku-textarea')
     textarea.maxLength = this.formConfig.lengthLimit
-    textarea.rows = 4
+    textarea.rows = COMPOSER_ROWS
     textarea.placeholder = zhCN.replyPlaceholder
     const error = createElement('p', 'ecoku-form-error')
     error.id = `ecoku-reply-error-${this.instanceId}-${comment.id}`
@@ -718,7 +729,7 @@ export class CommentSurface {
     submit.type = 'submit'
     submit.disabled = true
     footer.append(counter, cancel, submit)
-    form.append(headingRow, identitySummary, identityGrid, textarea, error, footer)
+    form.append(headingRow, identityGrid, textarea, error, footer)
     slot.append(form)
     const reply: ActiveReply = {
       parentId: comment.id,
@@ -918,6 +929,7 @@ export class CommentSurface {
       this.pageCount = result.pageCount
       this.rootTotal = result.rootTotal
       this.commentTotal = result.commentTotal
+      this.applyTimeZone(result.timeZone)
       this.applyFormConfig(result.formConfig)
       this.hideServiceError()
       this.renderComments()

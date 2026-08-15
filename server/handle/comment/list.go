@@ -141,6 +141,7 @@ func GetComments(c *gin.Context) {
 		"pageSize":     pageSize,
 		"pageCount":    pageCount,
 		"formConfig":   formConfig,
+		"timeZone":     utils.DisplayTimeZone(),
 	})
 }
 

@@ -30,12 +30,37 @@ export function isEmailForClient(value: string): boolean {
   return separator > 0 && separator < value.length - 1
 }
 
-export function formatCommentTime(value?: string): string {
+export const DEFAULT_DISPLAY_TIME_ZONE = 'Asia/Shanghai'
+
+export function resolveTimeZone(value?: string): string {
+  const timeZone = (value || '').trim() || DEFAULT_DISPLAY_TIME_ZONE
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone }).format(new Date())
+    return timeZone
+  } catch {
+    return DEFAULT_DISPLAY_TIME_ZONE
+  }
+}
+
+export function utcOffsetLabel(timeZone: string, date = new Date()): string {
+  const name = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    timeZoneName: 'shortOffset',
+  }).formatToParts(date).find((part) => part.type === 'timeZoneName')?.value || 'UTC'
+  return name.replace(/^GMT/, 'UTC')
+}
+
+export function formatTimeZoneTitle(timeZone: string, date = new Date()): string {
+  const resolved = resolveTimeZone(timeZone)
+  return `${resolved} ${utcOffsetLabel(resolved, date)}`
+}
+
+export function formatCommentTime(value?: string, timeZone = DEFAULT_DISPLAY_TIME_ZONE): string {
   if (!value) return '时间未知'
   const timestamp = Date.parse(value)
   if (!Number.isFinite(timestamp)) return '时间未知'
   const parts = new Intl.DateTimeFormat('zh-CN', {
-    timeZone: 'Asia/Shanghai',
+    timeZone: resolveTimeZone(timeZone),
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -44,7 +69,7 @@ export function formatCommentTime(value?: string): string {
     hourCycle: 'h23',
   }).formatToParts(timestamp)
   const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
-  return `${values.year}/${values.month}/${values.day} ${values.hour}:${values.minute}`
+  return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}`
 }
 
 export function isAbortError(error: unknown): boolean {

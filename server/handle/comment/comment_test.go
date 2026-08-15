@@ -19,6 +19,7 @@ type commentListEnvelope struct {
 		Total        int64                    `json:"total"`
 		CommentTotal int64                    `json:"commentTotal"`
 		FormConfig   config.CommentFormConfig `json:"formConfig"`
+		TimeZone     string                   `json:"timeZone"`
 	} `json:"data"`
 }
 
@@ -147,6 +148,9 @@ func TestSiteFormConfigurationAndUnicodeLengthLimit(t *testing.T) {
 	want := config.CommentFormConfig{EmailRequired: false, WebsiteRequired: true, Placeholder: "分享你的想法", DefaultSort: "oldest", LengthLimit: 321, EmptyMessage: "暂时没有评论"}
 	if envelope.Data.FormConfig != want {
 		t.Fatalf("form=%#v", envelope.Data.FormConfig)
+	}
+	if envelope.Data.TimeZone == "" {
+		t.Fatal("missing timeZone")
 	}
 
 	valid := validSubmission("site-a", "/post", 0)
