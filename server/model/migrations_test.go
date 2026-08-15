@@ -62,10 +62,10 @@ func TestV1DatabaseMigratesInPlaceWithoutLosingBusinessData(t *testing.T) {
 	}
 
 	if err := PrepareDatabaseForStartup(database); err != nil {
-		t.Fatalf("migrate v1 to v2: %v", err)
+		t.Fatalf("migrate v1 to current: %v", err)
 	}
 	if err := PrepareDatabaseForStartup(database); err != nil {
-		t.Fatalf("repeat v2 startup: %v", err)
+		t.Fatalf("repeat current startup: %v", err)
 	}
 
 	type migratedComment struct {
@@ -109,7 +109,7 @@ func TestV1DatabaseMigratesInPlaceWithoutLosingBusinessData(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 	var turnstileCount int64
@@ -193,7 +193,7 @@ func TestV2DatabaseMigratesBloggerBadgeInPlace(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 	var turnstileCount int64
@@ -231,10 +231,10 @@ func TestV3DatabaseMigratesTurnstileSettingsInPlace(t *testing.T) {
 	}
 
 	if err := PrepareDatabaseForStartup(database); err != nil {
-		t.Fatalf("migrate v3 to v4: %v", err)
+		t.Fatalf("migrate v3 to current: %v", err)
 	}
 	if err := PrepareDatabaseForStartup(database); err != nil {
-		t.Fatalf("repeat v4 startup: %v", err)
+		t.Fatalf("repeat current startup: %v", err)
 	}
 
 	var site Site
@@ -257,7 +257,7 @@ func TestV3DatabaseMigratesTurnstileSettingsInPlace(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 }
@@ -277,6 +277,12 @@ func TestFreshSchemaInitializesAndIsRepeatable(t *testing.T) {
 	DB.Raw("SELECT COUNT(*) FROM pragma_table_info('notification_settings') WHERE name = 'trigger_mode'").Scan(&triggerColumn)
 	if statusColumn != 0 || triggerColumn != 0 {
 		t.Fatalf("legacy columns remain: status=%d trigger=%d", statusColumn, triggerColumn)
+	}
+	var bloggerFlag, outboxTarget int64
+	DB.Raw("SELECT COUNT(*) FROM pragma_table_info('comments') WHERE name = 'is_blogger'").Scan(&bloggerFlag)
+	DB.Raw("SELECT COUNT(*) FROM pragma_table_info('notification_outbox') WHERE name = 'target'").Scan(&outboxTarget)
+	if bloggerFlag != 1 || outboxTarget != 1 {
+		t.Fatalf("v5 columns missing is_blogger=%d target=%d", bloggerFlag, outboxTarget)
 	}
 }
 
@@ -332,5 +338,93 @@ func TestFreshCommentScopeAndTombstoneConstraints(t *testing.T) {
 	root.Content = ""
 	if err := DB.Save(&root).Error; err != nil {
 		t.Fatalf("privacy tombstone: %v", err)
+	}
+}
+
+func TestV4DatabaseMigratesBloggerProofOutboxTargetsAndBackfill(t *testing.T) {
+	t.Setenv("ECOKU_MODEL_SITE_KEY", strings.Repeat("m", 32))
+	if err := config.ApplyConfig(&config.Config{Sites: []config.RegisteredSiteConfig{{
+		ID: "site-a", SiteURL: "https://example.test", AllowedOrigins: []string{"https://example.test"},
+		ManagementKeyEnv: "ECOKU_MODEL_SITE_KEY", Name: "Example",
+	}}}); err != nil {
+		t.Fatal(err)
+	}
+	database, err := OpenSQLiteDatabase(t.TempDir() + "/v4.sqlite3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDatabase, _ := database.DB()
+	t.Cleanup(func() { _ = sqlDatabase.Close() })
+	if err := createFreshSchema(database); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrateSiteBloggerIdentity(database); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrateSiteBloggerBadge(database); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrateTurnstileSettings(database); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 8, 15, 1, 2, 3, 0, time.UTC)
+	if err := database.Exec(`UPDATE sites SET blogger_nickname = '站长', blogger_email = 'owner@example.test' WHERE id = 'site-a'`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Exec(`INSERT INTO comments
+  (site_id, mark, page_title, parent_id, username, email, url, content, deleted_at, created_at, updated_at)
+  VALUES ('site-a', '/post', '文章', NULL, '站长', 'OWNER@example.test', NULL, '历史博主', NULL, ?, ?),
+         ('site-a', '/post', '文章', NULL, '访客', 'reader@example.test', NULL, '访客', NULL, ?, ?)`, now, now, now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Exec(`UPDATE notification_settings
+  SET enabled = 1, config_json = '{"recipients":["owner@example.test","ops@example.test"]}'
+  WHERE channel = 'email'`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Exec(`INSERT INTO notification_outbox
+  (event_type, comment_id, status, attempts, available_at, locked_at, last_error_code, created_at, updated_at, sent_at)
+  VALUES ('blogger_email_new', 1, 'pending', 0, ?, NULL, NULL, ?, ?, NULL),
+         ('blogger_telegram_new', 1, 'sent', 1, ?, NULL, NULL, ?, ?, ?)`, now, now, now, now, now, now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	if err := PrepareDatabaseForStartup(database); err != nil {
+		t.Fatalf("migrate v4 to v5: %v", err)
+	}
+	if err := PrepareDatabaseForStartup(database); err != nil {
+		t.Fatalf("repeat v5 startup: %v", err)
+	}
+
+	var flagged, guest int
+	if err := database.Raw(`SELECT is_blogger FROM comments WHERE content = '历史博主'`).Scan(&flagged).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Raw(`SELECT is_blogger FROM comments WHERE content = '访客'`).Scan(&guest).Error; err != nil {
+		t.Fatal(err)
+	}
+	if flagged != 1 || guest != 0 {
+		t.Fatalf("backfill mismatch flagged=%d guest=%d", flagged, guest)
+	}
+	var pending []string
+	if err := database.Table("notification_outbox").Where("event_type = 'blogger_email_new' AND status = 'pending'").Order("target ASC").Pluck("target", &pending).Error; err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(pending, []string{"ops@example.test", "owner@example.test"}) {
+		t.Fatalf("pending targets=%v", pending)
+	}
+	var sentTarget string
+	if err := database.Raw(`SELECT target FROM notification_outbox WHERE event_type = 'blogger_telegram_new' AND status = 'sent'`).Scan(&sentTarget).Error; err != nil {
+		t.Fatal(err)
+	}
+	if sentTarget != "*" {
+		t.Fatalf("terminal outbox target=%q", sentTarget)
+	}
+	var versions []int
+	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5}) {
+		t.Fatalf("migration history mismatch: %v", versions)
 	}
 }

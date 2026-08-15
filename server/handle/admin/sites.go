@@ -37,12 +37,13 @@ type SiteDTO struct {
 	Placeholder     string   `json:"placeholder"`
 	CommentLimit    int      `json:"comment_limit"`
 	EmptyMessage    string   `json:"empty_message"`
-	BloggerNickname string   `json:"blogger_nickname"`
-	BloggerEmail    string   `json:"blogger_email"`
-	BloggerBadge    string   `json:"blogger_badge"`
-	Revision        uint     `json:"revision"`
-	CreatedAt       string   `json:"created_at"`
-	UpdatedAt       string   `json:"updated_at"`
+	BloggerNickname      string   `json:"blogger_nickname"`
+	BloggerEmail         string   `json:"blogger_email"`
+	BloggerBadge         string   `json:"blogger_badge"`
+	BloggerPassphraseSet bool     `json:"blogger_passphrase_set"`
+	Revision             uint     `json:"revision"`
+	CreatedAt            string   `json:"created_at"`
+	UpdatedAt            string   `json:"updated_at"`
 }
 
 type SiteWriteRequest struct {
@@ -56,10 +57,11 @@ type SiteWriteRequest struct {
 	Placeholder     string   `json:"placeholder"`
 	CommentLimit    int      `json:"comment_limit"`
 	EmptyMessage    string   `json:"empty_message"`
-	BloggerNickname string   `json:"blogger_nickname"`
-	BloggerEmail    string   `json:"blogger_email"`
-	BloggerBadge    string   `json:"blogger_badge"`
-	Revision        uint     `json:"revision"`
+	BloggerNickname   string   `json:"blogger_nickname"`
+	BloggerEmail      string   `json:"blogger_email"`
+	BloggerBadge      string   `json:"blogger_badge"`
+	BloggerPassphrase string   `json:"blogger_passphrase"`
+	Revision          uint     `json:"revision"`
 }
 
 func ListSites(c *gin.Context) {
@@ -94,7 +96,7 @@ func CreateSite(c *gin.Context) {
 		utils.SendJSONBindingError(c, err)
 		return
 	}
-	input, ok := validateSiteWrite(c, request, true)
+	input, ok := validateSiteWrite(c, request, true, nil)
 	if !ok {
 		return
 	}
@@ -122,7 +124,16 @@ func UpdateSite(c *gin.Context) {
 		return
 	}
 	request.ID = pathID
-	input, ok := validateSiteWrite(c, request, false)
+	existing, err := model.GetSite(pathID)
+	if errors.Is(err, model.ErrSiteNotFound) {
+		utils.SendError(c, http.StatusNotFound, "站点不存在")
+		return
+	}
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "读取站点失败")
+		return
+	}
+	input, ok := validateSiteWrite(c, request, false, &existing)
 	if !ok {
 		return
 	}
@@ -139,7 +150,7 @@ func UpdateSite(c *gin.Context) {
 	}
 }
 
-func validateSiteWrite(c *gin.Context, request SiteWriteRequest, creating bool) (model.SiteWrite, bool) {
+func validateSiteWrite(c *gin.Context, request SiteWriteRequest, creating bool, existing *model.Site) (model.SiteWrite, bool) {
 	id := strings.TrimSpace(request.ID)
 	if !config.IsValidSiteID(id) {
 		utils.SendError(c, http.StatusBadRequest, "站点 ID 无效")
@@ -248,7 +259,12 @@ func validateSiteWrite(c *gin.Context, request SiteWriteRequest, creating bool) 
 		utils.SendError(c, http.StatusBadRequest, "评论区标志无效")
 		return model.SiteWrite{}, false
 	}
-	return model.SiteWrite{
+	passphrase := strings.TrimSpace(request.BloggerPassphrase)
+	existingHash := ""
+	if existing != nil {
+		existingHash = strings.TrimSpace(existing.BloggerPassphraseHash)
+	}
+	write := model.SiteWrite{
 		ID: id, SiteURL: siteURL, Domain: strings.ToLower(parsed.Hostname()),
 		Name: name, DefaultSort: defaultSort, EmailRequired: emailRequired,
 		WebsiteRequired: websiteRequired, Placeholder: placeholder,
@@ -256,7 +272,31 @@ func validateSiteWrite(c *gin.Context, request SiteWriteRequest, creating bool) 
 		BloggerNickname: bloggerNickname, BloggerEmail: bloggerEmail,
 		BloggerBadge:   bloggerBadge,
 		AllowedOrigins: origins, Revision: request.Revision,
-	}, true
+	}
+	if bloggerNickname == "" {
+		if passphrase != "" {
+			utils.SendError(c, http.StatusBadRequest, "博主口令需要同时填写昵称和邮箱")
+			return model.SiteWrite{}, false
+		}
+		write.UpdatePassphrase = true
+		write.BloggerPassphraseHash = ""
+		return write, true
+	}
+	if passphrase != "" {
+		hash, hashErr := model.HashBloggerPassphrase(passphrase)
+		if hashErr != nil {
+			utils.SendError(c, http.StatusBadRequest, hashErr.Error())
+			return model.SiteWrite{}, false
+		}
+		write.UpdatePassphrase = true
+		write.BloggerPassphraseHash = hash
+		return write, true
+	}
+	if creating || existingHash == "" {
+		utils.SendError(c, http.StatusBadRequest, "启用博主身份时必须设置口令")
+		return model.SiteWrite{}, false
+	}
+	return write, true
 }
 
 func siteDTO(site model.Site) SiteDTO {
@@ -268,6 +308,7 @@ func siteDTO(site model.Site) SiteDTO {
 		CommentLimit: site.CommentLimit, EmptyMessage: site.EmptyMessage,
 		BloggerNickname: site.BloggerNickname, BloggerEmail: site.BloggerEmail,
 		BloggerBadge: site.BloggerBadge,
+		BloggerPassphraseSet: strings.TrimSpace(site.BloggerPassphraseHash) != "",
 		Revision:     site.Revision, CreatedAt: site.CreatedAt.UTC().Format(time.RFC3339Nano),
 		UpdatedAt: site.UpdatedAt.UTC().Format(time.RFC3339Nano),
 	}

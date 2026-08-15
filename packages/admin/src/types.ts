@@ -1,6 +1,6 @@
 export type CommentStatus = 'published' | 'deleted'
 export type MainView = 'comments' | 'sites' | 'notifications' | 'security'
-export type EmailEncryption = 'tls' | 'starttls' | 'none'
+export type EmailEncryption = 'tls' | 'starttls'
 
 export interface SiteSummary {
   id: string
@@ -16,12 +16,16 @@ export interface SiteSummary {
   bloggerNickname: string
   bloggerEmail: string
   bloggerBadge: string
+  bloggerPassphraseSet: boolean
   revision: number
   createdAt: string
   updatedAt: string
 }
 
-export type SiteWrite = Omit<SiteSummary, 'createdAt' | 'updatedAt'>
+export type SiteWrite = Omit<SiteSummary, 'createdAt' | 'updatedAt' | 'bloggerPassphraseSet'> & {
+  bloggerPassphrase?: string
+  bloggerPassphraseSet?: boolean
+}
 
 export interface CommentReview {
   id: number

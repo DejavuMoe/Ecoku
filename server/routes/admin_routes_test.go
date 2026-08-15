@@ -195,6 +195,14 @@ func TestCommentManagementIsPublishedDeletedOnlyAndSiteIsolated(t *testing.T) {
 	if wrongSite.Code != http.StatusForbidden {
 		t.Fatalf("wrong-site=%d", wrongSite.Code)
 	}
+	ownKey := requestJSON(t, env.router, http.MethodGet, "/api/admin/sites/site-a/comments?status=published", "", "EcokuSite "+adminSiteAKey, nil)
+	if ownKey.Code != http.StatusForbidden {
+		t.Fatalf("management-key list=%d %s", ownKey.Code, ownKey.Body.String())
+	}
+	ownKeyDetail := requestJSON(t, env.router, http.MethodGet, fmt.Sprintf("/api/admin/sites/site-a/comments/%d", a.ID), "", "EcokuSite "+adminSiteAKey, nil)
+	if ownKeyDetail.Code != http.StatusForbidden {
+		t.Fatalf("management-key detail=%d %s", ownKeyDetail.Code, ownKeyDetail.Body.String())
+	}
 	list := requestJSON(t, env.router, http.MethodGet, "/api/admin/sites/site-a/comments?status=published", adminTestOrigin, "Bearer "+env.token, nil)
 	if list.Code != http.StatusOK || !strings.Contains(list.Body.String(), "private@example.com") || strings.Contains(list.Body.String(), "秘密") {
 		t.Fatalf("list=%d %s", list.Code, list.Body.String())
@@ -236,7 +244,7 @@ func TestTombstoneAndPermanentDeleteSemantics(t *testing.T) {
 	if err := model.DB.First(&stored, root.ID).Error; err != nil {
 		t.Fatal(err)
 	}
-	if stored.DeletedAt == nil || stored.Email != nil || stored.Content != "" || stored.Username != "" {
+	if stored.DeletedAt == nil || stored.Email != nil || stored.Content != "" || stored.Username != "" || stored.IsBlogger {
 		t.Fatalf("tombstone=%#v", stored)
 	}
 	permanentRoot := requestJSON(t, env.router, http.MethodDelete, path+"/permanent", adminTestOrigin, "Bearer "+env.token, nil)
@@ -284,17 +292,23 @@ func TestSiteWritePersistsBloggerBadge(t *testing.T) {
 		"id": "site-badge", "site_url": "https://badge.example",
 		"allowed_origins":  []string{"https://badge.example"},
 		"blogger_nickname": "站长", "blogger_email": "owner@example.test",
-		"blogger_badge": "[OP]",
+		"blogger_badge": "[OP]", "blogger_passphrase": "correct-horse-battery",
 	}
 	created := requestJSON(t, env.router, http.MethodPost, "/api/admin/sites", adminTestOrigin, "Bearer "+env.token, payload)
 	if created.Code != http.StatusCreated {
 		t.Fatalf("create=%d %s", created.Code, created.Body.String())
+	}
+	if strings.Contains(created.Body.String(), "correct-horse-battery") {
+		t.Fatalf("passphrase echoed: %s", created.Body.String())
 	}
 	if !strings.Contains(created.Body.String(), `"blogger_badge":"[OP]"`) {
 		t.Fatalf("missing badge: %s", created.Body.String())
 	}
 	if !strings.Contains(created.Body.String(), `"blogger_email":"owner@example.test"`) {
 		t.Fatalf("admin DTO missing private blogger email: %s", created.Body.String())
+	}
+	if !strings.Contains(created.Body.String(), `"blogger_passphrase_set":true`) {
+		t.Fatalf("admin DTO missing passphrase flag: %s", created.Body.String())
 	}
 }
 

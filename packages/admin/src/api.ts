@@ -90,6 +90,7 @@ function mapSite(value: unknown): SiteSummary | null {
     bloggerNickname: text(raw.blogger_nickname),
     bloggerEmail: text(raw.blogger_email),
     bloggerBadge: text(raw.blogger_badge),
+    bloggerPassphraseSet: raw.blogger_passphrase_set === true,
     revision: number(raw.revision),
     createdAt: text(raw.created_at),
     updatedAt: text(raw.updated_at),
@@ -118,7 +119,7 @@ function mapComment(value: unknown): CommentReview | null {
 }
 
 function sitePayload(site: SiteWrite) {
-  return {
+  const payload: Record<string, unknown> = {
     id: site.id,
     site_url: site.siteUrl,
     name: site.name,
@@ -134,6 +135,9 @@ function sitePayload(site: SiteWrite) {
     blogger_badge: site.bloggerBadge,
     revision: site.revision,
   }
+  const passphrase = site.bloggerPassphrase?.trim()
+  if (passphrase) payload.blogger_passphrase = passphrase
+  return payload
 }
 
 function emailPayload(settings: EmailNotificationSettings) {
@@ -157,7 +161,7 @@ function mapEmail(value: unknown): EmailNotificationSettings {
   const raw = value && typeof value === 'object' ? value as Record<string, unknown> : {}
   return {
     enabled: raw.enabled === true, host: text(raw.host), port: number(raw.port),
-    encryption: raw.encryption === 'starttls' || raw.encryption === 'none' ? raw.encryption : 'tls',
+    encryption: raw.encryption === 'starttls' ? 'starttls' : 'tls',
     username: text(raw.username), password: '', passwordSet: raw.password_set === true,
     fromAddress: text(raw.from_address), recipients: strings(raw.recipients),
     revision: number(raw.revision, 1),

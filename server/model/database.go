@@ -18,16 +18,18 @@ const sqliteBusyTimeoutMilliseconds = 5000
 // InitDatabase opens the configured SQLite3 database and only bootstraps a
 // truly empty database. Existing unversioned or outdated databases are rejected
 // and must be backed up before an explicitly authorized rebuild.
-func InitDatabase() {
+func InitDatabase() error {
 	database, err := OpenConfiguredDatabase()
 	if err != nil {
-		log.Fatalf("数据库初始化失败: %v", err)
+		return fmt.Errorf("打开数据库: %w", err)
 	}
 	if err := PrepareDatabaseForStartup(database); err != nil {
-		log.Fatalf("数据库 schema 校验失败: %v", err)
+		_ = CloseSQLiteDatabase(database)
+		return err
 	}
 	DB = database
 	log.Printf("数据库初始化成功，使用 SQLite3")
+	return nil
 }
 
 // OpenConfiguredDatabase opens only SQLite3. P2 intentionally removed the

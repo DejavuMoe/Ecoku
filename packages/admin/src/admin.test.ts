@@ -26,7 +26,7 @@ function site(overrides: Partial<SiteSummary> = {}): SiteSummary {
     placeholder: '写下评论（仅支持纯文本）', commentLimit: 1000,
     emptyMessage: '还没有评论\n成为第一个留下评论的人。', revision: 1,
     bloggerNickname: 'Dejavu Moe', bloggerEmail: 'admin@example.test',
-    bloggerBadge: '[博主]',
+    bloggerBadge: '[博主]', bloggerPassphraseSet: true,
     createdAt: '2026-08-13T01:00:00Z', updatedAt: '2026-08-13T01:00:00Z',
     ...overrides,
   }
@@ -69,7 +69,7 @@ describe('administrator API contract', () => {
         allowed_origins: ['https://blog.example.test'], default_sort: 'newest',
         email_required: true, website_required: false, placeholder: '写下评论',
         comment_limit: 2048, empty_message: '暂无评论', blogger_nickname: 'Dejavu Moe',
-        blogger_email: 'admin@example.test', blogger_badge: '[OP]', revision: 2,
+        blogger_email: 'admin@example.test', blogger_badge: '[OP]', blogger_passphrase_set: true, revision: 2,
         created_at: '2026-08-13T00:00:00Z', updated_at: '2026-08-13T00:00:00Z',
         domain: 'MUST_NOT_MAP', default_status: 'MUST_NOT_MAP', management_key_env: 'MUST_NOT_MAP',
       }] }))
@@ -81,7 +81,9 @@ describe('administrator API contract', () => {
     vi.stubGlobal('fetch', fetchMock)
     const sites = await adminApi.listSites('private-token')
     const comments = await adminApi.listComments('private-token', 'site-a', 'published', 1, 20, 'newest')
-    expect(sites[0]).toMatchObject({ name: "Dejavu's Blog", commentLimit: 2048, emptyMessage: '暂无评论', bloggerNickname: 'Dejavu Moe', bloggerEmail: 'admin@example.test', bloggerBadge: '[OP]' })
+    expect(sites[0]).toMatchObject({ name: "Dejavu's Blog", commentLimit: 2048, emptyMessage: '暂无评论', bloggerNickname: 'Dejavu Moe', bloggerEmail: 'admin@example.test', bloggerBadge: '[OP]', bloggerPassphraseSet: true })
+    expect(sites[0]).not.toHaveProperty('bloggerPassphrase')
+    expect(sites[0]).not.toHaveProperty('blogger_passphrase')
     expect(sites[0]).not.toHaveProperty('domain')
     expect(sites[0]).not.toHaveProperty('defaultStatus')
     expect(comments.data[0]).toMatchObject({ pageTitle: '标题', status: 'published', email: 'private@example.com' })
@@ -97,9 +99,10 @@ describe('administrator API contract', () => {
     } }))
     vi.stubGlobal('fetch', fetchMock)
     const { createdAt: _createdAt, updatedAt: _updatedAt, ...write } = site()
-    await adminApi.createSite('token', { ...write, name: '博客', defaultSort: 'oldest', emailRequired: false, websiteRequired: true, placeholder: '评论', commentLimit: 500, emptyMessage: '暂无' })
+    await adminApi.createSite('token', { ...write, name: '博客', defaultSort: 'oldest', emailRequired: false, websiteRequired: true, placeholder: '评论', commentLimit: 500, emptyMessage: '暂无', bloggerPassphrase: 'correct-horse-battery' })
     const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as Record<string, unknown>
-    expect(payload).toMatchObject({ name: '博客', default_sort: 'oldest', comment_limit: 500, empty_message: '暂无', blogger_nickname: 'Dejavu Moe', blogger_email: 'admin@example.test', blogger_badge: '[博主]' })
+    expect(payload).toMatchObject({ name: '博客', default_sort: 'oldest', comment_limit: 500, empty_message: '暂无', blogger_nickname: 'Dejavu Moe', blogger_email: 'admin@example.test', blogger_badge: '[博主]', blogger_passphrase: 'correct-horse-battery' })
+    expect(payload).not.toHaveProperty('blogger_passphrase_set')
     expect(payload).not.toHaveProperty('domain')
     expect(payload).not.toHaveProperty('default_status')
     expect(payload).not.toHaveProperty('review_mode')
@@ -182,7 +185,10 @@ describe('approved production surface', () => {
     expect(wrapper.text()).toContain('中文、日文、韩文与其他 Unicode 字符均按一个字符计数')
     expect(wrapper.text()).toContain('每行一个完整来源')
     expect(wrapper.text()).toContain('博主身份')
-    expect(wrapper.text()).toContain('仅用于私有身份匹配，不会公开')
+    expect(wrapper.text()).toContain('仅用于通知去重与历史评论回填，不会公开')
+    expect(wrapper.text()).toContain('博主口令')
+    expect(wrapper.get('#blogger-passphrase').attributes('type')).toBe('password')
+    expect((wrapper.get('#blogger-passphrase').element as HTMLInputElement).value).toBe('')
     expect(wrapper.text()).toContain('评论区标志')
     expect(wrapper.text()).toContain('留空则不显示')
     expect(wrapper.text()).not.toContain('通知判定预览')
@@ -199,6 +205,8 @@ describe('approved production surface', () => {
     expect(wrapper.text()).toContain('按 Enter、逗号或换行添加；支持用户、群组、频道 ID')
     expect(wrapper.find('.template-panel').exists()).toBe(false)
     expect(wrapper.html()).not.toContain('/admin/templates/')
+    expect(wrapper.html()).not.toContain('不加密')
+    expect(wrapper.find('#email-encryption').html()).not.toContain('value="none"')
   })
 
   it('accepts pasted comma/newline chips, flags invalid values, and removes one chip', async () => {

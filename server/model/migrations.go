@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"ecoku-server/config"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -13,7 +14,7 @@ import (
 )
 
 const (
-	LatestSchemaVersion               = 4
+	LatestSchemaVersion               = 5
 	freshSchemaVersion                = 1
 	freshSchemaName                   = "fresh_published_comments"
 	freshSchemaDefinition             = "sqlite3:fresh-v1:published-comments:site-display-config:notifications:tombstones"
@@ -26,7 +27,11 @@ const (
 	turnstileSettingsSchemaVersion    = 4
 	turnstileSettingsSchemaName       = "instance_turnstile_settings"
 	turnstileSettingsSchemaDefinition = "sqlite3:v4:turnstile-settings"
+	bloggerProofSchemaVersion         = 5
+	bloggerProofSchemaName            = "blogger_passphrase_outbox_targets"
+	bloggerProofSchemaDefinition      = "sqlite3:v5:blogger-passphrase:comment-is-blogger:outbox-target-snapshot"
 	DefaultBloggerBadge               = "[博主]"
+	legacyOutboxTarget                = "*"
 )
 
 type schemaMigration struct {
@@ -229,6 +234,7 @@ func validateKnownSchemaHistory(database *gorm.DB) (int, error) {
 		bloggerIdentitySchemaVersion:   {name: bloggerIdentitySchemaName, definition: bloggerIdentitySchemaDefinition},
 		bloggerBadgeSchemaVersion:      {name: bloggerBadgeSchemaName, definition: bloggerBadgeSchemaDefinition},
 		turnstileSettingsSchemaVersion: {name: turnstileSettingsSchemaName, definition: turnstileSettingsSchemaDefinition},
+		bloggerProofSchemaVersion:      {name: bloggerProofSchemaName, definition: bloggerProofSchemaDefinition},
 	}
 	for index, row := range rows {
 		version := index + 1
@@ -262,6 +268,10 @@ func migrateSchema(database *gorm.DB, currentVersion int) error {
 			}
 		case turnstileSettingsSchemaVersion:
 			if err := migrateTurnstileSettings(database); err != nil {
+				return err
+			}
+		case bloggerProofSchemaVersion:
+			if err := migrateBloggerProofAndOutboxTargets(database); err != nil {
 				return err
 			}
 		default:
@@ -336,6 +346,177 @@ VALUES (?, ?, ?, ?)`, turnstileSettingsSchemaVersion, turnstileSettingsSchemaNam
 	})
 }
 
+func migrateBloggerProofAndOutboxTargets(database *gorm.DB) error {
+	return database.Transaction(func(tx *gorm.DB) error {
+		statements := []string{
+			`ALTER TABLE sites ADD COLUMN blogger_passphrase_hash TEXT NOT NULL DEFAULT ''`,
+			`ALTER TABLE comments ADD COLUMN is_blogger INTEGER NOT NULL DEFAULT 0 CHECK (is_blogger IN (0, 1))`,
+		}
+		for _, statement := range statements {
+			if err := tx.Exec(statement).Error; err != nil {
+				return fmt.Errorf("迁移博主口令字段: %w", err)
+			}
+		}
+		if err := rebuildNotificationOutboxWithTargets(tx); err != nil {
+			return err
+		}
+		if err := backfillAllHistoricalBloggerComments(tx); err != nil {
+			return fmt.Errorf("回填历史博主评论: %w", err)
+		}
+		now := time.Now().UTC()
+		if err := tx.Exec(`INSERT INTO schema_migrations (version, name, checksum, applied_at)
+VALUES (?, ?, ?, ?)`, bloggerProofSchemaVersion, bloggerProofSchemaName,
+			schemaChecksum(bloggerProofSchemaDefinition), now).Error; err != nil {
+			return fmt.Errorf("记录 schema 版本 %d: %w", bloggerProofSchemaVersion, err)
+		}
+		return nil
+	})
+}
+
+type legacyOutboxRow struct {
+	ID            uint       `gorm:"column:id"`
+	EventType     string     `gorm:"column:event_type"`
+	CommentID     uint       `gorm:"column:comment_id"`
+	Status        string     `gorm:"column:status"`
+	Attempts      int        `gorm:"column:attempts"`
+	AvailableAt   time.Time  `gorm:"column:available_at"`
+	LockedAt      *time.Time `gorm:"column:locked_at"`
+	LastErrorCode *string    `gorm:"column:last_error_code"`
+	CreatedAt     time.Time  `gorm:"column:created_at"`
+	UpdatedAt     time.Time  `gorm:"column:updated_at"`
+	SentAt        *time.Time `gorm:"column:sent_at"`
+}
+
+func rebuildNotificationOutboxWithTargets(tx *gorm.DB) error {
+	if err := tx.Exec(`CREATE TABLE notification_outbox_v5 (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_type TEXT NOT NULL CHECK (event_type IN ('blogger_email_new', 'blogger_telegram_new', 'visitor_reply')),
+  comment_id INTEGER NOT NULL,
+  target TEXT NOT NULL CHECK (length(target) BETWEEN 1 AND 254),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'sent', 'failed', 'cancelled')),
+  attempts INTEGER NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+  available_at DATETIME NOT NULL,
+  locked_at DATETIME NULL,
+  last_error_code TEXT NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  sent_at DATETIME NULL,
+  CONSTRAINT uq_notification_event UNIQUE (event_type, comment_id, target),
+  CONSTRAINT fk_notification_comment FOREIGN KEY (comment_id) REFERENCES comments(id)
+    ON UPDATE RESTRICT ON DELETE CASCADE
+)`).Error; err != nil {
+		return fmt.Errorf("创建按目标拆分的通知队列: %w", err)
+	}
+
+	var rows []legacyOutboxRow
+	if err := tx.Table("notification_outbox").Order("id ASC").Find(&rows).Error; err != nil {
+		return fmt.Errorf("读取历史通知队列: %w", err)
+	}
+	emailRecipients, telegramTargets, err := loadNotificationTargets(tx)
+	if err != nil {
+		return err
+	}
+	for _, row := range rows {
+		targets := snapshotTargetsForLegacyOutbox(tx, row, emailRecipients, telegramTargets)
+		for _, target := range targets {
+			status := row.Status
+			if target == legacyOutboxTarget && (status == "pending" || status == "failed" || status == "processing") {
+				status = "cancelled"
+			}
+			if err := tx.Exec(`INSERT INTO notification_outbox_v5
+  (event_type, comment_id, target, status, attempts, available_at, locked_at, last_error_code, created_at, updated_at, sent_at)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				row.EventType, row.CommentID, target, status, row.Attempts, row.AvailableAt,
+				row.LockedAt, row.LastErrorCode, row.CreatedAt, row.UpdatedAt, row.SentAt,
+			).Error; err != nil {
+				return fmt.Errorf("拆分通知队列目标: %w", err)
+			}
+		}
+	}
+	if err := tx.Exec(`DROP TABLE notification_outbox`).Error; err != nil {
+		return fmt.Errorf("替换历史通知队列: %w", err)
+	}
+	if err := tx.Exec(`ALTER TABLE notification_outbox_v5 RENAME TO notification_outbox`).Error; err != nil {
+		return fmt.Errorf("启用按目标拆分的通知队列: %w", err)
+	}
+	if err := tx.Exec(`CREATE INDEX idx_notification_outbox_ready ON notification_outbox (status, available_at, id)`).Error; err != nil {
+		return fmt.Errorf("重建通知队列索引: %w", err)
+	}
+	return nil
+}
+
+func loadNotificationTargets(tx *gorm.DB) ([]string, []string, error) {
+	var emailRow struct {
+		ConfigJSON string `gorm:"column:config_json"`
+	}
+	var telegramRow struct {
+		ConfigJSON string `gorm:"column:config_json"`
+	}
+	if err := tx.Table("notification_settings").Where("channel = ?", "email").Take(&emailRow).Error; err != nil {
+		return nil, nil, fmt.Errorf("读取邮件通知配置: %w", err)
+	}
+	if err := tx.Table("notification_settings").Where("channel = ?", "telegram").Take(&telegramRow).Error; err != nil {
+		return nil, nil, fmt.Errorf("读取 Telegram 通知配置: %w", err)
+	}
+	var email struct {
+		Recipients []string `json:"recipients"`
+	}
+	var telegram struct {
+		Targets []string `json:"targets"`
+	}
+	_ = json.Unmarshal([]byte(emailRow.ConfigJSON), &email)
+	_ = json.Unmarshal([]byte(telegramRow.ConfigJSON), &telegram)
+	return uniqueNonEmpty(email.Recipients), uniqueNonEmpty(telegram.Targets), nil
+}
+
+func snapshotTargetsForLegacyOutbox(tx *gorm.DB, row legacyOutboxRow, emailRecipients, telegramTargets []string) []string {
+	terminal := row.Status == "sent" || row.Status == "cancelled"
+	switch row.EventType {
+	case "blogger_email_new":
+		if terminal || len(emailRecipients) == 0 {
+			return []string{legacyOutboxTarget}
+		}
+		return emailRecipients
+	case "blogger_telegram_new":
+		if terminal || len(telegramTargets) == 0 {
+			return []string{legacyOutboxTarget}
+		}
+		return telegramTargets
+	case "visitor_reply":
+		if terminal {
+			return []string{legacyOutboxTarget}
+		}
+		var parentEmail *string
+		err := tx.Raw(`SELECT parent.email
+FROM comments AS child
+JOIN comments AS parent ON parent.id = child.parent_id AND parent.site_id = child.site_id AND parent.mark = child.mark
+WHERE child.id = ?`, row.CommentID).Scan(&parentEmail).Error
+		if err != nil || parentEmail == nil || strings.TrimSpace(*parentEmail) == "" {
+			return []string{legacyOutboxTarget}
+		}
+		return []string{strings.TrimSpace(*parentEmail)}
+	default:
+		return []string{legacyOutboxTarget}
+	}
+}
+
+func uniqueNonEmpty(values []string) []string {
+	seen := make(map[string]struct{}, len(values))
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if _, exists := seen[value]; exists {
+			continue
+		}
+		seen[value] = struct{}{}
+		result = append(result, value)
+	}
+	return result
+}
+
 func validateCurrentSchema(database *gorm.DB) error {
 	currentVersion, err := validateKnownSchemaHistory(database)
 	if err != nil {
@@ -350,11 +531,19 @@ func validateCurrentSchema(database *gorm.DB) error {
 			return fmt.Errorf("数据库缺少当前 schema 表 %s", table)
 		}
 	}
-	for _, column := range []string{"blogger_nickname", "blogger_email", "blogger_badge"} {
+	for _, column := range []string{"blogger_nickname", "blogger_email", "blogger_badge", "blogger_passphrase_hash"} {
 		var count int64
 		if err := database.Raw("SELECT COUNT(*) FROM pragma_table_info('sites') WHERE name = ?", column).Scan(&count).Error; err != nil || count != 1 {
 			return fmt.Errorf("数据库缺少当前 schema 字段 sites.%s", column)
 		}
+	}
+	var bloggerFlag int64
+	if err := database.Raw("SELECT COUNT(*) FROM pragma_table_info('comments') WHERE name = ?", "is_blogger").Scan(&bloggerFlag).Error; err != nil || bloggerFlag != 1 {
+		return fmt.Errorf("数据库缺少当前 schema 字段 comments.is_blogger")
+	}
+	var outboxTarget int64
+	if err := database.Raw("SELECT COUNT(*) FROM pragma_table_info('notification_outbox') WHERE name = ?", "target").Scan(&outboxTarget).Error; err != nil || outboxTarget != 1 {
+		return fmt.Errorf("数据库缺少当前 schema 字段 notification_outbox.target")
 	}
 	return nil
 }

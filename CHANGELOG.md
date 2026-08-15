@@ -5,6 +5,21 @@
 
 ## [Unreleased]
 
+### 变更
+
+- 博主身份改为口令证明：管理端配置昵称、邮箱和口令；公开评论区只在昵称栏填口令，服务端改写为配置昵称、私有邮箱和站点 URL。评论展示徽章、昵称与站点链接，无头像。`isBlogger` 读取存储字段；升级到 schema v5 以及保存口令时按昵称+邮箱回填历史博主评论。
+- 通知按入队时的每个收件人/目标拆成 outbox 行，投递时不再重判渠道或是否博主；worker 启动收回全部 `processing` 行。SMTP 只允许 TLS/STARTTLS，邮件改用随机 MIME boundary 与 quoted-printable。
+- management key 对评论 GET 列表/详情返回 403，只保留所属站点墓碑删除。评论提交请求体上限约 80KiB。禁止 `trusted_proxies` 为 `0.0.0.0/0` 或 `::/0`。
+- 补记：Git 上存在 `v0.1.0-rc.4` 标签，当时未留下对应 CHANGELOG 章节。
+
+### 升级边界
+
+- 本版本把 SQLite schema 从 v4 升到 v5（博主口令哈希、`comments.is_blogger`、outbox `target`）；
+- 升级必须先停服做冷备份（主库 + 确认无 WAL/SHM），再改精确镜像 tag，然后
+  `sudo docker compose pull && sudo docker compose up -d`；
+- 启动后在管理端为站点设置口令，历史博主评论会被回填；
+- 回滚必须换回旧镜像 **并** 用停服前备份整库恢复。已写入 v5 的库不能跑在 `v0.1.2` 上。
+
 ## [0.1.2] - 2026-08-15
 
 ### 修复
@@ -215,6 +230,7 @@
 [0.1.0-rc.1]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.1
 [0.1.0-rc.2]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.2
 [0.1.0-rc.3]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.3
+[0.1.0-rc.4]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.4
 [0.1.0-rc.5]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.5
 [0.1.0-rc.6]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.6
 [0.1.0-rc.7]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.7

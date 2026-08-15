@@ -114,6 +114,34 @@ func TestTrustedProxyMustBeExactIPOrCIDR(t *testing.T) {
 	}
 }
 
+func TestTrustedProxyRejectsArbitraryNetworks(t *testing.T) {
+	t.Setenv("ECOKU_PROXY_SITE_KEY", strings.Repeat("p", 32))
+	for _, network := range []string{"0.0.0.0/0", "::/0"} {
+		loaded := &Config{
+			Site: SiteConfig{TrustedProxies: []string{network}},
+			Sites: []RegisteredSiteConfig{{
+				ID:               "site-a",
+				AllowedOrigins:   []string{"https://example.com"},
+				ManagementKeyEnv: "ECOKU_PROXY_SITE_KEY",
+			}},
+		}
+		if err := ApplyConfig(loaded); err == nil {
+			t.Fatalf("arbitrary trusted proxy %q was accepted", network)
+		}
+	}
+	loaded := &Config{
+		Site: SiteConfig{TrustedProxies: []string{"172.17.0.1/32"}},
+		Sites: []RegisteredSiteConfig{{
+			ID:               "site-a",
+			AllowedOrigins:   []string{"https://example.com"},
+			ManagementKeyEnv: "ECOKU_PROXY_SITE_KEY",
+		}},
+	}
+	if err := ApplyConfig(loaded); err != nil {
+		t.Fatalf("docker gateway proxy rejected: %v", err)
+	}
+}
+
 func TestExampleConfigurationLoads(t *testing.T) {
 	t.Setenv("ECOKU_EXAMPLE_SITE_MANAGEMENT_KEY", strings.Repeat("e", 32))
 	if err := LoadConfigFile("../config.yaml.example"); err != nil {

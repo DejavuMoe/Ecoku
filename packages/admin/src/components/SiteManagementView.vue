@@ -9,17 +9,23 @@ const { sites, selectedSite, selectedSiteId, siteBusy, siteMessage } = storeToRe
 const creating = ref(false)
 const originsText = ref('')
 const errors = reactive<Record<string, string>>({})
-const defaults = (): SiteWrite => ({ id: '', siteUrl: '', name: '', allowedOrigins: [], defaultSort: 'newest', emailRequired: true, websiteRequired: false, placeholder: '写下评论（仅支持纯文本）', commentLimit: 1000, emptyMessage: '还没有评论\n成为第一个留下评论的人。', bloggerNickname: '', bloggerEmail: '', bloggerBadge: '[博主]', revision: 0 })
+const defaults = (): SiteWrite => ({ id: '', siteUrl: '', name: '', allowedOrigins: [], defaultSort: 'newest', emailRequired: true, websiteRequired: false, placeholder: '写下评论（仅支持纯文本）', commentLimit: 1000, emptyMessage: '还没有评论\n成为第一个留下评论的人。', bloggerNickname: '', bloggerEmail: '', bloggerBadge: '[博主]', bloggerPassphrase: '', bloggerPassphraseSet: false, revision: 0 })
 const draft = reactive<SiteWrite>(defaults())
 const clearErrors = () => Object.keys(errors).forEach((key) => delete errors[key])
-function applySite(site: SiteSummary | null) { if (!site) return; creating.value = false; Object.assign(draft, { ...site, allowedOrigins: [...site.allowedOrigins] }); originsText.value = site.allowedOrigins.join('\n'); clearErrors() }
+function applySite(site: SiteSummary | null) {
+  if (!site) return
+  creating.value = false
+  Object.assign(draft, { ...site, allowedOrigins: [...site.allowedOrigins], bloggerPassphrase: '' })
+  originsText.value = site.allowedOrigins.join('\n')
+  clearErrors()
+}
 watch(selectedSite, (site) => { if (!creating.value) applySite(site) }, { immediate: true })
 function startCreating() { creating.value = true; Object.assign(draft, defaults()); originsText.value = ''; clearErrors() }
 function cancelCreating() { applySite(selectedSite.value ?? sites.value[0] ?? null) }
 async function chooseSite(site: SiteSummary) { creating.value = false; await store.selectSite(site.id); applySite(site) }
 function displayName(site: SiteSummary) { if (site.name) return site.name; try { return new URL(site.siteUrl).hostname } catch { return site.siteUrl } }
 function validate() {
-  clearErrors(); draft.id = draft.id.trim(); draft.siteUrl = draft.siteUrl.trim(); draft.name = draft.name.trim(); draft.placeholder = draft.placeholder.trim(); draft.emptyMessage = draft.emptyMessage.trim(); draft.bloggerNickname = draft.bloggerNickname.trim(); draft.bloggerEmail = draft.bloggerEmail.trim(); draft.bloggerBadge = draft.bloggerBadge.trim()
+  clearErrors(); draft.id = draft.id.trim(); draft.siteUrl = draft.siteUrl.trim(); draft.name = draft.name.trim(); draft.placeholder = draft.placeholder.trim(); draft.emptyMessage = draft.emptyMessage.trim(); draft.bloggerNickname = draft.bloggerNickname.trim(); draft.bloggerEmail = draft.bloggerEmail.trim(); draft.bloggerBadge = draft.bloggerBadge.trim(); draft.bloggerPassphrase = (draft.bloggerPassphrase || '').trim()
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(draft.id)) errors.id = '站点 ID 格式无效'
   try { const url = new URL(draft.siteUrl); if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error() } catch { errors.siteUrl = '站点 URL 格式无效' }
   if ([...draft.name].length > 120 || /[\r\n]/.test(draft.name)) errors.name = '站点名称不能超过 120 个字符'
@@ -35,6 +41,13 @@ function validate() {
     errors.bloggerNickname = '博主昵称不能超过 80 个字符'
   } else if (draft.bloggerEmail && (draft.bloggerEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.bloggerEmail))) {
     errors.bloggerEmail = '博主邮箱格式无效'
+  }
+  if (!draft.bloggerNickname && draft.bloggerPassphrase) {
+    errors.bloggerIdentity = '博主口令需要同时填写昵称和邮箱'
+  } else if (draft.bloggerNickname && !draft.bloggerPassphrase && (creating.value || !draft.bloggerPassphraseSet)) {
+    errors.bloggerPassphrase = '启用博主身份时必须设置口令'
+  } else if (draft.bloggerPassphrase && ([...draft.bloggerPassphrase].length < 12 || [...draft.bloggerPassphrase].length > 80 || /[\r\n]/.test(draft.bloggerPassphrase))) {
+    errors.bloggerPassphrase = '博主口令需为 12 至 80 个字符'
   }
   if ([...draft.bloggerBadge].length > 16 || /[\r\n]/.test(draft.bloggerBadge)) {
     errors.bloggerBadge = '评论区标志不能超过 16 个字符'
@@ -63,9 +76,10 @@ async function submit() { if (!validate()) return; const saved = await store.sav
           <div class="form-row"><label class="form-label" for="site-limit">评论长度上限</label><div class="field-stack"><input id="site-limit" v-model.number="draft.commentLimit" class="input" type="number" min="1" max="10000" :aria-invalid="Boolean(errors.commentLimit)"><p class="field-help">中文、日文、韩文与其他 Unicode 字符均按一个字符计数</p><p v-if="errors.commentLimit" class="field-error">{{ errors.commentLimit }}</p></div></div>
           <div class="form-row"><label class="form-label" for="site-empty">无评论文案</label><div class="field-stack"><textarea id="site-empty" v-model="draft.emptyMessage" class="textarea" maxlength="240" :aria-invalid="Boolean(errors.emptyMessage)" /><p v-if="errors.emptyMessage" class="field-error">{{ errors.emptyMessage }}</p></div></div>
           <section class="site-subsection" aria-labelledby="blogger-identity-title">
-            <div class="site-subsection-heading"><h3 id="blogger-identity-title">博主身份</h3><p>用于识别博主本人提交的评论；昵称与邮箱需同时填写。评论区只展示下方标志，不会公开邮箱。</p></div>
-            <div class="form-row"><label class="form-label" for="blogger-nickname">博主昵称</label><div class="field-stack"><input id="blogger-nickname" v-model="draft.bloggerNickname" class="input" maxlength="80" :aria-invalid="Boolean(errors.bloggerNickname || errors.bloggerIdentity)"><p v-if="errors.bloggerNickname" class="field-error">{{ errors.bloggerNickname }}</p></div></div>
-            <div class="form-row"><label class="form-label" for="blogger-email">博主邮箱</label><div class="field-stack"><input id="blogger-email" v-model="draft.bloggerEmail" class="input" type="email" maxlength="254" :aria-invalid="Boolean(errors.bloggerEmail || errors.bloggerIdentity)"><p class="field-help">仅用于私有身份匹配，不会公开</p><p v-if="errors.bloggerEmail" class="field-error">{{ errors.bloggerEmail }}</p><p v-if="errors.bloggerIdentity" class="field-error">{{ errors.bloggerIdentity }}</p></div></div>
+            <div class="site-subsection-heading"><h3 id="blogger-identity-title">博主身份</h3><p>公开评论只显示下方昵称、可选标志，以及指向站点 URL 的链接。邮箱只用于通知去重和历史评论回填。评论区昵称栏填写口令即可发表为博主。</p></div>
+            <div class="form-row"><label class="form-label" for="blogger-nickname">博主昵称</label><div class="field-stack"><input id="blogger-nickname" v-model="draft.bloggerNickname" class="input" maxlength="80" :aria-invalid="Boolean(errors.bloggerNickname || errors.bloggerIdentity)"><p class="field-help">评论区公开显示，并通过站点 URL 链接</p><p v-if="errors.bloggerNickname" class="field-error">{{ errors.bloggerNickname }}</p></div></div>
+            <div class="form-row"><label class="form-label" for="blogger-email">博主邮箱</label><div class="field-stack"><input id="blogger-email" v-model="draft.bloggerEmail" class="input" type="email" maxlength="254" :aria-invalid="Boolean(errors.bloggerEmail || errors.bloggerIdentity)"><p class="field-help">仅用于通知去重与历史评论回填，不会公开</p><p v-if="errors.bloggerEmail" class="field-error">{{ errors.bloggerEmail }}</p><p v-if="errors.bloggerIdentity" class="field-error">{{ errors.bloggerIdentity }}</p></div></div>
+            <div class="form-row"><label class="form-label" for="blogger-passphrase">博主口令</label><div class="field-stack"><input id="blogger-passphrase" v-model="draft.bloggerPassphrase" class="input" type="password" maxlength="80" autocomplete="new-password" :placeholder="draft.bloggerPassphraseSet ? '已设置，输入新值以更换' : ''" :aria-invalid="Boolean(errors.bloggerPassphrase)"><p class="field-help">12–80 个字符。评论区昵称栏填写此口令即可发表为博主；口令不会回显。已设置时留空表示不更改。</p><p v-if="errors.bloggerPassphrase" class="field-error">{{ errors.bloggerPassphrase }}</p></div></div>
             <div class="form-row"><label class="form-label" for="blogger-badge">评论区标志</label><div class="field-stack"><input id="blogger-badge" v-model="draft.bloggerBadge" class="input" maxlength="16" :aria-invalid="Boolean(errors.bloggerBadge)"><p class="field-help">显示在博主评论昵称之后，例如 [博主] 或 [OP]。留空则不显示。</p><p v-if="errors.bloggerBadge" class="field-error">{{ errors.bloggerBadge }}</p></div></div>
           </section>
           <div class="form-actions"><button v-if="creating" class="button" type="button" @click="cancelCreating">取消</button><button class="button button-primary" type="submit" :disabled="siteBusy || (!creating && !selectedSite)">{{ siteBusy ? '保存中…' : creating ? '创建站点' : '保存站点' }}</button></div>

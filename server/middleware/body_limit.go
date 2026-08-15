@@ -8,6 +8,7 @@ import (
 )
 
 const MaxRequestBodyBytes int64 = 16 * 1024
+const MaxCommentRequestBodyBytes int64 = 80 * 1024
 
 // LimitRequestBody enforces the same limit for declared and streaming bodies.
 func LimitRequestBody(maxBytes int64) gin.HandlerFunc {

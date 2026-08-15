@@ -49,7 +49,7 @@ func NewRouter() (*gin.Engine, error) {
 
 		public.POST(
 			"/comment/submit",
-			middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
+			middleware.LimitRequestBody(middleware.MaxCommentRequestBodyBytes),
 			middleware.RateLimit("comment_submit"),
 			comment.SubmitComment,
 		)
@@ -112,8 +112,8 @@ func NewRouter() (*gin.Engine, error) {
 			)
 			site := protected.Group("/sites/:siteId")
 			site.Use(middleware.RequireAdminSiteAccess())
-			site.GET("/comments", adminhandler.ListComments)
-			site.GET("/comments/:commentId", adminhandler.GetComment)
+			site.GET("/comments", middleware.RequireInstanceAdmin(), adminhandler.ListComments)
+			site.GET("/comments/:commentId", middleware.RequireInstanceAdmin(), adminhandler.GetComment)
 			site.DELETE(
 				"/comments/:commentId",
 				middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),

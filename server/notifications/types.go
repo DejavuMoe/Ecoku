@@ -59,6 +59,7 @@ type outboxRow struct {
 	ID            uint       `gorm:"column:id"`
 	EventType     string     `gorm:"column:event_type"`
 	CommentID     uint       `gorm:"column:comment_id"`
+	Target        string     `gorm:"column:target"`
 	Status        string     `gorm:"column:status"`
 	Attempts      int        `gorm:"column:attempts"`
 	AvailableAt   time.Time  `gorm:"column:available_at"`

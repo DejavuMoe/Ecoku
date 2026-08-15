@@ -4,7 +4,8 @@ site:
   port: 12123
   # 始终写入 stdout。普通文件路径会额外保留进程内轮转副本。
   log_path: "/var/log/ecoku/ecoku.log"
-  # 推荐拓扑（Compose 绑 127.0.0.1 + 本机 Caddy/Nginx）保持为空。不要填 0.0.0.0/0。
+  # 空列表表示所有访客共用一个限流桶。生产若经本机 Caddy 反代到 127.0.0.1:12123
+  # 且需要按真实访客限流，填 Docker 网关 /32。不要填 0.0.0.0/0 或 ::/0。
   trusted_proxies: []
 
 # 镜像内置浏览器 SDK、加载器和可选评论区 CSS；不要把管理凭据放进这些静态资源。
@@ -26,6 +27,7 @@ notifications:
 
 database:
   sqlite:
+    # 空库按顺序初始化到最新 schema；已有库只接受本版本迁移链上的顺序升级。
     path: "/data/ecoku.sqlite3"
 
 admin:

@@ -39,7 +39,7 @@ export interface CommentSubmission extends CommentDraft {
 export interface CommentSubmitResponse {
   code: number
   message: string
-  data: { id: number }
+  data: { id: number; isBlogger: boolean }
 }
 
 export interface CommentPage {
@@ -124,6 +124,7 @@ function normalizeFormConfig(value: unknown): CommentFormConfig {
     emptyMessage,
     bloggerBadge,
     turnstileSitekey,
+    bloggerProofEnabled: raw.bloggerProofEnabled === true,
   }
 }
 
@@ -253,13 +254,18 @@ export async function submitComment(
   if (draft.email) submission.email = draft.email
   if (draft.url) submission.url = draft.url
   if (draft.turnstileToken) submission.turnstileToken = draft.turnstileToken
-  const envelope = await requestJSON<{ id: number }>(apiURL(config, 'api/comment/submit'), {
+  const envelope = await requestJSON<{ id?: unknown; isBlogger?: unknown }>(apiURL(config, 'api/comment/submit'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(submission),
   }, signal)
-  if (!envelope.data || !Number.isInteger(envelope.data.id) || envelope.data.id <= 0) {
+  const id = envelope.data && Number.isInteger(envelope.data.id) ? Number(envelope.data.id) : 0
+  if (id <= 0) {
     throw new EcokuRequestError(500, 'invalid-response')
   }
-  return { code: envelope.code, message: envelope.message, data: envelope.data }
+  return {
+    code: envelope.code,
+    message: envelope.message,
+    data: { id, isBlogger: envelope.data?.isBlogger === true },
+  }
 }

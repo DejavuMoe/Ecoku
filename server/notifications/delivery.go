@@ -9,9 +9,12 @@ import (
 	"fmt"
 	"io"
 	"mime"
+	"mime/multipart"
+	"mime/quotedprintable"
 	"net"
 	"net/http"
 	"net/smtp"
+	"net/textproto"
 	"net/url"
 	"strconv"
 	"strings"
@@ -73,28 +76,12 @@ func deliverSMTP(ctx context.Context, config EmailConfig, recipient string, mess
 	if err != nil {
 		return err
 	}
-	boundary := "ecoku-boundary-7f53"
-	payload := strings.Join([]string{
-		"From: " + config.FromAddress,
-		"To: " + recipient,
-		"Subject: " + mime.QEncoding.Encode("UTF-8", message.Subject),
-		"MIME-Version: 1.0",
-		"Content-Type: multipart/alternative; boundary=\"" + boundary + "\"",
-		"",
-		"--" + boundary,
-		"Content-Type: text/plain; charset=UTF-8",
-		"Content-Transfer-Encoding: 8bit",
-		"",
-		message.Text,
-		"--" + boundary,
-		"Content-Type: text/html; charset=UTF-8",
-		"Content-Transfer-Encoding: 8bit",
-		"",
-		message.HTML,
-		"--" + boundary + "--",
-		"",
-	}, "\r\n")
-	if _, err := io.WriteString(writer, payload); err != nil {
+	payload, err := buildSMTPPayload(config.FromAddress, recipient, message)
+	if err != nil {
+		_ = writer.Close()
+		return err
+	}
+	if _, err := writer.Write(payload); err != nil {
 		_ = writer.Close()
 		return err
 	}
@@ -102,6 +89,44 @@ func deliverSMTP(ctx context.Context, config EmailConfig, recipient string, mess
 		return err
 	}
 	return client.Quit()
+}
+
+func buildSMTPPayload(from, recipient string, message emailMessage) ([]byte, error) {
+	var parts bytes.Buffer
+	multipartWriter := multipart.NewWriter(&parts)
+	if err := writeQuotedPart(multipartWriter, "text/plain; charset=UTF-8", message.Text); err != nil {
+		return nil, err
+	}
+	if err := writeQuotedPart(multipartWriter, "text/html; charset=UTF-8", message.HTML); err != nil {
+		return nil, err
+	}
+	if err := multipartWriter.Close(); err != nil {
+		return nil, err
+	}
+	var payload bytes.Buffer
+	fmt.Fprintf(&payload, "From: %s\r\n", from)
+	fmt.Fprintf(&payload, "To: %s\r\n", recipient)
+	fmt.Fprintf(&payload, "Subject: %s\r\n", mime.QEncoding.Encode("UTF-8", message.Subject))
+	payload.WriteString("MIME-Version: 1.0\r\n")
+	fmt.Fprintf(&payload, "Content-Type: multipart/alternative; boundary=%s\r\n\r\n", multipartWriter.Boundary())
+	payload.Write(parts.Bytes())
+	return payload.Bytes(), nil
+}
+
+func writeQuotedPart(writer *multipart.Writer, contentType, body string) error {
+	header := make(textproto.MIMEHeader)
+	header.Set("Content-Type", contentType)
+	header.Set("Content-Transfer-Encoding", "quoted-printable")
+	part, err := writer.CreatePart(header)
+	if err != nil {
+		return err
+	}
+	encoder := quotedprintable.NewWriter(part)
+	if _, err := encoder.Write([]byte(body)); err != nil {
+		_ = encoder.Close()
+		return err
+	}
+	return encoder.Close()
 }
 
 func deliverTelegram(ctx context.Context, token, target, message string) error {

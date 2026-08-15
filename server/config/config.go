@@ -105,8 +105,9 @@ type CommentFormConfig struct {
 	DefaultSort      string `json:"defaultSort"`
 	LengthLimit      int    `json:"lengthLimit"`
 	EmptyMessage     string `json:"emptyMessage"`
-	BloggerBadge     string `json:"bloggerBadge"`
-	TurnstileSitekey string `json:"turnstileSitekey"`
+	BloggerBadge        string `json:"bloggerBadge"`
+	TurnstileSitekey    string `json:"turnstileSitekey"`
+	BloggerProofEnabled bool   `json:"bloggerProofEnabled"`
 }
 
 type DatabaseConfig struct {
@@ -478,10 +479,16 @@ func validateTrustedProxies(proxies []string) error {
 		if trimmed == "" {
 			return fmt.Errorf("site.trusted_proxies[%d] 不能为空", i)
 		}
-		if net.ParseIP(trimmed) == nil {
-			if _, _, err := net.ParseCIDR(trimmed); err != nil {
-				return fmt.Errorf("site.trusted_proxies[%d] 必须是明确的 IP 或 CIDR", i)
-			}
+		if net.ParseIP(trimmed) != nil {
+			continue
+		}
+		_, network, err := net.ParseCIDR(trimmed)
+		if err != nil {
+			return fmt.Errorf("site.trusted_proxies[%d] 必须是明确的 IP 或 CIDR", i)
+		}
+		ones, _ := network.Mask.Size()
+		if ones == 0 {
+			return fmt.Errorf("site.trusted_proxies[%d] 禁止任意信任（含 0.0.0.0/0 与 ::/0）", i)
 		}
 	}
 	return nil
@@ -640,8 +647,9 @@ func GetCommentFormConfig(siteID string) (CommentFormConfig, bool) {
 		DefaultSort:      site.Comment.DefaultSort,
 		LengthLimit:      site.Comment.LengthLimit,
 		EmptyMessage:     site.Comment.EmptyMessage,
-		BloggerBadge:     DefaultBloggerBadge,
-		TurnstileSitekey: "",
+		BloggerBadge:         DefaultBloggerBadge,
+		TurnstileSitekey:     "",
+		BloggerProofEnabled:  false,
 	}, true
 }
 

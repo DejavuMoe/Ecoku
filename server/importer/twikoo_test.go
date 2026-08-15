@@ -64,6 +64,25 @@ func TestImportTwikooPreservesHierarchyIdentityAndPlainText(t *testing.T) {
 	}
 }
 
+func TestImportTwikooStripsQueryAndFragmentFromPageKey(t *testing.T) {
+	twikooTestDatabase(t)
+	fixture := `[{"_id":"one","url":"https://blog.example.test/posts/example/?utm=1#section","nick":"Alice","comment":"<p>Hello</p>","created":1710000000000}]`
+	result, err := ImportTwikoo(context.Background(), model.DB, strings.NewReader(fixture), TwikooImportOptions{SiteID: "blog"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Imported != 1 {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+	var comment model.Comment
+	if err := model.DB.First(&comment).Error; err != nil {
+		t.Fatal(err)
+	}
+	if comment.Mark != "/posts/example/" {
+		t.Fatalf("page key=%q", comment.Mark)
+	}
+}
+
 func TestImportTwikooRequiresEmptySiteAndDryRunRollsBack(t *testing.T) {
 	twikooTestDatabase(t)
 	fixture := `[{"_id":"one","url":"/","nick":"Alice","mail":"alice@example.test","comment":"<p>Hello</p>","created":1710000000000}]`

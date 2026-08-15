@@ -92,10 +92,26 @@ func SubmitComment(c *gin.Context) {
 		utils.SendError(c, http.StatusBadRequest, "页面 key 无效")
 		return
 	}
+	if strings.ContainsRune(content, 0) || strings.ContainsRune(username, 0) || strings.ContainsRune(email, 0) || strings.ContainsRune(website, 0) || strings.ContainsRune(pageTitle, 0) {
+		utils.SendError(c, http.StatusBadRequest, "评论内容无效")
+		return
+	}
 	if pageTitle != "" && textLength(pageTitle) > 200 {
 		utils.SendError(c, http.StatusBadRequest, "文章标题无效")
 		return
 	}
+
+	blogger := site.MatchesBloggerPassphrase(username)
+	if blogger {
+		if !site.BloggerProofConfigured() {
+			utils.SendError(c, http.StatusBadRequest, "评论内容无效")
+			return
+		}
+		username = strings.TrimSpace(site.BloggerNickname)
+		email = strings.TrimSpace(site.BloggerEmail)
+		website = strings.TrimSpace(site.SiteURL)
+	}
+
 	if content == "" || textLength(content) > site.CommentLimit {
 		utils.SendError(c, http.StatusBadRequest, "评论内容无效")
 		return
@@ -104,11 +120,11 @@ func SubmitComment(c *gin.Context) {
 		utils.SendError(c, http.StatusBadRequest, "昵称无效")
 		return
 	}
-	if (site.EmailRequired && email == "") || (email != "" && !validEmail(email)) {
+	if (site.EmailRequired && !blogger && email == "") || (email != "" && !validEmail(email)) {
 		utils.SendError(c, http.StatusBadRequest, "邮箱无效")
 		return
 	}
-	if (site.WebsiteRequired && website == "") || !validWebsiteURL(website) {
+	if (site.WebsiteRequired && !blogger && website == "") || !validWebsiteURL(website) {
 		utils.SendError(c, http.StatusBadRequest, "网址无效，仅支持 http 或 https")
 		return
 	}
@@ -129,24 +145,6 @@ func SubmitComment(c *gin.Context) {
 	}
 	var parentID *uint
 	if parentValue > 0 {
-		var parent model.Comment
-		err := model.DB.Where("id = ?", parentValue).First(&parent).Error
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			utils.SendError(c, http.StatusNotFound, "父评论不存在")
-			return
-		}
-		if err != nil {
-			utils.SendError(c, http.StatusInternalServerError, "验证父评论失败")
-			return
-		}
-		if parent.SiteID != siteID || parent.Mark != mark {
-			utils.SendError(c, http.StatusConflict, "父评论不属于当前站点和页面")
-			return
-		}
-		if parent.DeletedAt != nil {
-			utils.SendError(c, http.StatusConflict, "不能回复已删除评论")
-			return
-		}
 		value := uint(parentValue)
 		if int(value) != parentValue {
 			utils.SendError(c, http.StatusBadRequest, "父评论 ID 无效")
@@ -162,6 +160,7 @@ func SubmitComment(c *gin.Context) {
 		Content:   content,
 		ParentID:  parentID,
 		Username:  username,
+		IsBlogger: blogger,
 	}
 	if email != "" {
 		emailValue := email
@@ -173,14 +172,45 @@ func SubmitComment(c *gin.Context) {
 	}
 
 	if err := model.DB.Transaction(func(tx *gorm.DB) error {
+		if parentID != nil {
+			var parent model.Comment
+			err := tx.Where("id = ?", *parentID).First(&parent).Error
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errParentNotFound
+			}
+			if err != nil {
+				return err
+			}
+			if parent.SiteID != siteID || parent.Mark != mark {
+				return errParentConflict
+			}
+			if parent.DeletedAt != nil {
+				return errParentUnavailable
+			}
+		}
 		if err := tx.Create(&comment).Error; err != nil {
 			return err
 		}
 		return notifications.EnqueueNewComment(tx, comment)
 	}); err != nil {
-		utils.SendError(c, http.StatusInternalServerError, "保存评论失败")
+		switch {
+		case errors.Is(err, errParentNotFound):
+			utils.SendError(c, http.StatusNotFound, "父评论不存在")
+		case errors.Is(err, errParentConflict):
+			utils.SendError(c, http.StatusConflict, "父评论不属于当前站点和页面")
+		case errors.Is(err, errParentUnavailable):
+			utils.SendError(c, http.StatusConflict, "不能回复已删除评论")
+		default:
+			utils.SendError(c, http.StatusInternalServerError, "保存评论失败")
+		}
 		return
 	}
 
-	utils.SendResponse(c, http.StatusCreated, "评论提交成功", gin.H{"id": comment.ID})
+	utils.SendResponse(c, http.StatusCreated, "评论提交成功", gin.H{"id": comment.ID, "isBlogger": comment.IsBlogger})
 }
+
+var (
+	errParentNotFound    = errors.New("parent comment not found")
+	errParentConflict    = errors.New("parent comment conflict")
+	errParentUnavailable = errors.New("parent comment unavailable")
+)
