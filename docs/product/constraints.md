@@ -18,6 +18,7 @@
 - P3 的生产评论界面以 `designs/plain-thread-comments` 已批准原型为视觉与交互基线；
   不继承 Blog、PaperMod 或 Twikoo 文件映射。
 - 嵌入方必须显式提供容器、`serverURL`、`siteId` 和页面 `pageKey`；SDK 不猜测页面 key。
+  `pageKey` 必须是站内相对路径，不能是绝对 URL 或带 host 的引用；服务端提交会拒绝，通知原文链接也不会离开站点 host。
   `apiBaseUrl` 仅作为兼容别名保留并标记弃用，早期 DOM 属性扫描协议不再运行。
   默认 SDK 注入评论区样式。可选 `cssURL`（加载器对应 `data-css-url`）为绝对 http(s) URL、根相对路径或 `none`：非空则不再注入。容器另提供 `/client/ecoku.css` 与只含结构的 `/client/ecoku.unstyled.css`。自定义样式只作用于评论区前端。加载器脚本默认 `{serverURL}/client/ecoku-loader.js`，站点也可改用自己的 JS URL。
 - `Ecoku` 默认导出保留 `init()`、`reload()`、`isInitialized()`，并提供

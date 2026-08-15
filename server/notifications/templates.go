@@ -107,14 +107,18 @@ func emailShell(title, content string) string {
 
 func pageURL(site model.Site, mark string) string {
 	base, err := url.Parse(site.SiteURL + "/")
-	if err != nil {
+	if err != nil || base.Host == "" {
 		return site.SiteURL
 	}
-	reference, err := url.Parse(strings.TrimPrefix(mark, "/"))
-	if err != nil {
+	reference, err := url.Parse(strings.TrimPrefix(strings.TrimSpace(mark), "/"))
+	if err != nil || reference.IsAbs() || reference.Scheme != "" || reference.Host != "" || reference.User != nil {
 		return site.SiteURL
 	}
-	return base.ResolveReference(reference).String()
+	resolved := base.ResolveReference(reference)
+	if !strings.EqualFold(resolved.Scheme, base.Scheme) || !strings.EqualFold(resolved.Host, base.Host) {
+		return site.SiteURL
+	}
+	return resolved.String()
 }
 
 func truncateRunes(value string, maximum int) string {

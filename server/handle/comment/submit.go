@@ -88,7 +88,7 @@ func SubmitComment(c *gin.Context) {
 	email := strings.TrimSpace(req.Email)
 	website := strings.TrimSpace(req.URL)
 
-	if mark == "" || textLength(mark) > maxPageKeyLength {
+	if !validPageKey(mark) {
 		utils.SendError(c, http.StatusBadRequest, "页面 key 无效")
 		return
 	}

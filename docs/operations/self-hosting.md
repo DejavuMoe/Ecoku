@@ -313,7 +313,8 @@ sudo docker compose ps
 加载过程不显示「正在加载评论…」；失败时才展示状态文案和「重新加载评论」。未配置站点应渲染
 「评论服务尚未配置。」
 
-`pageKey` 必须由站点生成器明确提供，不能包含查询参数，也不能随标题或域名变化；`pageTitle`
+`pageKey` 必须由站点生成器明确提供，只能是站内相对路径（例如 `.RelPermalink`），不能是绝对 URL，
+不能包含查询参数，也不能随标题或域名变化；`pageTitle`
 用于通知中的文章标题。浏览器只接收公开配置，不得放入管理员 token 或 management key。
 
 默认 SDK 会把评论区样式注入宿主页面。可选 `data-css-url`（Hugo 配置 `css_url`）后不再注入，

@@ -165,6 +165,27 @@ func TestNewReplyQueuesBloggerAndDirectParentMailExactlyOnce(t *testing.T) {
 	}
 }
 
+func TestPageURLStaysOnSiteHost(t *testing.T) {
+	site := model.Site{SiteURL: "https://site.example"}
+	tests := []struct {
+		mark string
+		want string
+	}{
+		{mark: "/post", want: "https://site.example/post"},
+		{mark: "article-a", want: "https://site.example/article-a"},
+		{mark: "https://evil.example/phish", want: "https://site.example"},
+		{mark: "http://evil.example/phish", want: "https://site.example"},
+		{mark: "//evil.example/phish", want: "https://site.example"},
+		{mark: "///evil.example/phish", want: "https://site.example"},
+		{mark: "javascript:alert(1)", want: "https://site.example"},
+	}
+	for _, test := range tests {
+		if got := pageURL(site, test.mark); got != test.want {
+			t.Fatalf("mark=%q got=%q want=%q", test.mark, got, test.want)
+		}
+	}
+}
+
 func TestNotificationTemplatesUseSiteNameArticleTitleAndEscapeText(t *testing.T) {
 	setupNotificationTest(t)
 	site := model.Site{ID: "site-a", Name: "Dejavu's Blog", Domain: "site.example", SiteURL: "https://site.example"}
