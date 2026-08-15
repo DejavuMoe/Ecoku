@@ -1,7 +1,7 @@
 # Plain thread comments prototype
 
 Approved design history for Ecoku's no-avatar, plain-text comment surface.
-`index-v10.html` is the current approved production baseline. `index-v9.html`
+`index-v11.html` is the current approved production baseline. `index-v10.html`
 and earlier files remain historical evidence.
 
 ## Direction
@@ -186,6 +186,22 @@ Run its checks with:
 node designs/plain-thread-comments/prototype-v10.test.mjs
 ```
 
+Revision 11 is the approved production baseline on top of revision 10:
+
+- the inline reply composer reuses the root comment card: same 16px padding,
+  14px radius, identity field grid, message-field textarea, and footer with the
+  character count on the left; 取消 and 回复 are the same 32px pills as 发布;
+- `[+]` / `[-]` share a fixed 16px width so toggling does not shift the meta row;
+- comments whose nickname exactly matches the configured blogger show a
+  customizable badge after the name, default `[博主]`, with a quiet teal; an empty
+  badge hides the mark. Public pages never show the blogger email.
+
+Run its checks with:
+
+```text
+node designs/plain-thread-comments/prototype-v11.test.mjs
+```
+
 ## Review states
 
 - Light and dark themes.
@@ -197,5 +213,5 @@ node designs/plain-thread-comments/prototype-v10.test.mjs
 - Service unavailable and retry recovery.
 - Desktop at 1280x900 and mobile at 390x844.
 
-Status: `index-v10.html` is the approved production baseline. `index-v9.html`
+Status: `index-v11.html` is the approved production baseline. `index-v10.html`
 remains historical evidence.

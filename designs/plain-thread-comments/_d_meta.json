@@ -91,10 +91,19 @@
           "viewport": {
             "width": 720
           }
+        },
+        {
+          "path": "index-v11.html",
+          "createdAt": "2026-08-15T03:06:10.857Z",
+          "status": "approved",
+          "subtitle": "Approved: reply composer matches root, equal-width collapse, customizable blogger badge",
+          "viewport": {
+            "width": 720
+          }
         }
       ]
     }
   },
   "createdAt": "2026-08-12T08:14:10.430Z",
-  "updatedAt": "2026-08-15T01:33:03.683Z"
+  "updatedAt": "2026-08-15T03:12:42.591Z"
 }
