@@ -1,7 +1,7 @@
 # Ecoku 管理端设计基线
 
 本目录保存 Ecoku 管理端的已批准设计证据、脱敏 fixture 与发送模板设计基线。
-`index-v7.html` 是当前已批准且应当映射到生产管理端的站点配置与配色基线；评论管理、通知设置和仅供服务端渲染参考的通知模板继续沿用 v5。原型文件本身不调用真实 API，也不进入运行时镜像。
+`index-v8.html` 是当前已批准且应当映射到生产管理端的站点配置与配色基线；评论管理、通知设置和仅供服务端渲染参考的通知模板继续沿用 v5。原型文件本身不调用真实 API，也不进入运行时镜像。
 
 ## 当前产品边界
 
@@ -41,7 +41,8 @@
 
 ## 文件
 
-- `index-v7.html`：当前已批准站点配置、博主身份与 `auto` 配色设计基线；
+- `index-v8.html`：当前已批准站点配置、博主身份、评论区标志与 `auto` 配色设计基线；
+- `index-v7.html`：上一版已批准站点配置、博主身份与 `auto` 配色设计证据；
 - `index-v6.html`：上一版已批准站点配置与博主身份设计证据；
 - `index-v5.html`、`styles-v5.css`、`prototype-v5.js`：当前评论管理和通知设置布局设计基线；
 - `fixtures-v5.js`：脱敏的站点、评论与通知配置 fixture；
@@ -57,11 +58,12 @@
 从 `designs` 的父目录启动静态 HTTP 服务，然后打开：
 
 ```text
-http://127.0.0.1:4311/admin-moderation/index-v7.html
+http://127.0.0.1:4311/admin-moderation/index-v8.html
 ```
 
 执行无依赖静态契约测试：
 
 ```text
 node designs/admin-moderation/index-v7.test.mjs
+node designs/admin-moderation/index-v8.test.mjs
 ```

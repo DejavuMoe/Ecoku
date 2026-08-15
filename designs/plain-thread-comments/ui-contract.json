@@ -9,7 +9,7 @@
     {
       "id": "article-plain-thread-comments",
       "prototype": {
-        "entry": "index-v10.html",
+        "entry": "index-v11.html",
         "states": [
           "light",
           "dark",
@@ -49,7 +49,10 @@
           "left-aligned-character-count",
           "compact-publish-action",
           "count-and-sort-below-composer",
-          "paper-service-error"
+          "paper-service-error",
+          "shared-reply-composer",
+          "equal-width-collapse",
+          "blogger-badge"
         ]
       },
       "production": {
@@ -69,7 +72,7 @@
     {
       "id": "article-comment-form-configuration",
       "prototype": {
-        "entry": "index-v10.html",
+        "entry": "index-v11.html",
         "states": [
           "email-required",
           "email-optional",
@@ -85,7 +88,9 @@
           "inline-reply-identity-fields",
           "compact-identity-fields",
           "left-aligned-character-count",
-          "compact-publish-action"
+          "compact-publish-action",
+          "shared-reply-composer",
+          "blogger-badge"
         ]
       },
       "production": {
