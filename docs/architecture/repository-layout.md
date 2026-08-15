@@ -12,7 +12,7 @@
 | `examples/` | 无私有数据的最小站点接入示例 | 否 |
 | `compose.yaml`、`deploy/` | Forgejo 精确版本镜像、公开配置模板与私有环境变量占位 | Compose 进入源码，私有文件不进入 Git |
 | `.woodpecker/` | 测试、amd64/arm64 构建和多架构 manifest 工作流 | 否 |
-| `docs/` | 产品约束、统一自托管指南、架构说明和历史验收证据 | 否 |
+| `docs/` | 文档索引、产品约束、自托管指南、本地开发与架构说明 | 否 |
 | `scripts/` | 本地/测试环境同步和真实 API 冒烟工具 | 否 |
 | `VERSION`、`CHANGELOG.md` | 服务端容器发布版本与候选版本变更记录 | `VERSION` 保存不带 `v` 的唯一版本号；发布 tag 为 `v$(cat VERSION)`，并作为 OCI 构建参数与标签来源 |
 | `LICENSE` | 与容器 OCI `MIT` 标记一致的项目级许可证 | 随源码发布 |
@@ -22,5 +22,5 @@ Twikoo 导出、`node_modules` 与仓库外的本机测试站点均不得成为�
 
 历史验收记录保留当时的路径、版本和功能边界；移动后的历史原型位于
 `designs/archive/admin-layout/`。当前产品边界以 `docs/product/constraints.md` 和当前源码为准。
-面向操作者的 Docker Compose 首次部署、反向代理、Twikoo 导入、静态站点接入、SQLite 备份与升级
-统一维护在 `docs/operations/self-hosting.md`，不再拆分一次性 CI 验收或旧测试实例文档。
+面向操作者的部署与接入见 `docs/operations/self-hosting.md`；本地开发见
+`docs/development/local-setup.md`。文档总索引见 `docs/README.md`。

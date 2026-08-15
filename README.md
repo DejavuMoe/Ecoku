@@ -12,9 +12,14 @@ SQLite3 持久化。
 - 只支持 SQLite3，schema 通过显式、事务化迁移原位升级。
 
 生产部署直接使用仓库根 `compose.yaml`：端口已绑到宿主机 `127.0.0.1:12123`，前面用本机 Caddy
-或 Nginx 做 HTTPS 反代即可。公开配置与环境变量模板在 `deploy/`。完整步骤、首次初始化、备份升级、
-Twikoo 导入与站点接入见 [Docker Compose 自托管指南](docs/operations/self-hosting.md)。产品与隐私
-边界见 [产品约束](docs/product/constraints.md)。
+或 Nginx 做 HTTPS 反代即可。公开配置与环境变量模板在 `deploy/`。
+
+| 文档 | 说明 |
+| --- | --- |
+| [文档索引](docs/README.md) | 运维、开发、产品与架构入口 |
+| [Docker Compose 自托管](docs/operations/self-hosting.md) | 部署、反代、备份、升级与故障排查 |
+| [本地开发](docs/development/local-setup.md) | Go / client / admin 联调 |
+| [产品约束](docs/product/constraints.md) | 评论、隐私、通知与迁移边界 |
 
 ## 最小 Hugo 接入
 
@@ -69,19 +74,5 @@ params:
 
 ## 开发验证
 
-```powershell
-cd server
-go test -count=1 ./...
-go vet ./...
-
-pnpm --dir packages/client test
-pnpm --dir packages/client type-check
-pnpm --dir packages/client build
-
-pnpm --dir packages/admin test
-pnpm --dir packages/admin type-check
-pnpm --dir packages/admin build
-```
-
-`docs/progress/` 中的 P0～P4 与专项验收记录只描述当时版本。提交、推送、tag、发布、生产迁移
-和清理真实数据仍需单独授权。
+本地联调见 [本地开发指南](docs/development/local-setup.md)。提交前由 Woodpecker 跑完整门禁；
+本地仅在 CI 未覆盖处补充（见该文档第 7 节）。

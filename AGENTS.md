@@ -8,6 +8,7 @@
   `designs/admin-moderation/index-v11.html` 为准（系统衬线栈），安全与登录验证以 `index-v10.html` 为准，
   评论管理/通知设置仍沿用 v5。生产管理端不得展示通知判定预览或通知模板预览。
 - 边界不清时先查源码和上述文档，再集中向用户确认。不要把原型 mock、测试文案或设计标注带进生产。
+- 文档索引见 `docs/README.md`；本地开发见 `docs/development/local-setup.md`。
 - 改运行时、部署契约、接入 markup、配置键、环境变量或用户可见行为后，按改动同步文档，不要留到发版才补：
   产品/隐私边界写 `docs/product/constraints.md`；部署、Compose、环境变量和升级写
   `docs/operations/self-hosting.md` 与 `deploy/` 模板；公开接入片段写根 `README.md` 与 `examples/`；

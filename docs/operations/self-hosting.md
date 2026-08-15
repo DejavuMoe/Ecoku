@@ -1,8 +1,21 @@
 # Ecoku Docker Compose 自托管指南
 
-本文是当前唯一的部署与接入指南，覆盖首次部署、管理员初始化、Caddy/Nginx、站点注册、
-Twikoo 首次导入、静态网站接入、SQLite 备份、升级与恢复。Ecoku 当前只支持 Docker Compose
-和 SQLite3；示例中的域名、镜像地址、用户名和文件路径都必须替换成自己的值。
+部署与接入的唯一运维入口。Ecoku 只支持 Docker Compose 与 SQLite3；示例中的域名、镜像地址、
+用户名和路径须替换为自己的值。
+
+## 目录
+
+1. [前提与目录](#1-前提与目录)
+2. [准备 Compose 与公开配置](#2-准备-compose-与公开配置)
+3. [首次初始化管理员](#3-首次初始化管理员)
+4. [启动与健康检查](#4-启动与健康检查)
+5. [反向代理](#5-反向代理)
+6. [登录、站点与通知](#6-登录站点与通知)
+7. [Twikoo 首次导入](#7-添加站点后首次导入-twikoo)
+8. [静态网站接入](#8-静态网站与-hugo-papermod-接入)
+9. [备份、升级与恢复](#9-sqlite-wal备份升级与恢复)
+10. [故障排查](#10-故障排查)
+11. [验收清单](#11-验收清单)
 
 ## 1. 前提与目录
 
@@ -163,28 +176,48 @@ curl --fail --head http://127.0.0.1:12123/client/ecoku.umd.js
 `max-size` / `max-file` 负责轮转 Docker 保存的 stdout 副本。不要用 `GIN_MODE=debug` 替代
 访问日志；日志仍不得包含 IP、UA、凭据或评论正文。
 
-## 5. Caddy 或 Nginx 反向代理
+## 5. 反向代理
 
-把 HTTPS 终止在本机反代，上游指向 `127.0.0.1:12123`。`/api/health` 只表示进程可响应。
+把 HTTPS 终止在本机反代，上游指向 `127.0.0.1:12123`。`/api/health` 只表示进程可响应，
+不证明数据库或迁移已完成。
 
-若要按真实客户端限流（拓扑 1），Caddy 必须覆盖而不是追加 `X-Forwarded-For`，并把 Ecoku 的
-`trusted_proxies` 设为 Docker 网关 `/32`。拓扑 2（CDN → Caddy）仍只让 Ecoku 信任该网关，由 Caddy
-写入 CDN 提供的 Connecting-IP。拓扑 3 保持 `trusted_proxies: []`，所有访客共用一个限流桶。
+### 限流拓扑
+
+Ecoku 默认不信任 `X-Forwarded-For`，限流使用 socket 对端地址。只有**直接 TCP 对端**匹配
+`trusted_proxies` 中的 IP/CIDR 时，才从转发头解析访客地址。禁止配置 `0.0.0.0/0` 或 `::/0`。
+
+| 拓扑 | 链路 | `trusted_proxies` | 反代对 `X-Forwarded-For` |
+| --- | --- | --- | --- |
+| 1（推荐） | 访客 → Caddy → `127.0.0.1:12123` | Docker 网关 `/32` | **覆盖**为 `{remote_host}` / `$remote_addr` |
+| 2 | 访客 → CDN → Caddy → Compose | 仍为 Docker 网关 `/32` | Caddy **覆盖**为 CDN Connecting-IP |
+| 3 | 直连或不做按人限流 | `[]`（默认） | 不必改头；所有访客共用一个限流桶 |
+
+查 Docker 网关：
+
+```bash
+sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}'
+```
 
 ### Caddy
 
 ```caddyfile
 comments.example.com {
-    encode zstd gzip
-    reverse_proxy 127.0.0.1:12123 {
-        header_up X-Forwarded-For {remote_host}
-    }
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:12123 {
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
 }
 ```
 
-Caddy 会自动申请和续期 TLS。保存后：
+`header_up X-Forwarded-For {remote_host}` 用 Caddy 看到的 TCP 对端**覆盖**该头，不要删。
+Caddy 可能提示 `Unnecessary header_up`；默认是把已有头传给上游（访客可以伪造
+`X-Forwarded-For`），与覆盖不是一回事，警告可忽略。
+
+保存后先格式化再校验、重载：
 
 ```bash
+sudo caddy fmt --overwrite /etc/caddy/Caddyfile
 sudo caddy validate --config /etc/caddy/Caddyfile
 sudo systemctl reload caddy
 ```
@@ -214,7 +247,30 @@ curl --fail https://comments.example.com/api/health
 curl --fail --head https://comments.example.com/client/ecoku-loader.js
 ```
 
-## 6. 登录、添加站点与通知规则
+### Cloudflare CDN（拓扑 2）
+
+Ecoku 只信任 Docker 网关，不直接信任 Cloudflare IP 段。由本机 Caddy 读取 CDN 提供的真实访客 IP，
+再覆盖 `X-Forwarded-For` 传给容器。
+
+```caddyfile
+comments.example.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:12123 {
+		header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+		header_up X-Forwarded-Proto {scheme}
+	}
+}
+```
+
+要点：
+
+- `app/config.yaml` 的 `trusted_proxies` 仍只填 Docker 网关 `/32`，不要填 Cloudflare CIDR。
+- 限制 Caddy 只接受来自 Cloudflare 的入站连接（防火墙或 `remote_ip` 匹配 Cloudflare 发布段）。
+- Turnstile 与 CDN 代理是两套机制：`cf_clearance` 只跳过后续 Cloudflare 安全规则，不会让 Ecoku
+  跳过 Siteverify。管理端或评论站不在 Cloudflare 代理之后时，应关闭 Pre-clearance，否则浏览器会
+  向站点自身请求 `/cdn-cgi/challenge-platform/` 并得到 404。
+
+## 6. 登录、站点与通知
 
 访问 `https://comments.example.com/admin/`，使用初始化的管理员账户登录。在「站点管理」中创建：
 
@@ -239,7 +295,7 @@ curl --fail --head https://comments.example.com/client/ecoku-loader.js
 昵称与邮箱必须共同匹配才用于历史回填；公开徽章和通知去重读取存储的 `is_blogger`。邮箱比较不区分大小写，昵称去除首尾空白后精确比较。
 SMTP 只允许 TLS 或 STARTTLS。SMTP、Telegram 与接收目标仍在实例级「通知设置」中配置。密码和 Bot Token 不会明文回显。
 
-## 7. 添加站点后首次导入 Twikoo
+## 7. Twikoo 首次导入
 
 仅在目标站点已经创建、但评论数仍为零时执行一次。导入保留时间、昵称、私有邮箱、网站、
 页面 key、回复层级和转换后的纯文本正文；不导入 IP、UA、地区、头像、赞踩或外部用户 ID，
@@ -288,7 +344,7 @@ sudo docker compose ps
 整批导入使用一个事务；失败不会留下部分数据，目标站点已有评论时会拒绝。验收后从服务器删除
 含私有邮箱的原始导出；冷备份是否保留由管理员决定，Ecoku 不会自动删除它。
 
-## 8. 静态网站与 Hugo PaperMod 接入
+## 8. 静态网站接入
 
 ### 通用静态网站
 
@@ -363,7 +419,7 @@ params:
 拒绝未登记 Origin，以及刷新后 7 天加密身份恢复。访客身份只存于当前 Origin 的 IndexedDB；
 清除浏览器站点数据会自然删除，不提供额外清除按钮。
 
-## 9. SQLite WAL、备份、升级与恢复
+## 9. 备份、升级与恢复
 
 Ecoku 启动时启用 WAL、外键、忙等待和单连接。运行中可能同时存在：
 
@@ -394,6 +450,76 @@ sudo cp --preserve=mode,timestamps ./compose.yaml "./backups/compose-${backup_st
 sudo cp --preserve=mode,timestamps ./app/config.yaml "./backups/config-${backup_stamp}.yaml"
 sudo cp --preserve=mode,timestamps ./ecoku.env "./backups/ecoku-${backup_stamp}.env"
 ```
+
+### 定时冷备份
+
+生产建议用 **停服冷备份**：脚本先 `docker compose down`，确认 WAL/SHM 不存在，再复制主库与配置，
+最后 `up -d`。运行中只复制 `ecoku.sqlite3` 可能得到不一致快照。
+
+把下面脚本保存为 `~/Ecoku/scripts/backup-ecoku.sh`（路径自定），并 `chmod 700`：
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+cd ~/Ecoku
+umask 077
+mkdir -p ./backups
+backup_stamp="$(date +%Y%m%d-%H%M%S)"
+sudo docker compose down
+sudo test ! -e ./data/ecoku.sqlite3-wal
+sudo test ! -e ./data/ecoku.sqlite3-shm
+sudo cp --reflink=auto --preserve=mode,timestamps \
+  ./data/ecoku.sqlite3 "./backups/ecoku-${backup_stamp}.sqlite3"
+sudo chown "$USER":"$USER" "./backups/ecoku-${backup_stamp}.sqlite3"
+chmod 600 "./backups/ecoku-${backup_stamp}.sqlite3"
+sha256sum "./backups/ecoku-${backup_stamp}.sqlite3" \
+  > "./backups/ecoku-${backup_stamp}.sqlite3.sha256"
+sudo cp --preserve=mode,timestamps ./compose.yaml "./backups/compose-${backup_stamp}.yaml"
+sudo cp --preserve=mode,timestamps ./app/config.yaml "./backups/config-${backup_stamp}.yaml"
+sudo cp --preserve=mode,timestamps ./ecoku.env "./backups/ecoku-${backup_stamp}.env"
+# 保留最近 30 份数据库备份（按修改时间）
+ls -1t ./backups/ecoku-*.sqlite3 2>/dev/null | tail -n +31 | xargs -r rm -f
+ls -1t ./backups/ecoku-*.sqlite3.sha256 2>/dev/null | tail -n +31 | xargs -r rm -f
+sudo docker compose up -d
+```
+
+**systemd 定时器**（每天 03:15，按需改路径与用户）：
+
+```ini
+# /etc/systemd/system/ecoku-backup.service
+[Unit]
+Description=Ecoku cold backup
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=ecoku
+WorkingDirectory=/home/ecoku/Ecoku
+ExecStart=/home/ecoku/Ecoku/scripts/backup-ecoku.sh
+```
+
+```ini
+# /etc/systemd/system/ecoku-backup.timer
+[Unit]
+Description=Daily Ecoku cold backup
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now ecoku-backup.timer
+systemctl list-timers ecoku-backup.timer
+```
+
+**cron** 等价写法：`15 3 * * * /home/ecoku/Ecoku/scripts/backup-ecoku.sh`。备份期间服务会短暂不可用；
+若不能接受停服，须在维护窗口手动执行第 9 节的一次性备份命令。
 
 升级顺序：
 
@@ -493,7 +619,25 @@ sudo docker compose exec ecoku wget -q -O- http://127.0.0.1:12123/api/health
 格式；要等含上述变更的新镜像 tag。该版本也未改 schema，升级仍是停服冷备份 → 改精确镜像 tag →
 `sudo docker compose pull && sudo docker compose up -d`。
 
-## 10. 验收清单
+## 10. 故障排查
+
+| 现象 | 常见原因 | 处理 |
+| --- | --- | --- |
+| 容器 `unhealthy` 或反复重启 | 迁移失败、配置校验失败、管理员静态目录缺失 | `sudo docker compose logs --tail=200 ecoku`；对照 `CHANGELOG.md` 与第 9 节 schema 说明 |
+| 启动报未知 schema / 校验和不符 | 用旧镜像打开已升级库，或手工改过 `schema_migrations` | 停服，用升级前冷备份整库恢复；不要只回退镜像 |
+| 限流像「所有人共用一个桶」 | `trusted_proxies` 为空，或反代**追加**而非覆盖 `X-Forwarded-For` | 按第 5 节拓扑 1 配置网关 `/32` 与 Caddy/Nginx 头 |
+| 配置了 `trusted_proxies` 仍不按人限流 | 填了 `0.0.0.0/0` 或 CDN 段而非 Docker 网关 | 只填 `docker inspect` 得到的网关 `/32` |
+| CORS 拒绝评论提交 | 站点 `allowed_origins` 未登记页面 Origin | 管理端补全来源；区分管理端与公开站点来源 |
+| Turnstile 登录/评论失败 | 未启用、token 缺失、Siteverify 失败 | 管理端「安全」检查 Sitekey/Secret；Secret 需 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` |
+| 控制台 `aborting clearance redemption` | 开启了 Cloudflare Pre-clearance，但站点不在 CF 代理后 | 在 Cloudflare 控制台关闭 Pre-clearance；小组件仍可完成 Siteverify |
+| 备份后恢复仍异常 | 备份时存在 WAL/SHM，或只复制了主文件 | 必须停服且确认无 WAL/SHM 后再备份（见第 9 节） |
+| 评论时间不对 | 容器未设置 `TZ` 或改 `ecoku.env` 后未重建容器 | 在 `ecoku.env` 写 IANA 名称后 `docker compose up -d` |
+| 博主评论无标志 | 历史评论未回填 | 管理端保存博主口令；昵称+邮箱须与历史评论一致 |
+| management key 能删不能看列表 | 产品设计：key 仅墓碑删除 | 列表/详情用管理员 Bearer；自动化删除用 `EcokuSite` key |
+
+停服后只读查看库结构，见第 9 节末尾的 Python 片段。
+
+## 11. 验收清单
 
 - `sudo docker compose ps` 显示 `healthy`；
 - 公网 `/api/health`、`/admin/`、加载器和 UMD 均为 HTTPS；

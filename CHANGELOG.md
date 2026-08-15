@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### 变更
+
+- 文档：新增 `docs/README.md` 索引与 `docs/development/local-setup.md` 本地开发指南；自托管指南补充目录、限流拓扑表、Cloudflare CDN 示例、`caddy fmt --overwrite`、定时冷备份与故障排查表。
+- 测试：管理端站点更新保存博主口令时回填历史 `is_blogger` 评论。
+
 ## [0.1.3] - 2026-08-15
 
 ### 变更
