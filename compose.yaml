@@ -2,9 +2,10 @@ name: ecoku
 
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.1.0-rc.7"
+    image: "git.via.moe/dejavu/ecoku:v0.1.0-rc.8"
     init: true
     restart: unless-stopped
+    container_name: ecoku
     env_file:
       - ./ecoku.env
     ports:

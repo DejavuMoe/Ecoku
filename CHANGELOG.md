@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.1.0-rc.8] - 2026-08-15
+
 ### 变更
 
 - 评论区采用已批准的 v13：根评论与回复发表框在正文下方挂载自适应 Cloudflare Turnstile；
@@ -23,14 +25,15 @@
 
 ### 升级边界
 
-- SQLite schema 从 v3 原文件内事务性升级到 v4，只增加实例级 `turnstile_settings` 和版本记录；
-  默认关闭，不挑战访客或管理员登录。启用前必须先在 Cloudflare 把管理端与全部评论站点主机名加入小组件；
-- SQLite schema 从 v2 原文件内事务性升级到 v3，只增加站点 `blogger_badge` 和版本记录；
-  已有站点该字段默认为 `[博主]`，可在管理端改成 `[OP]` 等或留空关闭；
+- 从 `v0.1.0-rc.7`（schema v2）升级会在原 SQLite 文件内依次事务性写入 v3 与 v4：v3 增加站点
+  `blogger_badge`（默认 `[博主]`，可改成 `[OP]` 等或留空关闭），v4 增加实例级 `turnstile_settings`
+  （默认关闭，不挑战访客或管理员登录）。启用 Turnstile 前必须先在 Cloudflare 把管理端与全部评论
+  站点主机名加入小组件；
 - 已有实例在 `ecoku.env` 增加 `TZ='<IANA>'` 后，用当前 `compose.yaml` 的 `env_file` 重建容器即可，
-  不必改 `app/config.yaml` 或 Compose 挂载；
-- 当前已发布镜像 `v0.1.0-rc.7` 还不读取 `TZ` 来格式化评论时间。要让评论时间与悬停文案生效，必须先发
-  含上述变更的新 tag，再改精确镜像 tag。
+  不必改 `app/config.yaml`；
+- 从 `v0.1.0-rc.7` 升级必须先停服做冷备份，再把 `compose.yaml` 的精确镜像 tag 改为
+  `v0.1.0-rc.8`，然后 `sudo docker compose pull && sudo docker compose up -d`；
+- 回滚时改回 `v0.1.0-rc.7`，并用停服前备份替换已升级的数据库。已写入 v3/v4 的库不能只换回旧镜像。
 
 ## [0.1.0-rc.7] - 2026-08-15
 
@@ -135,3 +138,4 @@
 [0.1.0-rc.5]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.5
 [0.1.0-rc.6]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.6
 [0.1.0-rc.7]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.7
+[0.1.0-rc.8]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.8
