@@ -5,11 +5,21 @@
 
 ## [Unreleased]
 
+## [0.1.0-rc.7] - 2026-08-15
+
 ### 变更
 
 - 宿主接入改为 `data-ecoku-*` 选择器，外壳与挂载点 id 为 `ecoku-comments` / `ecoku-mount`，
   去掉 Twikoo 遗留的 `tcomment`。加载器暂时仍识别旧的 `#tcomment` 与 `.comment-*` 类名。
 - 宿主 `ecoku.css` 仅用于滚动加载前的外壳，评论区样式仍由 SDK 注入。
+
+### 升级边界
+
+- 本版本不改变 SQLite schema，仍为 v2；
+- 从 `v0.1.0-rc.6` 升级必须先停服做冷备份，再把 `compose.yaml` 的精确镜像 tag 改为
+  `v0.1.0-rc.7`；
+- 使用新 markup 的站点需要本版本加载器；旧接入方式仍可用。博客评论 partial 应在本镜像上线后再部署；
+- 回滚时改回 `v0.1.0-rc.6`。本次未写入新 schema，一般不必替换数据库；若启动失败，仍用停服前备份恢复。
 
 ## [0.1.0-rc.6] - 2026-08-15
 
@@ -97,3 +107,4 @@
 [0.1.0-rc.3]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.3
 [0.1.0-rc.5]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.5
 [0.1.0-rc.6]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.6
+[0.1.0-rc.7]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.7
