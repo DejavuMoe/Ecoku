@@ -548,27 +548,26 @@
   background: transparent;
 }
 
-.ecoku-comment-author {
-  min-width: 0;
-  overflow: hidden;
+.ecoku-comments .ecoku-comment-author {
+  flex: 0 1 auto;
+  min-width: min-content;
+  overflow: visible;
   color: var(--ecoku-primary);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   line-height: 20px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .ecoku-comment-author-wrap {
   display: inline-flex;
-  min-width: 0;
+  min-width: min-content;
   max-width: 100%;
   align-items: baseline;
   gap: 4px;
 }
 
-.ecoku-comment-author-wrap .ecoku-comment-author {
-  min-width: 0;
+.ecoku-comments .ecoku-comment-author-wrap .ecoku-comment-author {
+  min-width: min-content;
 }
 
 .ecoku-blogger-badge {
