@@ -1,8 +1,8 @@
 # Plain thread comments prototype
 
 Approved design history for Ecoku's no-avatar, plain-text comment surface.
-`index-v9.html` is the current approved production baseline. `index-v8.html`
-remains historical evidence.
+`index-v10.html` is the current approved production baseline. `index-v9.html`
+and earlier files remain historical evidence.
 
 ## Direction
 
@@ -158,6 +158,34 @@ Run its checks with:
 node designs/plain-thread-comments/prototype-v9.test.mjs
 ```
 
+Revision 10 is the approved production baseline on top of revision 9. It keeps the compact composer
+and count/sort placement, and changes thread chrome:
+
+- “xx 条评论” uses a larger heading size while the sort trigger stays 32px;
+- the sort menu separates “最新评论” and “最早评论”;
+- root and reply textareas share a seven-line default height, smaller
+  placeholder type, and vertical resize;
+- the inline reply composer has no “回复某某” heading; identity summary and
+  “更换” remain when a saved identity is present;
+- thread collapse is a Hacker News-like `[+]` / `[-]` after the timestamp, with no
+  square controls and no leaf placeholder; when folded, `已折叠 N 条回复`
+  follows the toggle and the reply action is hidden;
+- “回复” is a quiet underlined text action in the same meta flow, not a pill
+  button and not pinned to the far right; meta items share an 8px gap and
+  baseline alignment; nested parent hints use `@昵称` so they are not confused
+  with the reply action;
+- the inline reply composer submit label is “回复”, matching the header action;
+- timestamps use `YYYY-MM-DD HH:mm` in Maple Mono (falling back to system
+  monospace); hover text is English IANA plus offset, for example
+  `Asia/Singapore UTC+8`. Production should read the container `TZ` (Compose
+  default = server timezone).
+
+Run its checks with:
+
+```text
+node designs/plain-thread-comments/prototype-v10.test.mjs
+```
+
 ## Review states
 
 - Light and dark themes.
@@ -169,5 +197,5 @@ node designs/plain-thread-comments/prototype-v9.test.mjs
 - Service unavailable and retry recovery.
 - Desktop at 1280x900 and mobile at 390x844.
 
-Status: `index-v9.html` was approved on 2026-08-15. Earlier revisions remain
-historical design evidence only.
+Status: `index-v10.html` is the approved production baseline. `index-v9.html`
+remains historical evidence.
