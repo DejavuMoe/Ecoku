@@ -1,0 +1,20 @@
+@import url("./styles-v13.css");
+
+.field input {
+  color: var(--content);
+  font-size: 12px;
+}
+
+.reply-heading-row,
+.reply-identity-summary,
+.identity-change {
+  display: none;
+}
+
+.turnstile-slot {
+  width: min(100%, 300px);
+}
+
+.turnstile-widget {
+  width: 100%;
+}
