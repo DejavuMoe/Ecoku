@@ -9,7 +9,7 @@
     {
       "id": "article-plain-thread-comments",
       "prototype": {
-        "entry": "index-v14.html",
+        "entry": "index-v15.html",
         "states": [
           "light",
           "dark",
@@ -57,7 +57,11 @@
           "turnstile-composer-slot",
           "compact-identity-input-type",
           "constrained-turnstile-width",
-          "no-saved-identity-heading"
+          "no-saved-identity-heading",
+          "composer-matches-published-copy",
+          "no-host-loading-copy",
+          "host-load-failure",
+          "host-unconfigured"
         ]
       },
       "production": {
@@ -77,7 +81,7 @@
     {
       "id": "article-comment-form-configuration",
       "prototype": {
-        "entry": "index-v14.html",
+        "entry": "index-v15.html",
         "states": [
           "email-required",
           "email-optional",
@@ -123,7 +127,7 @@
     {
       "id": "article-comment-turnstile",
       "prototype": {
-        "entry": "index-v14.html",
+        "entry": "index-v15.html",
         "states": [
           "turnstile-auto",
           "turnstile-interact",

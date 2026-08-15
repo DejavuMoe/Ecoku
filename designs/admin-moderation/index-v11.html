@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Ecoku 评论管理 · 系统衬线字体</title>
+  <style>
+    :root {
+      --paper: rgb(250, 249, 245);
+      --surface: rgb(252, 251, 247);
+      --ink: rgb(20, 20, 19);
+      --ink-soft: rgb(58, 54, 44);
+      --muted: rgb(96, 91, 82);
+      --line: rgb(150, 143, 132);
+      --line-soft: rgba(20, 20, 19, 0.14);
+      --wash: rgb(243, 239, 231);
+      --wash-translucent: rgba(243, 239, 231, 0.76);
+      --accent: rgb(42, 83, 108);
+      --accent-hover: rgb(31, 67, 90);
+      --accent-text: rgb(250, 249, 245);
+      --approved: rgb(42, 102, 72);
+      --approved-bg: rgb(225, 240, 229);
+      --rejected: rgb(145, 54, 52);
+      --rejected-bg: rgb(246, 226, 223);
+      --shadow: 0 18px 48px rgba(20, 20, 19, 0.1);
+      --radius: 14px;
+      --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+      --serif: "Noto Serif SC", "Noto Serif CJK SC", "Songti SC", "STSong", serif;
+      --mono: ui-monospace, "SFMono-Regular", "Cascadia Code", "Roboto Mono", monospace;
+      color-scheme: light dark;
+      font-family: var(--serif);
+    }
+    html[data-theme="light"] {
+      color-scheme: light;
+    }
+    html[data-theme="dark"] {
+      --paper: rgb(26, 29, 32);
+      --surface: rgb(34, 38, 42);
+      --ink: rgb(242, 236, 226);
+      --ink-soft: rgb(216, 209, 197);
+      --muted: rgb(188, 181, 169);
+      --line: rgb(109, 114, 120);
+      --line-soft: rgba(242, 236, 226, 0.14);
+      --wash: rgb(44, 48, 53);
+      --wash-translucent: rgba(48, 53, 58, 0.88);
+      --accent: rgb(148, 176, 196);
+      --accent-hover: rgb(168, 192, 208);
+      --accent-text: rgb(26, 29, 32);
+      --approved: rgb(148, 196, 168);
+      --approved-bg: rgba(42, 102, 72, 0.28);
+      --rejected: rgb(224, 156, 148);
+      --rejected-bg: rgba(145, 54, 52, 0.22);
+      --shadow: 0 18px 48px rgba(0, 0, 0, 0.36);
+      color-scheme: dark;
+    }
+    @media (prefers-color-scheme: dark) {
+      html[data-theme="auto"] {
+        --paper: rgb(26, 29, 32);
+        --surface: rgb(34, 38, 42);
+        --ink: rgb(242, 236, 226);
+        --ink-soft: rgb(216, 209, 197);
+        --muted: rgb(188, 181, 169);
+        --line: rgb(109, 114, 120);
+        --line-soft: rgba(242, 236, 226, 0.14);
+        --wash: rgb(44, 48, 53);
+        --wash-translucent: rgba(48, 53, 58, 0.88);
+        --accent: rgb(148, 176, 196);
+        --accent-hover: rgb(168, 192, 208);
+        --accent-text: rgb(26, 29, 32);
+        --approved: rgb(148, 196, 168);
+        --approved-bg: rgba(42, 102, 72, 0.28);
+        --rejected: rgb(224, 156, 148);
+        --rejected-bg: rgba(145, 54, 52, 0.22);
+        --shadow: 0 18px 48px rgba(0, 0, 0, 0.36);
+        color-scheme: dark;
+      }
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html { min-width: 320px; min-height: 100%; background: var(--paper); }
+    body { min-height: 100vh; margin: 0; color: var(--ink); background: var(--paper); font-size: 15px; line-height: 1.65; text-rendering: optimizeLegibility; }
+    button, input, textarea, select { color: inherit; font: inherit; }
+    button, select { cursor: pointer; }
+    [hidden] { display: none !important; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+    .skip-link { position: fixed; z-index: 200; top: 8px; left: 8px; padding: 7px 12px; border-radius: 999px; color: var(--accent-text); background: var(--accent); transform: translateY(-160%); }
+    .skip-link:focus { transform: translateY(0); }
+    .app-shell { display: grid; min-height: 100vh; grid-template-rows: 60px minmax(0, 1fr); }
+    .app-header { position: relative; z-index: 20; border-bottom: 1px solid var(--line-soft); background: var(--paper); }
+    .header-inner { display: flex; width: min(calc(100% - 48px), 1440px); height: 60px; margin: 0 auto; align-items: center; justify-content: space-between; gap: 28px; }
+    .header-start, .header-context, .primary-nav, .brand { display: flex; align-items: center; }
+    .header-start { min-width: 0; gap: 34px; }
+    .header-context { flex: 0 0 auto; gap: 12px; }
+    .primary-nav { align-self: stretch; gap: 24px; }
+    .brand { flex: 0 0 auto; gap: 10px; color: inherit; text-decoration: none; }
+    .brand-mark { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid var(--ink); border-radius: 50%; font-size: 18px; font-weight: 700; }
+    .brand-copy { display: grid; line-height: 1.05; }
+    .brand-copy strong { font-size: 19px; }
+    .brand-copy small { margin-top: 4px; color: var(--muted); font-size: 10px; letter-spacing: 0.08em; }
+    .nav-tab { position: relative; display: grid; height: 100%; place-items: center; padding: 0; color: var(--muted); font-size: 14px; text-decoration: none; white-space: nowrap; }
+    .nav-tab::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: transparent; content: ""; }
+    .nav-tab:hover, .nav-tab[aria-current="page"] { color: var(--ink); }
+    .nav-tab[aria-current="page"] { font-weight: 700; }
+    .nav-tab[aria-current="page"]::after { background: var(--accent); }
+    .site-pill { display: flex; min-width: 194px; min-height: 38px; align-items: center; justify-content: space-between; gap: 14px; padding: 0 13px 0 15px; border: 1px solid var(--line-soft); border-radius: 999px; background: var(--surface); font-size: 13px; }
+    .chevron { width: 8px; height: 8px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-2px) rotate(45deg); }
+    .logout-button { min-height: 36px; padding: 0 10px; border: 0; border-radius: 999px; color: var(--muted); background: transparent; font-size: 13px; }
+    .logout-button:hover { color: var(--ink); background: var(--wash); }
+
+    .main-area { min-width: 0; padding: 38px 24px 84px; }
+    .page-column { width: min(100%, 1360px); margin: 0 auto; }
+    .page-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+    .page-heading h1 { margin: 0; font-size: 22px; line-height: 1.3; }
+    .page-heading p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+    .button { min-height: 38px; padding: 0 18px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-weight: 700; }
+    .button:hover { background: var(--wash); }
+    .button-primary { border-color: var(--accent); color: var(--accent-text); background: var(--accent); }
+    .button-primary:hover { background: var(--accent-hover); }
+    .sites-grid { display: grid; min-height: 640px; grid-template-columns: 360px minmax(0, 1fr); gap: 24px; }
+    .site-list-panel, .site-form-panel { overflow: hidden; border: 1px solid var(--line-soft); border-radius: var(--radius); background: var(--surface); }
+    .panel-heading { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 16px; padding: 0 20px; border-bottom: 1px solid var(--line-soft); }
+    .panel-heading h2, .form-title h2, .subsection-heading h3 { margin: 0; }
+    .panel-heading h2, .form-title h2 { font-size: 17px; }
+    .panel-heading span { color: var(--muted); font-size: 12px; }
+    .site-list { display: grid; }
+    .site-list-item { display: grid; min-height: 82px; padding: 17px 20px; border: 0; border-bottom: 1px solid var(--line-soft); background: transparent; text-align: left; }
+    .site-list-item:hover, .site-list-item[aria-selected="true"] { background: var(--wash-translucent); }
+    .site-list-item strong { font-size: 16px; }
+    .site-list-item small { overflow: hidden; color: var(--muted); font-family: var(--mono); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+    .site-form-panel { padding: 22px 28px 28px; }
+    .form-title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+    .form-title span { color: var(--muted); font-size: 12px; }
+    .site-form { display: grid; gap: 14px; }
+    .form-row { display: grid; grid-template-columns: 130px minmax(0, 1fr); align-items: start; gap: 16px; }
+    .form-label { padding-top: 8px; color: var(--muted); font-size: 13px; }
+    .field-stack { display: grid; min-width: 0; gap: 6px; }
+    .input, .textarea { width: 100%; border: 1px solid var(--line-soft); border-radius: 10px; background: var(--surface); }
+    .input { min-height: 40px; padding: 0 12px; }
+    .textarea { min-height: 88px; padding: 10px 12px; resize: vertical; }
+    .input:hover, .textarea:hover { border-color: var(--line); }
+    .input[aria-invalid="true"] { border-color: var(--rejected); }
+    .field-help, .field-error { margin: 0; font-size: 12px; }
+    .field-help { color: var(--muted); }
+    .field-error { color: var(--rejected); }
+    .radio-row, .check-row { display: flex; min-height: 40px; flex-wrap: wrap; align-items: center; gap: 22px; }
+    .radio-row label, .check-row label { display: inline-flex; align-items: center; gap: 7px; }
+    .subsection { display: grid; gap: 14px; margin-top: 8px; padding-top: 22px; border-top: 1px solid var(--line-soft); }
+    .subsection-heading { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 16px; }
+    .subsection-heading h3 { font-size: 16px; }
+    .subsection-heading p { margin: 2px 0 0; color: var(--muted); font-size: 12px; }
+    .identity-summary { display: flex; flex-wrap: wrap; gap: 8px; }
+    .identity-chip { padding: 4px 9px; border-radius: 999px; color: var(--accent); background: var(--wash); font-family: var(--mono); font-size: 11px; }
+    .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; padding-top: 20px; border-top: 1px solid var(--line-soft); }
+    .scenario-controller { position: fixed; z-index: 30; right: 18px; bottom: 18px; display: grid; width: 220px; gap: 7px; padding: 12px; border: 1px solid var(--line-soft); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+    .scenario-controller label { color: var(--muted); font-size: 11px; }
+    .scenario-controller select { min-height: 38px; padding: 0 10px; border: 1px solid var(--line-soft); border-radius: 9px; background: var(--surface); }
+    .scenario-controller .theme-note { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+
+    @media (max-width: 1023px) {
+      .header-inner { width: min(calc(100% - 28px), 760px); }
+      .brand-copy small, .site-pill, .header-context { display: none; }
+      .header-start { width: 100%; justify-content: space-between; gap: 18px; }
+      .primary-nav { gap: 16px; }
+      .main-area { padding: 24px 14px 100px; }
+      .sites-grid { min-height: 0; grid-template-columns: 1fr; }
+      .site-list-panel { max-height: 240px; }
+      .site-form-panel { padding: 18px 16px 22px; }
+      .form-row, .subsection-heading { grid-template-columns: 1fr; gap: 5px; }
+      .form-label { padding-top: 0; }
+      .scenario-controller { right: 10px; bottom: 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; } }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-start">
+          <a class="brand" href="#sites-blogger-configured" aria-label="Ecoku 评论管理首页">
+            <span class="brand-mark" aria-hidden="true">E</span>
+            <span class="brand-copy"><strong>Ecoku</strong><small>评论管理</small></span>
+          </a>
+          <nav class="primary-nav" aria-label="主导航">
+            <a class="nav-tab" href="index-v5.html#comments-published">评论管理</a>
+            <a class="nav-tab" href="#sites-blogger-configured" aria-current="page">站点管理</a>
+            <a class="nav-tab" href="index-v5.html#notifications-configured">通知设置</a>
+          </nav>
+        </div>
+        <div class="header-context">
+          <button class="site-pill" type="button"><span>Dejavu's Blog</span><span class="chevron" aria-hidden="true"></span></button>
+          <button class="logout-button" type="button">退出登录</button>
+        </div>
+      </div>
+    </header>
+    <main class="main-area" id="main-content"></main>
+  </div>
+
+  <aside class="scenario-controller" aria-label="原型场景" data-prototype-only="true">
+    <label for="scenario-select">原型场景</label>
+    <select id="scenario-select">
+      <option value="sites-blogger-configured">博主身份 · 已配置</option>
+      <option value="sites-blogger-empty">博主身份 · 未配置</option>
+      <option value="sites-blogger-validation">博主身份 · 校验错误</option>
+    </select>
+    <label for="theme-select">配色预览</label>
+    <select id="theme-select">
+      <option value="auto" selected>跟随系统</option>
+      <option value="light">浅色</option>
+      <option value="dark">深色</option>
+    </select>
+    <p class="theme-note">生产默认 auto，右下角预览控件不进入管理端。</p>
+  </aside>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const states = ["sites-blogger-configured", "sites-blogger-empty", "sites-blogger-validation"];
+      const main = document.getElementById("main-content");
+      const scenario = document.getElementById("scenario-select");
+      const themeSelect = document.getElementById("theme-select");
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[character]);
+      }
+
+      function currentState() {
+        const hash = window.location.hash.slice(1);
+        return states.includes(hash) ? hash : states[0];
+      }
+
+      function applyTheme(value) {
+        const theme = value === "light" || value === "dark" ? value : "auto";
+        document.documentElement.dataset.theme = theme;
+        themeSelect.value = theme;
+      }
+
+      function inputRow(label, id, type, value, options) {
+        const settings = options || {};
+        return `<div class="form-row"><label class="form-label" for="${id}">${label}</label><div class="field-stack"><input class="input" id="${id}" type="${type}" value="${escapeHtml(value)}" ${settings.readonly ? "readonly" : ""} ${settings.error ? 'aria-invalid="true" aria-describedby="' + id + '-error"' : ""}>${settings.help ? `<p class="field-help">${settings.help}</p>` : ""}${settings.error ? `<p class="field-error" id="${id}-error">${settings.error}</p>` : ""}</div></div>`;
+      }
+
+      function render() {
+        const state = currentState();
+        const configured = state === "sites-blogger-configured";
+        const validation = state === "sites-blogger-validation";
+        scenario.value = state;
+        const bloggerName = configured || validation ? "Dejavu Moe" : "";
+        const bloggerEmail = configured ? "admin@dejavu.moe" : "";
+        const validationMessage = validation ? "博主昵称与邮箱需同时填写" : "";
+
+        main.innerHTML = `
+          <section class="page-column" aria-labelledby="sites-title">
+            <header class="page-heading">
+              <div><h1 id="sites-title">站点管理</h1><p>管理评论区显示和站点通知身份。</p></div>
+              <button class="button button-primary" type="button">新增站点</button>
+            </header>
+            <div class="sites-grid">
+              <section class="site-list-panel" aria-label="站点列表">
+                <div class="panel-heading"><h2>已注册站点</h2><span>2 条</span></div>
+                <div class="site-list">
+                  <button class="site-list-item" type="button" aria-selected="true"><strong>Dejavu's Blog</strong><small>blog · https://blog.dejavu.moe</small></button>
+                  <button class="site-list-item" type="button" aria-selected="false"><strong>docs.example.test</strong><small>docs · https://docs.example.test</small></button>
+                </div>
+              </section>
+              <section class="site-form-panel" aria-labelledby="site-form-title">
+                <div class="form-title"><h2 id="site-form-title">编辑站点</h2><span>所有评论直接发布</span></div>
+                <form class="site-form" novalidate>
+                  ${inputRow("站点 ID", "site-id", "text", "blog", { readonly: true })}
+                  ${inputRow("站点 URL", "site-url", "url", "https://blog.dejavu.moe")}
+                  ${inputRow("站点名称", "site-name", "text", "Dejavu's Blog", { help: "留空时使用站点 URL 的域名" })}
+                  <div class="form-row"><label class="form-label" for="site-origins">允许来源</label><div class="field-stack"><textarea class="textarea" id="site-origins">https://blog.dejavu.moe\nhttp://127.0.0.1:1313</textarea><p class="field-help">每行一个完整来源</p></div></div>
+                  <div class="form-row"><span class="form-label">评论排序</span><div class="radio-row"><label><input type="radio" name="comment-sort" checked>最新评论</label><label><input type="radio" name="comment-sort">最早评论</label></div></div>
+                  <div class="form-row"><span class="form-label">字段要求</span><div class="check-row"><label><input type="checkbox" checked>邮箱必填</label><label><input type="checkbox">网站必填</label></div></div>
+                  ${inputRow("评论占位文案", "site-placeholder", "text", "写下评论（仅支持纯文本）")}
+                  ${inputRow("评论长度上限", "site-comment-limit", "number", "1000", { help: "1–10000；Unicode 字符按一个字符计数" })}
+                  <div class="form-row"><label class="form-label" for="site-empty-message">无评论文案</label><div class="field-stack"><textarea class="textarea" id="site-empty-message">还没有评论\n成为第一个留下评论的人。</textarea></div></div>
+
+                  <section class="subsection" aria-labelledby="blogger-identity-title">
+                    <div class="subsection-heading"><h3 id="blogger-identity-title">博主身份</h3><p>用于识别博主本人提交的评论；昵称与邮箱需同时填写。评论区只展示下方标志，不会公开邮箱。</p></div>
+                    ${inputRow("博主昵称", "blogger-name", "text", bloggerName, { error: validationMessage })}
+                    ${inputRow("博主邮箱", "blogger-email", "email", bloggerEmail, { error: validationMessage, help: "仅用于私有身份匹配，不会公开" })}
+                    ${inputRow("评论区标志", "blogger-badge", "text", configured || validation ? "[博主]" : "", { help: "显示在博主评论昵称之后，例如 [博主] 或 [OP]。留空则不显示。" })}
+                    ${configured ? `<div class="form-row"><span class="form-label">当前匹配</span><div class="identity-summary"><span class="identity-chip">Dejavu Moe</span><span class="identity-chip">admin@dejavu.moe</span></div></div>` : ""}
+                  </section>
+
+                  <div class="form-actions"><button class="button button-primary" type="submit">保存站点</button></div>
+                </form>
+              </section>
+            </div>
+          </section>`;
+
+        const form = main.querySelector(".site-form");
+        form.addEventListener("submit", (event) => event.preventDefault());
+      }
+
+      themeSelect.addEventListener("change", () => applyTheme(themeSelect.value));
+      scenario.addEventListener("change", () => { window.location.hash = scenario.value; });
+      window.addEventListener("hashchange", render);
+      applyTheme("auto");
+      if (!states.includes(window.location.hash.slice(1))) window.location.hash = states[0];
+      else render();
+    }());
+  </script>
+</body>
+</html>

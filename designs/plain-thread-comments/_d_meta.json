@@ -127,10 +127,19 @@
           "viewport": {
             "width": 720
           }
+        },
+        {
+          "path": "index-v15.html",
+          "createdAt": "2026-08-15T05:54:12.610Z",
+          "status": "approved",
+          "subtitle": "Approved: composer matches published copy, no loading text",
+          "viewport": {
+            "width": 720
+          }
         }
       ]
     }
   },
   "createdAt": "2026-08-12T08:14:10.430Z",
-  "updatedAt": "2026-08-15T05:10:00.000Z"
+  "updatedAt": "2026-08-15T06:04:19.416Z"
 }
