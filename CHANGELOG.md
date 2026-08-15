@@ -5,9 +5,18 @@
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-08-15
+
 ### 修复
 
 - 评论昵称与时间按基线对齐，字号改为 14px，略大于时间与折叠/回复。
+
+### 升级边界
+
+- 本版本不改变 SQLite schema，仍为 v4；
+- 从 `v0.1.1` 升级必须先停服做冷备份，再把 `compose.yaml` 的精确镜像 tag 改为
+  `v0.1.2`，然后 `sudo docker compose pull && sudo docker compose up -d`；
+- 回滚时改回 `v0.1.1`。本次未写入新 schema，一般不必替换数据库；若启动失败，仍用停服前备份恢复。
 
 ## [0.1.1] - 2026-08-15
 
@@ -214,3 +223,4 @@
 [0.1.0-rc.10]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0-rc.10
 [0.1.0]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.0
 [0.1.1]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.1
+[0.1.2]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.2
