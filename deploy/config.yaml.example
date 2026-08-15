@@ -4,7 +4,7 @@ site:
   port: 12123
   # 始终写入 stdout。普通文件路径会额外保留进程内轮转副本。
   log_path: "/var/log/ecoku/ecoku.log"
-  # 默认不信任 X-Forwarded-For。只有确认直接 socket 对端后才填写精确 IP/CIDR。
+  # 推荐拓扑（Compose 绑 127.0.0.1 + 本机 Caddy/Nginx）保持为空。不要填 0.0.0.0/0。
   trusted_proxies: []
 
 # 镜像内置浏览器 SDK 和通用加载器；不要把管理凭据放进这些静态资源。

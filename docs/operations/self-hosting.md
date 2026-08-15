@@ -406,7 +406,7 @@ Turnstile 是实例级开关，同时用于访客评论和管理员登录，不�
 
 「为已验证的访问者跳过将来的安全规则质询」（Pre-clearance）也只在 Cloudflare 控制台配置。`cf_clearance` 只跳过后续 Cloudflare 安全规则质询，不会让 Ecoku 跳过 Siteverify。评论区和登录页仍会调用小组件；需要交互时才出现勾选框。
 
-Secret key 使用与通知相同的 `ECOKU_NOTIFICATION_KEY` 加密。未配置该密钥时不能保存已启用的 Turnstile。
+Secret key 使用与通知相同的 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 加密。未配置该密钥时不能保存已启用的 Turnstile。
 
 需要回滚时先停止失败版本，保留现场副本，把 Compose 恢复到旧镜像 tag，再用停服前备份替换
 `data/ecoku.sqlite3`，恢复 `10001:10001` 权限后启动。若新版本已经写入旧程序不认识的 schema，
@@ -417,7 +417,7 @@ Secret key 使用与通知相同的 `ECOKU_NOTIFICATION_KEY` 加密。未配置�
 `TZ` 只写在 `ecoku.env`。当前 `compose.yaml` 已通过 `env_file` 注入全部环境变量，因此不必改
 Compose 服务定义、端口、挂载或 `app/config.yaml`。
 
-在含评论时区代码的镜像上（`CHANGELOG.md` `[Unreleased]` 合并进某次 tag 之后）：
+在含评论时区代码的镜像上（`v0.1.0-rc.8` 及之后）：
 
 ```bash
 umask 077

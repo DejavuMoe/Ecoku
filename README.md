@@ -11,9 +11,10 @@ SQLite3 持久化。
 - 管理端入口为 `/admin/`，管理员 token 只保存在当前页面内存；
 - 只支持 SQLite3，schema 通过显式、事务化迁移原位升级。
 
-部署、首次初始化、反向代理、备份升级、Twikoo 导入、通用静态站点与 Hugo PaperMod 接入均见
-[Docker Compose 自托管指南](docs/operations/self-hosting.md)。产品与隐私边界见
-[产品约束](docs/product/constraints.md)。
+生产部署直接使用仓库根 `compose.yaml`：端口已绑到宿主机 `127.0.0.1:12123`，前面用本机 Caddy
+或 Nginx 做 HTTPS 反代即可。公开配置与环境变量模板在 `deploy/`。完整步骤、首次初始化、备份升级、
+Twikoo 导入与站点接入见 [Docker Compose 自托管指南](docs/operations/self-hosting.md)。产品与隐私
+边界见 [产品约束](docs/product/constraints.md)。
 
 ## 最小 Hugo 接入
 
