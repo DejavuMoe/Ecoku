@@ -2,7 +2,7 @@ name: ecoku
 
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.1.5"
+    image: "git.via.moe/dejavu/ecoku:v0.1.6"
     init: true
     restart: unless-stopped
     container_name: ecoku
