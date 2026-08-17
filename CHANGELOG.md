@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-08-17
+
 ### 变更
 
 - 实例级机器人验证改为关闭 / Cloudflare Turnstile / 自托管 Cap 三态选择，同时保护访客评论与管理员登录；Turnstile 兼容保留，Cap 从配置实例加载 Widget/WASM 并使用 JSON Siteverify，浏览器统一提交单次 `captchaToken`。
@@ -271,3 +273,4 @@
 [0.1.2]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.2
 [0.1.3]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.3
 [0.1.4]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.4
+[0.1.5]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.5
