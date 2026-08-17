@@ -107,6 +107,31 @@ describe('administrator API contract', () => {
     expect(payload).not.toHaveProperty('default_status')
     expect(payload).not.toHaveProperty('review_mode')
   })
+
+  it('maps provider-neutral CAPTCHA settings and sends only the generic login token', async () => {
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(response(200, {
+        provider: 'cap',
+        turnstile: { sitekey: 'turnstile-public', secret_set: true },
+        cap: { instance_url: 'https://cap.example.test', sitekey: 'cap-public', secret_set: true },
+        revision: 4,
+      }))
+      .mockResolvedValueOnce(response(200, {
+        token: 'admin-token', token_type: 'Bearer', expires_at: '2026-08-18T00:00:00Z', expires_in: 3600,
+      }))
+    vi.stubGlobal('fetch', fetchMock)
+    const settings = await adminApi.getCaptcha('admin-token')
+    expect(settings).toEqual({
+      provider: 'cap',
+      turnstile: { sitekey: 'turnstile-public', secret: '', secretSet: true },
+      cap: { instanceUrl: 'https://cap.example.test', sitekey: 'cap-public', secret: '', secretSet: true },
+      revision: 4,
+    })
+    await adminApi.login('admin', 'password', 'cap-token')
+    const loginPayload = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as Record<string, unknown>
+    expect(loginPayload).toMatchObject({ username: 'admin', password: 'password', captchaToken: 'cap-token' })
+    expect(loginPayload).not.toHaveProperty('turnstileToken')
+  })
 })
 
 describe('administrator state', () => {
@@ -160,20 +185,63 @@ describe('approved production surface', () => {
     expect(wrapper.find('.queue-time').text()).toBe('2026/08/13 09:02')
   })
 
-  it('renders instance Turnstile settings without Cloudflare console copy or plaintext secrets', () => {
+  it('renders the approved off/Turnstile/Cap selector without operational copy or plaintext secrets', () => {
     const store = useAdminStore(); store.token = 'token'
-    store.turnstileSettings = { enabled: true, sitekey: '0x4AAAAAAA00000000000000', secret: '', secretSet: true, revision: 2 }
+    store.captchaSettings = {
+      provider: 'cap',
+      turnstile: { sitekey: '0x4AAAAAAA00000000000000', secret: '', secretSet: true },
+      cap: { instanceUrl: 'https://cap.example.test', sitekey: 'cap-public', secret: '', secretSet: true },
+      revision: 2,
+    }
     const wrapper = mount(SecurityView, { global: { plugins: [pinia] } })
     expect(wrapper.text()).toContain('安全')
-    expect(wrapper.text()).toContain('Sitekey')
+    expect(wrapper.findAll('input[type="radio"]')).toHaveLength(3)
+    expect(wrapper.text()).toContain('关闭')
+    expect(wrapper.text()).toContain('Cloudflare Turnstile')
+    expect(wrapper.text()).toContain('Cap')
+    expect(wrapper.text()).toContain('实例地址')
+    expect(wrapper.text()).toContain('Site key')
     expect(wrapper.text()).toContain('Secret key')
     expect(wrapper.text()).toContain('访客评论和管理员登录')
+    expect((wrapper.get('input[value="cap"]').element as HTMLInputElement).checked).toBe(true)
+    expect((wrapper.get('#cap-instance-url').element as HTMLInputElement).value).toBe('https://cap.example.test')
+    expect((wrapper.get('#cap-sitekey').element as HTMLInputElement).value).toBe('cap-public')
+    expect(wrapper.get('#cap-secret').attributes('placeholder')).toBe('已设置，输入新值以更换')
+    expect((wrapper.get('#cap-secret').element as HTMLInputElement).value).toBe('')
     expect(wrapper.text()).not.toContain('公开标识')
     expect(wrapper.text()).not.toContain('Cloudflare 控制台')
     expect(wrapper.text()).not.toContain('Siteverify')
     expect(wrapper.text()).not.toContain('Pre-clearance')
-    expect(wrapper.get('#turnstile-secret').attributes('placeholder')).toBe('已设置，输入新值以更换')
-    expect((wrapper.get('#turnstile-secret').element as HTMLInputElement).value).toBe('')
+    expect(wrapper.text()).not.toContain('captcha disable')
+    expect(wrapper.text()).not.toContain('服务器恢复说明')
+    expect(wrapper.find('h2').exists()).toBe(false)
+  })
+
+  it('submits newly entered Cap credentials without clearing the write-only secret', async () => {
+    const store = useAdminStore(); store.token = 'token'
+    store.captchaSettings = {
+      provider: 'cap',
+      turnstile: { sitekey: '', secret: '', secretSet: false },
+      cap: { instanceUrl: '', sitekey: '', secret: '', secretSet: false },
+      revision: 1,
+    }
+    const save = vi.spyOn(store, 'saveCaptcha').mockResolvedValue({
+      provider: 'cap',
+      turnstile: { sitekey: '', secret: '', secretSet: false },
+      cap: { instanceUrl: 'https://cap.example.test', sitekey: 'cap-public', secret: '', secretSet: true },
+      revision: 2,
+    })
+    const wrapper = mount(SecurityView, { global: { plugins: [pinia] } })
+    await wrapper.get('#cap-instance-url').setValue('https://cap.example.test/')
+    await wrapper.get('#cap-sitekey').setValue('cap-public')
+    await wrapper.get('#cap-secret').setValue('cap-private')
+    await wrapper.get('.save-button').trigger('click')
+    await vi.waitFor(() => {
+      expect(save).toHaveBeenCalledWith(expect.objectContaining({
+        provider: 'cap',
+        cap: expect.objectContaining({ instanceUrl: 'https://cap.example.test', sitekey: 'cap-public', secret: 'cap-private' }),
+      }))
+    })
   })
 
   it('shows only approved site fields and explains newline-separated origins', () => {
@@ -246,6 +314,10 @@ describe('approved production surface', () => {
     expect(css).toContain('--surface: rgb(34, 38, 42)')
     expect(css).toContain('--ink: rgb(242, 236, 226)')
     expect(css).toContain('--serif: "Noto Serif SC", "Noto Serif CJK SC", "Songti SC", "STSong", serif')
+    expect(css).toContain('.provider-group')
+    expect(css).toContain('.admin-cap-widget')
+    expect(css).toContain('--cap-widget-width: 260px')
+    expect(css).toContain('--cap-widget-height: 58px')
     expect(css).not.toContain('OPPO Serif SC')
     expect(html).not.toMatch(/localStorage|sessionStorage/)
     expect(css).not.toMatch(/localStorage|sessionStorage/)

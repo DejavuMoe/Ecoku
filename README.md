@@ -9,6 +9,7 @@ SQLite3 持久化。
 - 每站点可配置允许来源、默认排序、字段要求、占位文案、Unicode 字符上限、空状态文案和博主身份（公开昵称、口令、可选标志与站点 URL 链接）；
 - 回复在被回复评论处完成；访客身份可在浏览器 IndexedDB 中加密保留 7 天；
 - 管理端入口为 `/admin/`，管理员 token 只保存在当前页面内存；
+- 实例级验证可关闭，或在 Cloudflare Turnstile 与自托管 Cap 之间二选一，同时保护评论提交和管理员登录；
 - 只支持 SQLite3，schema 通过显式、事务化迁移原位升级。
 
 生产部署直接使用仓库根 `compose.yaml`：端口已绑到宿主机 `127.0.0.1:12123`，前面用本机 Caddy
@@ -57,6 +58,9 @@ params:
 
 调用方必须明确提供稳定的页面 key；SDK 不从浏览器 URL 猜测。完整示例位于
 [`examples/hugo-papermod`](examples/hugo-papermod) 与 [`examples/html`](examples/html)。
+
+验证提供方由 Ecoku 的公共 `formConfig` 自动下发，接入 markup 不包含 Sitekey 或 Secret。启用自托管 Cap 时，先在 Cap 的 Key CORS 中允许实际评论站点与 Ecoku 管理端 Origin；严格 CSP 还需精确允许 `https://cap.example.com` 的脚本/连接、`worker-src blob:`、WebAssembly，以及按 nonce 配置 Cap instrumentation。完整设置和停服 `captcha disable` 恢复流程见[自托管指南](docs/operations/self-hosting.md#机器人验证)。
+使用镜像同源加载器会自动获得当前协议；自行固定旧 npm/UMD SDK 的站点必须先更新再选择 Cap，否则旧客户端会失败关闭。
 
 ## 仓库结构
 

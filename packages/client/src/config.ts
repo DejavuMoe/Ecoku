@@ -1,4 +1,11 @@
 export type EcokuTheme = 'auto' | 'light' | 'dark'
+export type CaptchaProvider = 'off' | 'turnstile' | 'cap'
+
+export interface CaptchaPublicConfig {
+  provider: CaptchaProvider
+  sitekey: string
+  instanceUrl: string
+}
 
 export interface CommentFormConfig {
   emailRequired: boolean
@@ -10,7 +17,14 @@ export interface CommentFormConfig {
   bloggerBadge: string
   turnstileSitekey: string
   bloggerProofEnabled: boolean
+  captcha: CaptchaPublicConfig
 }
+
+export const DEFAULT_CAPTCHA_CONFIG: Readonly<CaptchaPublicConfig> = Object.freeze({
+  provider: 'off',
+  sitekey: '',
+  instanceUrl: '',
+})
 
 export const DEFAULT_COMMENT_FORM_CONFIG: Readonly<CommentFormConfig> = Object.freeze({
   emailRequired: true,
@@ -22,6 +36,7 @@ export const DEFAULT_COMMENT_FORM_CONFIG: Readonly<CommentFormConfig> = Object.f
   bloggerBadge: '[博主]',
   turnstileSitekey: '',
   bloggerProofEnabled: false,
+  captcha: DEFAULT_CAPTCHA_CONFIG,
 })
 
 export interface EcokuConfig {

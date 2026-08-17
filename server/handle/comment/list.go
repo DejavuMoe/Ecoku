@@ -1,9 +1,9 @@
 package comment
 
 import (
+	"ecoku-server/captcha"
 	"ecoku-server/config"
 	"ecoku-server/model"
-	"ecoku-server/turnstile"
 	"ecoku-server/utils"
 	"math"
 	"net/http"
@@ -28,6 +28,13 @@ type PublicCommentResponse struct {
 	IsBlogger bool    `json:"isBlogger"`
 }
 
+func legacyTurnstileSitekey(value config.CaptchaPublicConfig) string {
+	if value.Provider == captcha.ProviderTurnstile {
+		return value.Sitekey
+	}
+	return ""
+}
+
 // GetComments returns published root threads and every published descendant of
 // the roots on the requested page.
 func GetComments(c *gin.Context) {
@@ -40,7 +47,7 @@ func GetComments(c *gin.Context) {
 		utils.SendError(c, http.StatusInternalServerError, "读取评论表单配置失败")
 		return
 	}
-	sitekey, err := turnstile.PublicSitekey()
+	captchaConfig, err := captcha.PublicConfig()
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "读取验证配置失败")
 		return
@@ -53,7 +60,8 @@ func GetComments(c *gin.Context) {
 		LengthLimit:         site.CommentLimit,
 		EmptyMessage:        site.EmptyMessage,
 		BloggerBadge:        site.BloggerBadge,
-		TurnstileSitekey:    sitekey,
+		Captcha:             captchaConfig,
+		TurnstileSitekey:    legacyTurnstileSitekey(captchaConfig),
 		BloggerProofEnabled: site.BloggerProofConfigured(),
 	}
 	key := strings.TrimSpace(c.Query("key"))

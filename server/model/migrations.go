@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	LatestSchemaVersion               = 5
+	LatestSchemaVersion               = 6
 	freshSchemaVersion                = 1
 	freshSchemaName                   = "fresh_published_comments"
 	freshSchemaDefinition             = "sqlite3:fresh-v1:published-comments:site-display-config:notifications:tombstones"
@@ -30,6 +30,9 @@ const (
 	bloggerProofSchemaVersion         = 5
 	bloggerProofSchemaName            = "blogger_passphrase_outbox_targets"
 	bloggerProofSchemaDefinition      = "sqlite3:v5:blogger-passphrase:comment-is-blogger:outbox-target-snapshot"
+	captchaProviderSchemaVersion      = 6
+	captchaProviderSchemaName         = "captcha_provider_cap_standalone"
+	captchaProviderSchemaDefinition   = "sqlite3:v6:captcha-provider:cap-standalone"
 	DefaultBloggerBadge               = "[博主]"
 	legacyOutboxTarget                = "*"
 )
@@ -235,6 +238,7 @@ func validateKnownSchemaHistory(database *gorm.DB) (int, error) {
 		bloggerBadgeSchemaVersion:      {name: bloggerBadgeSchemaName, definition: bloggerBadgeSchemaDefinition},
 		turnstileSettingsSchemaVersion: {name: turnstileSettingsSchemaName, definition: turnstileSettingsSchemaDefinition},
 		bloggerProofSchemaVersion:      {name: bloggerProofSchemaName, definition: bloggerProofSchemaDefinition},
+		captchaProviderSchemaVersion:   {name: captchaProviderSchemaName, definition: captchaProviderSchemaDefinition},
 	}
 	for index, row := range rows {
 		version := index + 1
@@ -272,6 +276,10 @@ func migrateSchema(database *gorm.DB, currentVersion int) error {
 			}
 		case bloggerProofSchemaVersion:
 			if err := migrateBloggerProofAndOutboxTargets(database); err != nil {
+				return err
+			}
+		case captchaProviderSchemaVersion:
+			if err := migrateCaptchaProvider(database); err != nil {
 				return err
 			}
 		default:
@@ -368,6 +376,30 @@ func migrateBloggerProofAndOutboxTargets(database *gorm.DB) error {
 VALUES (?, ?, ?, ?)`, bloggerProofSchemaVersion, bloggerProofSchemaName,
 			schemaChecksum(bloggerProofSchemaDefinition), now).Error; err != nil {
 			return fmt.Errorf("记录 schema 版本 %d: %w", bloggerProofSchemaVersion, err)
+		}
+		return nil
+	})
+}
+
+func migrateCaptchaProvider(database *gorm.DB) error {
+	return database.Transaction(func(tx *gorm.DB) error {
+		statements := []string{
+			`ALTER TABLE turnstile_settings RENAME TO captcha_settings`,
+			`ALTER TABLE captcha_settings ADD COLUMN provider TEXT NOT NULL DEFAULT 'turnstile' CHECK (provider IN ('turnstile', 'cap'))`,
+			`ALTER TABLE captcha_settings ADD COLUMN cap_instance_url TEXT NOT NULL DEFAULT '' CHECK (length(cap_instance_url) <= 2048)`,
+			`ALTER TABLE captcha_settings ADD COLUMN cap_sitekey TEXT NOT NULL DEFAULT '' CHECK (length(cap_sitekey) <= 255)`,
+			`ALTER TABLE captcha_settings ADD COLUMN cap_secret_cipher BLOB NULL`,
+		}
+		for _, statement := range statements {
+			if err := tx.Exec(statement).Error; err != nil {
+				return fmt.Errorf("迁移 CAPTCHA 提供方设置: %w", err)
+			}
+		}
+		now := time.Now().UTC()
+		if err := tx.Exec(`INSERT INTO schema_migrations (version, name, checksum, applied_at)
+VALUES (?, ?, ?, ?)`, captchaProviderSchemaVersion, captchaProviderSchemaName,
+			schemaChecksum(captchaProviderSchemaDefinition), now).Error; err != nil {
+			return fmt.Errorf("记录 schema 版本 %d: %w", captchaProviderSchemaVersion, err)
 		}
 		return nil
 	})
@@ -525,7 +557,7 @@ func validateCurrentSchema(database *gorm.DB) error {
 	if currentVersion != LatestSchemaVersion {
 		return fmt.Errorf("数据库 schema 版本 %d 未升级到 %d", currentVersion, LatestSchemaVersion)
 	}
-	for _, table := range []string{"sites", "site_origins", "comments", "notification_settings", "notification_outbox", "turnstile_settings"} {
+	for _, table := range []string{"sites", "site_origins", "comments", "notification_settings", "notification_outbox", "captcha_settings"} {
 		exists, err := hasTable(database, table)
 		if err != nil || !exists {
 			return fmt.Errorf("数据库缺少当前 schema 表 %s", table)
@@ -544,6 +576,12 @@ func validateCurrentSchema(database *gorm.DB) error {
 	var outboxTarget int64
 	if err := database.Raw("SELECT COUNT(*) FROM pragma_table_info('notification_outbox') WHERE name = ?", "target").Scan(&outboxTarget).Error; err != nil || outboxTarget != 1 {
 		return fmt.Errorf("数据库缺少当前 schema 字段 notification_outbox.target")
+	}
+	for _, column := range []string{"provider", "cap_instance_url", "cap_sitekey", "cap_secret_cipher"} {
+		var count int64
+		if err := database.Raw("SELECT COUNT(*) FROM pragma_table_info('captcha_settings') WHERE name = ?", column).Scan(&count).Error; err != nil || count != 1 {
+			return fmt.Errorf("数据库缺少当前 schema 字段 captcha_settings.%s", column)
+		}
 	}
 	return nil
 }

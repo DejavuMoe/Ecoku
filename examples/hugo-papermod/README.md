@@ -31,5 +31,7 @@ PaperMod 的文章模板需要调用 `{{ partial "comments.html" . }}`。示例 
 和 `connect-src` 必须精确允许 Ecoku 的 HTTPS Origin；当前 SDK 样式边界另见试用前就绪清单，
 不能把“无行内初始化脚本”误写成完整严格 CSP 兼容。
 
+若 Ecoku 选择 Cloudflare Turnstile，宿主 CSP 还要允许 `https://challenges.cloudflare.com`。若选择自托管 Cap，则把 `https://cap.example.com` 替换为实际 Cap Origin，精确加入 `script-src` / `connect-src`，允许 `worker-src blob:`、`frame-src 'self'` 与 WebAssembly；nonce 型 CSP 需在加载 Ecoku 前设置同一 `window.CAP_CSS_NONCE` / `window.CAP_SCRIPT_NONCE`。Cap 的 Key CORS 必须包含正式站与本地预览的实际 Origin。Sitekey 和 Secret 都不写进 Hugo 配置或模板。
+
 最后在 Ecoku 管理端创建相同的 `site_id`，并把 Hugo 本地预览与正式站点的实际 Origin 逐行加入
 允许来源。浏览器端不应包含 management key、管理员 token 或通知凭据。

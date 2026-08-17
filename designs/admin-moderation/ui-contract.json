@@ -7,12 +7,16 @@
   },
   "sourceReferences": [
     {
+      "path": "designs/admin-moderation/index-v12.html",
+      "role": "current approved off / Turnstile / self-hosted Cap security and login baseline with official Cap Widget geometry"
+    },
+    {
       "path": "designs/admin-moderation/index-v11.html",
       "role": "current approved system serif stack on the site form: Noto Serif SC / Noto Serif CJK SC / Songti SC / STSong, no webfont"
     },
     {
       "path": "designs/admin-moderation/index-v10.html",
-      "role": "current approved instance-level Turnstile Sitekey/Secret key without widget-mode picker or Cloudflare console copy"
+      "role": "previous approved Turnstile-only security and login baseline"
     },
     {
       "path": "designs/admin-moderation/index-v9.html",
@@ -137,13 +141,14 @@
       "status": "implemented"
     },
     {
-      "id": "admin-security-turnstile",
+      "id": "admin-security-captcha",
       "prototype": {
-        "entry": "index-v10.html",
+        "entry": "index-v12.html",
         "states": [
-          "security-configured",
-          "security-empty",
-          "security-validation",
+          "security-cap",
+          "security-turnstile",
+          "security-off",
+          "security-cap-validation",
           "theme-auto",
           "theme-light",
           "theme-dark"
@@ -159,21 +164,22 @@
           "packages/admin/src/api.ts",
           "packages/admin/src/stores/admin.ts",
           "server/handle/admin/turnstile.go",
-          "server/turnstile/settings.go"
+          "server/captcha/settings.go"
         ]
       },
       "status": "implemented"
     },
     {
-      "id": "admin-login-turnstile",
+      "id": "admin-login-captcha",
       "prototype": {
-        "entry": "index-v10.html",
+        "entry": "index-v12.html",
         "states": [
           "login-off",
-          "login-auto",
-          "login-interact",
-          "login-skip",
-          "login-failed"
+          "login-turnstile",
+          "login-cap-idle",
+          "login-cap-solving",
+          "login-cap-solved",
+          "login-cap-failed"
         ]
       },
       "production": {
@@ -183,9 +189,11 @@
           "packages/admin/src/App.vue",
           "packages/admin/src/style.css",
           "packages/admin/src/api.ts",
+          "packages/admin/src/captcha.ts",
+          "packages/admin/src/cap.ts",
           "packages/admin/src/turnstile.ts",
           "server/handle/admin/auth.go",
-          "server/turnstile/verify.go"
+          "server/captcha/verify.go"
         ]
       },
       "status": "implemented"

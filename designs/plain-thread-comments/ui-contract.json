@@ -9,7 +9,7 @@
     {
       "id": "article-plain-thread-comments",
       "prototype": {
-        "entry": "index-v15.html",
+        "entry": "index-v16.html",
         "states": [
           "light",
           "dark",
@@ -61,7 +61,12 @@
           "composer-matches-published-copy",
           "no-host-loading-copy",
           "host-load-failure",
-          "host-unconfigured"
+          "host-unconfigured",
+          "captcha-provider-off",
+          "captcha-provider-turnstile",
+          "captcha-provider-cap",
+          "cap-official-widget",
+          "cap-failed"
         ]
       },
       "production": {
@@ -81,7 +86,7 @@
     {
       "id": "article-comment-form-configuration",
       "prototype": {
-        "entry": "index-v15.html",
+        "entry": "index-v16.html",
         "states": [
           "email-required",
           "email-optional",
@@ -125,9 +130,9 @@
       "status": "implemented"
     },
     {
-      "id": "article-comment-turnstile",
+      "id": "article-comment-captcha",
       "prototype": {
-        "entry": "index-v15.html",
+        "entry": "index-v16.html",
         "states": [
           "turnstile-auto",
           "turnstile-interact",
@@ -136,6 +141,12 @@
           "turnstile-unverified-submit",
           "reply-turnstile",
           "constrained-turnstile-width",
+          "cap-idle",
+          "cap-verifying",
+          "cap-solved",
+          "cap-error",
+          "reply-cap",
+          "official-cap-geometry",
           "light",
           "dark"
         ]
@@ -148,11 +159,13 @@
           "packages/client/src/config.ts",
           "packages/client/src/style.css",
           "packages/client/src/fetch.ts",
+          "packages/client/src/captcha.ts",
+          "packages/client/src/cap.ts",
           "packages/client/src/turnstile.ts",
           "server/handle/comment/submit.go",
           "server/handle/comment/list.go",
-          "server/turnstile/settings.go",
-          "server/turnstile/verify.go"
+          "server/captcha/settings.go",
+          "server/captcha/verify.go"
         ]
       },
       "status": "implemented"

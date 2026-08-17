@@ -1,4 +1,4 @@
-package turnstile
+package captcha
 
 import (
 	"crypto/aes"
@@ -13,7 +13,10 @@ import (
 	"strings"
 )
 
-const secretAAD = "ecoku-turnstile-secret-v1"
+const (
+	turnstileSecretAAD = "ecoku-turnstile-secret-v1"
+	capSecretAAD       = "ecoku-cap-secret-v1"
+)
 
 var ErrEncryptionKeyUnavailable = errors.New("notification encryption key unavailable")
 
@@ -35,7 +38,7 @@ func masterKey() ([]byte, error) {
 	return nil, fmt.Errorf("%w: expected a base64-encoded 32-byte key", ErrEncryptionKeyUnavailable)
 }
 
-func encryptSecret(plaintext string) ([]byte, error) {
+func encryptSecret(plaintext, aad string) ([]byte, error) {
 	key, err := masterKey()
 	if err != nil {
 		return nil, err
@@ -55,16 +58,16 @@ func encryptSecret(plaintext string) ([]byte, error) {
 	result := make([]byte, 1, 1+len(nonce)+len(plaintext)+gcm.Overhead())
 	result[0] = 1
 	result = append(result, nonce...)
-	result = gcm.Seal(result, nonce, []byte(plaintext), []byte(secretAAD))
+	result = gcm.Seal(result, nonce, []byte(plaintext), []byte(aad))
 	return result, nil
 }
 
-func decryptSecret(ciphertext []byte) (string, error) {
+func decryptSecret(ciphertext []byte, aad string) (string, error) {
 	if len(ciphertext) == 0 {
 		return "", nil
 	}
 	if ciphertext[0] != 1 {
-		return "", errors.New("unsupported turnstile secret format")
+		return "", errors.New("unsupported CAPTCHA secret format")
 	}
 	key, err := masterKey()
 	if err != nil {
@@ -79,12 +82,12 @@ func decryptSecret(ciphertext []byte) (string, error) {
 		return "", err
 	}
 	if len(ciphertext) < 1+gcm.NonceSize()+gcm.Overhead() {
-		return "", errors.New("invalid turnstile secret ciphertext")
+		return "", errors.New("invalid CAPTCHA secret ciphertext")
 	}
 	nonce := ciphertext[1 : 1+gcm.NonceSize()]
-	plaintext, err := gcm.Open(nil, nonce, ciphertext[1+gcm.NonceSize():], []byte(secretAAD))
+	plaintext, err := gcm.Open(nil, nonce, ciphertext[1+gcm.NonceSize():], []byte(aad))
 	if err != nil {
-		return "", errors.New("turnstile secret cannot be decrypted")
+		return "", errors.New("CAPTCHA secret cannot be decrypted")
 	}
 	return string(plaintext), nil
 }

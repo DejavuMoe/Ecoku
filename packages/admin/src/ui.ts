@@ -1,4 +1,4 @@
-import type { EmailNotificationSettings, TelegramNotificationSettings, TurnstileSettings } from './types'
+import type { CaptchaSettings, EmailNotificationSettings, TelegramNotificationSettings } from './types'
 
 export function formatDate(value: string): string {
   const parsed = new Date(value)
@@ -55,10 +55,19 @@ export function cloneTelegramSettings(value: TelegramNotificationSettings): Tele
   return { ...value, targets: [...value.targets], token: '' }
 }
 
-export function emptyTurnstileSettings(): TurnstileSettings {
-  return { enabled: false, sitekey: '', secret: '', secretSet: false, revision: 1 }
+export function emptyCaptchaSettings(): CaptchaSettings {
+  return {
+    provider: 'off',
+    turnstile: { sitekey: '', secret: '', secretSet: false },
+    cap: { instanceUrl: '', sitekey: '', secret: '', secretSet: false },
+    revision: 1,
+  }
 }
 
-export function cloneTurnstileSettings(value: TurnstileSettings): TurnstileSettings {
-  return { ...value, secret: '' }
+export function cloneCaptchaSettings(value: CaptchaSettings): CaptchaSettings {
+  return {
+    ...value,
+    turnstile: { ...value.turnstile, secret: '' },
+    cap: { ...value.cap, secret: '' },
+  }
 }

@@ -32,3 +32,11 @@ func TestRunPasswordHashRejectsEmptyPassword(t *testing.T) {
 		t.Fatal("empty password produced output")
 	}
 }
+
+func TestCaptchaCommandRejectsUnknownActionBeforeOpeningDatabase(t *testing.T) {
+	var output bytes.Buffer
+	err := runCaptchaCommand([]string{"unknown"}, &output)
+	if err == nil || !strings.Contains(err.Error(), "captcha disable|status") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}

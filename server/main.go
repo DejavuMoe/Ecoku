@@ -3,13 +3,13 @@ package main
 import (
 	"bufio"
 	"context"
+	"ecoku-server/captcha"
 	"ecoku-server/config"
 	"ecoku-server/importer"
 	"ecoku-server/logs"
 	"ecoku-server/model"
 	"ecoku-server/notifications"
 	"ecoku-server/routes"
-	"ecoku-server/turnstile"
 	"flag"
 	"fmt"
 	"io"
@@ -35,6 +35,11 @@ func main() {
 				log.Fatalf("管理员密码哈希生成失败: %v", err)
 			}
 			return
+		case "captcha":
+			if err := runCaptchaCommand(os.Args[2:], os.Stdout); err != nil {
+				log.Fatalf("CAPTCHA 运维命令失败: %v", err)
+			}
+			return
 		}
 	}
 	// 初始化配置文件
@@ -47,8 +52,8 @@ func main() {
 	if err := notifications.ValidateStoredSecrets(); err != nil {
 		log.Fatalf("通知凭据校验失败: %v", err)
 	}
-	if err := turnstile.ValidateStoredSecret(); err != nil {
-		log.Fatalf("Turnstile 凭据校验失败: %v", err)
+	if err := captcha.ValidateStoredSecrets(); err != nil {
+		log.Fatalf("CAPTCHA 凭据校验失败: %v", err)
 	}
 	runtimeContext, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	worker, err := notifications.StartWorker(runtimeContext)
@@ -89,6 +94,45 @@ func runPasswordHash(reader io.Reader, writer io.Writer) error {
 		return fmt.Errorf("输出哈希: %w", err)
 	}
 	return nil
+}
+
+func runCaptchaCommand(arguments []string, writer io.Writer) (resultErr error) {
+	if len(arguments) != 1 || (arguments[0] != "disable" && arguments[0] != "status") {
+		return fmt.Errorf("用法: captcha disable|status")
+	}
+	config.InitConfigFile()
+	logs.InitLogger()
+	if err := model.InitDatabase(); err != nil {
+		return err
+	}
+	defer func() {
+		if err := model.CloseDatabase(); err != nil && resultErr == nil {
+			resultErr = err
+		}
+	}()
+
+	switch arguments[0] {
+	case "disable":
+		changed, err := captcha.Disable()
+		if err != nil {
+			return err
+		}
+		message := "CAPTCHA 已处于关闭状态"
+		if changed {
+			message = "CAPTCHA 已关闭；已保存的提供方配置和加密凭据均已保留"
+		}
+		_, err = fmt.Fprintln(writer, message)
+		return err
+	case "status":
+		status, err := captcha.Describe()
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintln(writer, status)
+		return err
+	default:
+		return fmt.Errorf("用法: captcha disable|status")
+	}
 }
 
 func runTwikooImport(arguments []string) (resultErr error) {

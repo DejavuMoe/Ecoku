@@ -109,11 +109,11 @@ func TestV1DatabaseMigratesInPlaceWithoutLosingBusinessData(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 	var turnstileCount int64
-	database.Table("turnstile_settings").Where("id = 1 AND enabled = 0 AND sitekey = ''").Count(&turnstileCount)
+	database.Table("captcha_settings").Where("id = 1 AND enabled = 0 AND provider = 'turnstile' AND sitekey = ''").Count(&turnstileCount)
 	if turnstileCount != 1 {
 		t.Fatal("turnstile settings were not initialized")
 	}
@@ -193,11 +193,11 @@ func TestV2DatabaseMigratesBloggerBadgeInPlace(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 	var turnstileCount int64
-	database.Table("turnstile_settings").Where("id = 1 AND enabled = 0 AND sitekey = ''").Count(&turnstileCount)
+	database.Table("captcha_settings").Where("id = 1 AND enabled = 0 AND provider = 'turnstile' AND sitekey = ''").Count(&turnstileCount)
 	if turnstileCount != 1 {
 		t.Fatal("turnstile settings were not initialized")
 	}
@@ -247,7 +247,7 @@ func TestV3DatabaseMigratesTurnstileSettingsInPlace(t *testing.T) {
 	var enabled int
 	var sitekey string
 	var revision int
-	if err := database.Raw(`SELECT enabled, sitekey, revision FROM turnstile_settings WHERE id = 1`).Row().Scan(&enabled, &sitekey, &revision); err != nil {
+	if err := database.Raw(`SELECT enabled, sitekey, revision FROM captcha_settings WHERE id = 1`).Row().Scan(&enabled, &sitekey, &revision); err != nil {
 		t.Fatal(err)
 	}
 	if enabled != 0 || sitekey != "" || revision != 1 {
@@ -257,7 +257,7 @@ func TestV3DatabaseMigratesTurnstileSettingsInPlace(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 }
@@ -267,7 +267,7 @@ func TestFreshSchemaInitializesAndIsRepeatable(t *testing.T) {
 	if err := PrepareDatabaseForStartup(DB); err != nil {
 		t.Fatalf("repeat startup: %v", err)
 	}
-	for _, table := range []string{"sites", "site_origins", "comments", "notification_settings", "notification_outbox", "turnstile_settings"} {
+	for _, table := range []string{"sites", "site_origins", "comments", "notification_settings", "notification_outbox", "captcha_settings"} {
 		if ok, err := hasTable(DB, table); err != nil || !ok {
 			t.Fatalf("missing %s: %v", table, err)
 		}
@@ -424,7 +424,87 @@ func TestV4DatabaseMigratesBloggerProofOutboxTargetsAndBackfill(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6}) {
 		t.Fatalf("migration history mismatch: %v", versions)
+	}
+}
+
+func TestV5CaptchaProviderMigrationPreservesTurnstileState(t *testing.T) {
+	t.Setenv("ECOKU_MODEL_SITE_KEY", strings.Repeat("m", 32))
+	if err := config.ApplyConfig(&config.Config{Sites: []config.RegisteredSiteConfig{{
+		ID: "site-a", SiteURL: "https://example.test", AllowedOrigins: []string{"https://example.test"},
+		ManagementKeyEnv: "ECOKU_MODEL_SITE_KEY", Name: "Example",
+	}}}); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, fixture := range []struct {
+		name    string
+		enabled bool
+	}{
+		{name: "enabled", enabled: true},
+		{name: "disabled", enabled: false},
+	} {
+		t.Run(fixture.name, func(t *testing.T) {
+			database, err := OpenSQLiteDatabase(t.TempDir() + "/v5.sqlite3")
+			if err != nil {
+				t.Fatal(err)
+			}
+			sqlDatabase, _ := database.DB()
+			t.Cleanup(func() { _ = sqlDatabase.Close() })
+			if err := createFreshSchema(database); err != nil {
+				t.Fatal(err)
+			}
+			if err := migrateSiteBloggerIdentity(database); err != nil {
+				t.Fatal(err)
+			}
+			if err := migrateSiteBloggerBadge(database); err != nil {
+				t.Fatal(err)
+			}
+			if err := migrateTurnstileSettings(database); err != nil {
+				t.Fatal(err)
+			}
+			if err := migrateBloggerProofAndOutboxTargets(database); err != nil {
+				t.Fatal(err)
+			}
+			if err := database.Exec(`UPDATE turnstile_settings
+SET enabled = ?, sitekey = 'legacy-public', secret_cipher = X'010203', revision = 7
+WHERE id = 1`, fixture.enabled).Error; err != nil {
+				t.Fatal(err)
+			}
+
+			if err := PrepareDatabaseForStartup(database); err != nil {
+				t.Fatalf("migrate v5 to v6: %v", err)
+			}
+			var row struct {
+				Enabled         bool
+				Provider        string
+				Sitekey         string
+				SecretCipher    []byte `gorm:"column:secret_cipher"`
+				CapInstanceURL  string `gorm:"column:cap_instance_url"`
+				CapSitekey      string `gorm:"column:cap_sitekey"`
+				CapSecretCipher []byte `gorm:"column:cap_secret_cipher"`
+				Revision        uint
+			}
+			if err := database.Table("captcha_settings").Where("id = 1").First(&row).Error; err != nil {
+				t.Fatal(err)
+			}
+			if row.Enabled != fixture.enabled || row.Provider != "turnstile" || row.Sitekey != "legacy-public" || !reflect.DeepEqual(row.SecretCipher, []byte{1, 2, 3}) || row.Revision != 7 {
+				t.Fatalf("legacy Turnstile settings changed: %#v", row)
+			}
+			if row.CapInstanceURL != "" || row.CapSitekey != "" || len(row.CapSecretCipher) != 0 {
+				t.Fatalf("Cap defaults mismatch: %#v", row)
+			}
+			if exists, err := hasTable(database, "turnstile_settings"); err != nil || exists {
+				t.Fatalf("legacy table still exists: exists=%t err=%v", exists, err)
+			}
+			var versions []int
+			if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6}) {
+				t.Fatalf("migration history mismatch: %v", versions)
+			}
+		})
 	}
 }

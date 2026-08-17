@@ -391,9 +391,10 @@ sudo docker compose ps
 可选的宿主
 [`examples/hugo-papermod/assets/css/extended/ecoku.css`](../../examples/hugo-papermod/assets/css/extended/ecoku.css)
 只美化失败/未配置外壳。若站点使用严格 `style-src 'self'`，必须为 SDK
-注入样式或你改用的外部 CSS 制定经过审核的 CSP 方案；不要仅为消除报错而全局放宽脚本策略。若实例启用了 Cloudflare
+注入样式或你改用的外部 CSS 制定经过审核的 CSP 方案；不要仅为消除报错而全局放宽脚本策略。若当前验证方式为 Cloudflare
 Turnstile，宿主 CSP 还必须允许 `https://challenges.cloudflare.com` 的 `script-src`、`frame-src`
-和 `connect-src`。每次升级 SDK 后重新检查
+和 `connect-src`。若当前方式为自托管 Cap，宿主 CSP 必须把该实例 HTTPS Origin 加入 `script-src` 与
+`connect-src`，允许 `worker-src blob:`、instrumentation 所需的 `frame-src 'self'`，以及 WebAssembly 所需的精确 `script-src 'wasm-unsafe-eval'`；启用 instrumentation 且使用 nonce CSP 时，加载 Widget 前把同一 nonce 写入 `window.CAP_CSS_NONCE` 与 `window.CAP_SCRIPT_NONCE`。不要添加 `*`、宽泛的 `unsafe-inline` 或 `unsafe-eval`。每次升级 SDK 后重新检查
 CSP、控制台和网络请求，确认没有第三方 IP、头像、遥测或管理凭据。
 
 ### Hugo PaperMod
@@ -529,7 +530,7 @@ systemctl list-timers ecoku-backup.timer
 4. 若该版本要求新的环境变量（例如 `TZ`），写入 `ecoku.env` 后再启动；不要写进 `config.yaml`；
 5. 拉取、启动，用 `sudo docker compose logs -f ecoku` 观察启动与迁移日志，确认健康状态；
 6. 验证管理登录、站点配置、公开评论时间与悬停时区、提交、回复与通知。
-   若启用了 Turnstile，再确认评论发表和管理员登录都能完成验证。
+   若启用了 Turnstile 或 Cap，再确认评论发表和管理员登录都能完成当前提供方验证。
 
 ```bash
 sudo docker compose config --quiet
@@ -543,20 +544,66 @@ curl --fail http://127.0.0.1:12123/api/health
 显式 schema 迁移在原 `data/ecoku.sqlite3` 文件内按版本事务执行。成功后只增加
 `schema_migrations` 记录；不会自动删除旧数据库、业务数据、WAL 边车文件或 `backups/` 中的备份。
 失败的版本不会被记为完成，服务会拒绝启动。不存在单独的“v1 数据库”可供自动清理，也不得手工
-删除迁移历史或伪造版本。含博主口令与按目标拆分 outbox 的版本会把 schema 从 v4 升到 v5；升级前必须冷备份，
-已写入 v5 的库不能只换回旧镜像，必须用停服前的整库备份恢复。
+删除迁移历史或伪造版本。含博主口令与按目标拆分 outbox 的版本会把 schema 从 v4 升到 v5；统一 CAPTCHA 提供方会把 v5 原位升到 v6、保留既有 Turnstile 配置并新增 Cap 字段。升级前必须冷备份，
+已写入 v6 的库不能只换回旧镜像，必须用停服前的整库备份恢复。
 
-### Cloudflare Turnstile
+### 机器人验证
 
-Turnstile 是实例级开关，同时用于访客评论和管理员登录，不按站点分开。在 Cloudflare 控制台创建小组件后：
+「安全」页提供关闭、Cloudflare Turnstile 和自托管 Cap 三态选择；启用时后两者只能选择一个，并同时保护访客评论和管理员登录。切换或关闭不会清除另一提供方已经保存的配置。两者故障时都失败关闭，不会自动降级。
+
+#### Cloudflare Turnstile
+
+选择 Turnstile 时，它作为实例级提供方同时用于访客评论和管理员登录，不按站点分开。在 Cloudflare 控制台创建小组件后：
 
 1. 把管理端来源和所有评论站点来源都加入该小组件的主机名列表；
-2. 在管理端「安全」填入 Sitekey 与 Secret key 并启用；
+2. 在管理端「安全」选择 Cloudflare Turnstile，填入 Sitekey 与 Secret key 并保存；
 3. 小组件模式（托管 / 非交互式 / 不可见）只在 Cloudflare 配置，同一组密钥都兼容。
 
 「为已验证的访问者跳过将来的安全规则质询」（Pre-clearance）也只在 Cloudflare 控制台配置。`cf_clearance` 只跳过后续 Cloudflare 安全规则质询，不会让 Ecoku 跳过 Siteverify。评论区和登录页仍会调用小组件；需要交互时才出现勾选框。若管理端或评论站点不在 Cloudflare 区域代理之后，应关闭 Pre-clearance：浏览器会向站点自身请求 `/cdn-cgi/challenge-platform/` 并得到 404，控制台出现 `aborting clearance redemption`；小组件仍可完成 Siteverify。
 
 Secret key 使用与通知相同的 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 加密。未配置该密钥时不能保存已启用的 Turnstile。
+
+#### 自托管 Cap
+
+先在 Cap Standalone 管理台为 Ecoku 创建一组 Site key / Secret key。Cap 的 `ADMIN_KEY` 只用于 Cap 自身后台，不能填入 Ecoku。然后：
+
+1. 保持 Cap 的 instrumentation challenges 开启，并把 Ecoku 管理端 Origin 与每个实际评论站点 Origin 加入该 Key 的 CORS 允许列表；
+2. 确认 Cap 实例使用公开 HTTPS，且 Standalone 已启用固定版本的 `/assets/widget.js` 与 `/assets/cap_wasm_bg.wasm`；
+3. 在 Ecoku 管理端「安全」选择 Cap，填写实例根地址、Site key 和 Secret key；实例地址只接受公开 HTTPS，不接受凭据、query、fragment、localhost 或私网 IP；
+4. 保存后在当前管理会话仍打开时，用另一个普通浏览器窗口验证管理员登录和评论发表；Cap token 单次使用，重试会重新求解。
+
+使用当前镜像同源 `/client/ecoku-loader.js` 的站点会随镜像获得 Cap 支持。若站点自行固定旧 npm/UMD SDK，必须先更新到包含 `formConfig.captcha` / `captchaToken` 的版本再选择 Cap；旧 Turnstile-only 客户端无法求解 Cap，服务端会失败关闭并拒绝提交。
+
+Ecoku 浏览器端只从该实例加载 Widget/WASM，并把同一实例下的兼容回退 URL 交给 Widget，避免浏览器回退到公共 CDN；缺少现代 `DecompressionStream` 的旧浏览器会失败关闭。服务端向 `<实例>/<Site key>/siteverify` 发送 JSON，不附加客户端 IP，不记录完整 token、Secret 或第三方响应正文。Cap Secret 与 Turnstile Secret 分别使用 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 加密。
+
+#### 验证服务故障时恢复管理员登录
+
+若当前 Turnstile 或 Cap 故障、Cap 数据被删除，导致管理员无法登录，必须在 Ecoku 主机执行显式停服恢复；不要配置自动降级或长期环境变量绕过。下面命令会先保留冷备份，再把验证方式设为关闭；两套 Sitekey、实例地址和加密 Secret 均保留：
+
+```bash
+set -euo pipefail
+cd ~/Ecoku
+
+sudo docker compose down
+sudo test ! -e ./data/ecoku.sqlite3-wal
+sudo test ! -e ./data/ecoku.sqlite3-shm
+
+umask 077
+mkdir -p ./backups
+backup_stamp="$(date +%Y%m%d-%H%M%S)"
+sudo cp --reflink=auto --preserve=mode,timestamps \
+  ./data/ecoku.sqlite3 "./backups/ecoku-before-captcha-disable-${backup_stamp}.sqlite3"
+sudo chown "$USER":"$USER" "./backups/ecoku-before-captcha-disable-${backup_stamp}.sqlite3"
+chmod 600 "./backups/ecoku-before-captcha-disable-${backup_stamp}.sqlite3"
+
+sudo docker compose run --rm --no-deps ecoku captcha status
+sudo docker compose run --rm --no-deps ecoku captcha disable
+sudo docker compose up -d
+sudo docker compose ps
+curl --fail http://127.0.0.1:12123/api/health
+```
+
+随后无 CAPTCHA 登录管理端，修复或切换提供方，再保存。命令必须使用当前精确镜像和同一个 `./data` 挂载；不得直接用 `sqlite3` 手改设置表或伪造 revision。
 
 需要回滚时先停止失败版本，保留现场副本，把 Compose 恢复到旧镜像 tag，再用停服前备份替换
 `data/ecoku.sqlite3`，恢复 `10001:10001` 权限后启动。若新版本已经写入旧程序不认识的 schema，
@@ -629,6 +676,7 @@ sudo docker compose exec ecoku wget -q -O- http://127.0.0.1:12123/api/health
 | 配置了 `trusted_proxies` 仍不按人限流 | 填了 `0.0.0.0/0` 或 CDN 段而非 Docker 网关 | 只填 `docker inspect` 得到的网关 `/32` |
 | CORS 拒绝评论提交 | 站点 `allowed_origins` 未登记页面 Origin | 管理端补全来源；区分管理端与公开站点来源 |
 | Turnstile 登录/评论失败 | 未启用、token 缺失、Siteverify 失败 | 管理端「安全」检查 Sitekey/Secret；Secret 需 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` |
+| Cap 登录/评论失败 | 实例/CORS/资产不可达，Site key 或 Secret 不匹配，token 已消费 | 检查 Cap 健康、Key 的 CORS、`/assets/widget.js`、WASM 与 Siteverify；无法登录时按第 9 节执行停服 `captcha disable` |
 | 控制台 `aborting clearance redemption` | 开启了 Cloudflare Pre-clearance，但站点不在 CF 代理后 | 在 Cloudflare 控制台关闭 Pre-clearance；小组件仍可完成 Siteverify |
 | 备份后恢复仍异常 | 备份时存在 WAL/SHM，或只复制了主文件 | 必须停服且确认无 WAL/SHM 后再备份（见第 9 节） |
 | 评论时间不对 | 容器未设置 `TZ` 或改 `ecoku.env` 后未重建容器 | 在 `ecoku.env` 写 IANA 名称后 `docker compose up -d` |
@@ -646,6 +694,7 @@ sudo docker compose exec ecoku wget -q -O- http://127.0.0.1:12123/api/health
 - 公共列表不含邮箱或管理字段；博主评论只多一个公开标志、`isBlogger` 和站点 URL 链接；未登记 Origin 被 CORS 拒绝；
 - 根评论、内联回复、7 天身份恢复、Unicode 上限和根线程分页符合预期；
 - 评论时间按容器 `TZ` 显示，悬停为 IANA 加偏移；未设置 `TZ` 时为 `Asia/Shanghai`；
+- 安全页三态切换正确；若选择 Turnstile 或 Cap，管理员登录、根评论与内联回复都必须完成同一提供方验证，Secret 不回显；
 - SMTP/Telegram 测试和真实通知去重符合默认矩阵；
 - SQLite、WAL、日志、环境文件和备份均未进入公开目录、Git 或镜像层；
 - 已完成一次可校验的冷备份与恢复演练。

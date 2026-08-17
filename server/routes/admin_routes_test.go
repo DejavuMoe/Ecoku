@@ -2,12 +2,13 @@ package routes
 
 import (
 	"bytes"
+	"ecoku-server/captcha"
 	"ecoku-server/config"
 	"ecoku-server/model"
-	"ecoku-server/turnstile"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -30,6 +31,12 @@ type adminEnvironment struct {
 	token  string
 }
 
+type adminRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (function adminRoundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return function(request)
+}
+
 func setupAdminTest(t *testing.T) adminEnvironment {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
@@ -47,7 +54,7 @@ func setupAdminTest(t *testing.T) adminEnvironment {
 	if err := os.MkdirAll(filepath.Join(staticDir, "assets"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(staticDir, "index.html"), []byte("<!doctype html>"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(staticDir, "index.html"), []byte("<!doctype html><html><head></head><body></body></html>"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := config.ApplyConfig(&config.Config{
@@ -89,7 +96,7 @@ func setupAdminTest(t *testing.T) adminEnvironment {
 	return adminEnvironment{router: router, token: envelope.Data.Token}
 }
 
-func TestAdminStaticCSPAllowsStyleAttributesWithoutInlineScripts(t *testing.T) {
+func TestAdminStaticCSPAllowsStyleAttributesAndNonceBootstrapWithoutUnsafeInline(t *testing.T) {
 	env := setupAdminTest(t)
 	request := httptest.NewRequest(http.MethodGet, "/admin/", nil)
 	recorder := httptest.NewRecorder()
@@ -107,8 +114,11 @@ func TestAdminStaticCSPAllowsStyleAttributesWithoutInlineScripts(t *testing.T) {
 	if !strings.Contains(csp, "script-src 'self'") || !strings.Contains(csp, "style-src 'self'") {
 		t.Fatalf("administrator UI lost its self-only script/style policy: %q", csp)
 	}
-	if !strings.Contains(csp, "https://challenges.cloudflare.com") || !strings.Contains(csp, "frame-src https://challenges.cloudflare.com") {
+	if !strings.Contains(csp, "https://challenges.cloudflare.com") || !strings.Contains(csp, "frame-src 'self' https://challenges.cloudflare.com") {
 		t.Fatalf("administrator UI cannot load Turnstile: %q", csp)
+	}
+	if !strings.Contains(csp, "'nonce-") || !strings.Contains(recorder.Body.String(), "window.CAP_SCRIPT_NONCE") {
+		t.Fatalf("administrator index is missing its per-response Cap nonce: csp=%q body=%s", csp, recorder.Body.String())
 	}
 }
 
@@ -142,7 +152,7 @@ func TestAdminTurnstileSettingsAndLoginChallenge(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"success": r.FormValue("response") == "good-token"})
 	}))
 	t.Cleanup(server.Close)
-	restore := turnstile.ConfigureSiteverify(server.URL, server.Client())
+	restore := captcha.ConfigureTurnstileSiteverify(server.URL, server.Client())
 	t.Cleanup(restore)
 	wrongPassword := requestJSON(t, env.router, http.MethodPost, "/api/admin/login", adminTestOrigin, "", map[string]any{
 		"username": "instance-admin", "password": "wrong-password", "turnstileToken": "good-token",
@@ -155,6 +165,64 @@ func TestAdminTurnstileSettingsAndLoginChallenge(t *testing.T) {
 	})
 	if ok.Code != http.StatusOK {
 		t.Fatalf("login with token=%d %s", ok.Code, ok.Body.String())
+	}
+}
+
+func TestAdminCapSettingsLoginAndCSP(t *testing.T) {
+	env := setupAdminTest(t)
+	saved := requestJSON(t, env.router, http.MethodPut, "/api/admin/captcha", adminTestOrigin, "Bearer "+env.token, map[string]any{
+		"provider": "cap",
+		"turnstile": map[string]any{"sitekey": "turnstile-public", "secret": "turnstile-private"},
+		"cap": map[string]any{"instance_url": "https://cap.example.com", "sitekey": "cap-public", "secret": "cap-private"},
+		"revision": 1,
+	})
+	if saved.Code != http.StatusOK {
+		t.Fatalf("save Cap=%d %s", saved.Code, saved.Body.String())
+	}
+	for _, secret := range []string{"turnstile-private", "cap-private"} {
+		if strings.Contains(saved.Body.String(), secret) {
+			t.Fatalf("secret echoed: %s", saved.Body.String())
+		}
+	}
+	loginConfig := requestJSON(t, env.router, http.MethodGet, "/api/admin/login-config", adminTestOrigin, "", nil)
+	if loginConfig.Code != http.StatusOK || !strings.Contains(loginConfig.Body.String(), `"provider":"cap"`) || !strings.Contains(loginConfig.Body.String(), `"instanceUrl":"https://cap.example.com"`) || strings.Contains(loginConfig.Body.String(), "cap-private") {
+		t.Fatalf("Cap login config=%d %s", loginConfig.Code, loginConfig.Body.String())
+	}
+
+	indexRequest := httptest.NewRequest(http.MethodGet, "/admin/", nil)
+	indexRecorder := httptest.NewRecorder()
+	env.router.ServeHTTP(indexRecorder, indexRequest)
+	csp := indexRecorder.Header().Get("Content-Security-Policy")
+	for _, required := range []string{"https://cap.example.com", "'wasm-unsafe-eval'", "worker-src blob:", "'nonce-"} {
+		if !strings.Contains(csp, required) {
+			t.Fatalf("Cap CSP missing %q: %s", required, csp)
+		}
+	}
+	if !strings.Contains(indexRecorder.Body.String(), "window.CAP_CSS_NONCE") || !strings.Contains(indexRecorder.Body.String(), "window.CAP_SCRIPT_NONCE") {
+		t.Fatalf("Cap nonce bootstrap missing: %s", indexRecorder.Body.String())
+	}
+
+	client := &http.Client{Transport: adminRoundTripFunc(func(request *http.Request) (*http.Response, error) {
+		body, _ := io.ReadAll(request.Body)
+		var payload map[string]string
+		_ = json.Unmarshal(body, &payload)
+		success := request.URL.String() == "https://cap.example.com/cap-public/siteverify" && payload["secret"] == "cap-private" && payload["response"] == "good-cap-token"
+		response, _ := json.Marshal(map[string]bool{"success": success})
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(string(response))), Header: make(http.Header)}, nil
+	})}
+	restore := captcha.ConfigureCapSiteverify(client)
+	t.Cleanup(restore)
+	blocked := requestJSON(t, env.router, http.MethodPost, "/api/admin/login", adminTestOrigin, "", map[string]any{
+		"username": "instance-admin", "password": "test-admin-password", "turnstileToken": "good-cap-token",
+	})
+	if blocked.Code != http.StatusBadRequest {
+		t.Fatalf("Cap accepted legacy token=%d %s", blocked.Code, blocked.Body.String())
+	}
+	ok := requestJSON(t, env.router, http.MethodPost, "/api/admin/login", adminTestOrigin, "", map[string]any{
+		"username": "instance-admin", "password": "test-admin-password", "captchaToken": "good-cap-token",
+	})
+	if ok.Code != http.StatusOK {
+		t.Fatalf("Cap login=%d %s", ok.Code, ok.Body.String())
 	}
 }
 
