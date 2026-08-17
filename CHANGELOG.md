@@ -5,6 +5,20 @@
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-08-18
+
+### 修复
+
+- 修复启用 Cap instrumentation 后管理员登录持续 `instr_timeout`：当前 Cap 3.x 生成的 sandboxed instrumentation 脚本会调用 `eval` / `new Function`，管理端仅在 Cap 为当前启用方式时为其精确 Origin、WASM、Blob Worker 和 nonce 额外开放 `script-src 'unsafe-eval'`；关闭或切回 Turnstile 后即使保留 Cap 配置也不会继续放宽 CSP；
+- 补充三态 CSP 回归测试，并修正严格 CSP 文档：`'wasm-unsafe-eval'` 只允许 WebAssembly，不能代替 instrumentation 所需的 JavaScript `'unsafe-eval'`。拒绝这一安全权衡的宿主必须关闭该 Cap Key 的 instrumentation 或改用 Turnstile，不能用 `*`、`unsafe-inline` 或自动降级绕过。
+
+### 升级边界
+
+- 本版本不改变 SQLite schema，仍为 v6；不新增环境变量、Compose 挂载或配置键；
+- 从 `v0.1.5` 升级仍须先停服冷备份，再把 `compose.yaml` 的精确镜像 tag 改为 `v0.1.6`，然后执行 `sudo docker compose pull && sudo docker compose up -d`；
+- 若曾为恢复管理员登录而暂时关闭 Cap instrumentation，升级后先确认管理端响应 CSP 只在 Cap 模式包含 `'unsafe-eval'`，再重新开启 instrumentation，并分别验证管理员登录与评论提交；
+- 回滚时改回 `v0.1.5`。两版均使用 schema v6，一般不必替换数据库；若启动或验证异常，仍使用停服前备份恢复。
+
 ## [0.1.5] - 2026-08-17
 
 ### 变更
@@ -274,3 +288,4 @@
 [0.1.3]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.3
 [0.1.4]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.4
 [0.1.5]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.5
+[0.1.6]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.6
