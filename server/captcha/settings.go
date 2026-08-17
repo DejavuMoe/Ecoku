@@ -108,10 +108,13 @@ func PublicConfig() (config.CaptchaPublicConfig, error) {
 	}
 }
 
-func StoredCapOrigin() (string, error) {
+func ActiveCapOrigin() (string, error) {
 	row, err := loadSetting()
 	if err != nil {
 		return "", err
+	}
+	if !row.Enabled || row.Provider != ProviderCap {
+		return "", nil
 	}
 	if strings.TrimSpace(row.CapInstanceURL) == "" {
 		return "", nil

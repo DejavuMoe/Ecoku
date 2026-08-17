@@ -244,12 +244,15 @@ func adminStaticSecurityHeaders() gin.HandlerFunc {
 		c.Set(adminCSPNonceKey, nonce)
 		// Keep scripts strict while allowing browser accessibility/annotation tools
 		// to apply transient style attributes to the administrator UI.
-		capOrigin, _ := captcha.StoredCapOrigin()
+		capOrigin, _ := captcha.ActiveCapOrigin()
 		scriptSources := "'self' https://challenges.cloudflare.com 'nonce-" + nonce + "'"
 		connectSources := "'self' https://challenges.cloudflare.com"
 		workerSources := "'none'"
 		if capOrigin != "" {
-			scriptSources += " " + capOrigin + " 'wasm-unsafe-eval'"
+			// Cap 3.x instrumentation runs eval/new Function inside its nonce-authorized
+			// sandboxed srcdoc frame. CSP cannot scope unsafe-eval to that frame, so keep
+			// the relaxation limited to requests where Cap is the active provider.
+			scriptSources += " " + capOrigin + " 'wasm-unsafe-eval' 'unsafe-eval'"
 			connectSources += " " + capOrigin
 			workerSources = "blob:"
 		}
