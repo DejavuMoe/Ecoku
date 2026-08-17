@@ -1,8 +1,8 @@
 package admin
 
 import (
+	"ecoku-server/captcha"
 	"ecoku-server/config"
-	"ecoku-server/turnstile"
 	"ecoku-server/utils"
 	"errors"
 	"io"
@@ -22,6 +22,7 @@ const (
 type loginRequest struct {
 	Username       string `json:"username"`
 	Password       string `json:"password"`
+	CaptchaToken   string `json:"captchaToken"`
 	TurnstileToken string `json:"turnstileToken"`
 }
 
@@ -49,12 +50,12 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	if err := turnstile.Verify(c.Request.Context(), request.TurnstileToken); err != nil {
-		if errors.Is(err, turnstile.ErrFailed) {
+	if err := captcha.Verify(c.Request.Context(), captcha.Tokens{Captcha: request.CaptchaToken, Turnstile: request.TurnstileToken}); err != nil {
+		if errors.Is(err, captcha.ErrFailed) {
 			utils.SendError(c, http.StatusBadRequest, "验证失败，请重试。")
 			return
 		}
-		utils.SendError(c, http.StatusInternalServerError, "验证服务暂时不可用")
+		utils.SendError(c, http.StatusServiceUnavailable, "验证服务暂时不可用")
 		return
 	}
 

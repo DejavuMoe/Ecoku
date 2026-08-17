@@ -7,8 +7,8 @@ import SecurityView from './components/SecurityView.vue'
 import SiteManagementView from './components/SiteManagementView.vue'
 import { useAdminStore } from './stores/admin'
 import { adminApi } from './api'
-import type { MainView } from './types'
-import { TurnstileWidget } from './turnstile'
+import type { CaptchaPublicConfig, MainView } from './types'
+import { mountChallenge, type ChallengeWidget } from './captcha'
 import { messages } from './messages'
 
 const store = useAdminStore()
@@ -21,8 +21,8 @@ const username = ref('')
 const password = ref('')
 const usernameInput = ref<HTMLInputElement | null>(null)
 const loginSlot = ref<HTMLElement | null>(null)
-const loginSitekey = ref('')
-let loginWidget: TurnstileWidget | null = null
+const loginCaptcha = ref<CaptchaPublicConfig>({ provider: 'off', sitekey: '', instanceUrl: '' })
+let loginWidget: ChallengeWidget | null = null
 const sitePicker = ref<HTMLElement | null>(null)
 const siteTrigger = ref<HTMLButtonElement | null>(null)
 const siteMenu = ref<HTMLElement | null>(null)
@@ -38,14 +38,18 @@ watch(toastMessage, (value) => {
   toastTimer = setTimeout(() => { visibleToast.value = '' }, 3200)
 })
 
-watch(authenticated, async (value) => {
+watch(authenticated, async (value, previous) => {
   await nextTick()
   if (value) {
     loginWidget?.remove()
     loginWidget = null
-    loginSitekey.value = ''
+    loginCaptcha.value = { provider: 'off', sitekey: '', instanceUrl: '' }
     siteTrigger.value?.focus()
   } else {
+    if (previous) {
+      window.location.reload()
+      return
+    }
     usernameInput.value?.focus()
     await mountLoginChallenge()
   }
@@ -74,13 +78,13 @@ onBeforeUnmount(() => {
 async function mountLoginChallenge() {
   loginWidget?.remove()
   loginWidget = null
-  loginSitekey.value = ''
+  loginCaptcha.value = { provider: 'off', sitekey: '', instanceUrl: '' }
   try {
     const config = await adminApi.getLoginConfig()
-    loginSitekey.value = config.turnstileSitekey
+    loginCaptcha.value = config.captcha
     await nextTick()
-    if (loginSitekey.value && loginSlot.value) {
-      loginWidget = await TurnstileWidget.mount(loginSlot.value, loginSitekey.value)
+    if (loginCaptcha.value.provider !== 'off' && loginSlot.value) {
+      loginWidget = await mountChallenge(loginSlot.value, loginCaptcha.value)
     }
   } catch {
     loginWidget = null
@@ -88,7 +92,7 @@ async function mountLoginChallenge() {
 }
 
 async function submitLogin() {
-  if (loginSitekey.value) {
+  if (loginCaptcha.value.provider !== 'off') {
     let token = ''
     try { token = await loginWidget?.waitForToken() ?? '' } catch { token = '' }
     if (!token) {
@@ -169,7 +173,7 @@ function handleSiteMenuKeydown(event: KeyboardEvent) {
         <p v-if="loginMessage" class="form-error" role="alert">{{ loginMessage }}</p>
         <label class="input-group"><span>用户名</span><input ref="usernameInput" v-model="username" name="username" type="text" autocomplete="username" maxlength="80" required></label>
         <label class="input-group"><span>密码</span><input v-model="password" name="password" type="password" autocomplete="current-password" required></label>
-        <div v-if="loginSitekey" ref="loginSlot" class="turnstile-slot"></div>
+        <div v-if="loginCaptcha.provider !== 'off'" ref="loginSlot" class="turnstile-slot captcha-slot"></div>
         <button class="button button-primary login-button" type="submit" :disabled="loginBusy || !username.trim() || !password">{{ loginBusy ? '登录中…' : '登录' }}</button>
       </form>
     </section>

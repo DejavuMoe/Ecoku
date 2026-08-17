@@ -4,8 +4,8 @@
 
 - 实现以当前源码为准；产品/安全/隐私以 `docs/product/constraints.md` 为准；部署以
   `docs/operations/self-hosting.md` 为准。`docs/progress/` 只是历史验收，不约束当前实现。
-- 评论区基线 `designs/plain-thread-comments/index-v15.html`；管理端站点配置以
-  `designs/admin-moderation/index-v11.html` 为准（系统衬线栈），安全与登录验证以 `index-v10.html` 为准，
+- 评论区基线 `designs/plain-thread-comments/index-v16.html`；管理端站点配置以
+  `designs/admin-moderation/index-v11.html` 为准（系统衬线栈），安全与登录验证以 `index-v12.html` 为准，
   评论管理/通知设置仍沿用 v5。生产管理端不得展示通知判定预览或通知模板预览。
 - 边界不清时先查源码和上述文档，再集中向用户确认。不要把原型 mock、测试文案或设计标注带进生产。
 - 文档索引见 `docs/README.md`；本地开发见 `docs/development/local-setup.md`。

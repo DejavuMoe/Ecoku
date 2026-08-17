@@ -1,13 +1,17 @@
 package routes
 
 import (
+	"bytes"
 	"context"
+	"crypto/rand"
+	"ecoku-server/captcha"
 	"ecoku-server/config"
 	adminhandler "ecoku-server/handle/admin"
 	"ecoku-server/handle/app"
 	"ecoku-server/handle/comment"
 	"ecoku-server/middleware"
 	"ecoku-server/utils"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -83,6 +87,13 @@ func NewRouter() (*gin.Engine, error) {
 				adminhandler.UpdateSite,
 			)
 			protected.GET("/notifications", middleware.RequireInstanceAdmin(), adminhandler.GetNotificationSettings)
+			protected.GET("/captcha", middleware.RequireInstanceAdmin(), adminhandler.GetCaptchaSettings)
+			protected.PUT(
+				"/captcha",
+				middleware.RequireInstanceAdmin(),
+				middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
+				adminhandler.SaveCaptchaSettings,
+			)
 			protected.GET("/turnstile", middleware.RequireInstanceAdmin(), adminhandler.GetTurnstileSettings)
 			protected.PUT(
 				"/turnstile",
@@ -188,6 +199,10 @@ func registerAdminStatic(router *gin.Engine, configuredDirectory string) error {
 	if err != nil || !indexInfo.Mode().IsRegular() {
 		return fmt.Errorf("admin.static_dir 缺少 index.html")
 	}
+	indexHTML, err := os.ReadFile(indexPath)
+	if err != nil {
+		return fmt.Errorf("读取 admin index.html: %w", err)
+	}
 	assetsPath := filepath.Join(absoluteDirectory, "assets")
 	assetsInfo, err := os.Stat(assetsPath)
 	if err != nil || !assetsInfo.IsDir() {
@@ -200,17 +215,45 @@ func registerAdminStatic(router *gin.Engine, configuredDirectory string) error {
 	})
 	adminStatic.GET("/", func(c *gin.Context) {
 		c.Header("Cache-Control", "no-store")
-		c.File(indexPath)
+		nonce, _ := c.Get(adminCSPNonceKey)
+		body := renderAdminIndex(indexHTML, fmt.Sprint(nonce))
+		c.Data(http.StatusOK, "text/html; charset=utf-8", body)
 	})
 	adminStatic.StaticFS("/assets", gin.Dir(assetsPath, false))
 	return nil
 }
 
+const adminCSPNonceKey = "ecoku_admin_csp_nonce"
+
+func renderAdminIndex(indexHTML []byte, nonce string) []byte {
+	bootstrap := fmt.Sprintf(`<script nonce="%s">window.CAP_CSS_NONCE=%q;window.CAP_SCRIPT_NONCE=%q;</script>`, nonce, nonce, nonce)
+	return bytes.Replace(indexHTML, []byte("</head>"), []byte(bootstrap+"</head>"), 1)
+}
+
+func newAdminCSPNonce() string {
+	value := make([]byte, 18)
+	if _, err := rand.Read(value); err != nil {
+		return ""
+	}
+	return base64.RawStdEncoding.EncodeToString(value)
+}
+
 func adminStaticSecurityHeaders() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		nonce := newAdminCSPNonce()
+		c.Set(adminCSPNonceKey, nonce)
 		// Keep scripts strict while allowing browser accessibility/annotation tools
 		// to apply transient style attributes to the administrator UI.
-		contentSecurityPolicy := "default-src 'self'; base-uri 'none'; connect-src 'self' https://challenges.cloudflare.com; font-src 'self'; form-action 'self'; frame-ancestors 'none'; frame-src https://challenges.cloudflare.com; img-src 'self' data:; object-src 'none'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; style-src-attr 'unsafe-inline'"
+		capOrigin, _ := captcha.StoredCapOrigin()
+		scriptSources := "'self' https://challenges.cloudflare.com 'nonce-" + nonce + "'"
+		connectSources := "'self' https://challenges.cloudflare.com"
+		workerSources := "'none'"
+		if capOrigin != "" {
+			scriptSources += " " + capOrigin + " 'wasm-unsafe-eval'"
+			connectSources += " " + capOrigin
+			workerSources = "blob:"
+		}
+		contentSecurityPolicy := "default-src 'self'; base-uri 'none'; connect-src " + connectSources + "; font-src 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'self' https://challenges.cloudflare.com; img-src 'self' data:; object-src 'none'; script-src " + scriptSources + "; style-src 'self' 'nonce-" + nonce + "'; style-src-attr 'unsafe-inline'; worker-src " + workerSources
 		c.Header("Content-Security-Policy", contentSecurityPolicy)
 		c.Header("Referrer-Policy", "no-referrer")
 		c.Header("X-Content-Type-Options", "nosniff")

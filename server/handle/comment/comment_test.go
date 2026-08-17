@@ -2,11 +2,12 @@ package comment
 
 import (
 	"bytes"
+	"ecoku-server/captcha"
 	"ecoku-server/config"
 	"ecoku-server/model"
-	"ecoku-server/turnstile"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -23,6 +24,12 @@ type commentListEnvelope struct {
 		FormConfig   config.CommentFormConfig `json:"formConfig"`
 		TimeZone     string                   `json:"timeZone"`
 	} `json:"data"`
+}
+
+type commentRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (function commentRoundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return function(request)
 }
 
 func setupCommentTest(t *testing.T) *gin.Engine {
@@ -216,7 +223,7 @@ func TestSiteFormConfigurationAndUnicodeLengthLimit(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &envelope); err != nil {
 		t.Fatal(err)
 	}
-	want := config.CommentFormConfig{EmailRequired: false, WebsiteRequired: true, Placeholder: "分享你的想法", DefaultSort: "oldest", LengthLimit: 321, EmptyMessage: "暂时没有评论", BloggerBadge: config.DefaultBloggerBadge}
+	want := config.CommentFormConfig{EmailRequired: false, WebsiteRequired: true, Placeholder: "分享你的想法", DefaultSort: "oldest", LengthLimit: 321, EmptyMessage: "暂时没有评论", BloggerBadge: config.DefaultBloggerBadge, Captcha: config.CaptchaPublicConfig{Provider: captcha.ProviderOff}}
 	if envelope.Data.FormConfig != want {
 		t.Fatalf("form=%#v", envelope.Data.FormConfig)
 	}
@@ -271,7 +278,11 @@ func enableCommentTurnstile(t *testing.T, successToken string) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := turnstile.Save(turnstile.Settings{Enabled: true, Sitekey: "public-sitekey", Secret: "secret-private", Revision: 1}); err != nil {
+	if _, err := captcha.Save(captcha.Settings{
+		Provider: captcha.ProviderTurnstile,
+		Turnstile: captcha.ProviderSettings{Sitekey: "public-sitekey", Secret: "secret-private"},
+		Revision: 1,
+	}); err != nil {
 		t.Fatal(err)
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -279,7 +290,38 @@ func enableCommentTurnstile(t *testing.T, successToken string) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"success": r.FormValue("response") == successToken})
 	}))
 	t.Cleanup(server.Close)
-	restore := turnstile.ConfigureSiteverify(server.URL, server.Client())
+	restore := captcha.ConfigureTurnstileSiteverify(server.URL, server.Client())
+	t.Cleanup(restore)
+}
+
+func enableCommentCap(t *testing.T, successToken string) {
+	t.Helper()
+	t.Setenv("ECOKU_COMMENT_CAPTCHA_KEY", base64.RawStdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef")))
+	if err := config.ApplyConfig(&config.Config{
+		Sites: []config.RegisteredSiteConfig{
+			{ID: "site-a", SiteURL: "https://a.example", AllowedOrigins: []string{"https://a.example"}, ManagementKeyEnv: "ECOKU_COMMENT_SITE_A_KEY", Comment: config.CommentConfig{LengthLimit: 4}},
+			{ID: "site-b", SiteURL: "https://b.example", AllowedOrigins: []string{"https://b.example"}, ManagementKeyEnv: "ECOKU_COMMENT_SITE_B_KEY"},
+		},
+		Notifications: config.NotificationsConfig{EncryptionKeyEnv: "ECOKU_COMMENT_CAPTCHA_KEY"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := captcha.Save(captcha.Settings{
+		Provider: captcha.ProviderCap,
+		Cap: captcha.CapSettings{InstanceURL: "https://cap.example.com", Sitekey: "cap-public", Secret: "cap-private"},
+		Revision: 1,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	client := &http.Client{Transport: commentRoundTripFunc(func(request *http.Request) (*http.Response, error) {
+		body, _ := io.ReadAll(request.Body)
+		var payload map[string]string
+		_ = json.Unmarshal(body, &payload)
+		success := request.URL.String() == "https://cap.example.com/cap-public/siteverify" && payload["secret"] == "cap-private" && payload["response"] == successToken
+		response, _ := json.Marshal(map[string]bool{"success": success})
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(string(response))), Header: make(http.Header)}, nil
+	})}
+	restore := captcha.ConfigureCapSiteverify(client)
 	t.Cleanup(restore)
 }
 
@@ -295,6 +337,9 @@ func TestPublicListExposesTurnstileSitekeyWithoutSecret(t *testing.T) {
 	if envelope.Data.FormConfig.TurnstileSitekey != "public-sitekey" {
 		t.Fatalf("form=%#v", envelope.Data.FormConfig)
 	}
+	if envelope.Data.FormConfig.Captcha.Provider != captcha.ProviderTurnstile || envelope.Data.FormConfig.Captcha.Sitekey != "public-sitekey" || envelope.Data.FormConfig.Captcha.InstanceURL != "" {
+		t.Fatalf("captcha=%#v", envelope.Data.FormConfig.Captcha)
+	}
 	if strings.Contains(recorder.Body.String(), "secret-private") {
 		t.Fatal("secret leaked in public list")
 	}
@@ -309,16 +354,55 @@ func TestSubmitRequiresTurnstileWhenEnabled(t *testing.T) {
 		t.Fatalf("missing token status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
 	invalid := validSubmission("site-a", "/post", 0)
-	invalid["turnstileToken"] = "bad-token"
+	invalid["captchaToken"] = "bad-token"
 	recorder = postJSON(t, router, invalid)
 	if recorder.Code != http.StatusBadRequest {
 		t.Fatalf("invalid token status=%d body=%s", recorder.Code, recorder.Body.String())
 	}
 	ok := validSubmission("site-a", "/post", 0)
-	ok["turnstileToken"] = "good-token"
+	ok["captchaToken"] = "good-token"
 	recorder = postJSON(t, router, ok)
 	if recorder.Code != http.StatusCreated {
 		t.Fatalf("valid token status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	legacy := validSubmission("site-a", "/legacy", 0)
+	legacy["turnstileToken"] = "good-token"
+	recorder = postJSON(t, router, legacy)
+	if recorder.Code != http.StatusCreated {
+		t.Fatalf("legacy Turnstile token status=%d body=%s", recorder.Code, recorder.Body.String())
+	}
+	conflicting := validSubmission("site-a", "/conflict", 0)
+	conflicting["captchaToken"] = "good-token"
+	conflicting["turnstileToken"] = "different-token"
+	if got := postJSON(t, router, conflicting).Code; got != http.StatusBadRequest {
+		t.Fatalf("conflicting token status=%d", got)
+	}
+}
+
+func TestPublicListAndSubmitUseCapWithoutLegacySecretFields(t *testing.T) {
+	router := setupCommentTest(t)
+	enableCommentCap(t, "good-cap-token")
+	list := httptest.NewRecorder()
+	router.ServeHTTP(list, httptest.NewRequest(http.MethodGet, "/list?siteId=site-a&key=/cap", nil))
+	var envelope commentListEnvelope
+	if err := json.Unmarshal(list.Body.Bytes(), &envelope); err != nil {
+		t.Fatal(err)
+	}
+	if envelope.Data.FormConfig.Captcha.Provider != captcha.ProviderCap || envelope.Data.FormConfig.Captcha.Sitekey != "cap-public" || envelope.Data.FormConfig.Captcha.InstanceURL != "https://cap.example.com" || envelope.Data.FormConfig.TurnstileSitekey != "" {
+		t.Fatalf("form=%#v", envelope.Data.FormConfig)
+	}
+	if strings.Contains(list.Body.String(), "cap-private") {
+		t.Fatal("Cap secret leaked in public list")
+	}
+	legacy := validSubmission("site-a", "/cap", 0)
+	legacy["turnstileToken"] = "good-cap-token"
+	if got := postJSON(t, router, legacy).Code; got != http.StatusBadRequest {
+		t.Fatalf("Cap accepted legacy token status=%d", got)
+	}
+	valid := validSubmission("site-a", "/cap", 0)
+	valid["captchaToken"] = "good-cap-token"
+	if got := postJSON(t, router, valid).Code; got != http.StatusCreated {
+		t.Fatalf("Cap token status=%d", got)
 	}
 }
 

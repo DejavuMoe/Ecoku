@@ -19,7 +19,7 @@ import {
   type StoredVisitorIdentity,
 } from './identity-store'
 import { zhCN } from './messages'
-import { TurnstileWidget } from './turnstile'
+import { mountChallenge, type ChallengeWidget } from './captcha'
 import {
   codePointLength,
   createElement,
@@ -45,8 +45,8 @@ interface ActiveReply {
   website: HTMLInputElement
   identityGrid: HTMLDivElement
   textarea: HTMLTextAreaElement
-  turnstileSlot: HTMLDivElement
-  widget: TurnstileWidget | null
+  captchaSlot: HTMLDivElement
+  widget: ChallengeWidget | null
   error: HTMLParagraphElement
   submit: HTMLButtonElement
 }
@@ -71,7 +71,7 @@ export class CommentSurface {
   private readonly email = createElement('input', 'ecoku-input')
   private readonly website = createElement('input', 'ecoku-input')
   private readonly rootContent = createElement('textarea', 'ecoku-textarea')
-  private readonly rootTurnstile = createElement('div', 'ecoku-turnstile-slot')
+  private readonly rootCaptcha = createElement('div', 'ecoku-turnstile-slot ecoku-captcha-slot')
   private readonly rootError = createElement('p', 'ecoku-form-error')
   private readonly characterCount = createElement('span', 'ecoku-character-count', `0/${DEFAULT_COMMENT_FORM_CONFIG.lengthLimit}`)
   private readonly rootSubmit = createElement('button', 'ecoku-primary-button', zhCN.submitComment)
@@ -94,8 +94,8 @@ export class CommentSurface {
   private submitController: AbortController | null = null
   private refreshController: AbortController | null = null
   private activeReply: ActiveReply | null = null
-  private rootWidget: TurnstileWidget | null = null
-  private turnstileGeneration = 0
+  private rootWidget: ChallengeWidget | null = null
+  private captchaGeneration = 0
   private requestVersion = 0
   private pageRevision = 0
   private listBusy = false
@@ -338,7 +338,7 @@ export class CommentSurface {
     this.rootSubmit.disabled = true
     end.append(this.rootSubmit)
     footer.append(this.characterCount, end)
-    this.rootForm.append(identityGrid, messageLabel, this.rootTurnstile, this.rootError, footer)
+    this.rootForm.append(identityGrid, messageLabel, this.rootCaptcha, this.rootError, footer)
     this.applyFormConfig(this.formConfig, false)
 
     for (const control of [this.nickname, this.email, this.website, this.rootContent]) {
@@ -402,7 +402,7 @@ export class CommentSurface {
   }
 
   private applyFormConfig(next: CommentFormConfig, initializeSort = true): void {
-    this.formConfig = { ...next }
+    this.formConfig = { ...next, captcha: { ...next.captcha } }
     this.email.required = next.emailRequired
     this.website.required = next.websiteRequired
     this.website.removeAttribute('placeholder')
@@ -424,19 +424,19 @@ export class CommentSurface {
       this.updateReplyFormState(this.activeReply)
     }
     this.updateRootFormState()
-    this.syncRootTurnstile()
-    if (this.activeReply) void this.syncReplyTurnstile(this.activeReply)
+    this.syncRootCaptcha()
+    if (this.activeReply) void this.syncReplyCaptcha(this.activeReply)
   }
 
-  private syncRootTurnstile(): void {
-    const generation = ++this.turnstileGeneration
+  private syncRootCaptcha(): void {
+    const generation = ++this.captchaGeneration
     this.rootWidget?.remove()
     this.rootWidget = null
-    this.rootTurnstile.replaceChildren()
-    const sitekey = this.formConfig.turnstileSitekey
-    if (!sitekey) return
-    void TurnstileWidget.mount(this.rootTurnstile, sitekey, this.config.theme).then((widget) => {
-      if (this.destroyed || generation !== this.turnstileGeneration) {
+    this.rootCaptcha.replaceChildren()
+    if (this.formConfig.captcha.provider === 'off') return
+    void mountChallenge(this.rootCaptcha, this.formConfig.captcha, this.config.theme).then((widget) => {
+      if (!widget) return
+      if (this.destroyed || generation !== this.captchaGeneration) {
         widget.remove()
         return
       }
@@ -444,14 +444,13 @@ export class CommentSurface {
     }).catch(() => undefined)
   }
 
-  private async syncReplyTurnstile(reply: ActiveReply): Promise<void> {
+  private async syncReplyCaptcha(reply: ActiveReply): Promise<void> {
     reply.widget?.remove()
     reply.widget = null
-    reply.turnstileSlot.replaceChildren()
-    const sitekey = this.formConfig.turnstileSitekey
-    if (!sitekey) return
+    reply.captchaSlot.replaceChildren()
+    if (this.formConfig.captcha.provider === 'off') return
     try {
-      reply.widget = await TurnstileWidget.mount(reply.turnstileSlot, sitekey, this.config.theme)
+      reply.widget = await mountChallenge(reply.captchaSlot, this.formConfig.captcha, this.config.theme)
     } catch {
       reply.widget = null
     }
@@ -770,8 +769,8 @@ export class CommentSurface {
     submit.disabled = true
     end.append(cancel, submit)
     footer.append(counter, end)
-    const turnstileSlot = createElement('div', 'ecoku-turnstile-slot')
-    form.append(identityGrid, messageLabel, turnstileSlot, error, footer)
+    const captchaSlot = createElement('div', 'ecoku-turnstile-slot ecoku-captcha-slot')
+    form.append(identityGrid, messageLabel, captchaSlot, error, footer)
     slot.append(form)
     const reply: ActiveReply = {
       parentId: comment.id,
@@ -782,13 +781,13 @@ export class CommentSurface {
       website,
       identityGrid,
       textarea,
-      turnstileSlot,
+      captchaSlot,
       widget: null,
       error,
       submit,
     }
     this.activeReply = reply
-    void this.syncReplyTurnstile(reply)
+    void this.syncReplyCaptcha(reply)
     this.updateReplyIdentityMode(reply)
     for (const control of [nickname, email, website]) {
       control.addEventListener('input', () => {
@@ -885,21 +884,21 @@ export class CommentSurface {
     this.clearError(errorElement, contentElement)
     this.setSubmissionControls(true, submitButton, reply)
     this.root.setAttribute('aria-busy', 'true')
+    const widget = reply ? this.activeReply?.widget : this.rootWidget
+    let challengeAttempted = false
     try {
-      if (this.formConfig.turnstileSitekey) {
-        const widget = reply ? this.activeReply?.widget : this.rootWidget
+      if (this.formConfig.captcha.provider !== 'off') {
         let token = ''
         try { token = await widget?.waitForToken() ?? '' } catch { token = '' }
         if (!token) {
           this.showInlineError(errorElement, contentElement, zhCN.challengeRequired)
           return
         }
-        draft.turnstileToken = token
+        draft.captchaToken = token
+        challengeAttempted = true
       }
       const submitted = await submitComment(this.config, draft, this.submitController.signal)
       if (this.destroyed || revision !== this.pageRevision || pageKey !== this.config.pageKey) return
-      const widget = reply ? this.activeReply?.widget : this.rootWidget
-      widget?.reset()
       if (submitted.data.isBlogger || this.looksLikeBloggerProofAttempt(identity)) {
         if (submitted.data.isBlogger) {
           this.nickname.value = ''
@@ -927,6 +926,7 @@ export class CommentSurface {
       if (isAbortError(error) || this.destroyed || revision !== this.pageRevision) return
       this.showInlineError(errorElement, contentElement, this.submissionErrorMessage(error))
     } finally {
+      if (challengeAttempted) widget?.reset()
       this.submissionBusy = false
       this.root.removeAttribute('aria-busy')
       this.setSubmissionControls(false, submitButton, reply)

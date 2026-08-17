@@ -324,6 +324,30 @@
   display: none;
 }
 
+.ecoku-cap-widget {
+  display: block;
+  width: min(100%, 260px);
+  max-width: 100%;
+  --cap-background: color-mix(in srgb, var(--ecoku-entry) 88%, var(--ecoku-theme));
+  --cap-border-color: var(--ecoku-border-soft);
+  --cap-border-radius: 14px;
+  --cap-widget-height: 58px;
+  --cap-widget-width: 260px;
+  --cap-widget-padding: 14px;
+  --cap-gap: 15px;
+  --cap-color: var(--ecoku-content);
+  --cap-font: inherit;
+  --cap-checkbox-size: 25px;
+  --cap-checkbox-border: 1px solid var(--ecoku-border);
+  --cap-checkbox-border-radius: 6px;
+  --cap-checkbox-background: var(--ecoku-entry);
+  --cap-checkbox-margin: 2px;
+  --cap-spinner-color: var(--ecoku-primary);
+  --cap-spinner-background-color: var(--ecoku-border-soft);
+  --cap-spinner-thickness: 3;
+  --cap-focus-ring: var(--ecoku-focus);
+}
+
 .ecoku-composer-footer {
   display: flex;
   align-items: center;

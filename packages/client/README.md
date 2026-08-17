@@ -92,9 +92,12 @@ container and pass that container together with `serverURL`, `siteId`, and
 - The SDK never accepts a management key, administrator token, client IP,
   forwarding header, user-agent value, location, avatar, analytics endpoint, or
   third-party IP service.
+- The server selects `off`, Cloudflare Turnstile, or a self-hosted Cap instance through public form configuration. The SDK loads only the selected Widget and sends one generic, single-use `captchaToken`; provider Secrets and Siteverify results never enter the browser. Cap Widget/WASM assets come from the configured instance, not a public CDN.
 - Comment content is rendered as text. HTML and Markdown are not interpreted.
 - Author websites must use `http` or `https` and are rendered with
   `nofollow ugc noopener noreferrer`.
+
+Strict host CSP must allow the selected provider. Turnstile requires `https://challenges.cloudflare.com`; Cap requires the configured Cap HTTPS Origin in `script-src` and `connect-src`, `worker-src blob:`, `frame-src 'self'`, and WebAssembly. Nonce-based Cap instrumentation uses the same preconfigured `window.CAP_CSS_NONCE` and `window.CAP_SCRIPT_NONCE` before Ecoku loads.
 
 ## Development checks
 

@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Ecoku 评论管理 · 验证方式</title>
+  <style>
+    :root {
+      --paper: rgb(250, 249, 245);
+      --surface: rgb(252, 251, 247);
+      --ink: rgb(20, 20, 19);
+      --ink-soft: rgb(58, 54, 44);
+      --muted: rgb(96, 91, 82);
+      --line: rgb(150, 143, 132);
+      --line-soft: rgba(20, 20, 19, 0.14);
+      --wash: rgb(243, 239, 231);
+      --accent: rgb(42, 83, 108);
+      --accent-hover: rgb(31, 67, 90);
+      --accent-text: rgb(250, 249, 245);
+      --approved: rgb(42, 102, 72);
+      --approved-bg: rgb(225, 240, 229);
+      --rejected: rgb(145, 54, 52);
+      --rejected-bg: rgb(246, 226, 223);
+      --warn: rgb(132, 96, 20);
+      --warn-bg: rgb(247, 236, 210);
+      --shadow: 0 18px 48px rgba(20, 20, 19, 0.1);
+      --radius: 14px;
+      --serif: "Noto Serif SC", "Noto Serif CJK SC", "Songti SC", "STSong", serif;
+      --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+      --mono: ui-monospace, "SFMono-Regular", "Cascadia Code", "Roboto Mono", monospace;
+      color-scheme: light dark;
+      font-family: var(--serif);
+    }
+
+    html[data-theme="light"] { color-scheme: light; }
+    html[data-theme="dark"] {
+      --paper: rgb(26, 29, 32);
+      --surface: rgb(34, 38, 42);
+      --ink: rgb(242, 236, 226);
+      --ink-soft: rgb(216, 209, 197);
+      --muted: rgb(188, 181, 169);
+      --line: rgb(109, 114, 120);
+      --line-soft: rgba(242, 236, 226, 0.14);
+      --wash: rgb(44, 48, 53);
+      --accent: rgb(148, 176, 196);
+      --accent-hover: rgb(168, 192, 208);
+      --accent-text: rgb(26, 29, 32);
+      --approved: rgb(148, 196, 168);
+      --approved-bg: rgba(42, 102, 72, 0.28);
+      --rejected: rgb(224, 156, 148);
+      --rejected-bg: rgba(145, 54, 52, 0.22);
+      --warn: rgb(232, 196, 120);
+      --warn-bg: rgba(132, 96, 20, 0.28);
+      --shadow: 0 18px 48px rgba(0, 0, 0, 0.36);
+      color-scheme: dark;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      html[data-theme="auto"] {
+        --paper: rgb(26, 29, 32);
+        --surface: rgb(34, 38, 42);
+        --ink: rgb(242, 236, 226);
+        --ink-soft: rgb(216, 209, 197);
+        --muted: rgb(188, 181, 169);
+        --line: rgb(109, 114, 120);
+        --line-soft: rgba(242, 236, 226, 0.14);
+        --wash: rgb(44, 48, 53);
+        --accent: rgb(148, 176, 196);
+        --accent-hover: rgb(168, 192, 208);
+        --accent-text: rgb(26, 29, 32);
+        --approved: rgb(148, 196, 168);
+        --approved-bg: rgba(42, 102, 72, 0.28);
+        --rejected: rgb(224, 156, 148);
+        --rejected-bg: rgba(145, 54, 52, 0.22);
+        --warn: rgb(232, 196, 120);
+        --warn-bg: rgba(132, 96, 20, 0.28);
+        --shadow: 0 18px 48px rgba(0, 0, 0, 0.36);
+        color-scheme: dark;
+      }
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { min-width: 320px; min-height: 100%; background: var(--paper); }
+    body { min-height: 100vh; margin: 0; color: var(--ink); background: var(--paper); font-size: 15px; line-height: 1.65; text-rendering: optimizeLegibility; }
+    button, input, select { color: inherit; font: inherit; }
+    button, select, label { cursor: pointer; }
+    button:disabled, input:disabled { cursor: not-allowed; }
+    [hidden] { display: none !important; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+    .skip-link { position: fixed; z-index: 200; top: 8px; left: 8px; padding: 7px 12px; border-radius: 999px; color: var(--accent-text); background: var(--accent); transform: translateY(-160%); }
+    .skip-link:focus { transform: translateY(0); }
+    .app-shell { display: grid; min-height: 100vh; grid-template-rows: 60px minmax(0, 1fr); }
+    .app-header { position: relative; z-index: 20; border-bottom: 1px solid var(--line-soft); background: var(--paper); }
+    .header-inner { display: flex; width: min(calc(100% - 48px), 1440px); height: 60px; margin: 0 auto; align-items: center; justify-content: space-between; gap: 28px; }
+    .header-start, .header-context, .primary-nav, .brand, .login-brand { display: flex; align-items: center; }
+    .header-start { min-width: 0; gap: 34px; }
+    .header-context { flex: 0 0 auto; gap: 12px; }
+    .primary-nav { align-self: stretch; gap: 24px; }
+    .brand { flex: 0 0 auto; gap: 10px; color: inherit; text-decoration: none; }
+    .brand-mark { display: grid; width: 34px; height: 34px; place-items: center; border: 1px solid var(--ink); border-radius: 50%; font-size: 18px; font-weight: 700; }
+    .brand-copy { display: grid; line-height: 1.05; }
+    .brand-copy strong { font-size: 19px; }
+    .brand-copy small { margin-top: 4px; color: var(--muted); font-size: 10px; letter-spacing: 0.08em; }
+    .nav-tab { position: relative; display: grid; height: 100%; place-items: center; padding: 0; color: var(--muted); font-size: 14px; text-decoration: none; white-space: nowrap; }
+    .nav-tab::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: transparent; content: ""; }
+    .nav-tab:hover, .nav-tab[aria-current="page"] { color: var(--ink); }
+    .nav-tab[aria-current="page"] { font-weight: 700; }
+    .nav-tab[aria-current="page"]::after { background: var(--accent); }
+    .site-pill { display: flex; min-width: 194px; min-height: 38px; align-items: center; justify-content: space-between; gap: 14px; padding: 0 13px 0 15px; border: 1px solid var(--line-soft); border-radius: 999px; background: var(--surface); font-size: 13px; }
+    .chevron { width: 8px; height: 8px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-2px) rotate(45deg); }
+    .logout-button { min-height: 36px; padding: 0 10px; border: 0; border-radius: 999px; color: var(--muted); background: transparent; font-size: 13px; }
+    .logout-button:hover { color: var(--ink); background: var(--wash); }
+
+    .main-area { min-width: 0; padding: 38px 24px 104px; }
+    .settings-column { width: min(100%, 820px); margin: 0 auto; }
+    .page-heading { margin-bottom: 24px; }
+    .page-heading h1 { margin: 0; font-size: 22px; line-height: 1.3; }
+    .page-heading p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+    .settings-card { overflow: hidden; border: 1px solid var(--line-soft); border-radius: var(--radius); background: var(--surface); }
+    .provider-group { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 18px 20px; border-bottom: 1px solid var(--line-soft); }
+    .provider-option { position: relative; display: grid; min-height: 78px; align-content: center; gap: 3px; padding: 12px 13px 12px 39px; border: 1px solid var(--line-soft); border-radius: 11px; background: var(--paper); }
+    .provider-option:hover { border-color: var(--line); }
+    .provider-option:has(input:checked) { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+    .provider-option input { position: absolute; top: 50%; left: 14px; width: 15px; height: 15px; margin: 0; accent-color: var(--accent); transform: translateY(-50%); }
+    .provider-option strong { font-size: 13px; line-height: 1.3; }
+    .provider-option small { color: var(--muted); font-size: 11px; line-height: 1.35; }
+
+    .provider-panel { padding: 20px; }
+    .provider-panel[aria-busy="true"] { opacity: 0.55; }
+    .channel-form { display: grid; gap: 14px; }
+    .form-row { display: grid; min-width: 0; grid-template-columns: 128px minmax(0, 1fr); align-items: start; gap: 14px; }
+    .form-label { padding-top: 8px; color: var(--muted); font-size: 13px; }
+    .field-stack { display: grid; min-width: 0; gap: 5px; }
+    .input { width: 100%; min-height: 38px; padding: 0 11px; border: 1px solid var(--line-soft); border-radius: 9px; outline: 0; background: var(--paper); font-family: var(--sans); font-size: 13px; }
+    .input:hover { border-color: var(--line); }
+    .input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent); }
+    .input[aria-invalid="true"] { border-color: var(--rejected); }
+    .field-help, .field-error { margin: 0; font-size: 12px; }
+    .field-help { color: var(--muted); }
+    .field-error { color: var(--rejected); }
+    .off-copy { margin: 0; padding: 11px 12px; border-radius: 9px; color: var(--warn); background: var(--warn-bg); font-size: 12px; }
+    .settings-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line-soft); }
+    .button { min-height: 38px; padding: 0 18px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); font-weight: 700; }
+    .button:hover:not(:disabled) { background: var(--wash); }
+    .button-primary { border-color: var(--accent); color: var(--accent-text); background: var(--accent); }
+    .button-primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+    .auth-screen { display: grid; min-height: 100vh; place-items: center; padding: 40px 22px 100px; }
+    .auth-shell { width: min(100%, 410px); }
+    .login-form { display: grid; gap: 17px; padding: 42px 0; }
+    .login-brand { gap: 11px; margin-bottom: 12px; }
+    .login-form h1 { margin: 0 0 7px; font-size: 26px; font-weight: 600; line-height: 1.3; }
+    .input-group { display: grid; gap: 7px; }
+    .input-group span { color: var(--ink-soft); font-size: 13px; font-weight: 600; }
+    .input-group input { width: 100%; height: 46px; padding: 0 13px; border: 1px solid var(--line-soft); border-radius: 10px; outline: 0; background: var(--surface); }
+    .input-group input:hover { border-color: var(--line); }
+    .input-group input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent); }
+    .form-error { margin: 0; padding: 9px 11px; border-radius: 9px; color: var(--rejected); background: var(--rejected-bg); font-size: 13px; }
+    .login-button { width: 100%; margin-top: 4px; }
+
+    .turnstile-slot { min-height: 65px; }
+    .turnstile-widget { display: flex; width: min(100%, 300px); height: 65px; align-items: center; gap: 12px; padding: 0 12px; border: 1px solid var(--line-soft); border-radius: 3px; background: var(--surface); font-family: var(--sans); font-size: 14px; }
+    .turnstile-check { display: grid; width: 24px; height: 24px; flex: 0 0 auto; place-items: center; padding: 0; border: 2px solid var(--line); border-radius: 4px; background: var(--paper); }
+    .turnstile-label { flex: 1 1 auto; color: var(--ink-soft); }
+    .turnstile-brand { color: var(--muted); font-size: 10px; letter-spacing: 0.04em; }
+
+    cap-widget.cap-prototype {
+      display: block;
+      width: min(100%, var(--cap-widget-width));
+      max-width: 100%;
+      --cap-background: var(--surface);
+      --cap-border-color: var(--line-soft);
+      --cap-border-radius: 14px;
+      --cap-widget-height: 58px;
+      --cap-widget-width: 260px;
+      --cap-widget-padding: 14px;
+      --cap-gap: 15px;
+      --cap-color: var(--ink-soft);
+      --cap-font: var(--serif);
+      --cap-checkbox-size: 25px;
+      --cap-checkbox-border: 1px solid var(--line);
+      --cap-checkbox-border-radius: 6px;
+      --cap-checkbox-background: var(--paper);
+      --cap-checkbox-margin: 2px;
+      --cap-spinner-color: var(--accent);
+      --cap-spinner-background-color: var(--line-soft);
+      --cap-spinner-thickness: 3;
+      --cap-focus-ring: var(--accent);
+      --cap-success-color: var(--approved);
+      --cap-error-color: var(--rejected);
+    }
+    .cap-captcha { position: relative; display: inline-block; width: 100%; height: var(--cap-widget-height); overflow: hidden; border: 1px solid var(--cap-border-color); border-radius: var(--cap-border-radius); color: var(--cap-color); background: var(--cap-background); font-family: var(--cap-font); user-select: none; transition: filter 0.2s, transform 0.2s; }
+    .cap-captcha:not([data-state]):active { transform: scale(0.97); }
+    .cap-captcha:hover { filter: brightness(98%); }
+    .cap-trigger { position: absolute; inset: 0; display: flex; width: 100%; align-items: center; gap: var(--cap-gap); padding: var(--cap-widget-padding); border: 0; border-radius: inherit; color: inherit; background: transparent; text-align: left; }
+    .cap-trigger:focus-visible { outline: 2px solid var(--cap-focus-ring); outline-offset: -3px; }
+    .cap-checkbox { display: grid; width: var(--cap-checkbox-size); height: var(--cap-checkbox-size); flex: 0 0 auto; place-items: center; border: var(--cap-checkbox-border); border-radius: var(--cap-checkbox-border-radius); background: var(--cap-checkbox-background); }
+    .cap-label-wrapper { position: relative; display: flex; height: 2em; flex: 1 1 auto; min-width: 0; align-items: center; overflow: hidden; }
+    .cap-label { margin: 0; font-size: 15px; font-weight: 500; line-height: 1.35; white-space: nowrap; }
+    .cap-progress-ring, .cap-state-icon { display: none; width: 100%; height: 100%; }
+    .cap-progress-ring { transform: rotate(-90deg); }
+    .cap-progress-ring-bg { fill: none; stroke: var(--cap-spinner-background-color); stroke-width: var(--cap-spinner-thickness); }
+    .cap-progress-ring-circle { fill: none; stroke: var(--cap-spinner-color); stroke-width: var(--cap-spinner-thickness); stroke-linecap: round; stroke-dasharray: 87.96; animation: cap-progress 900ms ease-in-out infinite alternate; }
+    .cap-checkmark { color: var(--cap-success-color); }
+    .cap-error-icon { color: var(--cap-error-color); }
+    .cap-captcha[data-state="verifying"] .cap-checkbox { display: flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: transparent; transform: scale(1.1); }
+    .cap-captcha[data-state="verifying"] .cap-progress-ring,
+    .cap-captcha[data-state="done"] .cap-checkmark,
+    .cap-captcha[data-state="error"] .cap-error-icon { display: block; }
+    .cap-captcha[data-state="done"] .cap-checkbox,
+    .cap-captcha[data-state="error"] .cap-checkbox { border-color: transparent; background: transparent; }
+    .cap-captcha[data-state="verifying"] .cap-trigger { cursor: progress; }
+    .cap-captcha[data-state="done"] .cap-trigger { cursor: default; }
+    .cap-credits { position: absolute; right: 4px; bottom: 4px; z-index: 2; display: inline-flex; min-width: 24px; min-height: 24px; align-items: center; justify-content: flex-end; padding: 4px 6px; border-radius: 4px; color: var(--cap-color); font-family: var(--cap-font); font-size: 12px; line-height: 1; text-decoration: underline; text-decoration-thickness: 0.08em; text-underline-offset: 0.18em; opacity: 0.8; pointer-events: none; }
+    @keyframes cap-progress { from { stroke-dashoffset: 76; } to { stroke-dashoffset: 18; } }
+
+    .scenario-controller { position: static; z-index: 30; display: grid; width: min(calc(100% - 36px), 232px); gap: 7px; margin: 0 18px 18px auto; padding: 12px; border: 1px solid var(--line-soft); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+    .scenario-controller label { color: var(--muted); font-size: 11px; }
+    .scenario-controller select { min-height: 38px; padding: 0 10px; border: 1px solid var(--line-soft); border-radius: 9px; background: var(--surface); }
+    .theme-note { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+
+    @media (max-width: 1023px) {
+      .header-inner { width: min(calc(100% - 28px), 760px); }
+      .brand-copy small, .site-pill, .header-context { display: none; }
+      .header-start { width: 100%; justify-content: space-between; gap: 18px; }
+      .primary-nav { gap: 16px; }
+      .main-area { padding: 24px 14px 112px; }
+    }
+    @media (max-width: 680px) {
+      .app-header { overflow-x: auto; }
+      .header-inner { width: max-content; min-width: calc(100% - 20px); }
+      .provider-group { grid-template-columns: 1fr; }
+      .provider-option { min-height: 64px; }
+      .form-row { grid-template-columns: 1fr; gap: 5px; }
+      .form-label { padding-top: 0; }
+      .scenario-controller { position: static; width: calc(100% - 28px); margin: 0 14px 14px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+
+  <div class="app-shell" id="security-screen">
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-start">
+          <a class="brand" href="#security-cap" aria-label="Ecoku 评论管理首页">
+            <span class="brand-mark" aria-hidden="true">E</span>
+            <span class="brand-copy"><strong>Ecoku</strong><small>评论管理</small></span>
+          </a>
+          <nav class="primary-nav" aria-label="主导航">
+            <a class="nav-tab" href="index-v5.html#comments-published">评论管理</a>
+            <a class="nav-tab" href="index-v11.html#sites-blogger-configured">站点管理</a>
+            <a class="nav-tab" href="index-v5.html#notifications-configured">通知设置</a>
+            <a class="nav-tab" href="#security-cap" aria-current="page">安全</a>
+          </nav>
+        </div>
+        <div class="header-context">
+          <button class="site-pill" type="button"><span>示例站点</span><span class="chevron" aria-hidden="true"></span></button>
+          <button class="logout-button" type="button">退出登录</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-area" id="main-content">
+      <section class="settings-column" aria-labelledby="security-title" data-screen-label="安全设置">
+        <header class="page-heading">
+          <h1 id="security-title">安全</h1>
+          <p>选择一种实例级验证方式，同时用于访客评论和管理员登录，不按站点分开。</p>
+        </header>
+
+        <section class="settings-card" aria-label="验证方式">
+          <div class="provider-group" role="radiogroup" aria-label="验证方式">
+            <label class="provider-option">
+              <input type="radio" name="captcha-provider" value="off">
+              <strong>关闭</strong>
+              <small>不显示验证组件</small>
+            </label>
+            <label class="provider-option">
+              <input type="radio" name="captcha-provider" value="turnstile">
+              <strong>Cloudflare Turnstile</strong>
+              <small>继续使用现有云端验证</small>
+            </label>
+            <label class="provider-option">
+              <input type="radio" name="captcha-provider" value="cap">
+              <strong>Cap</strong>
+              <small>连接自托管实例</small>
+            </label>
+          </div>
+
+          <div class="provider-panel" id="off-panel" hidden>
+            <p class="off-copy">关闭后，访客评论和管理员登录都不再要求额外验证；现有限流仍然生效。</p>
+            <footer class="settings-actions"><button class="button button-primary save-button" type="button">保存</button></footer>
+          </div>
+
+          <div class="provider-panel" id="turnstile-panel" hidden>
+            <div class="channel-form">
+              <div class="form-row">
+                <label class="form-label" for="turnstile-sitekey">Sitekey</label>
+                <div class="field-stack"><input class="input" id="turnstile-sitekey" type="text" maxlength="255" value="0x4AAAAAAA00000000000000"></div>
+              </div>
+              <div class="form-row">
+                <label class="form-label" for="turnstile-secret">Secret key</label>
+                <div class="field-stack"><input class="input" id="turnstile-secret" type="password" autocomplete="new-password" placeholder="已设置，输入新值以更换"></div>
+              </div>
+            </div>
+            <footer class="settings-actions"><button class="button button-primary save-button" type="button">保存</button></footer>
+          </div>
+
+          <div class="provider-panel" id="cap-panel" hidden>
+            <div class="channel-form">
+              <div class="form-row">
+                <label class="form-label" for="cap-instance-url">实例地址</label>
+                <div class="field-stack">
+                  <input class="input" id="cap-instance-url" type="url" inputmode="url" spellcheck="false" value="https://cap.example.com" placeholder="https://cap.example.com">
+                  <p class="field-error" id="cap-instance-error" hidden>请输入有效的 HTTPS 实例地址</p>
+                </div>
+              </div>
+              <div class="form-row">
+                <label class="form-label" for="cap-sitekey">Site key</label>
+                <div class="field-stack">
+                  <input class="input" id="cap-sitekey" type="text" maxlength="255" value="d9256640cb53" spellcheck="false">
+                  <p class="field-error" id="cap-sitekey-error" hidden>Site key 不能为空</p>
+                </div>
+              </div>
+              <div class="form-row">
+                <label class="form-label" for="cap-secret">Secret key</label>
+                <div class="field-stack">
+                  <input class="input" id="cap-secret" type="password" autocomplete="new-password" placeholder="已设置，输入新值以更换">
+                  <p class="field-error" id="cap-secret-error" hidden>Secret key 不能为空</p>
+                </div>
+              </div>
+            </div>
+            <footer class="settings-actions"><button class="button button-primary save-button" type="button">保存</button></footer>
+          </div>
+        </section>
+
+      </section>
+    </main>
+  </div>
+
+  <main class="auth-screen" id="login-screen" data-screen-label="管理员登录" hidden>
+    <section class="auth-shell" aria-labelledby="login-title">
+      <form class="login-form" id="login-form" novalidate>
+        <div class="login-brand" aria-hidden="true">
+          <span class="brand-mark">E</span>
+          <span class="brand-copy"><strong>Ecoku</strong><small>评论管理</small></span>
+        </div>
+        <h1 id="login-title">管理员登录</h1>
+        <p class="form-error" id="login-error" role="alert" hidden></p>
+        <label class="input-group"><span>用户名</span><input name="username" type="text" autocomplete="username" maxlength="80" required value="admin"></label>
+        <label class="input-group"><span>密码</span><input name="password" type="password" autocomplete="current-password" required value="password"></label>
+
+        <div class="turnstile-slot" id="login-turnstile" hidden>
+          <div class="turnstile-widget" role="group" aria-label="Cloudflare Turnstile">
+            <button class="turnstile-check" type="button" aria-label="确认您是真人"></button>
+            <span class="turnstile-label">确认您是真人</span>
+            <span class="turnstile-brand" aria-hidden="true">Turnstile</span>
+          </div>
+        </div>
+
+        <cap-widget
+          class="cap-prototype"
+          id="login-cap"
+          data-state="idle"
+          data-cap-api-endpoint="https://cap.example.com/d9256640cb53/"
+          data-cap-disable-haptics
+          data-cap-i18n-initial-state="点击进行真人验证"
+          data-cap-i18n-verifying-label="正在验证…"
+          data-cap-i18n-solved-label="验证已完成"
+          data-cap-i18n-error-label="验证失败，请重试"
+          data-cap-i18n-verify-aria-label="点击进行真人验证"
+          data-cap-i18n-verifying-aria-label="正在进行真人验证，请稍候"
+          data-cap-i18n-verified-aria-label="真人验证已通过"
+          data-cap-i18n-required-label="请先完成人机验证"
+          data-cap-i18n-error-aria-label="验证失败，请重试"
+          data-prototype-only="true"
+          hidden
+        >
+          <div class="cap-captcha">
+            <button class="cap-trigger" id="cap-trigger" type="button" aria-label="点击进行真人验证">
+              <span class="cap-checkbox" aria-hidden="true">
+                <svg class="cap-progress-ring" viewBox="0 0 32 32"><circle class="cap-progress-ring-bg" cx="16" cy="16" r="14"></circle><circle class="cap-progress-ring-circle" cx="16" cy="16" r="14"></circle></svg>
+                <svg class="cap-state-icon cap-checkmark" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                <svg class="cap-state-icon cap-error-icon" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z" fill="none" stroke="currentColor" stroke-width="1.8"></path><path d="M12 7v6M12 16.5v.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path></svg>
+              </span>
+              <span class="cap-label-wrapper"><span class="cap-label" id="cap-label">点击进行真人验证</span></span>
+            </button>
+            <span class="cap-credits" aria-hidden="true">Cap</span>
+          </div>
+        </cap-widget>
+
+        <button class="button button-primary login-button" type="submit">登录</button>
+      </form>
+    </section>
+  </main>
+
+  <aside class="scenario-controller" aria-label="原型场景" data-prototype-only="true">
+    <label for="scenario-select">原型场景</label>
+    <select id="scenario-select">
+      <option value="security-cap">安全 · Cap 已配置</option>
+      <option value="security-turnstile">安全 · Turnstile 已配置</option>
+      <option value="security-off">安全 · 已关闭</option>
+      <option value="security-cap-validation">安全 · Cap 校验错误</option>
+      <option value="login-cap-idle">登录 · Cap 待验证</option>
+      <option value="login-cap-solving">登录 · Cap 验证中</option>
+      <option value="login-cap-solved">登录 · Cap 已完成</option>
+      <option value="login-cap-failed">登录 · Cap 服务故障</option>
+      <option value="login-turnstile">登录 · Turnstile</option>
+      <option value="login-off">登录 · 未启用验证</option>
+    </select>
+    <label for="theme-select">配色预览</label>
+    <select id="theme-select">
+      <option value="auto" selected>跟随系统</option>
+      <option value="light">浅色</option>
+      <option value="dark">深色</option>
+    </select>
+    <p class="theme-note">已批准基线；场景和配色控件不进入生产。</p>
+  </aside>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const states = new Set([
+        "security-cap",
+        "security-turnstile",
+        "security-off",
+        "security-cap-validation",
+        "login-cap-idle",
+        "login-cap-solving",
+        "login-cap-solved",
+        "login-cap-failed",
+        "login-turnstile",
+        "login-off"
+      ]);
+      const securityScreen = document.getElementById("security-screen");
+      const loginScreen = document.getElementById("login-screen");
+      const scenario = document.getElementById("scenario-select");
+      const themeSelect = document.getElementById("theme-select");
+      const providerRadios = Array.from(document.querySelectorAll('input[name="captcha-provider"]'));
+      const panels = {
+        off: document.getElementById("off-panel"),
+        turnstile: document.getElementById("turnstile-panel"),
+        cap: document.getElementById("cap-panel")
+      };
+      const capInstance = document.getElementById("cap-instance-url");
+      const capSitekey = document.getElementById("cap-sitekey");
+      const capSecret = document.getElementById("cap-secret");
+      const capInstanceError = document.getElementById("cap-instance-error");
+      const capSitekeyError = document.getElementById("cap-sitekey-error");
+      const capSecretError = document.getElementById("cap-secret-error");
+      const loginForm = document.getElementById("login-form");
+      const loginError = document.getElementById("login-error");
+      const loginTurnstile = document.getElementById("login-turnstile");
+      const loginCap = document.getElementById("login-cap");
+      const capTrigger = document.getElementById("cap-trigger");
+      const capLabel = document.getElementById("cap-label");
+      let capTimer;
+
+      function currentState() {
+        const hash = window.location.hash.slice(1);
+        return states.has(hash) ? hash : "security-cap";
+      }
+
+      function setProvider(provider) {
+        providerRadios.forEach(function (radio) { radio.checked = radio.value === provider; });
+        Object.entries(panels).forEach(function (entry) { entry[1].hidden = entry[0] !== provider; });
+      }
+
+      function clearCapValidation() {
+        [capInstance, capSitekey, capSecret].forEach(function (input) { input.removeAttribute("aria-invalid"); });
+        [capInstanceError, capSitekeyError, capSecretError].forEach(function (error) { error.hidden = true; });
+      }
+
+      function showCapValidation() {
+        clearCapValidation();
+        capInstance.value = "";
+        capSitekey.value = "";
+        capSecret.placeholder = "";
+        [capInstance, capSitekey, capSecret].forEach(function (input) { input.setAttribute("aria-invalid", "true"); });
+        [capInstanceError, capSitekeyError, capSecretError].forEach(function (error) { error.hidden = false; });
+      }
+
+      function resetCapFields() {
+        clearCapValidation();
+        capInstance.value = "https://cap.example.com";
+        capSitekey.value = "d9256640cb53";
+        capSecret.value = "";
+        capSecret.placeholder = "已设置，输入新值以更换";
+      }
+
+      function applyCapState(state) {
+        window.clearTimeout(capTimer);
+        loginCap.dataset.state = state;
+        const captcha = loginCap.querySelector(".cap-captcha");
+        if (state === "solving") captcha.dataset.state = "verifying";
+        else if (state === "solved") captcha.dataset.state = "done";
+        else if (state === "failed") captcha.dataset.state = "error";
+        else delete captcha.dataset.state;
+        if (state === "solving") {
+          capLabel.textContent = "正在验证…";
+          capTrigger.setAttribute("aria-label", "正在进行真人验证，请稍候");
+          capTrigger.disabled = true;
+        } else if (state === "solved") {
+          capLabel.textContent = "验证已完成";
+          capTrigger.setAttribute("aria-label", "真人验证已通过");
+          capTrigger.disabled = false;
+        } else if (state === "failed") {
+          capLabel.textContent = "验证失败，请重试";
+          capTrigger.setAttribute("aria-label", "验证失败，请重试");
+          capTrigger.disabled = false;
+        } else {
+          capLabel.textContent = "点击进行真人验证";
+          capTrigger.setAttribute("aria-label", "点击进行真人验证");
+          capTrigger.disabled = false;
+        }
+      }
+
+      function renderSecurity(state) {
+        securityScreen.hidden = false;
+        loginScreen.hidden = true;
+        resetCapFields();
+        const provider = state === "security-off" ? "off" : state === "security-turnstile" ? "turnstile" : "cap";
+        setProvider(provider);
+        if (state === "security-cap-validation") showCapValidation();
+      }
+
+      function renderLogin(state) {
+        securityScreen.hidden = true;
+        loginScreen.hidden = false;
+        loginError.hidden = true;
+        loginError.textContent = "";
+        loginTurnstile.hidden = state !== "login-turnstile";
+        const capMode = state.startsWith("login-cap-");
+        loginCap.hidden = !capMode;
+        if (capMode) applyCapState(state.replace("login-cap-", ""));
+      }
+
+      function render() {
+        const state = currentState();
+        scenario.value = state;
+        if (state.startsWith("login-")) renderLogin(state);
+        else renderSecurity(state);
+      }
+
+      providerRadios.forEach(function (radio) {
+        radio.addEventListener("change", function () {
+          if (!radio.checked) return;
+          window.location.hash = radio.value === "cap" ? "security-cap" : radio.value === "turnstile" ? "security-turnstile" : "security-off";
+        });
+      });
+
+      document.querySelectorAll(".save-button").forEach(function (button) {
+        button.addEventListener("click", function () {
+          const selected = providerRadios.find(function (radio) { return radio.checked; });
+          if (selected && selected.value === "cap" && (!capInstance.value.trim() || !capSitekey.value.trim())) {
+            window.location.hash = "security-cap-validation";
+          }
+        });
+      });
+
+      capTrigger.addEventListener("click", function () {
+        if (loginCap.dataset.state === "solved") return;
+        const fail = currentState() === "login-cap-failed";
+        applyCapState("solving");
+        capTimer = window.setTimeout(function () {
+          applyCapState(fail ? "failed" : "solved");
+          scenario.value = fail ? "login-cap-failed" : "login-cap-solved";
+        }, 720);
+      });
+
+      loginForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+        const state = currentState();
+        if (state.startsWith("login-cap-") && loginCap.dataset.state !== "solved") {
+          loginError.textContent = state === "login-cap-failed" ? "验证服务暂时不可用，请稍后重试。" : "请先完成人机验证。";
+          loginError.hidden = false;
+          capTrigger.focus();
+        }
+      });
+
+      scenario.addEventListener("change", function () { window.location.hash = scenario.value; });
+      themeSelect.addEventListener("change", function () {
+        document.documentElement.dataset.theme = themeSelect.value === "light" || themeSelect.value === "dark" ? themeSelect.value : "auto";
+      });
+      window.addEventListener("hashchange", render);
+
+      if (!states.has(window.location.hash.slice(1))) window.location.hash = "security-cap";
+      else render();
+    }());
+  </script>
+</body>
+</html>

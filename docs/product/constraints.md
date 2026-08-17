@@ -1,11 +1,11 @@
 # Ecoku 产品约束
 
-> 状态：P0～P4 历史阶段已验收；评论区 index-v15、后台站点配置 index-v11、安全/登录 index-v10 与服务端 v5 通知模板均已批准实施。
+> 状态：P0～P4 历史阶段已验收；评论区 index-v16、后台站点配置 index-v11、安全/登录 index-v12 与服务端 v5 通知模板均已批准实施。
 > 历史验收记录只描述当时版本，不约束当前直接发布模型。
 
 ## 评论体验
 
-- `designs/plain-thread-comments/index-v15.html` 是评论区当前已批准的设计基线；更早版本仅保留为历史原型。预览里的「模拟需要勾选 / Pre-clearance」开关不得进入生产 SDK。身份输入与标签同为 12px、正文色；根评论与回复输入与已发布正文同为 15px、正文色、1.65 行高；`[+]` 与 `[-]` 等宽完整显示（3ch），且其字号/字体不得被宿主 `font: inherit` 覆盖。Turnstile 宿主槽不超过 300px，不覆盖 Cloudflare iframe 内部样式。接入外壳不显示「正在加载评论…」，保留加载失败重试与「评论服务尚未配置」。
+- `designs/plain-thread-comments/index-v16.html` 是评论区当前已批准的设计基线；更早版本仅保留为历史原型。预览里的故障、交互和 Pre-clearance 开关不得进入生产 SDK。身份输入与标签同为 12px、正文色；根评论与回复输入与已发布正文同为 15px、正文色、1.65 行高；`[+]` 与 `[-]` 等宽完整显示（3ch），且其字号/字体不得被宿主 `font: inherit` 覆盖。Turnstile 宿主槽不超过 300px，不覆盖 Cloudflare iframe 内部样式；Cap 保留官方 260×58px、14px 圆角、25px 复选框和状态图标，只映射 Ecoku 的颜色与宿主字体 token。接入外壳不显示「正在加载评论…」，保留加载失败重试与「评论服务尚未配置」。
 - 评论正文永久按纯文本处理；不解释 HTML 或 Markdown。
 - MVP 不提供头像、赞踩、反应或富文本工具。
 - 回复采用多层线程语义。
@@ -40,8 +40,8 @@
   可选字段留空时不持久化，非空值仍必须通过相同的邮箱或 http/https 网址校验。
 - 每个站点可配置最多 80 个字符的评论框提示文字；省略或留空时回退为
   “写下评论（仅支持纯文本）”。浏览器通过公共评论列表响应中的安全 `formConfig` 投影读取这些设置；
-  同一响应另含容器 `timeZone`（IANA）和公开 `formConfig.bloggerBadge`、`formConfig.turnstileSitekey`、`formConfig.bloggerProofEnabled`，不含邮箱、IP、Secret key 或其他管理字段。
-  `turnstileSitekey` 为空表示未启用验证。`bloggerProofEnabled` 仅表示已配置博主口令，不泄露口令本身。公共评论可含布尔字段 `isBlogger`，不得含博主邮箱。该字段来自已存储的 `comments.is_blogger`，列表时不再用昵称+邮箱重算。
+  同一响应另含容器 `timeZone`（IANA）和公开 `formConfig.bloggerBadge`、`formConfig.captcha`、兼容字段 `formConfig.turnstileSitekey`、`formConfig.bloggerProofEnabled`，不含邮箱、IP、Secret key 或其他管理字段。
+  `formConfig.captcha` 是 `off` / `turnstile` / `cap` 标记联合，只公开当前提供方需要的 Sitekey 与 Cap 实例 URL；`turnstileSitekey` 仅为旧客户端保留，非 Turnstile 模式为空。`bloggerProofEnabled` 仅表示已配置博主口令，不泄露口令本身。公共评论可含布尔字段 `isBlogger`，不得含博主邮箱。该字段来自已存储的 `comments.is_blogger`，列表时不再用昵称+邮箱重算。
 - 每个站点可配置根评论和回复共用的正文上限，范围为 1～10000，默认 1000。浏览器与服务端按
   Unicode code point 计数，CJK 字符各计一个；客户端限制不替代服务端校验。
 - 每个站点可配置无评论文案；默认值为“还没有评论\n成为第一个留下评论的人。”。公共界面直接在
@@ -49,13 +49,13 @@
 - 正文、昵称和错误只按文本渲染，不解释 HTML、Markdown 或自动链接；作者网站仅允许 http/https，
   并使用 `nofollow ugc noopener noreferrer`。墓碑不显示网站、原作者或回复入口。
 - 生产文案集中为中文常量；主题支持 `auto`、`light`、`dark` 配置，不提供持久化主题切换器。
-- SDK 不发送或保存 management key、IP、UA、地区或用户 ID，也不请求第三方 IP、头像、分析或遥测服务。启用 Turnstile 时，SDK 只加载 Cloudflare 小组件脚本并提交一次性 `turnstileToken`；不得把 Secret key 或 Siteverify 结果带进浏览器。
-- 实例级 Cloudflare Turnstile（若启用）同时保护访客评论提交和管理员登录。小组件模式在 Cloudflare 控制台配置，Ecoku 不保存模式。未启用或 Sitekey 为空时不挑战。已启用则失败关闭：缺少或无效 token 不得发布评论或完成登录。Siteverify 不发送客户端 IP。Secret key 使用与通知相同的主密钥加密存储，管理端只显示「已设置」，永不回显明文。
+- SDK 不发送或保存 management key、IP、UA、地区或用户 ID，也不请求第三方 IP、头像、分析或遥测服务。当前提供方为 Turnstile 时只加载 Cloudflare 小组件；当前提供方为 Cap 时只从已配置的自托管实例加载 Widget、WASM 和同源兼容回退地址。两者均只提交一次性 `captchaToken`，不得把 Secret key 或 Siteverify 结果带进浏览器；旧 `turnstileToken` 仅由服务端在 Turnstile 模式兼容接收。
+- 实例级验证方式为关闭、Cloudflare Turnstile 或自托管 Cap，启用时二选一并同时保护访客评论提交和管理员登录。Turnstile 小组件模式仍只在 Cloudflare 控制台配置；Cap 使用实例 URL、Site key 和 Secret key。两种提供方均失败关闭，缺少、无效、已消费、超时或不可用的验证不得发布评论或完成登录，也不会自动降级到另一提供方。Siteverify 不主动附加客户端 IP。两套 Secret key 使用与通知相同的主密钥分别加密，管理端只显示「已设置」，永不回显明文；切换或关闭不删除未启用提供方的配置。
 
 ## 身份与管理
 
 - MVP 只提供访客评论：昵称始终必填；私有邮箱和网站的必填性由站点配置决定，默认分别为必填和可选。
-- 普通用户注册、登录、验证码、找回和 SMTP 能力不属于 MVP，P2 已删除其运行时代码和配置入口。实例级 Turnstile 不是普通用户注册验证码，只用于访客评论和管理员登录。
+- 普通用户注册、登录、验证码、找回和 SMTP 能力不属于 MVP，P2 已删除其运行时代码和配置入口。实例级机器人验证不是普通用户注册验证码，只用于访客评论和管理员登录。
 - 管理员认证是独立能力，不复用普通用户、角色或普通用户 token。
 - 新评论和回复提交后立即发布，不存在按站点审核模式。
 
@@ -69,8 +69,8 @@
 - 管理 DTO 可以包含私有邮箱，但不得返回 IP、UA、地区、UserID、密码、验证码、token、管理密钥或完整 User。
 - 管理端包含登录、站点注册与评论表单配置、按 `published/deleted` 筛选的评论列表、详情、
   墓碑删除和无后代墓碑的彻底删除。不提供审核队列、用户管理、RBAC、Count 或站点密钥管理界面。
-  另有实例级「安全」页，只配置 Turnstile 的启用开关、Sitekey 和 Secret key。
-- 管理端以 `designs/admin-moderation/index-v11.html` 为当前已批准站点配置、配色与系统衬线基线，安全与登录验证以 `index-v10.html` 为准，并沿用 v5 的评论管理、通知设置和发送模板设计；对应 v5 通知模板只供服务端投递时渲染，管理端不展示模板预览，也不公开模板静态页面。浏览器中的管理员 token 只保存在当前页面内存，
+  另有实例级「安全」页，以三态单选配置关闭、Turnstile 或 Cap；Turnstile 保存 Sitekey/Secret，Cap 保存 HTTPS 实例地址、Site key/Secret。停服恢复命令只写入自托管文档，不在管理界面展示。
+- 管理端以 `designs/admin-moderation/index-v11.html` 为当前已批准站点配置、配色与系统衬线基线，安全与登录验证以 `index-v12.html` 为准，并沿用 v5 的评论管理、通知设置和发送模板设计；对应 v5 通知模板只供服务端投递时渲染，管理端不展示模板预览，也不公开模板静态页面。浏览器中的管理员 token 只保存在当前页面内存，
   不写入 localStorage、sessionStorage、cookie 或 URL。关闭或刷新页面后必须重新登录。
 - 管理端配色默认 `auto`，跟随系统 `prefers-color-scheme`；深色纸张、表面与正文 token 与评论区对齐。不提供主题切换器，也不把配色写入本地存储。衬线使用系统栈 `Noto Serif SC`、`Noto Serif CJK SC`、`Songti SC`、`STSong`，不加载网络字体。评论区前端继续 inherit 宿主字体。
 - 管理端是“评论管理”而非审核队列；已发布评论和公开墓碑使用
@@ -147,9 +147,9 @@
 - P2 起仅支持 SQLite3，不再支持 MySQL；旧普通用户 SMTP 入口已经删除，当前 SMTP 仅用于新的
   实例级通知渠道。配置文件中出现旧 MySQL、普通用户或 `drop_table` 字段会明确失败。
 - schema 带版本、名称和校验和，不使用 `AutoMigrate`。当前迁移链支持在同一个 SQLite 文件中把已完成
-  v1 的数据库事务性升级到 v2、v3、v4，再升级到 v5；v2 只为站点注册表增加博主昵称和博主邮箱，v3 增加评论区
-  博主标志，v4 增加实例级 `turnstile_settings`，v5 增加博主口令哈希、`comments.is_blogger`，并把通知 outbox 按目标拆行。成功后追加 `schema_migrations` 版本记录。升级不会生成或自动删除所谓“v1 数据库”，也不会删除数据库、WAL、
-  业务数据或操作者备份。已写入 v5 的库不能只换回旧镜像；回滚必须用停服前的整库备份恢复。
+  v1 的数据库事务性升级到 v2、v3、v4、v5，再升级到 v6；v2 只为站点注册表增加博主昵称和博主邮箱，v3 增加评论区
+  博主标志，v4 增加实例级 `turnstile_settings`，v5 增加博主口令哈希、`comments.is_blogger` 并把通知 outbox 按目标拆行，v6 原位把该设置表重命名为 `captcha_settings` 并增加 provider 与 Cap 字段，现有启用实例继续使用 Turnstile。成功后追加 `schema_migrations` 版本记录。升级不会生成或自动删除所谓“v1 数据库”，也不会删除数据库、配置、WAL、
+  业务数据或操作者备份。已写入 v6 的库不能只换回旧镜像；回滚必须用停服前的整库备份恢复。
 - 空数据库可以按顺序初始化至最新版本；无版本、未知断层、未来版本、名称或校验和不匹配的数据库均失败关闭。
   操作者仍必须先停服并校验卷外备份；任何 DROP、覆盖或备份清理都需要针对目标环境的明确授权。
 - 当前全新 schema 不创建 `users`、`email_verification_codes` 或 `counts` 遗留表。

@@ -57,6 +57,7 @@ function listResponse(
       bloggerBadge?: string
       turnstileSitekey?: string
       bloggerProofEnabled?: boolean
+      captcha?: { provider: 'off' | 'turnstile' | 'cap'; sitekey: string; instanceUrl?: string }
     }
     timeZone?: string
   } = {},
@@ -821,7 +822,8 @@ describe('approved production comment surface', () => {
     await vi.waitFor(() => expect(render).toHaveBeenCalled())
     await submitForm(fillIdentityAndContent(container, 'Verified comment'))
     await vi.waitFor(() => expect(posts).toHaveLength(1))
-    expect(posts[0]).toMatchObject({ content: 'Verified comment', turnstileToken: 'cf-token' })
+    expect(posts[0]).toMatchObject({ content: 'Verified comment', captchaToken: 'cf-token' })
+    expect(posts[0]).not.toHaveProperty('turnstileToken')
     expect(JSON.stringify(posts[0])).not.toContain('secret')
   })
 

@@ -1,9 +1,9 @@
 package comment
 
 import (
+	"ecoku-server/captcha"
 	"ecoku-server/model"
 	"ecoku-server/notifications"
-	"ecoku-server/turnstile"
 	"ecoku-server/utils"
 	"encoding/json"
 	"errors"
@@ -24,6 +24,7 @@ type SubmitCommentRequest struct {
 	Email          string      `json:"email"`
 	Parent         FlexibleInt `json:"parent,omitempty"`
 	URL            string      `json:"url,omitempty"`
+	CaptchaToken   string      `json:"captchaToken,omitempty"`
 	TurnstileToken string      `json:"turnstileToken,omitempty"`
 }
 
@@ -129,12 +130,12 @@ func SubmitComment(c *gin.Context) {
 		return
 	}
 
-	if err := turnstile.Verify(c.Request.Context(), req.TurnstileToken); err != nil {
-		if errors.Is(err, turnstile.ErrFailed) {
+	if err := captcha.Verify(c.Request.Context(), captcha.Tokens{Captcha: req.CaptchaToken, Turnstile: req.TurnstileToken}); err != nil {
+		if errors.Is(err, captcha.ErrFailed) {
 			utils.SendError(c, http.StatusBadRequest, "请完成验证后再发布。")
 			return
 		}
-		utils.SendError(c, http.StatusInternalServerError, "验证服务暂时不可用")
+		utils.SendError(c, http.StatusServiceUnavailable, "验证服务暂时不可用")
 		return
 	}
 

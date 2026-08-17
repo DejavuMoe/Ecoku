@@ -88,14 +88,32 @@ export interface NotificationSettings {
   telegram: TelegramNotificationSettings
 }
 
-export interface TurnstileSettings {
-  enabled: boolean
+export type CaptchaProvider = 'off' | 'turnstile' | 'cap'
+
+export interface CaptchaPublicConfig {
+  provider: CaptchaProvider
+  sitekey: string
+  instanceUrl: string
+}
+
+export interface CaptchaProviderSettings {
   sitekey: string
   secret: string
   secretSet: boolean
+}
+
+export interface CapSettings extends CaptchaProviderSettings {
+  instanceUrl: string
+}
+
+export interface CaptchaSettings {
+  provider: CaptchaProvider
+  turnstile: CaptchaProviderSettings
+  cap: CapSettings
   revision: number
 }
 
 export interface LoginConfig {
+  captcha: CaptchaPublicConfig
   turnstileSitekey: string
 }

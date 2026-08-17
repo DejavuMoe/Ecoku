@@ -2,7 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 import { adminApi, ApiError } from '../api'
 import { messages } from '../messages'
-import type { CommentReview, CommentStatus, EmailNotificationSettings, MainView, NotificationSettings, SiteSummary, SiteWrite, TelegramNotificationSettings, TurnstileSettings } from '../types'
+import type { CaptchaSettings, CommentReview, CommentStatus, EmailNotificationSettings, MainView, NotificationSettings, SiteSummary, SiteWrite, TelegramNotificationSettings } from '../types'
 
 function failureMessage(error: unknown, login = false): string {
   if (!(error instanceof ApiError)) return messages.genericError
@@ -67,9 +67,9 @@ export const useAdminStore = defineStore('admin', () => {
   const emailTestMessage = ref('')
   const telegramTestState = ref<'idle' | 'success' | 'failure'>('idle')
   const telegramTestMessage = ref('')
-  const turnstileSettings = ref<TurnstileSettings | null>(null)
-  const turnstileBusy = ref(false)
-  const turnstileMessage = ref('')
+  const captchaSettings = ref<CaptchaSettings | null>(null)
+  const captchaBusy = ref(false)
+  const captchaMessage = ref('')
   const authenticated = computed(() => token.value !== '')
   const selectedSite = computed(() => sites.value.find((site) => site.id === selectedSiteId.value) ?? null)
   let expiryTimer: ReturnType<typeof setTimeout> | undefined
@@ -97,14 +97,14 @@ export const useAdminStore = defineStore('admin', () => {
     if (destination === 'queue') queueMessage.value = message
     else if (destination === 'action') actionMessage.value = message
     else if (destination === 'site') siteMessage.value = message
-    else if (destination === 'security') turnstileMessage.value = message
+    else if (destination === 'security') captchaMessage.value = message
     else notificationMessage.value = message
   }
-  async function login(username: string, password: string, turnstileToken = '') {
+  async function login(username: string, password: string, captchaToken = '') {
     if (loginBusy.value) return false
     loginBusy.value = true; loginMessage.value = ''
     try {
-      const session = await adminApi.login(username, password, turnstileToken)
+      const session = await adminApi.login(username, password, captchaToken)
       token.value = session.token; expiresAt.value = session.expiresAt; armExpiry(session.expiresAt)
       await loadSites(true); return authenticated.value
     } catch (error) { clearSession(failureMessage(error, true)); return false }
@@ -115,7 +115,7 @@ export const useAdminStore = defineStore('admin', () => {
     view.value = next
     if (next === 'comments') await loadComments()
     else if (next === 'sites') await loadSites(false)
-    else if (next === 'security') await loadTurnstile()
+    else if (next === 'security') await loadCaptcha()
     else await loadNotifications()
   }
   async function loadSites(loadCommentsAfter = false) {
@@ -211,27 +211,27 @@ export const useAdminStore = defineStore('admin', () => {
     catch (error) { telegramTestState.value = 'failure'; telegramTestMessage.value = testFailureMessage(error, 'telegram') }
     finally { notificationBusy.value = false }
   }
-  async function loadTurnstile() {
-    if (turnstileBusy.value) return
-    turnstileBusy.value = true; turnstileMessage.value = ''
-    try { turnstileSettings.value = await adminApi.getTurnstile(token.value) }
+  async function loadCaptcha() {
+    if (captchaBusy.value) return
+    captchaBusy.value = true; captchaMessage.value = ''
+    try { captchaSettings.value = await adminApi.getCaptcha(token.value) }
     catch (error) { fail(error, 'security') }
-    finally { turnstileBusy.value = false }
+    finally { captchaBusy.value = false }
   }
-  async function saveTurnstile(settings: TurnstileSettings) {
-    turnstileBusy.value = true; turnstileMessage.value = ''
+  async function saveCaptcha(settings: CaptchaSettings) {
+    captchaBusy.value = true; captchaMessage.value = ''
     try {
-      const saved = await adminApi.saveTurnstile(token.value, settings)
-      turnstileSettings.value = saved
-      toastMessage.value = messages.turnstileSaved
+      const saved = await adminApi.saveCaptcha(token.value, settings)
+      captchaSettings.value = saved
+      toastMessage.value = messages.captchaSaved
       return saved
     } catch (error) { fail(error, 'security'); return null }
-    finally { turnstileBusy.value = false }
+    finally { captchaBusy.value = false }
   }
   return { token, expiresAt, loginBusy, loginMessage, authenticated, view, sites, selectedSiteId, selectedSite, siteBusy, siteMessage,
     status, sort, page, pageSize, pageCount, total, counts, comments, selectedComment, queueBusy, detailBusy, actionBusy, queueMessage, actionMessage, toastMessage,
     notificationSettings, notificationBusy, notificationMessage, emailTestState, emailTestMessage, telegramTestState, telegramTestMessage,
-    turnstileSettings, turnstileBusy, turnstileMessage,
+    captchaSettings, captchaBusy, captchaMessage,
     login, logout, switchView, loadSites, saveSite, loadComments, loadDetail, selectSite, selectStatus, toggleSort, selectPage, selectComment, mutateCurrent,
-    loadNotifications, saveEmail, saveTelegram, testEmail, testTelegram, loadTurnstile, saveTurnstile }
+    loadNotifications, saveEmail, saveTelegram, testEmail, testTelegram, loadCaptcha, saveCaptcha }
 })

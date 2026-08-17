@@ -96,18 +96,27 @@ type CommentConfig struct {
 	EmptyMessage    string `yaml:"empty_message"`
 }
 
+// CaptchaPublicConfig is the active, non-secret CAPTCHA configuration exposed
+// to the administrator login page and public comment SDK.
+type CaptchaPublicConfig struct {
+	Provider    string `json:"provider"`
+	Sitekey     string `json:"sitekey"`
+	InstanceURL string `json:"instanceUrl,omitempty"`
+}
+
 // CommentFormConfig is the public, non-secret subset of one site's comment
 // form configuration. It is safe to return to the browser SDK.
 type CommentFormConfig struct {
-	EmailRequired    bool   `json:"emailRequired"`
-	WebsiteRequired  bool   `json:"websiteRequired"`
-	Placeholder      string `json:"placeholder"`
-	DefaultSort      string `json:"defaultSort"`
-	LengthLimit      int    `json:"lengthLimit"`
-	EmptyMessage     string `json:"emptyMessage"`
-	BloggerBadge        string `json:"bloggerBadge"`
-	TurnstileSitekey    string `json:"turnstileSitekey"`
-	BloggerProofEnabled bool   `json:"bloggerProofEnabled"`
+	EmailRequired       bool                `json:"emailRequired"`
+	WebsiteRequired     bool                `json:"websiteRequired"`
+	Placeholder         string              `json:"placeholder"`
+	DefaultSort         string              `json:"defaultSort"`
+	LengthLimit         int                 `json:"lengthLimit"`
+	EmptyMessage        string              `json:"emptyMessage"`
+	BloggerBadge        string              `json:"bloggerBadge"`
+	TurnstileSitekey    string              `json:"turnstileSitekey"`
+	BloggerProofEnabled bool                `json:"bloggerProofEnabled"`
+	Captcha             CaptchaPublicConfig `json:"captcha"`
 }
 
 type DatabaseConfig struct {
@@ -641,15 +650,16 @@ func GetCommentFormConfig(siteID string) (CommentFormConfig, bool) {
 		return CommentFormConfig{}, false
 	}
 	return CommentFormConfig{
-		EmailRequired:    *site.Comment.EmailRequired,
-		WebsiteRequired:  *site.Comment.WebsiteRequired,
-		Placeholder:      site.Comment.Placeholder,
-		DefaultSort:      site.Comment.DefaultSort,
-		LengthLimit:      site.Comment.LengthLimit,
-		EmptyMessage:     site.Comment.EmptyMessage,
+		EmailRequired:       *site.Comment.EmailRequired,
+		WebsiteRequired:     *site.Comment.WebsiteRequired,
+		Placeholder:         site.Comment.Placeholder,
+		DefaultSort:         site.Comment.DefaultSort,
+		LengthLimit:         site.Comment.LengthLimit,
+		EmptyMessage:        site.Comment.EmptyMessage,
 		BloggerBadge:         DefaultBloggerBadge,
 		TurnstileSitekey:     "",
 		BloggerProofEnabled:  false,
+		Captcha:              CaptchaPublicConfig{Provider: "off"},
 	}, true
 }
 

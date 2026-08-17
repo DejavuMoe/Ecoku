@@ -136,10 +136,19 @@
           "viewport": {
             "width": 720
           }
+        },
+        {
+          "path": "index-v16.html",
+          "createdAt": "2026-08-17T00:00:00.000Z",
+          "status": "approved",
+          "subtitle": "Approved: Turnstile or self-hosted Cap with official Widget geometry",
+          "viewport": {
+            "width": 720
+          }
         }
       ]
     }
   },
   "createdAt": "2026-08-12T08:14:10.430Z",
-  "updatedAt": "2026-08-15T06:04:19.416Z"
+  "updatedAt": "2026-08-17T00:00:00.000Z"
 }

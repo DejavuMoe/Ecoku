@@ -4,12 +4,14 @@ import type {
   CommentPage,
   CommentReview,
   CommentStatus,
+  CaptchaPublicConfig,
+  CaptchaSettings,
   EmailNotificationSettings,
   NotificationSettings,
   SiteSummary,
   SiteWrite,
   TelegramNotificationSettings,
-  TurnstileSettings,
+  LoginConfig,
 } from './types'
 
 interface ResponseEnvelope<T> {
@@ -168,13 +170,31 @@ function mapEmail(value: unknown): EmailNotificationSettings {
   }
 }
 
-function mapTurnstile(value: unknown): TurnstileSettings {
+function mapCaptchaPublic(value: unknown, legacyTurnstileSitekey = ''): CaptchaPublicConfig {
   const raw = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+  const provider = raw.provider === 'turnstile' || raw.provider === 'cap' ? raw.provider : 'off'
+  const sitekey = text(raw.sitekey) || (provider === 'off' ? legacyTurnstileSitekey : '')
+  if (provider === 'off' && legacyTurnstileSitekey) return { provider: 'turnstile', sitekey: legacyTurnstileSitekey, instanceUrl: '' }
+  return { provider, sitekey, instanceUrl: text(raw.instanceUrl) }
+}
+
+function mapCaptcha(value: unknown): CaptchaSettings {
+  const raw = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+  const rawTurnstile = raw.turnstile && typeof raw.turnstile === 'object' ? raw.turnstile as Record<string, unknown> : {}
+  const rawCap = raw.cap && typeof raw.cap === 'object' ? raw.cap as Record<string, unknown> : {}
   return {
-    enabled: raw.enabled === true,
-    sitekey: text(raw.sitekey),
-    secret: '',
-    secretSet: raw.secret_set === true,
+    provider: raw.provider === 'turnstile' || raw.provider === 'cap' ? raw.provider : 'off',
+    turnstile: {
+      sitekey: text(rawTurnstile.sitekey),
+      secret: '',
+      secretSet: rawTurnstile.secret_set === true,
+    },
+    cap: {
+      instanceUrl: text(rawCap.instance_url),
+      sitekey: text(rawCap.sitekey),
+      secret: '',
+      secretSet: rawCap.secret_set === true,
+    },
     revision: number(raw.revision, 1),
   }
 }
@@ -188,23 +208,31 @@ function mapTelegram(value: unknown): TelegramNotificationSettings {
   }
 }
 
-function turnstilePayload(settings: TurnstileSettings) {
+function captchaPayload(settings: CaptchaSettings) {
   return {
-    enabled: settings.enabled,
-    sitekey: settings.sitekey,
-    secret: settings.secret,
+    provider: settings.provider,
+    turnstile: {
+      sitekey: settings.turnstile.sitekey,
+      secret: settings.turnstile.secret,
+    },
+    cap: {
+      instance_url: settings.cap.instanceUrl,
+      sitekey: settings.cap.sitekey,
+      secret: settings.cap.secret,
+    },
     revision: settings.revision,
   }
 }
 
 export const adminApi = {
-  async getLoginConfig(signal?: AbortSignal): Promise<{ turnstileSitekey: string }> {
+  async getLoginConfig(signal?: AbortSignal): Promise<LoginConfig> {
     const raw = await request<Record<string, unknown>>('/api/admin/login-config', { method: 'GET', signal })
-    return { turnstileSitekey: text(raw.turnstileSitekey) }
+    const legacy = text(raw.turnstileSitekey)
+    return { captcha: mapCaptchaPublic(raw.captcha, legacy), turnstileSitekey: legacy }
   },
 
-  async login(username: string, password: string, turnstileToken = '', signal?: AbortSignal): Promise<AdminSession> {
-    const raw = await request<Record<string, unknown>>('/api/admin/login', { method: 'POST', body: JSON.stringify({ username, password, turnstileToken }), signal })
+  async login(username: string, password: string, captchaToken = '', signal?: AbortSignal): Promise<AdminSession> {
+    const raw = await request<Record<string, unknown>>('/api/admin/login', { method: 'POST', body: JSON.stringify({ username, password, captchaToken }), signal })
     const token = text(raw.token)
     const expiresAt = text(raw.expires_at)
     if (!token || !expiresAt || raw.token_type !== 'Bearer') throw new ApiError(500, 'invalid-session')
@@ -283,14 +311,13 @@ export const adminApi = {
     await request('/api/admin/notifications/telegram/test', { method: 'POST', body: JSON.stringify(telegramPayload(settings)) }, token, true)
   },
 
-  async getTurnstile(token: string): Promise<TurnstileSettings> {
-    const raw = await request<unknown>('/api/admin/turnstile', { method: 'GET' }, token)
-    return mapTurnstile(raw)
+  async getCaptcha(token: string): Promise<CaptchaSettings> {
+    const raw = await request<unknown>('/api/admin/captcha', { method: 'GET' }, token)
+    return mapCaptcha(raw)
   },
 
-  async saveTurnstile(token: string, settings: TurnstileSettings): Promise<TurnstileSettings> {
-    const raw = await request<unknown>('/api/admin/turnstile', { method: 'PUT', body: JSON.stringify(turnstilePayload(settings)) }, token)
-    return mapTurnstile(raw)
+  async saveCaptcha(token: string, settings: CaptchaSettings): Promise<CaptchaSettings> {
+    const raw = await request<unknown>('/api/admin/captcha', { method: 'PUT', body: JSON.stringify(captchaPayload(settings)) }, token)
+    return mapCaptcha(raw)
   },
 }
-

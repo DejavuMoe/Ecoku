@@ -64,6 +64,15 @@
   display: none;
 }
 
+.ecoku-cap-widget {
+  display: block;
+  width: min(100%, 260px);
+  max-width: 100%;
+  --cap-widget-width: 260px;
+  --cap-widget-height: 58px;
+  --cap-font: inherit;
+}
+
 .ecoku-comments .ecoku-collapse-button {
   display: inline-flex;
   align-items: center;

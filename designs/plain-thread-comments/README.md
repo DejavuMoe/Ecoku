@@ -1,11 +1,11 @@
 # Plain thread comments prototype
 
 Approved design history for Ecoku's no-avatar, plain-text comment surface.
-`index-v15.html` is the current approved production baseline: composer/reply text matches
-published comment copy, and the host shell has no “正在加载评论…” copy while
-keeping load-failure retry and the unconfigured message. `index-v14.html`
-remains the previous approved baseline.
-`index-v13.html` keeps the previous adaptive Turnstile baseline.
+`index-v16.html` is the current approved production baseline: it retains v15's
+composer/loading behavior and adds the instance-level off / Turnstile / self-hosted
+Cap choice. Cap keeps the official 260 × 58px geometry, SVG states, and credit while
+mapping only Ecoku color and inherited-font tokens. `index-v15.html` remains the
+previous approved baseline.
 
 ## Direction
 
@@ -205,6 +205,20 @@ Run its checks with:
 node designs/plain-thread-comments/prototype-v11.test.mjs
 ```
 
+Revision 16 is the approved CAPTCHA-provider layer on top of revision 15:
+
+- the server selects off, Cloudflare Turnstile, or self-hosted Cap for both root and reply composers;
+- Cap keeps the official 260 × 58px geometry, 14px radius, 25px checkbox, SVG progress/success/error states, and lower-right credit;
+- only Ecoku color tokens and the inherited host font are customized;
+- unverified or failed challenges block submission, and a consumed token resets after every attempted request;
+- provider/failure controls remain prototype-only.
+
+Run its checks with:
+
+```text
+node designs/plain-thread-comments/prototype-v16.test.mjs
+```
+
 ## Review states
 
 - Light and dark themes.
@@ -216,6 +230,6 @@ node designs/plain-thread-comments/prototype-v11.test.mjs
 - Service unavailable and retry recovery.
 - Desktop at 1280x900 and mobile at 390x844.
 
-Status: `index-v15.html` is the approved production comment baseline: composer
-text matches published copy, and the host shell has no loading copy. Preview-only
-toggles (simulate checkbox / Pre-clearance) must not enter the SDK.
+Status: `index-v16.html` is the approved production comment baseline. Preview-only
+provider/failure toggles must not enter the SDK; production reads the provider from
+the server's public form configuration.

@@ -1,5 +1,7 @@
 import {
+  DEFAULT_CAPTCHA_CONFIG,
   DEFAULT_COMMENT_FORM_CONFIG,
+  type CaptchaPublicConfig,
   type CommentFormConfig,
   type ResolvedEcokuConfig,
 } from './config'
@@ -27,7 +29,7 @@ export interface CommentDraft {
   url?: string
   content: string
   parent?: number
-  turnstileToken?: string
+  captchaToken?: string
 }
 
 export interface CommentSubmission extends CommentDraft {
@@ -109,6 +111,7 @@ function normalizeFormConfig(value: unknown): CommentFormConfig {
     const trimmed = raw.turnstileSitekey.trim()
     if (trimmed && Array.from(trimmed).length <= 255 && !/[\r\n]/.test(trimmed)) turnstileSitekey = trimmed
   }
+  const captcha = normalizeCaptchaConfig(raw.captcha, turnstileSitekey)
   return {
     emailRequired: typeof raw.emailRequired === 'boolean'
       ? raw.emailRequired
@@ -125,7 +128,30 @@ function normalizeFormConfig(value: unknown): CommentFormConfig {
     bloggerBadge,
     turnstileSitekey,
     bloggerProofEnabled: raw.bloggerProofEnabled === true,
+    captcha,
   }
+}
+
+function normalizeCaptchaConfig(value: unknown, legacyTurnstileSitekey: string): CaptchaPublicConfig {
+  const raw = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+  const provider = raw.provider === 'turnstile' || raw.provider === 'cap' ? raw.provider : 'off'
+  const sitekey = typeof raw.sitekey === 'string' ? raw.sitekey.trim() : ''
+  if (!sitekey || Array.from(sitekey).length > 255 || /[\r\n]/.test(sitekey)) {
+    return legacyTurnstileSitekey
+      ? { provider: 'turnstile', sitekey: legacyTurnstileSitekey, instanceUrl: '' }
+      : { ...DEFAULT_CAPTCHA_CONFIG }
+  }
+  if (provider === 'turnstile') return { provider, sitekey, instanceUrl: '' }
+  if (provider === 'cap' && typeof raw.instanceUrl === 'string') {
+    try {
+      const instance = new URL(raw.instanceUrl.trim())
+      if (instance.protocol === 'https:' && !instance.username && !instance.password && !instance.search && !instance.hash) {
+        instance.pathname = instance.pathname.replace(/\/+$/, '')
+        return { provider, sitekey, instanceUrl: instance.toString().replace(/\/$/, '') }
+      }
+    } catch { /* invalid public config fails closed */ }
+  }
+  return { ...DEFAULT_CAPTCHA_CONFIG }
 }
 
 function normalizeParent(value: unknown): number | null {
@@ -253,7 +279,7 @@ export async function submitComment(
   }
   if (draft.email) submission.email = draft.email
   if (draft.url) submission.url = draft.url
-  if (draft.turnstileToken) submission.turnstileToken = draft.turnstileToken
+  if (draft.captchaToken) submission.captchaToken = draft.captchaToken
   const envelope = await requestJSON<{ id?: unknown; isBlogger?: unknown }>(apiURL(config, 'api/comment/submit'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

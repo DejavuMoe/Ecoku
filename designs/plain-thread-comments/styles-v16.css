@@ -1,0 +1,199 @@
+@import url("./styles-v15.css");
+
+.captcha-slot[data-captcha-provider="cap"] {
+  display: block;
+  width: min(100%, 260px);
+  margin-top: 10px;
+}
+
+cap-widget.ecoku-cap-prototype {
+  display: block;
+  width: min(100%, var(--cap-widget-width));
+  max-width: 100%;
+
+  /* 保持 Cap 官方几何与状态结构，只把公开颜色/字体变量映射到 Ecoku。 */
+  --cap-background: color-mix(in srgb, var(--entry) 88%, var(--theme));
+  --cap-border-color: var(--border-soft);
+  --cap-border-radius: 14px;
+  --cap-widget-height: 58px;
+  --cap-widget-width: 260px;
+  --cap-widget-padding: 14px;
+  --cap-gap: 15px;
+  --cap-color: var(--content);
+  --cap-font: inherit;
+  --cap-checkbox-size: 25px;
+  --cap-checkbox-border: 1px solid var(--border);
+  --cap-checkbox-border-radius: 6px;
+  --cap-checkbox-background: var(--entry);
+  --cap-checkbox-margin: 2px;
+  --cap-spinner-color: var(--primary);
+  --cap-spinner-background-color: var(--border-soft);
+  --cap-spinner-thickness: 3;
+  --cap-focus-ring: color-mix(in srgb, var(--primary) 30%, transparent);
+  --cap-success-color: color-mix(in srgb, #2a6648 72%, var(--primary));
+  --cap-error-color: color-mix(in srgb, #913634 72%, var(--primary));
+}
+
+.cap-prototype-captcha {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  height: var(--cap-widget-height);
+  overflow: hidden;
+  color: var(--cap-color);
+  border: 1px solid var(--cap-border-color);
+  border-radius: var(--cap-border-radius);
+  background: var(--cap-background);
+  font-family: var(--cap-font);
+  user-select: none;
+  transition: filter 0.2s, transform 0.2s;
+}
+
+.cap-prototype-captcha:not([data-state]):active {
+  transform: scale(0.97);
+}
+
+.cap-prototype-captcha:hover {
+  filter: brightness(98%);
+}
+
+.cap-prototype-trigger {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--cap-gap);
+  padding: var(--cap-widget-padding);
+  color: inherit;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  text-align: left;
+}
+
+.cap-prototype-trigger:focus-visible {
+  outline: 2px solid var(--cap-focus-ring);
+  outline-offset: -3px;
+}
+
+.cap-prototype-checkbox {
+  display: grid;
+  width: var(--cap-checkbox-size);
+  height: var(--cap-checkbox-size);
+  flex: 0 0 auto;
+  place-items: center;
+  margin-block: var(--cap-checkbox-margin);
+  border: var(--cap-checkbox-border);
+  border-radius: var(--cap-checkbox-border-radius);
+  background: var(--cap-checkbox-background);
+}
+
+.cap-prototype-label-wrapper {
+  position: relative;
+  display: flex;
+  height: 2em;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  overflow: hidden;
+}
+
+.cap-prototype-label {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.cap-prototype-progress-ring,
+.cap-prototype-state-icon {
+  display: none;
+  width: 100%;
+  height: 100%;
+}
+
+.cap-prototype-progress-ring {
+  transform: rotate(-90deg);
+}
+
+.cap-prototype-progress-ring-bg {
+  fill: none;
+  stroke: var(--cap-spinner-background-color);
+  stroke-width: var(--cap-spinner-thickness);
+}
+
+.cap-prototype-progress-ring-circle {
+  fill: none;
+  stroke: var(--cap-spinner-color);
+  stroke-width: var(--cap-spinner-thickness);
+  stroke-linecap: round;
+  stroke-dasharray: 87.96;
+  animation: ecoku-cap-progress 900ms ease-in-out infinite alternate;
+}
+
+.cap-prototype-checkmark { color: var(--cap-success-color); }
+.cap-prototype-error-icon { color: var(--cap-error-color); }
+
+.cap-prototype-captcha[data-state="verifying"] .cap-prototype-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  transform: scale(1.1);
+}
+
+.cap-prototype-captcha[data-state="verifying"] .cap-prototype-progress-ring,
+.cap-prototype-captcha[data-state="done"] .cap-prototype-checkmark,
+.cap-prototype-captcha[data-state="error"] .cap-prototype-error-icon {
+  display: block;
+}
+
+.cap-prototype-captcha[data-state="done"] .cap-prototype-checkbox,
+.cap-prototype-captcha[data-state="error"] .cap-prototype-checkbox {
+  border-color: transparent;
+  background: transparent;
+}
+
+.cap-prototype-captcha[data-state="verifying"] .cap-prototype-trigger {
+  cursor: progress;
+}
+
+.cap-prototype-captcha[data-state="done"] .cap-prototype-trigger {
+  cursor: default;
+}
+
+.cap-prototype-credits {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  z-index: 2;
+  display: inline-flex;
+  min-width: 24px;
+  min-height: 24px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 4px 6px;
+  color: var(--cap-color);
+  border-radius: 4px;
+  font-family: var(--cap-font);
+  font-size: 12px;
+  line-height: 1;
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+@keyframes ecoku-cap-progress {
+  from { stroke-dashoffset: 76; }
+  to { stroke-dashoffset: 18; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cap-prototype-progress-ring-circle { animation: none; }
+}

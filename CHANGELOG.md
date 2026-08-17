@@ -5,6 +5,19 @@
 
 ## [Unreleased]
 
+### 变更
+
+- 实例级机器人验证改为关闭 / Cloudflare Turnstile / 自托管 Cap 三态选择，同时保护访客评论与管理员登录；Turnstile 兼容保留，Cap 从配置实例加载 Widget/WASM 并使用 JSON Siteverify，浏览器统一提交单次 `captchaToken`。
+- 管理端和评论区采用已批准的安全 v12 / 评论 v16：Cap 保留官方 260×58px 几何、SVG 状态与署名，只映射 Ecoku 颜色和字体 token；两套 Secret 分别加密且只回显「已设置」。
+- 增加停服运维命令 `captcha status` / `captcha disable`；故障恢复显式关闭当前验证但保留两套配置，不提供自动降级或环境变量绕过。
+- 管理端 CSP 为 Cap 实例 Origin、WASM、Blob Worker 和 instrumentation 生成精确 nonce；Cap HTTPS 出站 Siteverify 拒绝重定向、localhost、私网和非公网解析结果。
+
+### 升级边界
+
+- SQLite schema 从 v5 升到 v6：事务性把 `turnstile_settings` 重命名为 `captcha_settings`，保留现有开关、Sitekey、加密 Secret 与 revision，默认 provider 为 Turnstile，再增加 Cap 实例、Site key 与加密 Secret 字段；
+- 升级前必须停服冷备份。已写入 v6 的数据库不能只换回旧镜像；回滚必须恢复停服前的整库备份；
+- 升级后若选择 Cap，需在 Cap Key 中允许管理端与全部评论站点 Origin，并验证严格 CSP、Widget/WASM、管理员登录和评论提交。
+
 ## [0.1.4] - 2026-08-15
 
 ### 变更
