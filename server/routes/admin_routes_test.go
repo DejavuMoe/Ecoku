@@ -111,6 +111,9 @@ func TestAdminStaticCSPAllowsStyleAttributesAndNonceBootstrapWithoutUnsafeInline
 	if strings.Contains(csp, "script-src 'unsafe-inline'") {
 		t.Fatalf("administrator UI unexpectedly allows inline scripts: %q", csp)
 	}
+	if strings.Contains(csp, "'unsafe-eval'") || strings.Contains(csp, "'wasm-unsafe-eval'") || strings.Contains(csp, "worker-src blob:") {
+		t.Fatalf("disabled CAPTCHA unexpectedly relaxes script or worker CSP: %q", csp)
+	}
 	if !strings.Contains(csp, "script-src 'self'") || !strings.Contains(csp, "style-src 'self'") {
 		t.Fatalf("administrator UI lost its self-only script/style policy: %q", csp)
 	}
@@ -193,7 +196,7 @@ func TestAdminCapSettingsLoginAndCSP(t *testing.T) {
 	indexRecorder := httptest.NewRecorder()
 	env.router.ServeHTTP(indexRecorder, indexRequest)
 	csp := indexRecorder.Header().Get("Content-Security-Policy")
-	for _, required := range []string{"https://cap.example.com", "'wasm-unsafe-eval'", "worker-src blob:", "'nonce-"} {
+	for _, required := range []string{"https://cap.example.com", "'wasm-unsafe-eval'", "'unsafe-eval'", "worker-src blob:", "'nonce-"} {
 		if !strings.Contains(csp, required) {
 			t.Fatalf("Cap CSP missing %q: %s", required, csp)
 		}
@@ -223,6 +226,30 @@ func TestAdminCapSettingsLoginAndCSP(t *testing.T) {
 	})
 	if ok.Code != http.StatusOK {
 		t.Fatalf("Cap login=%d %s", ok.Code, ok.Body.String())
+	}
+
+	settings, err := captcha.GetSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, provider := range []string{captcha.ProviderTurnstile, captcha.ProviderOff} {
+		settings.Provider = provider
+		settings, err = captcha.Save(settings)
+		if err != nil {
+			t.Fatalf("switch to %s: %v", provider, err)
+		}
+		inactiveRequest := httptest.NewRequest(http.MethodGet, "/admin/", nil)
+		inactiveRecorder := httptest.NewRecorder()
+		env.router.ServeHTTP(inactiveRecorder, inactiveRequest)
+		inactiveCSP := inactiveRecorder.Header().Get("Content-Security-Policy")
+		for _, forbidden := range []string{"https://cap.example.com", "'wasm-unsafe-eval'", "'unsafe-eval'", "worker-src blob:"} {
+			if strings.Contains(inactiveCSP, forbidden) {
+				t.Fatalf("%s CSP retained inactive Cap source %q: %s", provider, forbidden, inactiveCSP)
+			}
+		}
+		if settings.Cap.InstanceURL != "https://cap.example.com" || !settings.Cap.SecretSet {
+			t.Fatalf("%s switch discarded Cap settings: %#v", provider, settings.Cap)
+		}
 	}
 }
 

@@ -89,6 +89,9 @@ WHERE CAST(secret_cipher AS TEXT) LIKE '%turnstile-private%'
 	if err != nil || turnstilePublic.Provider != ProviderTurnstile || turnstilePublic.Sitekey != "turnstile-public" || turnstilePublic.InstanceURL != "" {
 		t.Fatalf("Turnstile public=%#v err=%v", turnstilePublic, err)
 	}
+	if origin, err := ActiveCapOrigin(); err != nil || origin != "" {
+		t.Fatalf("inactive Cap origin=%q err=%v", origin, err)
+	}
 
 	saved.Provider = ProviderCap
 	switched, err := Save(saved)
@@ -102,9 +105,33 @@ WHERE CAST(secret_cipher AS TEXT) LIKE '%turnstile-private%'
 	if err != nil || public.Provider != ProviderCap || public.Sitekey != "cap-public" || public.InstanceURL != "https://cap.example.com" {
 		t.Fatalf("public=%#v err=%v", public, err)
 	}
-	origin, err := StoredCapOrigin()
+	origin, err := ActiveCapOrigin()
 	if err != nil || origin != "https://cap.example.com" {
 		t.Fatalf("origin=%q err=%v", origin, err)
+	}
+
+	switched.Provider = ProviderOff
+	disabled, err := Save(switched)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if disabled.Provider != ProviderOff || disabled.Cap.InstanceURL != "https://cap.example.com" || !disabled.Cap.SecretSet {
+		t.Fatalf("disabled=%#v", disabled)
+	}
+	if origin, err := ActiveCapOrigin(); err != nil || origin != "" {
+		t.Fatalf("disabled Cap origin=%q err=%v", origin, err)
+	}
+
+	disabled.Provider = ProviderTurnstile
+	turnedBack, err := Save(disabled)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if turnedBack.Provider != ProviderTurnstile || turnedBack.Cap.InstanceURL != "https://cap.example.com" || !turnedBack.Cap.SecretSet {
+		t.Fatalf("Turnstile restore=%#v", turnedBack)
+	}
+	if origin, err := ActiveCapOrigin(); err != nil || origin != "" {
+		t.Fatalf("Turnstile Cap origin=%q err=%v", origin, err)
 	}
 }
 

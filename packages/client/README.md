@@ -97,7 +97,7 @@ container and pass that container together with `serverURL`, `siteId`, and
 - Author websites must use `http` or `https` and are rendered with
   `nofollow ugc noopener noreferrer`.
 
-Strict host CSP must allow the selected provider. Turnstile requires `https://challenges.cloudflare.com`; Cap requires the configured Cap HTTPS Origin in `script-src` and `connect-src`, `worker-src blob:`, `frame-src 'self'`, and WebAssembly. Nonce-based Cap instrumentation uses the same preconfigured `window.CAP_CSS_NONCE` and `window.CAP_SCRIPT_NONCE` before Ecoku loads.
+Strict host CSP must allow the selected provider. Turnstile requires `https://challenges.cloudflare.com`; current Cap 3.x instrumentation requires the configured Cap HTTPS Origin in `script-src` and `connect-src`, `worker-src blob:`, `frame-src 'self'`, WebAssembly, and JavaScript `'unsafe-eval'` because its generated sandbox script uses `eval` / `new Function`. Nonce-based Cap instrumentation also uses the same preconfigured `window.CAP_CSS_NONCE` and `window.CAP_SCRIPT_NONCE` before Ecoku loads. Hosts that reject this CSP tradeoff must disable instrumentation for that Cap key or select Turnstile; do not broaden the policy with wildcards or `unsafe-inline`.
 
 ## Development checks
 

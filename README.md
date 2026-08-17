@@ -59,7 +59,7 @@ params:
 调用方必须明确提供稳定的页面 key；SDK 不从浏览器 URL 猜测。完整示例位于
 [`examples/hugo-papermod`](examples/hugo-papermod) 与 [`examples/html`](examples/html)。
 
-验证提供方由 Ecoku 的公共 `formConfig` 自动下发，接入 markup 不包含 Sitekey 或 Secret。启用自托管 Cap 时，先在 Cap 的 Key CORS 中允许实际评论站点与 Ecoku 管理端 Origin；严格 CSP 还需精确允许 `https://cap.example.com` 的脚本/连接、`worker-src blob:`、WebAssembly，以及按 nonce 配置 Cap instrumentation。完整设置和停服 `captcha disable` 恢复流程见[自托管指南](docs/operations/self-hosting.md#机器人验证)。
+验证提供方由 Ecoku 的公共 `formConfig` 自动下发，接入 markup 不包含 Sitekey 或 Secret。启用自托管 Cap 时，先在 Cap 的 Key CORS 中允许实际评论站点与 Ecoku 管理端 Origin；当前 Cap 3.x instrumentation 在严格 CSP 下还需为精确实例 Origin 配置脚本/连接、`worker-src blob:`、nonce、WebAssembly 与 JavaScript `'unsafe-eval'`。Ecoku 管理端只在 Cap 当前启用时自动加入这些来源；评论站点是否接受该 CSP 权衡由宿主决定。完整设置和停服 `captcha disable` 恢复流程见[自托管指南](docs/operations/self-hosting.md#机器人验证)。
 使用镜像同源加载器会自动获得当前协议；自行固定旧 npm/UMD SDK 的站点必须先更新再选择 Cap，否则旧客户端会失败关闭。
 
 ## 仓库结构

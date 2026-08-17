@@ -394,8 +394,7 @@ sudo docker compose ps
 注入样式或你改用的外部 CSS 制定经过审核的 CSP 方案；不要仅为消除报错而全局放宽脚本策略。若当前验证方式为 Cloudflare
 Turnstile，宿主 CSP 还必须允许 `https://challenges.cloudflare.com` 的 `script-src`、`frame-src`
 和 `connect-src`。若当前方式为自托管 Cap，宿主 CSP 必须把该实例 HTTPS Origin 加入 `script-src` 与
-`connect-src`，允许 `worker-src blob:`、instrumentation 所需的 `frame-src 'self'`，以及 WebAssembly 所需的精确 `script-src 'wasm-unsafe-eval'`；启用 instrumentation 且使用 nonce CSP 时，加载 Widget 前把同一 nonce 写入 `window.CAP_CSS_NONCE` 与 `window.CAP_SCRIPT_NONCE`。不要添加 `*`、宽泛的 `unsafe-inline` 或 `unsafe-eval`。每次升级 SDK 后重新检查
-CSP、控制台和网络请求，确认没有第三方 IP、头像、遥测或管理凭据。
+`connect-src`，允许 `worker-src blob:`、instrumentation 所需的 `frame-src 'self'`，以及 WebAssembly 所需的精确 `script-src 'wasm-unsafe-eval'`。当前 Cap 3.x 生成的 sandboxed instrumentation 脚本还会调用 JavaScript `eval` / `new Function`，因此启用该能力的严格宿主 CSP 必须同时加入 `script-src 'unsafe-eval'`；`'wasm-unsafe-eval'` 和 nonce 都不能代替这一权限。事实依据见 [Cap 3.1.8 instrumentation 生成器](https://github.com/tiagozip/cap/blob/1d4f246d29b691275ce0edbbc8290198ebf8bde8/core/src/instrumentation.js#L338-L342)和 [CSP `script-src` 定义](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Content-Security-Policy/script-src)。使用 nonce CSP 时，加载 Widget 前仍把同一 nonce 写入 `window.CAP_CSS_NONCE` 与 `window.CAP_SCRIPT_NONCE`。不接受 JavaScript 动态求值风险的宿主应关闭该 Cap Key 的 instrumentation 或选择 Turnstile；不要添加 `*`、宽泛的 `unsafe-inline` 或自动降级。每次升级 SDK 后重新检查 CSP、控制台和网络请求，确认没有第三方 IP、头像、遥测或管理凭据。
 
 ### Hugo PaperMod
 
@@ -571,6 +570,8 @@ Secret key 使用与通知相同的 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 加密�
 2. 确认 Cap 实例使用公开 HTTPS，且 Standalone 已启用固定版本的 `/assets/widget.js` 与 `/assets/cap_wasm_bg.wasm`；
 3. 在 Ecoku 管理端「安全」选择 Cap，填写实例根地址、Site key 和 Secret key；实例地址只接受公开 HTTPS，不接受凭据、query、fragment、localhost 或私网 IP；
 4. 保存后在当前管理会话仍打开时，用另一个普通浏览器窗口验证管理员登录和评论发表；Cap token 单次使用，重试会重新求解。
+
+Ecoku `v0.1.6` 起，管理端只在 Cap 是当前启用方式时为已保存的精确实例 Origin 加入 Widget、连接、WASM、Blob Worker、nonce 与 instrumentation 所需的 `'unsafe-eval'`；切换到关闭或 Turnstile 会在下一次页面响应中移除 Cap Origin 和这些放宽项，但不会清除 Cap 配置。若 instrumentation 返回 `instr_timeout` 且 `/redeem` 为 429，先核对响应 CSP 是否来自当前镜像，不能通过改 CORS、关闭失败关闭或给 Caddy 添加第二份宽泛 CSP 处理。
 
 使用当前镜像同源 `/client/ecoku-loader.js` 的站点会随镜像获得 Cap 支持。若站点自行固定旧 npm/UMD SDK，必须先更新到包含 `formConfig.captcha` / `captchaToken` 的版本再选择 Cap；旧 Turnstile-only 客户端无法求解 Cap，服务端会失败关闭并拒绝提交。
 
