@@ -22,6 +22,7 @@
 | --- | --- |
 | [产品约束](product/constraints.md) | 评论体验、隐私、通知、迁移与运行边界 |
 | [仓库目录约定](architecture/repository-layout.md) | 各目录所有权与是否进入镜像 |
+| [二进制发布可行性](architecture/release-artifact-feasibility.md) | Forgejo Release、Linux 产物、手动部署与所需 CI 权限的研究结论 |
 
 ## 示例
 

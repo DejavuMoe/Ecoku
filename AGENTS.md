@@ -50,9 +50,10 @@
 
 ## 验证
 
-Woodpecker 在 `push` / `pull_request` / `tag` / `manual` 上已经跑 `pnpm verify:client`、
-`pnpm verify:admin`、`go test -count=1 ./...`、`go vet ./...` 和 server 构建；tag 再校验
-tag 与 `VERSION`、`compose.yaml` image。这些不要在本地重复跑，交给 CI。
+Woodpecker 在 `master` push、目标为 `master` 的 pull request 与 manual 上运行
+`pnpm verify:client`、`pnpm verify:admin`、`go test -count=1 ./...`、`go vet ./...` 和 server 构建；
+`v*` tag 不重复测试，只做 tag / `VERSION` / `compose.yaml` 一致性校验后直接并行构建 amd64/arm64
+镜像并发布 manifest。这些不要在本地重复跑，交给 CI。
 
 本地只做 CI 覆盖不到的：
 

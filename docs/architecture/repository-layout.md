@@ -11,7 +11,7 @@
 | `designs/` | 当前设计基线、测试 fixture 与历史原型 | 否 |
 | `examples/` | 无私有数据的最小站点接入示例 | 否 |
 | `compose.yaml`、`deploy/` | Forgejo 精确版本镜像、公开配置模板与私有环境变量占位 | Compose 进入源码，私有文件不进入 Git |
-| `.woodpecker/` | 测试、amd64/arm64 构建和多架构 manifest 工作流 | 否 |
+| `.woodpecker/` | `master`/PR 完整测试、tag 一致性校验、带独立 registry cache 的 amd64/arm64 构建和多架构 manifest 工作流 | 否 |
 | `docs/` | 文档索引、产品约束、自托管指南、本地开发与架构说明 | 否 |
 | `scripts/` | 本地/测试环境同步和真实 API 冒烟工具 | 否 |
 | `VERSION`、`CHANGELOG.md` | 服务端容器发布版本与候选版本变更记录 | `VERSION` 保存不带 `v` 的唯一版本号；发布 tag 为 `v$(cat VERSION)`，并作为 OCI 构建参数与标签来源 |
