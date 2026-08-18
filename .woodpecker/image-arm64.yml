@@ -24,6 +24,8 @@ steps:
       dockerfile: Dockerfile
       platforms: linux/arm64
       tag: ${CI_COMMIT_TAG}-arm64
+      # Keep a separate cache per platform so concurrent native builds never
+      # overwrite one another's registry cache manifest.
       cache_images:
         - git.via.moe/dejavu/ecoku:buildcache-arm64
       buildkit_oci_max_parallelism: 1
@@ -35,7 +37,7 @@ steps:
       provenance: mode=max
 
 depends_on:
-  - test
+  - validate-release-tag
 
 concurrency:
   limit: 1

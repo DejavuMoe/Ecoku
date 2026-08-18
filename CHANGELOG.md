@@ -5,6 +5,11 @@
 
 ## [Unreleased]
 
+### 变更
+
+- Woodpecker 完整前后端/服务端门禁改为只在 `master` push、目标为 `master` 的 pull request 与 manual 运行；`v*` tag 只做版本/Compose 一致性校验，随后直接并行构建 amd64/arm64 镜像并发布 manifest，不再重复同一提交的完整测试；
+- 保留并说明每架构独立的 BuildKit registry cache（`mode=max`），避免多架构 cache manifest 相互覆盖；新增 Forgejo Release、Linux 二进制目录包和 Debian 13/Alpine 手动部署的可行性研究，正式发布附件仍须新增最小权限仓库 token 并完成产物设计。
+
 ## [0.1.6] - 2026-08-18
 
 ### 修复

@@ -70,7 +70,7 @@ params:
 - `designs/`：已批准设计基线和历史原型，不进入运行时镜像；
 - `examples/`：不含私有数据的接入示例；
 - `deploy/`、`compose.yaml`：Docker Compose 部署模板；
-- `.woodpecker/`：测试、双架构镜像构建和 manifest 发布；
+- `.woodpecker/`：`master`/PR 完整测试、tag 轻量校验、双架构缓存构建和 manifest 发布；
 - `VERSION`：不带前导 `v` 的容器版本；发布 tag 必须与其一致；
 - `CHANGELOG.md`：候选版本变更和升级边界。
 
