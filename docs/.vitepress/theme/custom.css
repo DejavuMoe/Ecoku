@@ -1,0 +1,93 @@
+:root {
+  --vp-c-brand-1: #0f766e;
+  --vp-c-brand-2: #0d9488;
+  --vp-c-brand-3: #14b8a6;
+  --vp-c-brand-soft: rgba(13, 148, 136, 0.14);
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #0f766e 12%, #65a30d 88%);
+  --vp-home-hero-image-background-image: linear-gradient(160deg, #99f6e4 20%, #d9f99d 65%);
+  --vp-home-hero-image-filter: blur(36px);
+  --vp-button-brand-bg: #0f766e;
+  --vp-button-brand-hover-bg: #0d9488;
+  --vp-button-brand-active-bg: #115e59;
+}
+
+.dark {
+  --vp-c-brand-1: #5eead4;
+  --vp-c-brand-2: #2dd4bf;
+  --vp-c-brand-3: #14b8a6;
+  --vp-c-brand-soft: rgba(45, 212, 191, 0.16);
+  --vp-home-hero-name-background: linear-gradient(120deg, #5eead4 8%, #a3e635 92%);
+  --vp-home-hero-image-background-image: linear-gradient(160deg, #134e4a 10%, #3f6212 80%);
+  --vp-button-brand-bg: #0d9488;
+  --vp-button-brand-hover-bg: #14b8a6;
+  --vp-button-brand-active-bg: #0f766e;
+}
+
+.VPHome {
+  position: relative;
+  isolation: isolate;
+}
+
+.VPHome::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(13, 148, 136, 0.16), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(163, 230, 53, 0.12), transparent 50%),
+    linear-gradient(rgba(15, 118, 110, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 118, 110, 0.04) 1px, transparent 1px);
+  background-size: auto, auto, 48px 48px, 48px 48px;
+  mask-image: linear-gradient(to bottom, black 0%, black 42%, transparent 78%);
+}
+
+.dark .VPHome::before {
+  background-image:
+    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(45, 212, 191, 0.14), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(163, 230, 53, 0.08), transparent 50%),
+    linear-gradient(rgba(94, 234, 212, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94, 234, 212, 0.05) 1px, transparent 1px);
+}
+
+.VPHomeHero .image-src {
+  width: min(340px, 78vw);
+  max-width: 340px;
+  max-height: 340px;
+  filter: drop-shadow(0 22px 24px rgba(15, 118, 110, 0.24));
+}
+
+.dark .VPHomeHero .image-src {
+  filter: drop-shadow(0 24px 28px rgba(0, 0, 0, 0.32));
+}
+
+@media (max-width: 639px) {
+  .VPHomeHero .image-src {
+    width: min(240px, 70vw);
+    max-height: 240px;
+  }
+}
+
+.VPFeature {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.VPFeature:hover {
+  transform: translateY(-2px);
+}
+
+.vp-doc table {
+  display: table;
+  width: 100%;
+}
+
+.vp-doc .custom-block.tip {
+  border-color: var(--vp-c-brand-1);
+}
+
+.VPNavBarTitle .logo {
+  height: 28px;
+  border-radius: 7px;
+}

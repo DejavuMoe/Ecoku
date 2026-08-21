@@ -2,17 +2,21 @@
 
 ## 事实来源
 
-- 实现以当前源码为准；产品/安全/隐私以 `docs/product/constraints.md` 为准；部署以
-  `docs/operations/self-hosting.md` 为准。`docs/progress/` 只是历史验收，不约束当前实现。
+- 实现以当前源码为准；产品/安全/隐私以 `docs/internal/constraints.md` 为准；面向操作者的部署与接入以
+  VitePress 源文为准（默认简体中文：`docs/guide/`、`docs/self-hosting/`、`docs/integration/`）。
+  `docs/progress/` 只是历史验收，不约束当前实现，也不进入文档站点。
 - 评论区基线 `designs/plain-thread-comments/index-v16.html`；管理端站点配置以
   `designs/admin-moderation/index-v11.html` 为准（系统衬线栈），安全与登录验证以 `index-v12.html` 为准，
   评论管理/通知设置仍沿用 v5。生产管理端不得展示通知判定预览或通知模板预览。
 - 边界不清时先查源码和上述文档，再集中向用户确认。不要把原型 mock、测试文案或设计标注带进生产。
-- 文档索引见 `docs/README.md`；本地开发见 `docs/development/local-setup.md`。
+- 文档站点在 `docs/`（VitePress，pnpm workspace 包 `ecoku-docs`）。本地预览 `pnpm docs:dev`。
+  本地开发见 `docs/contribute/local-dev.md`。`docs/internal/` 不进入站点导航。
 - 改运行时、部署契约、接入 markup、配置键、环境变量或用户可见行为后，按改动同步文档，不要留到发版才补：
-  产品/隐私边界写 `docs/product/constraints.md`；部署、Compose、环境变量和升级写
-  `docs/operations/self-hosting.md` 与 `deploy/` 模板；公开接入片段写根 `README.md` 与 `examples/`；
-  未发版行为只追加 `CHANGELOG.md` 的 `[Unreleased]`，不得改写已发布章节。本文件只保留约定。
+  产品/隐私边界写 `docs/internal/constraints.md`；部署、Compose、环境变量、备份和升级写
+  `docs/self-hosting/`（发版时在 `docs/self-hosting/upgrades/` 增加该 tag 页面），并同步
+  `docs/en/`、`docs/zh-hant/`、`docs/ja/` 对应路径与 `deploy/` 模板；公开接入片段写根 `README.md`、
+  `examples/` 与 `docs/integration/`；未发版行为只追加 `CHANGELOG.md` 的 `[Unreleased]`，不得改写已发布章节。
+  本文件只保留约定。面向读者的文档用操作说明，不要把本文件的约束口吻或提示词写进站点文案。
 
 ## 产品边界
 
@@ -29,15 +33,17 @@
 ## 仓库与发布
 
 - 运行时：`server/`、`packages/client/`、`packages/admin/`。`designs/`、`examples/`、
-  `docs/progress/` 不进镜像。
+  `docs/progress/`、`docs/internal/` 不进镜像。
 - 根 `VERSION` 是容器版本的唯一文本来源（一行、无 `v`）。它不进入 Go / `pnpm` 日常构建，
   也不驱动 client/admin 的 package 版本。
 - 发版提交必须同步四项：`VERSION`、根 `package.json` 的 `version`、`compose.yaml` 的
   `image`（`git.via.moe/dejavu/ecoku:v` + `VERSION`，禁止占位符或浮动 tag）、`CHANGELOG.md`
-  对应章节与页脚链接。
+  对应章节与页脚链接。若该 tag 影响部署，同时在 `docs/self-hosting/upgrades/` 增加对应页面（四套 locale）。
 - Git tag 必须为 `v` + `VERSION`。Woodpecker 只在 `v*` tag 上构建镜像，并用 `CI_COMMIT_TAG`
   作为镜像 tag。tag 流水线会校验 tag 与 `VERSION`、`compose.yaml` 一致。改 `VERSION` 不会出镜像。
-  CI 不部署生产、不碰生产库。
+  镜像 CI 不部署应用生产、不碰生产库。文档站点仅由 `master` 上的 manual Woodpecker 流程构建并原子发布，
+  固定调度到 `role=netcup-vps1000`、`server=netcup-vps1000` 的 agent；发布 step 通过 trusted volume
+  将 `/var/www/docs.via.moe` 原子切换到 `/var/www/.docs.via.moe-releases/` 下的新候选，成功后立即尝试删除旧候选。
 - 文档和示例只用占位符。真实域名、密码、token、SMTP、Telegram、数据库和日志不得进 Git。
 - 提交、推送、tag、镜像发布、生产部署和真实数据库操作需要当前任务的明确授权。
 - 新 tag 若可能影响平滑升级（schema、Compose 挂载、配置键、日志出口、镜像契约），回复中先写：
@@ -50,10 +56,10 @@
 
 ## 验证
 
-Woodpecker 在 `master` push、目标为 `master` 的 pull request 与 manual 上运行
-`pnpm verify:client`、`pnpm verify:admin`、`go test -count=1 ./...`、`go vet ./...` 和 server 构建；
+Woodpecker 在 `master` push 与目标为 `master` 的 pull request 上运行
+`pnpm verify:client`、`pnpm verify:admin`、`pnpm docs:build`、`go test -count=1 ./...`、`go vet ./...` 和 server 构建；
 `v*` tag 不重复测试，只做 tag / `VERSION` / `compose.yaml` 一致性校验后直接并行构建 amd64/arm64
-镜像并发布 manifest。这些不要在本地重复跑，交给 CI。
+镜像并发布 manifest。manual 只运行独立文档构建/发布流程，不依赖完整测试流程。这些不要在本地重复跑，交给 CI。
 
 本地只做 CI 覆盖不到的：
 
@@ -62,6 +68,7 @@ Woodpecker 在 `master` push、目标为 `master` 的 pull request 与 manual �
 | 已批准原型 | 对应 `designs/**/*.test.mjs` |
 | 发版四项 | 核对 `VERSION`、根 `package.json`、`compose.yaml` image、`CHANGELOG` 一致 |
 | 改迁移 | 补 fixture（写测试，不是本地跑 `go test`） |
+| 文档发布脚本 | shell 语法检查与隔离临时目录发布验证，不触碰 `/var/www` |
 
 浏览器、生产主机和真实数据库不是默认门禁。文档、示例和本文件的纯约定修改不强制本地测试。
 回复写明交由 CI 的项、本地已跑项和未跑项。

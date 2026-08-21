@@ -1,0 +1,31 @@
+labels:
+  platform: linux/amd64
+  backend: docker
+  role: netcup-vps1000
+  server: netcup-vps1000
+
+when:
+  - event: manual
+    branch: master
+
+steps:
+  - name: build-docs
+    image: node:24.18.0-alpine3.24
+    commands:
+      - apk add --no-cache git
+      - corepack enable
+      - pnpm install --frozen-lockfile
+      - pnpm docs:build
+      - sh scripts/verify-docs-output.sh docs/.vitepress/dist
+
+  - name: publish-docs
+    image: alpine:3.24.1
+    volumes:
+      - /var/www:/deploy
+    commands:
+      - apk add --no-cache coreutils util-linux
+      - reruns="$CI_PIPELINE_RERUNS"; test -n "$reruns" || reruns=0; release_id="$CI_COMMIT_SHA-$CI_PIPELINE_NUMBER-$reruns"; sh scripts/publish-docs.sh docs/.vitepress/dist "$release_id"
+
+concurrency:
+  limit: 1
+  group: ecoku-docs-production

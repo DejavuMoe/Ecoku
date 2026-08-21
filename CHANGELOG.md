@@ -7,8 +7,10 @@
 
 ### 变更
 
-- Woodpecker 完整前后端/服务端门禁改为只在 `master` push、目标为 `master` 的 pull request 与 manual 运行；`v*` tag 只做版本/Compose 一致性校验，随后直接并行构建 amd64/arm64 镜像并发布 manifest，不再重复同一提交的完整测试；
-- 保留并说明每架构独立的 BuildKit registry cache（`mode=max`），避免多架构 cache manifest 相互覆盖；新增 Forgejo Release、Linux 二进制目录包和 Debian 13/Alpine 手动部署的可行性研究，正式发布附件仍须新增最小权限仓库 token 并完成产物设计。
+- Woodpecker 完整前后端/服务端门禁改为只在 `master` push 与目标为 `master` 的 pull request 运行；`v*` tag 只做版本/Compose 一致性校验，随后直接并行构建 amd64/arm64 镜像并发布 manifest，不再重复同一提交的完整测试；
+- 保留并说明每架构独立的 BuildKit registry cache（`mode=max`），避免多架构 cache manifest 相互覆盖。
+- 文档改为 `docs/` 下的 VitePress 站点（pnpm workspace）：简体中文为默认语言，另有繁体中文、英语、日语；覆盖介绍、特性、Docker 自托管、反向代理、后台配置、备份、Twikoo 导入、按 tag 升级说明与常见问题。产品约束移至 `docs/internal/`，不进入站点导航。CI 增加 `pnpm docs:build` 与输出边界检查。
+- 新增仅限 `master` manual 的文档构建/发布流程，固定调度到文档服务器 agent；候选完整验证后通过 trusted volume 原子替换 `/var/www/docs.via.moe` symlink，并立即尝试删除旧候选。该流程不依赖完整测试流程。
 
 ## [0.1.6] - 2026-08-18
 
