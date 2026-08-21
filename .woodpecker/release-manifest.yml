@@ -28,8 +28,8 @@ steps:
       - /var/run/docker.sock:/var/run/docker.sock
 
 depends_on:
-  - image-amd64
-  - image-arm64
+  - release-amd64
+  - release-arm64
 
 concurrency:
   limit: 1

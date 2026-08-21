@@ -1,15 +1,15 @@
 labels:
-  platform: linux/arm64
+  platform: linux/amd64
   backend: docker
-  role: oracle-toronto
-  server: oracle-toronto
+  role: forgejo-local
+  server: netcup-rs1000
 
 when:
   event: tag
   ref: refs/tags/v*
 
 steps:
-  - name: publish-arm64
+  - name: publish-amd64
     image: woodpeckerci/plugin-docker-buildx:6.1.0
     privileged: true
     settings:
@@ -22,12 +22,12 @@ steps:
       password:
         from_secret: forgejo_registry_token
       dockerfile: Dockerfile
-      platforms: linux/arm64
-      tag: ${CI_COMMIT_TAG}-arm64
-      # Keep a separate cache per platform so concurrent native builds never
-      # overwrite one another's registry cache manifest.
+      platforms: linux/amd64
+      tag: ${CI_COMMIT_TAG}-amd64
+      # plugin-docker-buildx imports and refreshes this registry cache in
+      # mode=max, including intermediate frontend/server stages.
       cache_images:
-        - git.via.moe/dejavu/ecoku:buildcache-arm64
+        - git.via.moe/dejavu/ecoku:buildcache-amd64
       buildkit_oci_max_parallelism: 1
       build_args:
         - ECOKU_VERSION=${CI_COMMIT_TAG}
@@ -37,8 +37,8 @@ steps:
       provenance: mode=max
 
 depends_on:
-  - validate-release-tag
+  - release-check
 
 concurrency:
   limit: 1
-  group: ecoku-image-arm64
+  group: ecoku-image-amd64
