@@ -7,6 +7,9 @@
     "serve": "cd server && air",
     "client": "cd packages/client && npm run dev",
     "admin": "pnpm -C packages/admin run dev",
+    "docs:dev": "pnpm -C docs dev",
+    "docs:build": "pnpm -C docs build",
+    "docs:preview": "pnpm -C docs preview",
     "verify:client": "pnpm -C packages/client run test && pnpm -C packages/client run type-check && pnpm -C packages/client run build && pnpm -C packages/client run test:package && pnpm -C packages/client run validate",
     "verify:admin": "pnpm -C packages/admin run test && pnpm -C packages/admin run type-check && pnpm -C packages/admin run build"
   },

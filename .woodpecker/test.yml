@@ -9,16 +9,18 @@ when:
     branch: master
   - event: pull_request
     branch: master
-  - event: manual
 
 steps:
   - name: frontend
     image: node:24.18.0-alpine3.24
     commands:
+      - apk add --no-cache git
       - corepack enable
       - pnpm install --frozen-lockfile
       - pnpm verify:client
       - pnpm verify:admin
+      - pnpm docs:build
+      - sh scripts/verify-docs-output.sh docs/.vitepress/dist
 
   - name: server
     image: golang:1.26.5-alpine3.24

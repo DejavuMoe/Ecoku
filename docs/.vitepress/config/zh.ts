@@ -1,0 +1,59 @@
+import { defineConfig } from 'vitepress'
+import { GITEA, nav, sidebar, type NavCopy, type SidebarCopy } from './shared'
+
+const copy: SidebarCopy & NavCopy = {
+  guide: '指南',
+  selfHosting: '自托管',
+  integration: '接入',
+  upgrades: '升级说明',
+  introduction: '项目介绍',
+  features: '特性',
+  docker: 'Docker 部署',
+  proxy: '反向代理',
+  admin: '后台配置',
+  backup: '备份与恢复',
+  upgrade: '升级流程',
+  twikoo: 'Twikoo 导入',
+  faq: '常见问题',
+  html: '通用 HTML',
+  hugo: 'Hugo PaperMod',
+  contribute: '开发',
+  localDev: '本地开发',
+}
+
+export const zh = defineConfig({
+  title: 'Ecoku',
+  description: '面向自托管场景的多站点纯文本评论系统',
+  lang: 'zh-Hans',
+  markdown: {
+    container: {
+      tipLabel: '提示',
+      warningLabel: '注意',
+      dangerLabel: '警告',
+      infoLabel: '说明',
+      detailsLabel: '详细信息',
+    },
+  },
+  themeConfig: {
+    nav: nav('', copy),
+    sidebar: sidebar('', copy),
+    outline: { label: '本页目录', level: [2, 3] },
+    lastUpdated: { text: '更新于' },
+    docFooter: { prev: '上一页', next: '下一页' },
+    darkModeSwitchLabel: '外观',
+    lightModeSwitchTitle: '切换到浅色',
+    darkModeSwitchTitle: '切换到深色',
+    sidebarMenuLabel: '菜单',
+    returnToTopLabel: '回到顶部',
+    langMenuLabel: '更换语言',
+    skipToContentLabel: '跳到正文',
+    editLink: {
+      pattern: `${GITEA}/_edit/master/docs/:path`,
+      text: '在 Git 上编辑此页',
+    },
+    footer: {
+      message: '以 MIT License 发布',
+      copyright: 'Copyright © 2026 DejavuMoe',
+    },
+  },
+})
