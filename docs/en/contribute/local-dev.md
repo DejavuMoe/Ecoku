@@ -1,56 +1,37 @@
 # Local development
 
-Production is Docker Compose. Locally, use a SQLite file and `server/config.yaml`.
+The root `mise.toml` pins Go, Node.js, and pnpm for local development; Corepack is not used. CI and container builds use matching official Node/Go images directly, without installing mise. Production deployment still uses Docker Compose.
 
-## Requirements
-
-- Go 1.26+ (same as CI)
-- Node.js 20.19+ / 22.12+ / 24+ and pnpm 11.3+
-- Optional: [air](https://github.com/air-verse/air)
+## Set up
 
 ```bash
+mise install
 pnpm install --frozen-lockfile
 cp server/config.yaml.example server/config.yaml
 mkdir -p server/data
 ```
 
-Point `client.static_dir` / `admin.static_dir` at the matching `dist` trees. Set `admin.enabled: true` to debug admin. Include `http://localhost:5173` in `admin.allowed_origins` and `http://localhost:3000` in the site’s `allowed_origins`.
+Keep machine-local build outputs, runtime data, and one-off release checks in the root `tmp/` directory, which Git ignores; do not write them into source directories.
 
-## Environment
+Local services use a SQLite file and `server/config.yaml`. Enable admin and adjust allowed origins when needed. Export secrets only in the current shell, following the names and requirements in the config example; never commit them.
 
-```bash
-export ECOKU_ADMIN_USERNAME="dev-admin"
-export ECOKU_ADMIN_PASSWORD_HASH="<bcrypt hash>"
-export ECOKU_ADMIN_TOKEN_KEY="<32+ bytes hex>"
-export ECOKU_NOTIFICATION_ENCRYPTION_KEY="<base64 32-byte key>"
-```
+Before the first start, set at least the example site's management key:
 
 ```bash
-printf 'your-password\n' | go run ./server hash-password
-openssl rand -hex 32
-openssl rand -base64 32
+export ECOKU_EXAMPLE_SITE_MANAGEMENT_KEY="$(openssl rand -hex 32)"
 ```
 
 ## Run
 
 ```bash
-pnpm -C packages/client build
-pnpm -C packages/admin build
-cd server && go run .
-# or: air
+(cd server && go run .)
+pnpm -C packages/client dev
+ECOKU_ADMIN_DEV_API_URL=http://127.0.0.1:12123 pnpm -C packages/admin dev
+pnpm docs:dev
 ```
 
-Default `http://127.0.0.1:12123`. Delete `server/data/` to reset.
+Run the commands you need in separate terminals.
 
-Comments: `pnpm -C packages/client dev` (`http://localhost:3000`).
+The server defaults to `http://127.0.0.1:12123`; the comment client defaults to `http://localhost:3000`. Build a package first when Go needs to serve its static files.
 
-Admin:
-
-```bash
-export ECOKU_ADMIN_DEV_API_URL="http://127.0.0.1:12123"
-pnpm -C packages/admin dev
-```
-
-Docs site: `pnpm docs:dev`.
-
-CI owns the default gate. Local extras: `pnpm -C packages/<pkg> test`, `go test -count=1 ./...`, and approved prototype tests under `designs/**/*.test.mjs`.
+Woodpecker runs the full gate. Locally, run only checks directly relevant to the change and not already covered by CI.

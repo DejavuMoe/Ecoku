@@ -30,7 +30,7 @@ curl --fail http://127.0.0.1:12123/api/health
 | --- | --- |
 | `v0.1.0` – `v0.1.2` | v4 |
 | `v0.1.3` – `v0.1.4` | v5 |
-| `v0.1.5` – `v0.1.6` | v6 |
+| `v0.1.5` – `v0.1.7` | v6 |
 
 當前最新為 schema v6：`turnstile_settings` 已重命名為 `captcha_settings`，並增加 Cap 欄位。
 

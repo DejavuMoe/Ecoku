@@ -4,6 +4,7 @@
 .cache
 .pnpm-store
 artifacts
+tmp
 node_modules
 **/node_modules
 **/dist

@@ -5,12 +5,23 @@
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-08-26
+
 ### 变更
 
+- 本地开发、CI 与容器构建工具链固定为 Node.js 24.19.0、Go 1.27.0、pnpm 11.24.0；移除 Corepack 依赖并统一使用 pnpm。运行时镜像仍为 Alpine 3.24.1；
 - Woodpecker 完整前后端/服务端门禁改为只在 `master` push 与目标为 `master` 的 pull request 运行；`v*` tag 只做版本/Compose 一致性校验，随后直接并行构建 amd64/arm64 镜像并发布 manifest，不再重复同一提交的完整测试；
-- 保留并说明每架构独立的 BuildKit registry cache（`mode=max`），避免多架构 cache manifest 相互覆盖。
-- 文档改为 `docs/` 下的 VitePress 站点（pnpm workspace）：简体中文为默认语言，另有繁体中文、英语、日语；覆盖介绍、特性、Docker 自托管、反向代理、后台配置、备份、Twikoo 导入、按 tag 升级说明与常见问题。产品约束移至 `docs/internal/`，不进入站点导航。CI 增加 `pnpm docs:build` 与输出边界检查。
-- 新增仅限 `master` manual 的文档构建/发布流程，固定调度到文档服务器 agent；候选完整验证后通过 trusted volume 原子替换 `/var/www/docs.via.moe` symlink，并立即尝试删除旧候选。该流程不依赖完整测试流程。
+- 保留并说明每架构独立的 BuildKit registry cache（`mode=max`），避免多架构 cache manifest 相互覆盖；
+- 文档改为 `docs/` 下的 VitePress 站点（pnpm workspace）：简体中文为默认语言，另有繁体中文、英语、日语；覆盖介绍、特性、Docker 自托管、反向代理、后台配置、备份、Twikoo 导入、按 tag 升级说明与常见问题。产品约束移至 `docs/internal/`，不进入站点导航。CI 增加 `pnpm docs:build` 与输出边界检查；
+- 新增仅限 `master` manual 的文档构建/发布流程，固定调度到文档服务器 agent；候选完整验证后通过 trusted volume 原子替换 `/var/www/docs.via.moe` symlink，并立即尝试删除旧候选。该流程不依赖完整测试流程；
+- 本地构建产物、运行数据与一次性发布验证统一放在根目录 `tmp/`，并从 Git 与 Docker 构建上下文排除。
+
+### 升级边界
+
+- 本版本不改变 SQLite schema，仍为 v6；不新增环境变量、Compose 挂载或配置键；
+- 容器仍以 UID/GID `10001:10001` 运行，`/data`、配置与日志挂载路径不变；从 `v0.1.6` 升级不需要调整容器权限；
+- 从 `v0.1.6` 升级仍须先停服冷备份，再把 `compose.yaml` 的精确镜像 tag 改为 `v0.1.7`，然后执行 `sudo docker compose pull && sudo docker compose up -d`；
+- 回滚时改回 `v0.1.6`。两版均使用 schema v6，一般不必替换数据库；若启动或验证异常，仍使用停服前备份恢复。
 
 ## [0.1.6] - 2026-08-18
 
@@ -296,3 +307,4 @@
 [0.1.4]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.4
 [0.1.5]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.5
 [0.1.6]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.6
+[0.1.7]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.7
