@@ -1,7 +1,7 @@
 labels:
   platform: linux/amd64
   backend: docker
-  role: forgejo-local
+  role: netcup-rs1000
   server: netcup-rs1000
 
 when:
