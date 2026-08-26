@@ -4,9 +4,9 @@ ARG ECOKU_VERSION=development
 ARG ECOKU_REVISION=unknown
 ARG ECOKU_SOURCE=""
 
-FROM node:24.18.0-alpine3.24 AS frontend-build
+FROM node:24.19.0-alpine3.24 AS frontend-build
 WORKDIR /src
-RUN corepack enable
+RUN npm install --global pnpm@11.24.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/admin/package.json packages/admin/package.json
 COPY packages/client/package.json packages/client/package.json
@@ -17,7 +17,7 @@ COPY packages/client packages/client
 RUN pnpm --dir packages/client build \
     && pnpm --dir packages/admin build
 
-FROM golang:1.26.5-alpine3.24 AS server-build
+FROM golang:1.27.0-alpine3.24 AS server-build
 WORKDIR /src
 COPY server/go.mod server/go.sum ./
 RUN --mount=type=cache,id=ecoku-go-mod,target=/go/pkg/mod \

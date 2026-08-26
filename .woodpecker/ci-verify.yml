@@ -12,10 +12,10 @@ when:
 
 steps:
   - name: frontend
-    image: node:24.18.0-alpine3.24
+    image: node:24.19.0-alpine3.24
     commands:
       - apk add --no-cache git
-      - corepack enable
+      - npm install --global pnpm@11.24.0
       - pnpm install --frozen-lockfile
       - pnpm verify:client
       - pnpm verify:admin
@@ -23,7 +23,7 @@ steps:
       - sh scripts/verify-docs-output.sh docs/.vitepress/dist
 
   - name: server
-    image: golang:1.26.5-alpine3.24
+    image: golang:1.27.0-alpine3.24
     directory: server
     commands:
       - go test -count=1 ./...

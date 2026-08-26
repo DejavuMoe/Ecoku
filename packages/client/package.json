@@ -35,8 +35,8 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "npm run build:lib",
-    "build:lib": "vite build --mode lib && vite build --config vite.loader.config.ts && node scripts/sync-cjs.mjs && node scripts/copy-hosted-css.mjs && npm run build:types",
+    "build": "pnpm run build:lib",
+    "build:lib": "vite build --mode lib && vite build --config vite.loader.config.ts && node scripts/sync-cjs.mjs && node scripts/copy-hosted-css.mjs && pnpm run build:types",
     "build:types": "tsc --project tsconfig.build.json",
     "preview": "vite preview",
     "test": "vitest run",
@@ -44,7 +44,7 @@
     "clean": "rimraf dist",
     "validate": "node scripts/pre-publish.cjs",
     "test:package": "node scripts/test-package-contract.mjs",
-    "prepublishOnly": "npm run clean && npm run test && npm run type-check && npm run build:lib && npm run test:package && npm run validate",
+    "prepublishOnly": "pnpm run clean && pnpm run test && pnpm run type-check && pnpm run build:lib && pnpm run test:package && pnpm run validate",
     "publish:npm": "npm publish --access public",
     "publish:official": "npm publish --access public --registry=https://registry.npmjs.org/",
     "publish:dry": "npm publish --dry-run"

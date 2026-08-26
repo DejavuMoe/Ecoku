@@ -1,58 +1,37 @@
 # 本地开发
 
-生产以 Docker Compose 为准。本地用 SQLite 文件与 `server/config.yaml`，不依赖容器。
+本地开发使用仓库根 `mise.toml` 固定的 Go、Node.js 与 pnpm，不使用 Corepack。CI 与容器构建直接使用相同版本的官方 Node/Go 镜像，不安装 mise；生产部署仍以 Docker Compose 为准。
 
-## 前提
-
-- Go 1.26+（与 CI 一致）
-- Node.js 20.19+ / 22.12+ / 24+ 与 pnpm 11.3+
-- 可选：[air](https://github.com/air-verse/air)
+## 初始化
 
 ```bash
+mise install
 pnpm install --frozen-lockfile
 cp server/config.yaml.example server/config.yaml
 mkdir -p server/data
 ```
 
-按需编辑 `server/config.yaml`：`client.static_dir` / `admin.static_dir` 指向对应 `dist`；启用管理端时 `admin.enabled: true`；`admin.allowed_origins` 含管理端 dev 地址（默认 `http://localhost:5173`）；站点 `allowed_origins` 含评论区预览（默认 `http://localhost:3000`）。
+本机构建产物、运行数据与一次性发布验证统一放在 Git 排除的根目录 `tmp/`，不要写入源码目录。
 
-## 环境变量
+本地服务使用 SQLite 文件与 `server/config.yaml`。按需启用管理端并设置允许来源；私密环境变量只在当前 shell 中导出，名称与要求以配置示例为准，不要写入仓库。
 
-在 `server/` 下导出（bash）：
-
-```bash
-export ECOKU_ADMIN_USERNAME="dev-admin"
-export ECOKU_ADMIN_PASSWORD_HASH="<bcrypt 哈希>"
-export ECOKU_ADMIN_TOKEN_KEY="<至少 32 字节的随机十六进制>"
-export ECOKU_NOTIFICATION_ENCRYPTION_KEY="<Base64 编码的 32 字节密钥>"
-```
+首次启动前，至少为示例站点设置管理密钥：
 
 ```bash
-printf 'your-password\n' | go run ./server hash-password
-openssl rand -hex 32
-openssl rand -base64 32
+export ECOKU_EXAMPLE_SITE_MANAGEMENT_KEY="$(openssl rand -hex 32)"
 ```
 
 ## 启动
 
 ```bash
-pnpm -C packages/client build
-pnpm -C packages/admin build
-cd server && go run .
-# 或：air
+(cd server && go run .)
+pnpm -C packages/client dev
+ECOKU_ADMIN_DEV_API_URL=http://127.0.0.1:12123 pnpm -C packages/admin dev
+pnpm docs:dev
 ```
 
-默认 `http://127.0.0.1:12123`。空库首次启动会跑完全部迁移；删除 `server/data/` 可重置。
+以上命令按需在不同终端运行。
 
-评论区：`pnpm -C packages/client dev`（`http://localhost:3000`）。
+服务端默认为 `http://127.0.0.1:12123`，评论区开发页默认为 `http://localhost:3000`。若需要由 Go 提供静态文件，先构建相应包。
 
-管理端：
-
-```bash
-export ECOKU_ADMIN_DEV_API_URL="http://127.0.0.1:12123"
-pnpm -C packages/admin dev
-```
-
-Vite 把 `/api` 代理到该地址。文档站点：`pnpm docs:dev`。
-
-日常验证交给 Woodpecker。本地只在 CI 未覆盖处补充：`pnpm -C packages/<pkg> test`、`go test -count=1 ./...`、已批准原型的 `designs/**/*.test.mjs`。
+完整验证由 Woodpecker 执行；本地只运行与当前改动直接相关且 CI 未覆盖的检查。

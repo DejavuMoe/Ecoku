@@ -4,6 +4,7 @@ Each Git tag gets a page in this directory. Procedure: [Upgrade](/en/self-hostin
 
 | Version | Date | Schema | Notes |
 | --- | --- | --- | --- |
+| [v0.1.7](./v0.1.7) | 2026-08-26 | v6 | Toolchain, CI, and docs site |
 | [v0.1.6](./v0.1.6) | 2026-08-18 | v6 | Admin CSP for Cap instrumentation |
 | [v0.1.5](./v0.1.5) | 2026-08-17 | v5 → v6 | Turnstile / Cap tri-state |
 | [v0.1.4](./v0.1.4) | 2026-08-15 | v5 | Docs and passphrase backfill tests |

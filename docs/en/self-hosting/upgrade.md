@@ -28,7 +28,7 @@ Migrations run inside the existing `data/ecoku.sqlite3` file, one version per tr
 | --- | --- |
 | `v0.1.0` – `v0.1.2` | v4 |
 | `v0.1.3` – `v0.1.4` | v5 |
-| `v0.1.5` – `v0.1.6` | v6 |
+| `v0.1.5` – `v0.1.7` | v6 |
 
 Current schema is v6 (`captcha_settings` plus Cap fields).
 
