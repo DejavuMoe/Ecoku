@@ -13,6 +13,8 @@ export interface SiteSummary {
   placeholder: string
   commentLimit: number
   emptyMessage: string
+  smojiEnabled: boolean
+  smojiManifestUrl: string
   bloggerNickname: string
   bloggerEmail: string
   bloggerBadge: string

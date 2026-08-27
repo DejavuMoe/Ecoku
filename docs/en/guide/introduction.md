@@ -1,41 +1,26 @@
 # Introduction
 
-Ecoku is a self-hosted, multi-site plain-text comment system. One instance can serve many sites. Comments are published as soon as they are submitted.
+Ecoku is a self-hosted multi-site plain-text comment system. One instance can serve many sites. Comments go live as soon as they are submitted.
 
-It fits static blogs, docs sites, and anyone who does not want comments on a third-party SaaS. Production only supports Docker Compose and SQLite3.
+It fits static blogs, documentation sites, and personal sites that want comment data on their own servers. Production uses Docker Compose and SQLite3.
 
-## What it does
+Only Docker images are published. Source code is not publicly distributed.
 
-- Guest comments: nickname is always required; email and website required-ness is per site.
-- Unbounded semantic reply threads; public lists paginate by root thread.
-- Deletes keep a tombstone so descendant replies stay in context.
-- Instance admin: sites, comments, notifications, bot protection.
-- Browser SDK at same-origin `/client/ecoku-loader.js`.
-- Optional SMTP / Telegram, first-time Twikoo import, Cloudflare Turnstile or self-hosted Cap.
+## What it is for
 
-## What it does not do
+- Provide comment sections for multiple sites.
+- Let visitors post comments and replies with a nickname, email, and optional website.
+- Optional email or Telegram notifications; one-time import of historical comments from Twikoo.
+- Bot protection with Turnstile or self-hosted Cap.
 
-Body text is plain text only — no HTML or Markdown. No avatars, votes, rich text, end-user accounts, per-site moderation, or MySQL.
+## What it does not provide
 
-Never put admin tokens or site management keys in the browser, URL, or page markup.
+Comment bodies are plain text; HTML and Markdown are not parsed. There are no avatars, votes, rich text, end-user accounts, per-site moderation queues, or MySQL.
 
-## Runtime
+Never put admin credentials or a site management key in the browser, URL, or page markup.
 
-One non-root container serves the API, `/admin/`, and the comment frontend. The port is bound to `127.0.0.1:12123` on the host; the public internet should hit a local Caddy or Nginx.
+## How it runs
 
-Data lives outside the container:
+One non-root container serves the API, the admin UI at `/admin/`, and the comment frontend at `/client/`. By default it binds only to host `127.0.0.1:12123`; public access goes through an HTTPS reverse proxy.
 
-| Path | Role |
-| --- | --- |
-| `app/config.yaml` | Public config (port, logs, trusted proxies, admin origins) |
-| `ecoku.env` | Admin credentials, notification encryption key, timezone |
-| `data/` | SQLite database and WAL |
-| `app/logs/` | Optional file log copy |
-
-Sites, form settings, and notification channels are written to SQLite from the admin UI. YAML `sites` is imported only when the database is empty.
-
-## Versioning
-
-The container version is the root `VERSION` file. The Git tag is `v` plus that value. `compose.yaml` pins an exact image tag — do not use `latest`.
-
-Next: [Features](/en/guide/features) or [Docker](/en/self-hosting/docker).
+Sites, forms, and notifications are configured in the admin UI and stored in SQLite. For first deploy see [Docker](/en/self-hosting/docker); for page integration see [Plain HTML](/en/integration/html).

@@ -5,6 +5,7 @@ import { statusMeta, statusOrder } from '../messages'
 import { useAdminStore } from '../stores/admin'
 import { formatDate, safeWebsite } from '../ui'
 import type { CommentStatus } from '../types'
+import SmojiContent from './SmojiContent.vue'
 
 const emit = defineEmits<{ mobileDetail: [open: boolean] }>()
 defineProps<{ mobileDetail: boolean }>()
@@ -74,7 +75,7 @@ async function confirmAction() {
                 <span class="queue-author" :title="comment.deleted ? '已删除' : comment.username">{{ comment.deleted ? '已删除' : comment.username }}</span>
                 <time class="queue-time">{{ formatDate(comment.createdAt) }}</time>
               </span>
-              <span class="queue-summary">{{ comment.deleted ? '该评论已删除' : comment.content }}</span>
+              <span class="queue-summary"><template v-if="comment.deleted">该评论已删除</template><SmojiContent v-else :content="comment.content" :enabled="selectedSite?.smojiEnabled === true" :manifest-url="selectedSite?.smojiManifestUrl || ''" compact /></span>
               <span class="queue-item-line">
                 <span class="queue-path" :title="comment.mark">{{ comment.mark }}</span>
                 <span class="queue-tail">
@@ -112,7 +113,7 @@ async function confirmAction() {
               <a v-if="sourceURL" class="source-link" :href="sourceURL" target="_blank" rel="noopener noreferrer" :title="`查看原评论 #${selectedComment.id}`">查看原评论</a>
             </div>
           </header>
-          <p class="comment-body" :class="{ 'is-deleted-copy': selectedComment.deleted }">{{ selectedComment.deleted ? '该评论已删除' : selectedComment.content }}</p>
+          <p class="comment-body" :class="{ 'is-deleted-copy': selectedComment.deleted }"><template v-if="selectedComment.deleted">该评论已删除</template><SmojiContent v-else :content="selectedComment.content" :enabled="selectedSite?.smojiEnabled === true" :manifest-url="selectedSite?.smojiManifestUrl || ''" /></p>
           <p v-if="actionMessage" class="inline-error" role="alert">{{ actionMessage }}</p>
           <div class="review-actions">
             <button v-if="selectedComment.status === 'published'" class="button danger-button" type="button" :disabled="actionBusy" @click="confirmKind = 'tombstone'">墓碑删除</button>

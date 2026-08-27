@@ -1,53 +1,44 @@
 # よくある質問
 
-## コンテナが unhealthy、または再起動を繰り返す
+## `/api/health` は正常なのにページが開けない
 
-`sudo docker compose logs --tail=200 ecoku`。マイグレーション失敗、設定検証、管理静的ファイル欠損が典型。[アップグレード](/ja/self-hosting/upgrades/) と `CHANGELOG.md` を照合。
+ヘルスチェックはプロセスが応答できることだけを示します。リバースプロキシが `/`、`/api/`、`/admin/`、`/client/` を転送しているか確認してください。
 
-## 未知 schema / チェックサム不一致
+```bash
+sudo docker compose ps
+sudo docker compose logs --tail=200 ecoku
+```
 
-古いイメージで新しい DB を開いた、または `schema_migrations` を手で変えた。停止し、アップグレード前バックアップで丸ごと戻す。イメージだけ戻さない。
+詳しくは [リバースプロキシ](./reverse-proxy)。
 
-## 全員が同じレート制限バケット
+## 全訪問者が 1 つのレート制限バケットを共有する
 
-`trusted_proxies` が空、またはプロキシが `X-Forwarded-For` を**連結**している。[リバースプロキシ](/ja/self-hosting/reverse-proxy) のトポロジ 1。`0.0.0.0/0` は使わない。
+`trusted_proxies: []` のとき、またはプロキシが `X-Forwarded-For` を上書きではなく**追記**しているときに多いです。[リバースプロキシ](./reverse-proxy#クライアントアドレスとレート制限) に従い Docker ゲートウェイ `/32` を設定し、`0.0.0.0/0`、`::/0`、CDN 網段は入れないでください。
 
-## CORS がコメント送信を拒否
+## CORS エラーが出る
 
-ページ Origin がサイトの `allowed_origins` に無い。管理オリジンと公開オリジンは別。
+サイトの Allowed origins にはコメントページの完全な Origin、管理画面には管理ページの Origin を入れます。プロトコル・ドメイン・ポートは完全一致。パスや `*` は使えません。
 
-## Turnstile のログイン / 投稿失敗
+## 管理者ログインできない
 
-セキュリティ頁、Sitekey/Secret、`ECOKU_NOTIFICATION_ENCRYPTION_KEY`。Siteverify 失敗はフォールバックしません。
+ユーザー名、bcrypt ハッシュ、`ECOKU_ADMIN_TOKEN_KEY`、管理の Allowed origins を確認してください。ボット対策に阻まれている場合は [ログイン復旧](./admin#検証でログインできないときの復旧) を参照。
 
-## Cap のログイン / 投稿失敗
+## Turnstile または Cap の検証に失敗する
 
-Cap の健全性、Key CORS、`/assets/widget.js`、WASM、Siteverify。消費済みトークンは再求解。入れないときは [管理画面](/ja/self-hosting/admin#ログイン復旧) の `captcha disable`。
+インスタンスが検証サービスに届くこと、キーが対になっていること、CORS に必要な Origin があること、ブラウザが Widget / WASM / Siteverify を読めることを確認してください。token は一度きりで、失敗後は再求解が必要です。
 
-`instr_timeout` と `/redeem` 429：管理 CSP が現行イメージか確認（`v0.1.6` から Cap 時のみ `'unsafe-eval'`）。Caddy に緩い第二 CSP を足さない。
+## アップグレード後にデータベース版が非対応と出る
 
-## コンソール aborting clearance redemption
+データベースを削除したり `schema_migrations` を手で書き換えたりしないでください。バックアップを残し、[アップグレード](./upgrade) のイメージとスキーマ表を照合してください。順序どおりのその場アップグレードのみ対応し、ダウングレード移行はありません。
 
-Cloudflare Pre-clearance がオンだが CF プロキシ配下ではない。コンソールで切る。ウィジェットの Siteverify は可能。
+## タイムゾーンの変え方
 
-## バックアップから戻しても異常
+`ecoku.env` の `TZ` を IANA 名（例：`Asia/Singapore`）にし、次を実行：
 
-WAL/SHM ありのまま、または本体だけコピーした。停止しサイドカーが無いことを確認してから取る。
+```bash
+sudo docker compose up -d --force-recreate
+```
 
-## コメント時刻が違う
+## 厳しい CSP が検証コンポーネントを阻む
 
-`TZ` 未設定、または `ecoku.env` 変更後にコンテナを作り直していない。IANA 名を書いて `docker compose up -d`。未設定は `Asia/Shanghai`。
-
-## ブロガーバッジが無い
-
-履歴が未埋め。パスフレーズを再保存。ニックネームとメールが履歴と一致している必要あり。
-
-## management key は削除できるが一覧できない
-
-仕様：所属サイトの墓碑削除のみ。一覧/詳細は管理者ログイン。
-
-## ホスト CSP {#ホスト-csp}
-
-Turnstile：`https://challenges.cloudflare.com` を `script-src` / `frame-src` / `connect-src` に許可。
-
-Cap：インスタンス Origin を `script-src` と `connect-src`。`worker-src blob:`。`'wasm-unsafe-eval'`。instrumentation 有効時は `'unsafe-eval'`。`*` や広い `unsafe-inline` で代用しない。
+Turnstile には Cloudflare Origin、Cap にはインスタンス Origin・WASM・Blob Worker が必要で、instrumentation には `'unsafe-eval'` も要ることがあります。[ボット対策](./admin#ボット対策) を参照。

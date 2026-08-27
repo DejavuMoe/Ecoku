@@ -1,6 +1,25 @@
 # 汎用 HTML
 
-各ページに専用コンテナと安定した page key。`pageKey` はサイト内相対パス。絶対 URL や query は不可。
+各ページにコメント用コンテナを 1 つ置きます。`data-page-key` は現在ページの安定したサイト相対パスです。
+
+- 静的サイトではテンプレートに現在ページの path / permalink を入れます。
+- 手書き HTML ではページごとに一意で安定した相対パスを与えます。
+
+例の `/posts/example/` はレンダー後の key であり、全ページで同じ値にする必要はありません。完全な URL や query / fragment 付きのアドレスは使わないでください。
+
+## 属性
+
+| 属性 | 必須 | 説明 |
+| --- | --- | --- |
+| `data-server-url` | はい | コメントサービスの絶対 `http(s)` URL |
+| `data-site-id` | はい | 管理画面で作ったサイト ID |
+| `data-page-key` | はい | サイト相対パス、1–512 文字 |
+| `data-page-title` | いいえ | ≤200 文字 |
+| `data-page-size` | いいえ | ルートコメントの 1 ページ件数、1–100、既定 10 |
+| `data-theme` | いいえ | `auto` / `light` / `dark` |
+| `data-css-url` | いいえ | [カスタム CSS](/ja/integration/custom-css) を参照 |
+
+## Loader の例
 
 ```html
 <section
@@ -10,27 +29,46 @@
   data-server-url="https://comments.example.com"
   data-site-id="blog"
   data-page-key="/posts/example/"
-  data-page-title="Example post"
+  data-page-title="サンプル記事"
   data-page-size="10"
   data-theme="auto"
 >
   <div class="ecoku-loader" data-ecoku-loader hidden>
     <p class="ecoku-loader-status" data-ecoku-status></p>
-    <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新加载评论</button>
+    <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>コメントを再読み込み</button>
   </div>
   <div id="ecoku-mount" data-ecoku-mount></div>
 </section>
 <script src="https://comments.example.com/client/ecoku-loader.js" defer></script>
 ```
 
-ローダーは `data-ecoku-*` を必須とします。正規 id は `ecoku-comments` と `ecoku-mount`。旧 `#tcomment` はまだ動きますが新規では使わない。
+ローダーは上記属性を読み、SDK を読み込んで初期化します。失敗時は状態と再試行を表示します。読み込み中に追加の文言は出しません。必須属性が無い場合はローダーはスキップします。管理者 token や management key をページに置かないでください。
 
-読み込み中コピーは出しません。失敗時だけ状態と再試行。未設定サイトは「评论服务尚未配置。」
+`data-css-url` 未設定時、SDK は既定のコメントスタイルを**インライン**します（`/client/ecoku.css` を自動取得しません）。カスタムは [カスタム CSS](/ja/integration/custom-css)。
 
-管理者トークンや management key を埋め込まない。検証設定は公開 `formConfig` で届きます。
+## ローダーを使わない場合
 
-## スタイル
+UMD と CSS を自分で読むときは `cssURL: 'none'` を渡し、SDK が既定スタイルを再注入しないようにします。
 
-既定では SDK が注入。`data-css-url` で注入を止めます。`/client/ecoku.css`、構造のみの `/client/ecoku.unstyled.css`、`none`（完全自前）。任意の `data-js-url` でローダー差し替え。
+```html
+<link rel="stylesheet" href="https://comments.example.com/client/ecoku.css">
+<div id="ecoku-mount"></div>
 
-上のコードが完全な例です。コピーしてサイト設定を置き換えてください。ホスト CSP は [FAQ](/ja/self-hosting/faq#ホスト-csp)。
+<script src="https://comments.example.com/client/ecoku.umd.js"></script>
+<script>
+  const comments = new Ecoku({
+    container: '#ecoku-mount',
+    serverURL: 'https://comments.example.com',
+    siteId: 'blog',
+    pageKey: '/posts/example/',
+    pageTitle: 'サンプル記事',
+    pageSize: 10,
+    theme: 'auto',
+    cssURL: 'none'
+  })
+
+  comments.init().catch(console.error)
+</script>
+```
+
+`ecoku.umd.js` はグローバル `Ecoku` を提供します。この方式にはローダーの失敗再試行 UI はありません。Hugo は [Hugo PaperMod](/ja/integration/hugo) を参照。

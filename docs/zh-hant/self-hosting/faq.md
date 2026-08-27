@@ -1,53 +1,44 @@
 # 常見問題
 
-## 容器 unhealthy 或反覆重啟
+## `/api/health` 正常，但頁面打不開
 
-看 `sudo docker compose logs --tail=200 ecoku`。常見原因是遷移失敗、配置校驗失敗或管理員靜態目錄缺失。對照 [升級說明](/zh-hant/self-hosting/upgrades/) 與當前 `CHANGELOG.md`。
+健康檢查只表示行程可回應。確認反代轉發了 `/`、`/api/`、`/admin/`、`/client/`：
 
-## 啟動報未知 schema / 校驗和不符
+```bash
+sudo docker compose ps
+sudo docker compose logs --tail=200 ecoku
+```
 
-用舊鏡像打開了已升級庫，或手工改過 `schema_migrations`。停服，用升級前冷備份整庫恢復；不要只回退鏡像。
+詳見 [反向代理](./reverse-proxy)。
 
-## 限流像所有人共用一個桶
+## 所有訪客共用一個限流桶
 
-`trusted_proxies` 為空，或反代**追加**而非覆蓋 `X-Forwarded-For`。按 [反向代理](/zh-hant/self-hosting/reverse-proxy) 拓撲 1：Docker 網關 `/32` + Caddy/Nginx 覆蓋頭。不要填 `0.0.0.0/0` 或 CDN 段。
+常見於 `trusted_proxies: []`，或反代**追加**而非覆蓋 `X-Forwarded-For`。按 [反向代理](./reverse-proxy#用戶端位址與限流) 設定 Docker 閘道 `/32`；不要填 `0.0.0.0/0`、`::/0` 或 CDN 網段。
 
-## CORS 拒絕評論送出
+## 出現 CORS 錯誤
 
-站點 `allowed_origins` 未登記頁面 Origin。管理端補全；管理端來源與公開站點來源分開配。
+站點 Allowed origins 填評論頁完整 Origin；管理端填管理頁 Origin。協定、網域、連接埠須完全一致，不能帶路徑或用 `*`。
 
-## Turnstile 登入或評論失敗
+## 管理員無法登入
 
-管理端「安全」檢查是否啟用、Sitekey/Secret 是否已設定。Secret 需要 `ECOKU_NOTIFICATION_ENCRYPTION_KEY`。Siteverify 失敗不會自動降級。
+核對使用者名稱、bcrypt 雜湊、`ECOKU_ADMIN_TOKEN_KEY` 與管理端 Allowed origins。若被人機驗證擋住，見 [恢復登入](./admin#驗證故障時恢復登入)。
 
-## Cap 登入或評論失敗
+## Turnstile 或 Cap 驗證失敗
 
-檢查 Cap 健康、Key 的 CORS、`/assets/widget.js`、WASM 與 Siteverify。Token 已消費需重新求解。無法登入時按 [後台配置](/zh-hant/self-hosting/admin#驗證故障時恢復登入) 執行 `captcha disable`。
+確認執行個體能存取驗證服務，金鑰成對，CORS 含所需 Origin，瀏覽器能載入 Widget / WASM / Siteverify。token 一次性消費，失敗後需重新求解。
 
-`instr_timeout` 且 `/redeem` 429：核對管理端響應 CSP 是否來自當前鏡像（`v0.1.6` 起 Cap 模式才含 `'unsafe-eval'`）。不要給 Caddy 加第二份寬泛 CSP。
+## 升級後提示資料庫版本不支援
 
-## 控制臺 aborting clearance redemption
+不要刪庫或手工改 `schema_migrations`。保留備份，對照 [升級](./upgrade) 中的映像與 schema 表。只支援順序原位升級，沒有降級遷移。
 
-開了 Cloudflare Pre-clearance，但站點不在 CF 代理後。在 Cloudflare 控制臺關閉；小組件仍可完成 Siteverify。
+## 如何修改時區
 
-## 備份後恢復仍異常
+改 `ecoku.env` 的 `TZ` 為 IANA 名（如 `Asia/Singapore`），再：
 
-備份時存在 WAL/SHM，或只複製了主檔案。必須停服且確認無邊車檔案後再備份。
+```bash
+sudo docker compose up -d --force-recreate
+```
 
-## 評論時間不對
+## 嚴格 CSP 阻止驗證元件
 
-容器未設定 `TZ`，或改 `ecoku.env` 後未重建容器。寫入 IANA 名稱後 `docker compose up -d`。未設定時回退 `Asia/Shanghai`。
-
-## 博主評論無徽章
-
-歷史評論未回填。管理端再保存一次博主口令；暱稱與信箱須與歷史評論一致。
-
-## management key 能刪不能看列表
-
-設計如此：該 key 只做所屬站點墓碑刪除。列表與詳情用管理員登入。
-
-## 宿主 CSP
-
-Turnstile：允許 `https://challenges.cloudflare.com` 的 `script-src`、`frame-src`、`connect-src`。
-
-Cap：實例 Origin 加入 `script-src` 與 `connect-src`；`worker-src blob:`；`'wasm-unsafe-eval'`；啟用 instrumentation 時還需要 `'unsafe-eval'`。不要用 `*` 或寬泛 `unsafe-inline` 代替。
+Turnstile 需要 Cloudflare Origin；Cap 需要執行個體 Origin、WASM、Blob Worker，instrumentation 可能還需 `'unsafe-eval'`。見 [人機驗證](./admin#人機驗證)。

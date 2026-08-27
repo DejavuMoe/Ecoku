@@ -88,6 +88,9 @@ func TestV1DatabaseMigratesInPlaceWithoutLosingBusinessData(t *testing.T) {
 	if site.Name != "Example" || site.BloggerNickname != "" || site.BloggerEmail != "" || site.BloggerBadge != DefaultBloggerBadge {
 		t.Fatalf("site migration mismatch: %#v", site)
 	}
+	if site.SmojiEnabled || site.SmojiManifestURL != "" {
+		t.Fatalf("smoji defaults mismatch: %#v", site)
+	}
 	var setting struct {
 		Enabled      bool
 		ConfigJSON   string `gorm:"column:config_json"`
@@ -109,7 +112,7 @@ func TestV1DatabaseMigratesInPlaceWithoutLosingBusinessData(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 	var turnstileCount int64
@@ -193,7 +196,7 @@ func TestV2DatabaseMigratesBloggerBadgeInPlace(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 	var turnstileCount int64
@@ -257,7 +260,7 @@ func TestV3DatabaseMigratesTurnstileSettingsInPlace(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 }
@@ -424,7 +427,7 @@ func TestV4DatabaseMigratesBloggerProofOutboxTargetsAndBackfill(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 }
@@ -502,7 +505,7 @@ WHERE id = 1`, fixture.enabled).Error; err != nil {
 			if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6}) {
+			if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7}) {
 				t.Fatalf("migration history mismatch: %v", versions)
 			}
 		})

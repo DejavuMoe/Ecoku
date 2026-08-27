@@ -18,6 +18,12 @@ export interface CommentFormConfig {
   turnstileSitekey: string
   bloggerProofEnabled: boolean
   captcha: CaptchaPublicConfig
+  smoji: SmojiPublicConfig
+}
+
+export interface SmojiPublicConfig {
+  enabled: boolean
+  manifestUrl: string
 }
 
 export const DEFAULT_CAPTCHA_CONFIG: Readonly<CaptchaPublicConfig> = Object.freeze({
@@ -37,6 +43,7 @@ export const DEFAULT_COMMENT_FORM_CONFIG: Readonly<CommentFormConfig> = Object.f
   turnstileSitekey: '',
   bloggerProofEnabled: false,
   captcha: DEFAULT_CAPTCHA_CONFIG,
+  smoji: { enabled: false, manifestUrl: '' },
 })
 
 export interface EcokuConfig {

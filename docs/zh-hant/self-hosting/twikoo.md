@@ -1,28 +1,21 @@
 # Twikoo 匯入
 
-僅在目標站點已經建立、評論數仍為零時執行一次。匯入保留時間、暱稱、私有信箱、網站、頁面 key、回覆層級和轉換後的純文字正文；不匯入 IP、UA、地區、頭像、讚踩或外部使用者 ID，也不發送歷史通知。
+一次性匯入：目標站點須已在管理端建立，且評論數為零。保留時間、暱稱、私有信箱、網站、頁面 key、回覆關係，正文轉為純文字。不匯入 IP、UA、地區、頭像、讚踩或外部使用者 ID，也不發送歷史通知。
 
-頁面 key 會去掉 query/fragment；絕對 URL 只保留路徑。匯入結束時按站點博主暱稱+信箱回填 `is_blogger`。整批使用一個事務，失敗不留部分資料。
+頁面 key 會去掉查詢字串與片段；絕對 URL 只保留路徑。單事務寫入，最大匯出約 64 MB。損壞的父評論會降為根評論，並在結果中報告。匯入結束後按站點部落客暱稱+信箱回填 `is_blogger`。
 
 ## 備份
 
+匯入前按 [備份與還原](./backup) 停服冷備份。確認無殘留 WAL/SHM：
+
 ```bash
-sudo docker compose down
 sudo test ! -e ./data/ecoku.sqlite3-wal
 sudo test ! -e ./data/ecoku.sqlite3-shm
-
-twikoo_stamp="$(date +%Y%m%d-%H%M%S)"
-sudo cp --reflink=auto --preserve=mode,timestamps \
-  ./data/ecoku.sqlite3 "./backups/ecoku-before-twikoo-${twikoo_stamp}.sqlite3"
-sudo chown "$USER":"$USER" "./backups/ecoku-before-twikoo-${twikoo_stamp}.sqlite3"
-chmod 600 "./backups/ecoku-before-twikoo-${twikoo_stamp}.sqlite3"
-sha256sum "./backups/ecoku-before-twikoo-${twikoo_stamp}.sqlite3" \
-  > "./backups/ecoku-before-twikoo-${twikoo_stamp}.sqlite3.sha256"
 ```
 
-導出檔案放在倉庫和服務目錄之外，用絕對路徑只讀掛載。
-
 ## 預檢與匯入
+
+將匯出檔放在服務目錄外，用絕對路徑唯讀掛載：
 
 ```bash
 sudo docker compose run --rm --no-deps \
@@ -33,16 +26,10 @@ sudo docker compose run --rm --no-deps \
   --dry-run
 ```
 
-確認評論、根評論、回覆、頁面、信箱、網站和缺失父記錄摘要符合源資料後：
+確認後再去掉 `--dry-run` 執行一次，然後：
 
 ```bash
-sudo docker compose run --rm --no-deps \
-  --volume <ABSOLUTE_PATH>/twikoo-comment.json:/import/twikoo-comment.json:ro \
-  ecoku import-twikoo \
-  --site <SITE_ID> \
-  --file /import/twikoo-comment.json
-
 sudo docker compose up -d
 ```
 
-目標站點已有評論時會拒絕。驗收後從伺服器刪除含私有信箱的原始導出；冷備份是否保留由你決定。
+目標站點已有評論時匯入會拒絕。驗收後刪除含私有信箱的原始匯出。

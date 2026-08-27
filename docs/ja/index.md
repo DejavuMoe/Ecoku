@@ -3,10 +3,10 @@ layout: home
 hero:
   name: Ecoku
   text: セルフホストのプレーンテキストコメント
-  tagline: マルチサイト、SQLite、Docker Compose。投稿はその場で公開。公開 API にメールや訪問者の痕跡は出しません。
+  tagline: Docker で導入し、データは SQLite に保存。1 インスタンスで複数サイト。投稿はその場で公開されます。
   image:
     src: /ecoku-hero.png
-    alt: コメントスレッドとセルフホストデータをつなぐ Ecoku のイラスト
+    alt: Ecoku の図
   actions:
     - theme: brand
       text: Docker で導入
@@ -16,11 +16,11 @@ hero:
       link: /ja/guide/features
 features:
   - title: 投稿即公開
-    details: 審査キューはありません。返信はそのコメントの直下で完結。スレッド階層に上限はなく、見た目のインデントは 3 段までです。
-  - title: 既定で非公開
-    details: 公開 DTO にメール、IP、UA、管理フィールドは含めません。訪問者の身元は IndexedDB に 7 日間だけ暗号化保存します。
+    details: 審査キューはありません。返信はそのコメントの直下。ネストに上限はありません。
+  - title: 公開 API に非公開フィールドなし
+    details: メール、IP、UA は返しません。訪問者の身元は IndexedDB に 7 日間だけ暗号化保存します。
   - title: コンテナ 1 つ
-    details: 正確なイメージタグ、SQLite のその場マイグレーション、ホスト側リバースプロキシで HTTPS。管理画面とコメント SDK は同一オリジンです。
-  - title: 重複しない通知
-    details: SMTP（TLS/STARTTLS）と Telegram。ブロガーはパスフレーズで証明。配送は固定マトリクスに従い、管理画面に判定表は出しません。
+    details: イメージタグを固定し、データはホスト側に置きます。管理画面とコメント SDK は同一オリジンです。
+  - title: メールと Telegram
+    details: SMTP または Telegram の任意通知。ブロガーはパスフレーズで身元を証明できます。
 ---

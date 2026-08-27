@@ -1,76 +1,84 @@
 # リバースプロキシ
 
-HTTPS 終端はホスト側プロキシ。上流は `127.0.0.1:12123`。コンテナポートを `0.0.0.0` にしないでください。
+Ecoku は `127.0.0.1:12123` のみを待ち受けます。本機の Web サーバーで HTTPS を終端し、`/`（`/api/`、`/admin/`、`/client/` を含む）をそのポートへ転送します。
 
-## レート制限のトポロジ
+## オリジン直結
 
-既定では `X-Forwarded-For` を信頼せず、ソケット対向を使います。転送ヘッダから訪問者アドレスを取るのは、**直接の TCP 対向**が `trusted_proxies` の IP/CIDR に一致するときだけです。`0.0.0.0/0` と `::/0` は拒否。外側 CDN のアドレス一覧は信頼しません。
-
-| トポロジ | 経路 | `trusted_proxies` | プロキシの `X-Forwarded-For` |
-| --- | --- | --- | --- |
-| 1（推奨） | 訪問者 → Caddy → `127.0.0.1:12123` | Docker ゲートウェイ `/32` | `{remote_host}` / `$remote_addr` で**上書き** |
-| 2 | 訪問者 → CDN → Caddy → Compose | 同じくゲートウェイ `/32` | CDN Connecting-IP で**上書き** |
-| 3 | 直結、または共有バケット | `[]`（既定） | 変更不要。全員が 1 バケット |
-
-```bash
-sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{end}}'
+```text
+訪問者 → Caddy / Nginx → 127.0.0.1:12123
 ```
 
-そのアドレスを `/32` として `trusted_proxies` に書きます。
+### Caddy
 
-## Caddy
-
-```
+```caddyfile
 comments.example.com {
-	encode zstd gzip
-	reverse_proxy 127.0.0.1:12123 {
-		header_up X-Forwarded-For {remote_host}
-		header_up X-Forwarded-Proto {scheme}
-	}
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:12123 {
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
 }
 ```
 
-`Unnecessary header_up` 警告は無視してよいです。既定はクライアント付与ヘッダを転送するため、上書きとは別物です。
-
-```bash
-sudo caddy fmt --overwrite /etc/caddy/Caddyfile
-sudo caddy validate --config /etc/caddy/Caddyfile
-sudo systemctl reload caddy
-```
-
-## Nginx
+### Nginx
 
 ```nginx
 server {
-    listen 443 ssl http2;
+    listen 443 ssl;
     server_name comments.example.com;
 
     location / {
         proxy_pass http://127.0.0.1:12123;
         proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Forwarded-For $remote_addr;
-        proxy_http_version 1.1;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
 
-`$remote_addr` で上書きし、ブラウザ由来の `X-Forwarded-For` を連結しないでください。
+## CDN 経由
 
-## Cloudflare CDN（トポロジ 2）
-
-信頼するのは Docker ゲートウェイだけです。Caddy が CDN の実 IP を読み、上書きします。
-
+```text
+訪問者 → CDN → Caddy / Nginx → 127.0.0.1:12123
 ```
+
+### Cloudflare + Caddy
+
+```caddyfile
 comments.example.com {
-	encode zstd gzip
-	reverse_proxy 127.0.0.1:12123 {
-		header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
-		header_up X-Forwarded-Proto {scheme}
-	}
+    encode zstd gzip
+    reverse_proxy 127.0.0.1:12123 {
+        header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+        header_up X-Forwarded-Proto {scheme}
+    }
 }
 ```
 
-- `trusted_proxies` に Cloudflare CIDR を書かない。
-- Caddy への入方向は Cloudflare に限定。
-- Turnstile と CDN プロキシは別物。`cf_clearance` は Ecoku の Siteverify を飛ばしません。管理画面やコメントサイトが Cloudflare 配下でないなら Pre-clearance を切り、`/cdn-cgi/challenge-platform/` の 404 を避けます。
+オリジン HTTPS へは CDN 網段だけを許可し、オリジン迂回を無効にしてください。`CF-Connecting-IP` はその入口制限が成り立つときだけ信頼できます。Ecoku の `trusted_proxies` には Docker ゲートウェイだけを書き、CDN 網段は入れません。
+
+Turnstile Pre-clearance を使う場合、サイトは Cloudflare プロキシ必須です。`cf_clearance` は Ecoku の Siteverify をスキップしません。
+
+## クライアントアドレスとレート制限
+
+既定では `X-Forwarded-For` を信頼せず、直結アドレスでレート制限します。Docker ゲートウェイが `trusted_proxies` に一致するときだけ、プロキシが上書きしたクライアントアドレスを読みます。
+
+| 経路 | `trusted_proxies` | リバースプロキシ |
+| --- | --- | --- |
+| 訪問者 → プロキシ → Ecoku | Docker ゲートウェイ `/32` | 訪問者アドレスで `X-Forwarded-For` を**上書き** |
+| 訪問者 → CDN → プロキシ → Ecoku | Docker ゲートウェイ `/32` | CDN が渡す訪問者アドレスで上書き |
+| 未設定 | `[]` | 全訪問者が 1 つのレート制限バケットを共有 |
+
+```bash
+sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
+```
+
+実際のゲートウェイを `app/config.yaml` に書き込みます（例：`172.18.0.1/32`）。`0.0.0.0/0` と `::/0` は禁止です。
+
+## 確認
+
+```bash
+curl --fail https://comments.example.com/api/health
+curl --fail https://comments.example.com/client/ecoku-loader.js
+```
+
+管理画面、コメントページ、静的リソースに到達できることを確認してから、ログインと投稿を試してください。

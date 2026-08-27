@@ -117,6 +117,9 @@ func TestAdminStaticCSPAllowsStyleAttributesAndNonceBootstrapWithoutUnsafeInline
 	if !strings.Contains(csp, "script-src 'self'") || !strings.Contains(csp, "style-src 'self'") {
 		t.Fatalf("administrator UI lost its self-only script/style policy: %q", csp)
 	}
+	if !strings.Contains(csp, "img-src 'self' data: https: http://localhost:* http://127.0.0.1:*") {
+		t.Fatalf("administrator UI cannot render configured Smoji images: %q", csp)
+	}
 	if !strings.Contains(csp, "https://challenges.cloudflare.com") || !strings.Contains(csp, "frame-src 'self' https://challenges.cloudflare.com") {
 		t.Fatalf("administrator UI cannot load Turnstile: %q", csp)
 	}
@@ -174,10 +177,10 @@ func TestAdminTurnstileSettingsAndLoginChallenge(t *testing.T) {
 func TestAdminCapSettingsLoginAndCSP(t *testing.T) {
 	env := setupAdminTest(t)
 	saved := requestJSON(t, env.router, http.MethodPut, "/api/admin/captcha", adminTestOrigin, "Bearer "+env.token, map[string]any{
-		"provider": "cap",
+		"provider":  "cap",
 		"turnstile": map[string]any{"sitekey": "turnstile-public", "secret": "turnstile-private"},
-		"cap": map[string]any{"instance_url": "https://cap.example.com", "sitekey": "cap-public", "secret": "cap-private"},
-		"revision": 1,
+		"cap":       map[string]any{"instance_url": "https://cap.example.com", "sitekey": "cap-public", "secret": "cap-private"},
+		"revision":  1,
 	})
 	if saved.Code != http.StatusOK {
 		t.Fatalf("save Cap=%d %s", saved.Code, saved.Body.String())
@@ -365,6 +368,7 @@ func TestSiteWriteContractOmitsDerivedDomainAndReviewMode(t *testing.T) {
 		"allowed_origins": []string{"https://c.example"}, "default_sort": "oldest",
 		"email_required": false, "website_required": true, "placeholder": "说点什么",
 		"comment_limit": 2048, "empty_message": "暂时没有评论",
+		"smoji_enabled": true, "smoji_manifest_url": "https://static.example/smoji.json",
 	}
 	created := requestJSON(t, env.router, http.MethodPost, "/api/admin/sites", adminTestOrigin, "Bearer "+env.token, payload)
 	if created.Code != http.StatusCreated {
@@ -376,8 +380,14 @@ func TestSiteWriteContractOmitsDerivedDomainAndReviewMode(t *testing.T) {
 			t.Fatalf("response contains %s: %s", forbidden, body)
 		}
 	}
-	if !strings.Contains(body, "站点 C") || !strings.Contains(body, "\"comment_limit\":2048") {
+	if !strings.Contains(body, "站点 C") || !strings.Contains(body, "\"comment_limit\":2048") || !strings.Contains(body, `"smoji_enabled":true`) || !strings.Contains(body, `"smoji_manifest_url":"https://static.example/smoji.json"`) {
 		t.Fatalf("response=%s", body)
+	}
+	payload["id"] = "site-http-smoji"
+	payload["smoji_manifest_url"] = "http://static.example/smoji.json"
+	invalid := requestJSON(t, env.router, http.MethodPost, "/api/admin/sites", adminTestOrigin, "Bearer "+env.token, payload)
+	if invalid.Code != http.StatusBadRequest {
+		t.Fatalf("non-HTTPS Smoji manifest accepted: %d %s", invalid.Code, invalid.Body.String())
 	}
 }
 

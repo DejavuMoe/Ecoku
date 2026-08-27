@@ -228,6 +228,9 @@ a { color: inherit; }
 .source-link:hover { color: var(--accent-hover); }
 .comment-body { min-height: 150px; margin: 22px 0 0; padding: 22px 0 28px; border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); font-size: 16px; line-height: 1.78; white-space: pre-wrap; word-break: break-word; }
 .comment-body.is-deleted-copy { min-height: 96px; color: var(--muted); font-style: italic; }
+.admin-smoji-content { white-space: inherit; }
+.admin-smoji-inline { display: inline-block; width: auto; max-width: 4.5em; height: 1.8em; margin: 0 .14em; object-fit: contain; vertical-align: -.48em; }
+.admin-smoji-content.is-compact .admin-smoji-inline { max-width: 3.5em; height: 1.45em; margin: 0 .08em; vertical-align: -.35em; }
 .detail-facts { display: grid; margin: 0; }
 .fact-row { display: grid; min-width: 0; padding: 10px 0; grid-template-columns: 86px minmax(0, 1fr); border-bottom: 1px solid var(--line-soft); }
 .fact-row dt { color: var(--muted); font-size: 12px; }

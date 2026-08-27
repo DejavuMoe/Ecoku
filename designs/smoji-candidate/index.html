@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light" data-design-status="approved">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Ecoku Smoji · 已批准附加原型</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside class="candidate-banner" aria-label="设计状态">
+    <strong>已批准附加设计</strong>
+    <span>只展示按需加载、选择与安全渲染；不连接真实服务。</span>
+    <a href="admin.html">查看管理端设置</a>
+  </aside>
+
+  <main class="page" data-screen-label="Smoji 评论区候选设计">
+    <header class="context">
+      <p class="context-kicker">文章评论区</p>
+      <h1 class="context-title">远程表情包接入设计</h1>
+    </header>
+
+    <section class="comment-section" aria-label="评论区">
+      <form class="composer candidate-composer" id="comment-form" novalidate>
+        <div class="identity-grid">
+          <label class="field"><span class="field-label">昵称</span><input name="nickname" type="text" value="访客甲"></label>
+          <label class="field"><span class="field-label">邮箱</span><input name="email" type="email" value="visitor@example.test"></label>
+          <label class="field"><span class="field-label">网址</span><input name="website" type="url" value="https://example.test"></label>
+        </div>
+        <label class="message-field">
+          <span class="visually-hidden">评论内容</span>
+          <textarea id="comment-input" class="composer-textarea" name="comment" rows="7" maxlength="1000" placeholder="写下评论（支持站点配置的表情）">这个按需加载的选择器很轻巧。</textarea>
+        </label>
+        <div class="smoji-slot" data-smoji-slot></div>
+        <p class="form-error" role="alert" hidden></p>
+        <div class="composer-footer candidate-footer">
+          <div class="composer-tools">
+            <button class="smoji-trigger" type="button" data-smoji-trigger data-target="comment-input" aria-expanded="false">
+              <span class="smoji-trigger-face" aria-hidden="true">☺</span><span>表情</span>
+            </button>
+            <span class="character-count" data-counter-for="comment-input">0/1000</span>
+          </div>
+          <div class="composer-end"><button class="primary-button" id="submit-button" type="submit">发布</button></div>
+        </div>
+      </form>
+
+      <div class="section-heading candidate-heading">
+        <h2 class="section-title">2 条评论</h2>
+        <span class="lazy-note" id="lazy-state" role="status">尚未请求 smoji.json</span>
+      </div>
+
+      <div class="thread-list" role="list">
+        <article class="comment-node" role="listitem">
+          <div class="comment-row">
+            <header class="comment-meta"><span class="comment-author">纸页</span><a class="comment-time" href="#comment-one">刚刚</a><button class="text-action" type="button">回复</button></header>
+            <div class="comment-copy" id="comment-one">
+              <p data-smoji-content="这里的说明很清楚 ![smoji:谢谢](./fixtures/paper-thanks.svg) 普通 **Markdown** 仍然是文本。"></p>
+            </div>
+          </div>
+        </article>
+
+        <article class="comment-node reply-example" role="listitem">
+          <div class="comment-row">
+            <header class="comment-meta"><span class="comment-author">访客乙</span><a class="comment-time" href="#reply-composer">1 分钟前</a></header>
+            <div class="comment-copy"><p>回复框也使用同一个按需加载结果，不重复请求。</p></div>
+            <form class="composer reply-composer candidate-composer" id="reply-composer" novalidate>
+              <label class="message-field">
+                <span class="visually-hidden">回复内容</span>
+                <textarea id="reply-input" class="composer-textarea" rows="5" maxlength="1000" placeholder="写下回复（支持站点配置的表情）"></textarea>
+              </label>
+              <div class="smoji-slot" data-smoji-slot></div>
+              <div class="composer-footer candidate-footer">
+                <div class="composer-tools">
+                  <button class="smoji-trigger" type="button" data-smoji-trigger data-target="reply-input" aria-expanded="false">
+                    <span class="smoji-trigger-face" aria-hidden="true">☺</span><span>表情</span>
+                  </button>
+                  <span class="character-count" data-counter-for="reply-input">0/1000</span>
+                </div>
+                <div class="composer-end"><button class="secondary-button" type="button">取消</button><button class="primary-button" type="submit">回复</button></div>
+              </div>
+            </form>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <aside class="prototype-controls" data-prototype-only="true" aria-label="原型场景">
+    <button id="reset-loader" type="button">重置首次加载</button>
+    <label><input id="force-load-error" type="checkbox">模拟清单失败</label>
+    <p>网络请求只会在点击“表情”后发生。</p>
+  </aside>
+
+  <template id="smoji-picker-template">
+    <section class="smoji-picker" role="dialog" aria-label="表情选择器">
+      <div class="smoji-picker-head"><strong>选择表情</strong><button class="smoji-close" type="button" aria-label="关闭表情选择器">×</button></div>
+      <div class="smoji-loading" role="status">正在加载表情包…</div>
+      <div class="smoji-error" role="alert" hidden><span>表情包暂时无法加载。</span><button type="button" data-smoji-retry>重试</button></div>
+      <div class="smoji-content" hidden>
+        <div class="smoji-tabs" role="tablist" aria-label="表情包"></div>
+        <div class="smoji-grid" role="tabpanel"></div>
+      </div>
+    </section>
+  </template>
+  <script src="prototype.js"></script>
+</body>
+</html>

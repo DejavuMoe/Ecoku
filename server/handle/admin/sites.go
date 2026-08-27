@@ -27,16 +27,18 @@ const (
 )
 
 type SiteDTO struct {
-	ID              string   `json:"id"`
-	SiteURL         string   `json:"site_url"`
-	Name            string   `json:"name"`
-	AllowedOrigins  []string `json:"allowed_origins"`
-	DefaultSort     string   `json:"default_sort"`
-	EmailRequired   bool     `json:"email_required"`
-	WebsiteRequired bool     `json:"website_required"`
-	Placeholder     string   `json:"placeholder"`
-	CommentLimit    int      `json:"comment_limit"`
-	EmptyMessage    string   `json:"empty_message"`
+	ID                   string   `json:"id"`
+	SiteURL              string   `json:"site_url"`
+	Name                 string   `json:"name"`
+	AllowedOrigins       []string `json:"allowed_origins"`
+	DefaultSort          string   `json:"default_sort"`
+	EmailRequired        bool     `json:"email_required"`
+	WebsiteRequired      bool     `json:"website_required"`
+	Placeholder          string   `json:"placeholder"`
+	CommentLimit         int      `json:"comment_limit"`
+	EmptyMessage         string   `json:"empty_message"`
+	SmojiEnabled         bool     `json:"smoji_enabled"`
+	SmojiManifestURL     string   `json:"smoji_manifest_url"`
 	BloggerNickname      string   `json:"blogger_nickname"`
 	BloggerEmail         string   `json:"blogger_email"`
 	BloggerBadge         string   `json:"blogger_badge"`
@@ -47,16 +49,18 @@ type SiteDTO struct {
 }
 
 type SiteWriteRequest struct {
-	ID              string   `json:"id"`
-	SiteURL         string   `json:"site_url"`
-	Name            string   `json:"name"`
-	AllowedOrigins  []string `json:"allowed_origins"`
-	DefaultSort     string   `json:"default_sort"`
-	EmailRequired   *bool    `json:"email_required"`
-	WebsiteRequired *bool    `json:"website_required"`
-	Placeholder     string   `json:"placeholder"`
-	CommentLimit    int      `json:"comment_limit"`
-	EmptyMessage    string   `json:"empty_message"`
+	ID                string   `json:"id"`
+	SiteURL           string   `json:"site_url"`
+	Name              string   `json:"name"`
+	AllowedOrigins    []string `json:"allowed_origins"`
+	DefaultSort       string   `json:"default_sort"`
+	EmailRequired     *bool    `json:"email_required"`
+	WebsiteRequired   *bool    `json:"website_required"`
+	Placeholder       string   `json:"placeholder"`
+	CommentLimit      int      `json:"comment_limit"`
+	EmptyMessage      string   `json:"empty_message"`
+	SmojiEnabled      bool     `json:"smoji_enabled"`
+	SmojiManifestURL  string   `json:"smoji_manifest_url"`
 	BloggerNickname   string   `json:"blogger_nickname"`
 	BloggerEmail      string   `json:"blogger_email"`
 	BloggerBadge      string   `json:"blogger_badge"`
@@ -237,6 +241,11 @@ func validateSiteWrite(c *gin.Context, request SiteWriteRequest, creating bool, 
 		utils.SendError(c, http.StatusBadRequest, "无评论文案无效")
 		return model.SiteWrite{}, false
 	}
+	smojiManifestURL, err := config.NormalizeSmojiManifestURL(request.SmojiManifestURL)
+	if err != nil || utf8.RuneCountInString(smojiManifestURL) > maximumSiteURLLength || (request.SmojiEnabled && smojiManifestURL == "") {
+		utils.SendError(c, http.StatusBadRequest, "表情包清单网址无效")
+		return model.SiteWrite{}, false
+	}
 	bloggerNickname := strings.TrimSpace(request.BloggerNickname)
 	bloggerEmail := strings.TrimSpace(request.BloggerEmail)
 	if (bloggerNickname == "") != (bloggerEmail == "") {
@@ -269,6 +278,7 @@ func validateSiteWrite(c *gin.Context, request SiteWriteRequest, creating bool, 
 		Name: name, DefaultSort: defaultSort, EmailRequired: emailRequired,
 		WebsiteRequired: websiteRequired, Placeholder: placeholder,
 		CommentLimit: commentLimit, EmptyMessage: emptyMessage,
+		SmojiEnabled: request.SmojiEnabled, SmojiManifestURL: smojiManifestURL,
 		BloggerNickname: bloggerNickname, BloggerEmail: bloggerEmail,
 		BloggerBadge:   bloggerBadge,
 		AllowedOrigins: origins, Revision: request.Revision,
@@ -306,10 +316,11 @@ func siteDTO(site model.Site) SiteDTO {
 		DefaultSort:    site.DefaultSort, EmailRequired: site.EmailRequired,
 		WebsiteRequired: site.WebsiteRequired, Placeholder: site.Placeholder,
 		CommentLimit: site.CommentLimit, EmptyMessage: site.EmptyMessage,
+		SmojiEnabled: site.SmojiEnabled, SmojiManifestURL: site.SmojiManifestURL,
 		BloggerNickname: site.BloggerNickname, BloggerEmail: site.BloggerEmail,
-		BloggerBadge: site.BloggerBadge,
+		BloggerBadge:         site.BloggerBadge,
 		BloggerPassphraseSet: strings.TrimSpace(site.BloggerPassphraseHash) != "",
-		Revision:     site.Revision, CreatedAt: site.CreatedAt.UTC().Format(time.RFC3339Nano),
+		Revision:             site.Revision, CreatedAt: site.CreatedAt.UTC().Format(time.RFC3339Nano),
 		UpdatedAt: site.UpdatedAt.UTC().Format(time.RFC3339Nano),
 	}
 }

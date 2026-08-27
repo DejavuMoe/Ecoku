@@ -1,28 +1,21 @@
 # Twikoo import
 
-Run once, only against a registered site that still has zero comments. Keeps timestamps, nickname, private email, website, page key, reply tree, and converted plain-text bodies. Drops IP, UA, geo, avatars, votes, and external user IDs. Does not send historical notifications.
+One-time import: the target site must already exist in the admin UI and must have zero comments. Preserves time, nickname, private email, website, page key, and reply relationships; bodies become plain text. Does not import IP, UA, region, avatars, votes, or external user IDs, and does not send historical notifications.
 
-Page keys lose query/fragment; absolute URLs keep the path only. After import, `is_blogger` is backfilled from the site’s blogger nickname+email. The batch is one transaction.
+Page keys drop query strings and fragments; absolute URLs keep only the path. Writes run in a single transaction; export max is about 64 MB. Broken parent comments become roots and are reported in the result. After import, `is_blogger` is backfilled from the site’s blogger nickname+email.
 
 ## Backup
 
+Before import, take a stopped cold backup per [Backup & restore](./backup). Confirm no leftover WAL/SHM:
+
 ```bash
-sudo docker compose down
 sudo test ! -e ./data/ecoku.sqlite3-wal
 sudo test ! -e ./data/ecoku.sqlite3-shm
-
-twikoo_stamp="$(date +%Y%m%d-%H%M%S)"
-sudo cp --reflink=auto --preserve=mode,timestamps \
-  ./data/ecoku.sqlite3 "./backups/ecoku-before-twikoo-${twikoo_stamp}.sqlite3"
-sudo chown "$USER":"$USER" "./backups/ecoku-before-twikoo-${twikoo_stamp}.sqlite3"
-chmod 600 "./backups/ecoku-before-twikoo-${twikoo_stamp}.sqlite3"
-sha256sum "./backups/ecoku-before-twikoo-${twikoo_stamp}.sqlite3" \
-  > "./backups/ecoku-before-twikoo-${twikoo_stamp}.sqlite3.sha256"
 ```
 
-Keep the export outside the repo and the service directory. Mount it read-only by absolute path.
+## Dry-run and import
 
-## Dry-run then import
+Keep the export file outside the service directory and mount it read-only by absolute path:
 
 ```bash
 sudo docker compose run --rm --no-deps \
@@ -33,16 +26,10 @@ sudo docker compose run --rm --no-deps \
   --dry-run
 ```
 
-If the summary matches the source:
+When ready, drop `--dry-run` and run once, then:
 
 ```bash
-sudo docker compose run --rm --no-deps \
-  --volume <ABSOLUTE_PATH>/twikoo-comment.json:/import/twikoo-comment.json:ro \
-  ecoku import-twikoo \
-  --site <SITE_ID> \
-  --file /import/twikoo-comment.json
-
 sudo docker compose up -d
 ```
 
-A site that already has comments is rejected. Delete the export (it contains private emails) from the server afterwards.
+Import is refused if the target site already has comments. After acceptance, delete the original export that contains private emails.

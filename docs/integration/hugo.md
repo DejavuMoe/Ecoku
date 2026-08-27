@@ -1,21 +1,51 @@
 # Hugo PaperMod
 
+在站点配置中启用评论并填写服务地址与站点 ID：
+
 ```yaml
 params:
   comments: true
   ecoku:
     server_url: "https://comments.example.com"
     site_id: "blog"
-    # js_url: "https://cdn.example.com/ecoku-loader.js"
+    # js_url: "https://comments.example.com/client/ecoku-loader.js"
     # css_url: "https://comments.example.com/client/ecoku.unstyled.css"
 ```
 
-把仓库 `examples/hugo-papermod/layouts/_partials/comments.html` 合并到主题实际使用的 comments partial。生产使用 `.RelPermalink` 作为页面 key、`.Title` 作为标题，并保留 Hugo 的上下文转义。
+属性含义与完整说明见 [通用 HTML](/integration/html)。页面 key 使用 `.RelPermalink`，标题使用 `.Title`；不要改成完整 URL。
 
-加载前外壳样式可复制 `examples/hugo-papermod/assets/css/extended/ecoku.css`，只美化失败/未配置外壳。
+在主题实际使用的 `comments` partial 中：
 
-## 上线前
+```html
+{{- $ecoku := site.Params.ecoku -}}
+{{- if and $ecoku $ecoku.server_url $ecoku.site_id -}}
+{{- $js := $ecoku.js_url | default (printf "%s/client/ecoku-loader.js" $ecoku.server_url) -}}
+<section
+    id="ecoku-comments"
+    class="ecoku-shell"
+    data-ecoku-comments
+    aria-label="评论区"
+    aria-busy="false"
+    data-server-url="{{ $ecoku.server_url }}"
+    data-site-id="{{ $ecoku.site_id }}"
+    data-page-key="{{ .RelPermalink }}"
+    data-page-title="{{ .Title }}"
+    data-page-size="10"
+    data-theme="auto"
+    {{- with $ecoku.css_url }} data-css-url="{{ . }}"{{ end }}
+>
+    <div class="ecoku-loader" data-ecoku-loader hidden>
+        <p class="ecoku-loader-status" data-ecoku-status></p>
+        <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新加载评论</button>
+    </div>
+    <div id="ecoku-mount" data-ecoku-mount></div>
+</section>
+<script src="{{ $js }}" defer></script>
+{{- else -}}
+<section class="ecoku-shell" aria-label="评论区">
+    <p class="ecoku-loader-status" role="status">评论服务尚未配置。</p>
+</section>
+{{- end -}}
+```
 
-至少检查：普通文章、无评论页、深层回复、根线程分页、移动端、回复通知、CORS 拒绝未登记 Origin，以及刷新后 7 天加密身份恢复。清除浏览器站点数据会删除身份，没有额外清除按钮。
-
-使用镜像同源加载器会自动获得当前协议（含 Cap）。自行固定旧 SDK 的站点必须先更新再选择 Cap。
+未设置 `css_url` 时使用 SDK 默认内联样式。自定义见 [自定义 CSS](/integration/custom-css)。

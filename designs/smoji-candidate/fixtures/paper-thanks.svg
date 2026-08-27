@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="谢谢纸片原型占位图">
+  <rect width="96" height="96" rx="22" fill="#f4dfdd"/>
+  <path d="M20 26h56v44H20z" fill="#fffaf2" stroke="#5b3a3a" stroke-width="4"/>
+  <text x="48" y="55" text-anchor="middle" fill="#8a4c4a" font-size="18" font-family="system-ui,sans-serif">谢谢</text>
+</svg>

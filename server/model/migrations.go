@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	LatestSchemaVersion               = 6
+	LatestSchemaVersion               = 7
 	freshSchemaVersion                = 1
 	freshSchemaName                   = "fresh_published_comments"
 	freshSchemaDefinition             = "sqlite3:fresh-v1:published-comments:site-display-config:notifications:tombstones"
@@ -33,6 +33,9 @@ const (
 	captchaProviderSchemaVersion      = 6
 	captchaProviderSchemaName         = "captcha_provider_cap_standalone"
 	captchaProviderSchemaDefinition   = "sqlite3:v6:captcha-provider:cap-standalone"
+	smojiSiteSchemaVersion            = 7
+	smojiSiteSchemaName               = "site_smoji_manifest"
+	smojiSiteSchemaDefinition         = "sqlite3:v7:sites-smoji-enabled-manifest-url"
 	DefaultBloggerBadge               = "[博主]"
 	legacyOutboxTarget                = "*"
 )
@@ -239,6 +242,7 @@ func validateKnownSchemaHistory(database *gorm.DB) (int, error) {
 		turnstileSettingsSchemaVersion: {name: turnstileSettingsSchemaName, definition: turnstileSettingsSchemaDefinition},
 		bloggerProofSchemaVersion:      {name: bloggerProofSchemaName, definition: bloggerProofSchemaDefinition},
 		captchaProviderSchemaVersion:   {name: captchaProviderSchemaName, definition: captchaProviderSchemaDefinition},
+		smojiSiteSchemaVersion:         {name: smojiSiteSchemaName, definition: smojiSiteSchemaDefinition},
 	}
 	for index, row := range rows {
 		version := index + 1
@@ -280,6 +284,10 @@ func migrateSchema(database *gorm.DB, currentVersion int) error {
 			}
 		case captchaProviderSchemaVersion:
 			if err := migrateCaptchaProvider(database); err != nil {
+				return err
+			}
+		case smojiSiteSchemaVersion:
+			if err := migrateSiteSmoji(database); err != nil {
 				return err
 			}
 		default:
@@ -400,6 +408,27 @@ func migrateCaptchaProvider(database *gorm.DB) error {
 VALUES (?, ?, ?, ?)`, captchaProviderSchemaVersion, captchaProviderSchemaName,
 			schemaChecksum(captchaProviderSchemaDefinition), now).Error; err != nil {
 			return fmt.Errorf("记录 schema 版本 %d: %w", captchaProviderSchemaVersion, err)
+		}
+		return nil
+	})
+}
+
+func migrateSiteSmoji(database *gorm.DB) error {
+	return database.Transaction(func(tx *gorm.DB) error {
+		statements := []string{
+			`ALTER TABLE sites ADD COLUMN smoji_enabled INTEGER NOT NULL DEFAULT 0 CHECK (smoji_enabled IN (0, 1))`,
+			`ALTER TABLE sites ADD COLUMN smoji_manifest_url TEXT NOT NULL DEFAULT '' CHECK (length(smoji_manifest_url) <= 2048)`,
+		}
+		for _, statement := range statements {
+			if err := tx.Exec(statement).Error; err != nil {
+				return fmt.Errorf("迁移站点表情包配置: %w", err)
+			}
+		}
+		now := time.Now().UTC()
+		if err := tx.Exec(`INSERT INTO schema_migrations (version, name, checksum, applied_at)
+VALUES (?, ?, ?, ?)`, smojiSiteSchemaVersion, smojiSiteSchemaName,
+			schemaChecksum(smojiSiteSchemaDefinition), now).Error; err != nil {
+			return fmt.Errorf("记录 schema 版本 %d: %w", smojiSiteSchemaVersion, err)
 		}
 		return nil
 	})
@@ -563,7 +592,7 @@ func validateCurrentSchema(database *gorm.DB) error {
 			return fmt.Errorf("数据库缺少当前 schema 表 %s", table)
 		}
 	}
-	for _, column := range []string{"blogger_nickname", "blogger_email", "blogger_badge", "blogger_passphrase_hash"} {
+	for _, column := range []string{"blogger_nickname", "blogger_email", "blogger_badge", "blogger_passphrase_hash", "smoji_enabled", "smoji_manifest_url"} {
 		var count int64
 		if err := database.Raw("SELECT COUNT(*) FROM pragma_table_info('sites') WHERE name = ?", column).Scan(&count).Error; err != nil || count != 1 {
 			return fmt.Errorf("数据库缺少当前 schema 字段 sites.%s", column)

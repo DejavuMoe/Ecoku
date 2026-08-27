@@ -1,53 +1,44 @@
 # 常见问题
 
-## 容器 unhealthy 或反复重启
+## `/api/health` 正常，但页面打不开
 
-看 `sudo docker compose logs --tail=200 ecoku`。常见原因是迁移失败、配置校验失败或管理员静态目录缺失。对照 [升级说明](/self-hosting/upgrades/) 与当前 `CHANGELOG.md`。
+健康检查只表示进程可响应。确认反代转发了 `/`、`/api/`、`/admin/`、`/client/`：
 
-## 启动报未知 schema / 校验和不符
+```bash
+sudo docker compose ps
+sudo docker compose logs --tail=200 ecoku
+```
 
-用旧镜像打开了已升级库，或手工改过 `schema_migrations`。停服，用升级前冷备份整库恢复；不要只回退镜像。
+详见 [反向代理](./reverse-proxy)。
 
-## 限流像所有人共用一个桶
+## 所有访客共用一个限流桶
 
-`trusted_proxies` 为空，或反代**追加**而非覆盖 `X-Forwarded-For`。按 [反向代理](/self-hosting/reverse-proxy) 拓扑 1：Docker 网关 `/32` + Caddy/Nginx 覆盖头。不要填 `0.0.0.0/0` 或 CDN 段。
+常见于 `trusted_proxies: []`，或反代**追加**而非覆盖 `X-Forwarded-For`。按 [反向代理](./reverse-proxy#客户端地址与限流) 配置 Docker 网关 `/32`；不要填 `0.0.0.0/0`、`::/0` 或 CDN 网段。
 
-## CORS 拒绝评论提交
+## 出现 CORS 错误
 
-站点 `allowed_origins` 未登记页面 Origin。管理端补全；管理端来源与公开站点来源分开配。
+站点 Allowed origins 填评论页完整 Origin；管理端填管理页 Origin。协议、域名、端口须完全一致，不能带路径或用 `*`。
 
-## Turnstile 登录或评论失败
+## 管理员无法登录
 
-管理端「安全」检查是否启用、Sitekey/Secret 是否已设置。Secret 需要 `ECOKU_NOTIFICATION_ENCRYPTION_KEY`。Siteverify 失败不会自动降级。
+核对用户名、bcrypt 哈希、`ECOKU_ADMIN_TOKEN_KEY` 与管理端 Allowed origins。若被人机验证挡住，见 [恢复登录](./admin#验证故障时恢复登录)。
 
-## Cap 登录或评论失败
+## Turnstile 或 Cap 验证失败
 
-检查 Cap 健康、Key 的 CORS、`/assets/widget.js`、WASM 与 Siteverify。Token 已消费需重新求解。无法登录时按 [后台配置](/self-hosting/admin#验证故障时恢复登录) 执行 `captcha disable`。
+确认实例能访问验证服务，密钥成对，CORS 含所需 Origin，浏览器能加载 Widget / WASM / Siteverify。token 一次性消费，失败后需重新求解。
 
-`instr_timeout` 且 `/redeem` 429：核对管理端响应 CSP 是否来自当前镜像（`v0.1.6` 起 Cap 模式才含 `'unsafe-eval'`）。不要给 Caddy 加第二份宽泛 CSP。
+## 升级后提示数据库版本不支持
 
-## 控制台 aborting clearance redemption
+不要删库或手工改 `schema_migrations`。保留备份，对照 [升级](./upgrade) 中的镜像与 schema 表。只支持顺序原位升级，没有降级迁移。
 
-开了 Cloudflare Pre-clearance，但站点不在 CF 代理后。在 Cloudflare 控制台关闭；小组件仍可完成 Siteverify。
+## 如何修改时区
 
-## 备份后恢复仍异常
+改 `ecoku.env` 的 `TZ` 为 IANA 名（如 `Asia/Singapore`），再：
 
-备份时存在 WAL/SHM，或只复制了主文件。必须停服且确认无边车文件后再备份。
+```bash
+sudo docker compose up -d --force-recreate
+```
 
-## 评论时间不对
+## 严格 CSP 阻止验证组件
 
-容器未设置 `TZ`，或改 `ecoku.env` 后未重建容器。写入 IANA 名称后 `docker compose up -d`。未设置时回退 `Asia/Shanghai`。
-
-## 博主评论无标志
-
-历史评论未回填。管理端再保存一次博主口令；昵称与邮箱须与历史评论一致。
-
-## management key 能删不能看列表
-
-设计如此：该 key 只做所属站点墓碑删除。列表与详情用管理员登录。
-
-## 宿主 CSP
-
-Turnstile：允许 `https://challenges.cloudflare.com` 的 `script-src`、`frame-src`、`connect-src`。
-
-Cap：实例 Origin 加入 `script-src` 与 `connect-src`；`worker-src blob:`；`'wasm-unsafe-eval'`；启用 instrumentation 时还需要 `'unsafe-eval'`。不要用 `*` 或宽泛 `unsafe-inline` 代替。
+Turnstile 需要 Cloudflare Origin；Cap 需要实例 Origin、WASM、Blob Worker，instrumentation 可能还需 `'unsafe-eval'`。见 [人机验证](./admin#人机验证)。
