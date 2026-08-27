@@ -3,10 +3,10 @@ layout: home
 hero:
   name: Ecoku
   text: Self-hosted plain-text comments
-  tagline: Multi-site, SQLite, Docker Compose. Comments go live on submit. Public APIs never expose emails or visitor traces.
+  tagline: Deploy with Docker, store data in SQLite. One instance serves many sites. Comments go live on submit.
   image:
     src: /ecoku-hero.png
-    alt: Ecoku illustration connecting comment threads to self-hosted data
+    alt: Ecoku illustration
   actions:
     - theme: brand
       text: Deploy with Docker
@@ -16,11 +16,11 @@ hero:
       link: /en/guide/features
 features:
   - title: Live on submit
-    details: No moderation queue. Replies happen on the parent comment. Threads are unbounded; visual indent stops at three levels.
-  - title: Private by default
-    details: Public DTOs omit email, IP, UA, and admin fields. Guest identity is encrypted in IndexedDB for 7 days only.
+    details: No moderation queue. Reply under the parent comment; nesting has no depth limit in data, visual indent stops at three levels.
+  - title: Public APIs omit private fields
+    details: No email, IP, or UA in public responses. Guest identity is encrypted in IndexedDB for 7 days.
   - title: One container
-    details: Pinned image tags, in-place SQLite migrations, TLS at a local reverse proxy. Admin UI and comment SDK are served from the same origin.
-  - title: Deduped notifications
-    details: SMTP (TLS/STARTTLS) and Telegram. Bloggers prove identity with a passphrase. Delivery follows a fixed matrix; the admin UI does not show a decision table.
+    details: Pin an image tag and keep data on the host. Admin UI and comment SDK share the same origin.
+  - title: Email and Telegram
+    details: Optional SMTP or Telegram alerts. Bloggers can prove identity with a passphrase.
 ---

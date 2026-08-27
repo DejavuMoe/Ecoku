@@ -1,7 +1,5 @@
 import { defineConfig, type DefaultTheme, type HeadConfig } from 'vitepress'
 
-export const GITEA = 'https://git.via.moe/dejavu/Ecoku'
-
 export const shared = defineConfig({
   title: 'Ecoku',
   lastUpdated: true,
@@ -11,7 +9,7 @@ export const shared = defineConfig({
     /^https?:\/\/localhost/,
     /^https?:\/\/127\.0\.0\.1/,
   ],
-  srcExclude: ['**/internal/**', '**/progress/**'],
+  srcExclude: ['**/internal/**', '**/progress/**', '**/contribute/**'],
   head: [
     ['link', { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' }],
     ['meta', { name: 'theme-color', content: '#0f766e' }],
@@ -21,15 +19,6 @@ export const shared = defineConfig({
   themeConfig: {
     logo: { src: '/logo.svg', alt: 'Ecoku' },
     outline: [2, 3],
-    socialLinks: [
-      {
-        icon: {
-          svg: '<svg role="img" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z"/></svg>',
-        },
-        link: GITEA,
-        ariaLabel: 'Ecoku Git',
-      },
-    ],
     search: {
       provider: 'local',
       options: {
@@ -130,7 +119,6 @@ export function sidebar(prefix: string, t: SidebarCopy): DefaultTheme.SidebarIte
         { text: t.admin, link: `${p}/self-hosting/admin` },
         { text: t.backup, link: `${p}/self-hosting/backup` },
         { text: t.upgrade, link: `${p}/self-hosting/upgrade` },
-        { text: t.upgrades, link: `${p}/self-hosting/upgrades/` },
         { text: t.twikoo, link: `${p}/self-hosting/twikoo` },
         { text: t.faq, link: `${p}/self-hosting/faq` },
       ],
@@ -140,11 +128,8 @@ export function sidebar(prefix: string, t: SidebarCopy): DefaultTheme.SidebarIte
       items: [
         { text: t.html, link: `${p}/integration/html` },
         { text: t.hugo, link: `${p}/integration/hugo` },
+        { text: t.customCss, link: `${p}/integration/custom-css` },
       ],
-    },
-    {
-      text: t.contribute,
-      items: [{ text: t.localDev, link: `${p}/contribute/local-dev` }],
     },
   ]
 }
@@ -162,7 +147,6 @@ export function nav(prefix: string, t: NavCopy): DefaultTheme.NavItem[] {
       link: `${prefix}/integration/html`,
       activeMatch: `${prefix}/integration/`,
     },
-    { text: t.upgrades, link: `${prefix}/self-hosting/upgrades/`, activeMatch: `${prefix}/self-hosting/upgrades` },
   ]
 }
 
@@ -170,7 +154,6 @@ export interface NavCopy {
   guide: string
   selfHosting: string
   integration: string
-  upgrades: string
 }
 
 export interface SidebarCopy extends NavCopy {
@@ -185,6 +168,5 @@ export interface SidebarCopy extends NavCopy {
   faq: string
   html: string
   hugo: string
-  contribute: string
-  localDev: string
+  customCss: string
 }

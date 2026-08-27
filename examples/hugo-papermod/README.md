@@ -1,37 +1,24 @@
 # Hugo PaperMod 接入示例
 
-这是从真实测试站点提取的最小、可跟踪示例，不包含主题源码、文章、数据库、构建产物或私有配置。
-示例适用于当前 PaperMod 布局；其他主题应将相同数据和初始化逻辑合并到自己的评论入口。
+本示例包含 PaperMod 所需的评论 partial、配置片段和可选的加载前外壳 CSS。
 
-## 文件映射
+## 使用
 
-```text
-examples/hugo-papermod/
-├── hugo.yaml.example
-├── layouts/_partials/comments.html
-└── assets/css/extended/ecoku.css
-```
-
-复制到 Hugo 站点根目录：
+将以下文件复制到 Hugo 站点对应目录：
 
 ```powershell
 Copy-Item examples/hugo-papermod/layouts/_partials/comments.html SITE/layouts/_partials/comments.html
 Copy-Item examples/hugo-papermod/assets/css/extended/ecoku.css SITE/assets/css/extended/ecoku.css
 ```
 
-`ecoku.css` 只美化失败/未配置外壳，可以不复制；默认评论区外观由 SDK 注入。将 `hugo.yaml.example` 中的
-`params` 合并进站点配置。可选 `js_url` / `css_url`：不填则用容器加载器并注入样式；填了 `css_url`
-后 SDK 不再注入。运行镜像提供 `/client/ecoku-loader.js`、`/client/ecoku.umd.js`、
-`/client/ecoku.css` 与 `/client/ecoku.unstyled.css`。Hugo 站点不再保存或同步 SDK 副本。
-其他静态生成器见 [`examples/html`](../html)。
+`ecoku.css` 只负责加载前外壳、失败状态和重试按钮，可以不复制。评论内容的默认样式由 SDK 提供；需要完全自定义时，参见文档中的[自定义 CSS](../../docs/integration/custom-css.md)。
 
-PaperMod 的文章模板需要调用 `{{ partial "comments.html" . }}`。示例 partial 使用
-`id="ecoku-comments"` / `id="ecoku-mount"` 和 `data-ecoku-*` 标记，把 `.RelPermalink` 作为稳定
-页面 key、`.Title` 作为文章标题传给 SDK，并以外部脚本延迟加载。若站点设置 CSP，`script-src`
-和 `connect-src` 必须精确允许 Ecoku 的 HTTPS Origin；当前 SDK 样式边界另见试用前就绪清单，
-不能把“无行内初始化脚本”误写成完整严格 CSP 兼容。
+把 `hugo.yaml.example` 中的 `params` 合并进站点配置，替换服务地址和站点 ID。可选的 `js_url`、`css_url` 用于固定加载器或样式地址；不设置时使用服务端默认地址。
 
-若 Ecoku 选择 Cloudflare Turnstile，宿主 CSP 还要允许 `https://challenges.cloudflare.com`。若选择自托管 Cap，则把 `https://cap.example.com` 替换为实际 Cap Origin，精确加入 `script-src` / `connect-src`，允许 `worker-src blob:`、`frame-src 'self'` 与 WebAssembly；nonce 型 CSP 需在加载 Ecoku 前设置同一 `window.CAP_CSS_NONCE` / `window.CAP_SCRIPT_NONCE`。Cap 的 Key CORS 必须包含正式站与本地预览的实际 Origin。Sitekey 和 Secret 都不写进 Hugo 配置或模板。
+确保文章模板调用：
 
-最后在 Ecoku 管理端创建相同的 `site_id`，并把 Hugo 本地预览与正式站点的实际 Origin 逐行加入
-允许来源。浏览器端不应包含 management key、管理员 token 或通知凭据。
+```go-html-template
+{{ partial "comments.html" . }}
+```
+
+示例使用 `.RelPermalink` 作为稳定页面 key，使用 `.Title` 作为页面标题。浏览器端只放公开的服务地址和站点 ID，不要放管理员凭据、通知密钥或站点管理密钥。

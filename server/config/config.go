@@ -117,6 +117,12 @@ type CommentFormConfig struct {
 	TurnstileSitekey    string              `json:"turnstileSitekey"`
 	BloggerProofEnabled bool                `json:"bloggerProofEnabled"`
 	Captcha             CaptchaPublicConfig `json:"captcha"`
+	Smoji               SmojiPublicConfig   `json:"smoji"`
+}
+
+type SmojiPublicConfig struct {
+	Enabled     bool   `json:"enabled"`
+	ManifestURL string `json:"manifestUrl"`
 }
 
 type DatabaseConfig struct {
@@ -608,6 +614,30 @@ func NormalizeSiteURL(raw string) (string, error) {
 	return strings.TrimRight(parsed.String(), "/"), nil
 }
 
+// NormalizeSmojiManifestURL limits remote sticker manifests to HTTPS. Plain
+// HTTP is accepted only for loopback hosts so local development remains usable.
+func NormalizeSmojiManifestURL(raw string) (string, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return "", nil
+	}
+	parsed, err := url.Parse(trimmed)
+	if err != nil || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return "", fmt.Errorf("表情包清单网址格式无效")
+	}
+	hostname := parsed.Hostname()
+	loopback := strings.EqualFold(hostname, "localhost")
+	if ip := net.ParseIP(hostname); ip != nil {
+		loopback = ip.IsLoopback()
+	}
+	if parsed.Scheme != "https" && !(parsed.Scheme == "http" && loopback) {
+		return "", fmt.Errorf("表情包清单网址必须使用 HTTPS")
+	}
+	parsed.Scheme = strings.ToLower(parsed.Scheme)
+	parsed.Host = strings.ToLower(parsed.Host)
+	return parsed.String(), nil
+}
+
 func IsOriginAllowed(site *RegisteredSiteConfig, origin string) bool {
 	if site == nil {
 		return false
@@ -656,10 +686,10 @@ func GetCommentFormConfig(siteID string) (CommentFormConfig, bool) {
 		DefaultSort:         site.Comment.DefaultSort,
 		LengthLimit:         site.Comment.LengthLimit,
 		EmptyMessage:        site.Comment.EmptyMessage,
-		BloggerBadge:         DefaultBloggerBadge,
-		TurnstileSitekey:     "",
-		BloggerProofEnabled:  false,
-		Captcha:              CaptchaPublicConfig{Provider: "off"},
+		BloggerBadge:        DefaultBloggerBadge,
+		TurnstileSitekey:    "",
+		BloggerProofEnabled: false,
+		Captcha:             CaptchaPublicConfig{Provider: "off"},
 	}, true
 }
 

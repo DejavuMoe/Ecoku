@@ -1,105 +1,69 @@
 # 后台配置
 
-访问 `https://comments.example.com/admin/`，使用初始化时的管理员账户登录。Token 只在当前页内存，刷新后需重新登录。管理端来源与公开评论站点来源是两套白名单，不能混用。
+打开实例的 `/admin/`，用 `ECOKU_ADMIN_USERNAME` 与对应密码登录。管理端 Bearer token 只存在当前页内存，关闭或刷新后需重新登录。
+
+`admin.allowed_origins` 与评论站点来源分开配置，不能用一个宽泛来源代替。
 
 ## 站点
 
-在「站点管理」中创建：
-
-| 字段 | 说明 |
+| 配置 | 说明 |
 | --- | --- |
-| 站点 ID | 稳定、简短，创建后不可改 |
-| 站点 URL | 如 `https://blog.example.com`；通知原文链接只从这里与页面 key 拼接 |
-| 站点名称 | 留空时回落到 URL 域名 |
-| 允许来源 | 每行一个完整 Origin，如 `https://blog.example.com` |
-| 默认排序 | `newest` 或 `oldest` |
-| 邮箱 / 网站 | 是否必填；默认邮箱必填、网站可选 |
-| 占位文案 | 最多 80 字；空则「写下评论（仅支持纯文本）」 |
-| 正文上限 | 1–10000 个 Unicode code point，默认 1000 |
-| 无评论文案 | 默认「还没有评论」加一行「成为第一个留下评论的人。」 |
+| ID | 接入用的唯一值；创建后不可改 |
+| 站点地址、名称 | 识别站点与拼通知链接 |
+| Allowed origins | 允许调用评论 API 的精确 Origin（完整 `https://域名`，无路径） |
+| 邮箱、网站 | 访客字段是否**必填**（字段仍会显示） |
+| 占位文本、长度上限、空状态、排序 | 表单与列表行为 |
 
-新评论提交后直接公开。management key 只供可信服务端自动化做所属站点的墓碑删除，管理端新建站点默认不生成密钥；它对评论列表/详情返回 403。
+评论提交后直接发布，没有审核队列。
 
-## 博主
+### 表情包
 
-昵称与邮箱必须同时填写或同时留空；启用时还须设置口令（12–80 字符）。口令只存 bcrypt，界面只返回是否已设置。
+站点可选启用表情包并填写一个 `smoji.json` 清单 URL。生产环境须使用 HTTPS；清单中的图片须与清单同源。Ecoku 不打包或代理这些资源，访客首次打开表情选择框时才会动态加载。直链请求可能向资源主机暴露访客 IP，请只使用可信主机。关闭后会保留 URL，历史表情标记按纯文本显示。
 
-公开评论区不为博主提供额外表单：昵称栏填口令即可。服务端改写为配置昵称、私有邮箱，网站设为该站点 URL。口令填错且同时提供了访客身份时，按普通访客发布。
+management key（若在 YAML 中声明）只供可信服务端做所属站点的墓碑删除等操作，不是浏览器接入配置。详见 [Docker 部署](./docker#配置)。
 
-保存口令时，按昵称精确匹配、邮箱大小写不敏感匹配，回填未删除的历史评论。公开只多一个徽章、`isBlogger` 和站点链接。
+## 博主身份
+
+昵称与邮箱须同时填写或同时留空。启用时另设 12–80 字符口令；保存后按该身份回填历史评论的博主标记。可配置公开徽章文案。
+
+公开区：已启用口令时，博主在昵称栏填口令即可，不必填邮箱或网站。口令错误且同时填了访客身份时，按普通访客发布。
 
 ## 通知
 
-实例级，不随站点选择器变化。支持 SMTP 博主通知、访客直接回复邮件、Telegram 博主通知。测试投递单独限流。
+实例级 SMTP（仅 TLS / STARTTLS）与 Telegram。凭据由 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 加密存入 SQLite；管理端只显示「已设置」，不提供判定表或模板预览。启用渠道前须配置 `notifications.instance_public_url`。
 
-SMTP 只允许 `tls` 或 `starttls`。密码与 Bot Token 使用 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 加密；缺密钥或无法解密则失败关闭。界面不展示通知判定表或模板预览。判定矩阵见 [特性](/guide/features#通知)。
+默认规则（以存储的 `is_blogger` 为准）：
 
-## 机器人验证
+| 场景 | 行为 |
+| --- | --- |
+| 访客发根评论 | 通知博主渠道 |
+| 访客回复访客 | 通知博主渠道，并邮件通知被直接回复者 |
+| 博主回复访客 | 仅邮件通知被直接回复者 |
+| 访客回复博主 | 仅通知博主渠道 |
+| 博主回复博主 | 不通知 |
+| 同一邮箱回复自己 | 不发送访客回复邮件 |
 
-「安全」页三态：关闭 / Cloudflare Turnstile / 自托管 Cap。启用时后两者只能选一个，同时保护评论提交和管理员登录。切换或关闭不会清除另一提供方已保存的配置。两者故障都失败关闭，不会自动降级。
+## 人机验证
+
+在「安全」页选择关闭、Cloudflare Turnstile 或自托管 Cap（三选一）。启用后同时保护评论提交与管理员登录；失败则拒绝，不会自动换提供方。切换提供方不会删除未启用方的已存配置。
 
 ### Turnstile
 
-1. 在 Cloudflare 控制台创建小组件，把管理端与全部评论站点主机名加入列表。
-2. 管理端选择 Turnstile，填 Sitekey 与 Secret key。
-3. 小组件模式只在 Cloudflare 配置。
-
-Secret 使用同一通知主密钥加密。未配置该密钥时不能保存已启用的 Turnstile。
-
-Pre-clearance 也只在 Cloudflare 配置。`cf_clearance` 不会让 Ecoku 跳过 Siteverify。站点不在 Cloudflare 代理后应关闭它，否则控制台出现 `aborting clearance redemption`。
+在 Cloudflare 创建 Widget，填入 Site key 与 Secret key。Pre-clearance 要求站点经 Cloudflare 代理；`cf_clearance` 不替代 Ecoku Siteverify。
 
 ### Cap
 
-Cap 的 `ADMIN_KEY` 只用于 Cap 自己的后台，不要填进 Ecoku。
+在 Cap Standalone 创建密钥，并把管理端 Origin、全部评论站点 Origin 加入该 Key 的 CORS。实例须经公开 HTTPS 提供 `/assets/widget.js`、`/assets/cap_wasm_bg.wasm` 与 `/<sitekey>/siteverify`。在 Ecoku 填写实例地址、Site key、Secret key。
 
-1. 在 Cap Standalone 为 Ecoku 创建 Key；保持 instrumentation 开启，并把管理端 Origin 与每个评论站点 Origin 加入该 Key 的 CORS。
-2. 实例须为公开 HTTPS，并提供固定版本的 `/assets/widget.js` 与 `/assets/cap_wasm_bg.wasm`。
-3. 管理端选择 Cap，填写实例根地址、Site key、Secret key。地址只接受公开 HTTPS，不要带凭据、query、fragment、localhost 或私网 IP。
-4. 保存后另开普通窗口验证登录和发表。Token 单次使用。
-
-`v0.1.6` 起，管理端只在 Cap 为当前方式时，为该精确 Origin 加入 Widget、WASM、Blob Worker、nonce 与 instrumentation 所需的 `'unsafe-eval'`。切到关闭或 Turnstile 会在下一次页面响应中去掉这些项，但保留 Cap 配置。
-
-若 instrumentation 返回 `instr_timeout` 且 `/redeem` 为 429，先核对响应 CSP 是否来自当前镜像。不要靠改 CORS、关闭失败关闭，或给 Caddy 加第二份宽泛 CSP 绕过。
-
-使用镜像同源加载器的站点会随镜像获得 Cap 支持。自行固定旧 npm/UMD SDK 的站点必须先更新到包含 `formConfig.captcha` / `captchaToken` 的版本。
-
-宿主站点若使用严格 CSP：Turnstile 需允许 `https://challenges.cloudflare.com`；Cap 需加入实例 Origin、`worker-src blob:`、`'wasm-unsafe-eval'`，以及当前 Cap 3.x instrumentation 所需的 `'unsafe-eval'`。不接受动态求值风险时，关闭该 Key 的 instrumentation 或改用 Turnstile。
+管理端 CSP 随当前提供方收敛：Turnstile 放行 Cloudflare；Cap 放行实例 Origin、WASM、Blob Worker；Cap instrumentation 可能还需 `'unsafe-eval'`。无法接受时关闭 instrumentation 或改用 Turnstile。
 
 ## 验证故障时恢复登录
 
-当前提供方故障导致无法登录时，在 Ecoku 主机显式停服恢复。命令会保留冷备份，把验证方式设为关闭，两套配置都保留：
-
 ```bash
-set -euo pipefail
-cd ~/Ecoku
-
 sudo docker compose down
-sudo test ! -e ./data/ecoku.sqlite3-wal
-sudo test ! -e ./data/ecoku.sqlite3-shm
-
-umask 077
-mkdir -p ./backups
-backup_stamp="$(date +%Y%m%d-%H%M%S)"
-sudo cp --reflink=auto --preserve=mode,timestamps \
-  ./data/ecoku.sqlite3 "./backups/ecoku-before-captcha-disable-${backup_stamp}.sqlite3"
-sudo chown "$USER":"$USER" "./backups/ecoku-before-captcha-disable-${backup_stamp}.sqlite3"
-chmod 600 "./backups/ecoku-before-captcha-disable-${backup_stamp}.sqlite3"
-
 sudo docker compose run --rm --no-deps ecoku captcha status
 sudo docker compose run --rm --no-deps ecoku captcha disable
 sudo docker compose up -d
 ```
 
-无 CAPTCHA 登录后修复或切换提供方再保存。必须使用当前精确镜像和同一个 `./data`。不要手改设置表。
-
-## 时区
-
-`TZ` 只写在 `ecoku.env`。改完后必须重建容器：
-
-```bash
-printf "\nTZ='Asia/Singapore'\n" >> ecoku.env
-sudo chmod 0600 ./ecoku.env
-sudo docker compose up -d
-```
-
-悬停提示形如 `Asia/Singapore UTC+8`。`v0.1.0-rc.7` 及更早镜像不会应用该格式，需先升级。
+登录后修正验证配置，再在管理端重新启用。

@@ -1,41 +1,26 @@
-# 專案介紹
+# 簡介
 
-Ecoku 是面向自託管場景的多站點純文字評論系統。一個實例可以掛多個站點；評論送出後立即公開。
+Ecoku 是自託管的多站點純文字評論系統。一個執行個體可服務多個站點，評論送出後立即公開。
 
-它適合靜態部落格、文件站，以及不想把評論交給第三方 SaaS 的個人站點。生產部署只支援 Docker Compose + SQLite3。
+適合靜態部落格、文件站，以及希望把評論資料留在自己伺服器上的個人站點。生產環境使用 Docker Compose 與 SQLite3。
 
-## 做什麼
+目前只發布 Docker 映像，不公開散佈原始碼。
 
-- 訪客評論：暱稱必填；信箱與網站是否必填由站點配置。
-- 無限語義層級回覆；公開列表按根討論串分頁。
-- 刪除保留墓碑，後代回覆仍在。
-- 實例級管理員：站點、評論、通知、機器人驗證。
-- 瀏覽器 SDK：鏡像同源 `/client/ecoku-loader.js`。
-- 可選：SMTP / Telegram 通知、Twikoo 首次匯入、Cloudflare Turnstile 或自託管 Cap。
+## 適合什麼
 
-## 不做什麼
+- 為多個站點提供評論區。
+- 訪客用暱稱、信箱和可選網站發表評論與回覆。
+- 可選郵件或 Telegram 通知；可從 Twikoo 一次性匯入歷史評論。
+- 可用 Turnstile 或自託管 Cap 做人機驗證。
 
-純文字正文，不解釋 HTML 或 Markdown。沒有頭像、讚踩、富文本、普通使用者註冊、按站點審核，也不提供 MySQL。
+## 不提供什麼
 
-管理金鑰和站點 management key 不得放進瀏覽器、URL 或頁面 markup。
+評論正文是純文字，不解析 HTML 或 Markdown。沒有頭像、按讚、富文本、一般使用者帳戶、按站點審核佇列或 MySQL。
 
-## 運行形態
+管理員憑據和站點 management key 不得放入瀏覽器、URL 或頁面 markup。
 
-一個非 root 容器同時提供 API、管理端 `/admin/` 和評論前端。連接埠綁在宿主機 `127.0.0.1:12123`，公網走本機 Caddy 或 Nginx。
+## 怎麼跑
 
-資料在容器外：
+一個非 root 容器同時提供 API、管理端 `/admin/` 和評論前端 `/client/`。預設只綁定宿主機 `127.0.0.1:12123`，公網存取交給 HTTPS 反向代理。
 
-| 路徑 | 用途 |
-| --- | --- |
-| `app/config.yaml` | 公開配置（連接埠、日誌、可信代理、管理端來源） |
-| `ecoku.env` | 管理員憑據、通知加密主金鑰、時區 |
-| `data/` | SQLite 主庫與 WAL |
-| `app/logs/` | 可選檔案日誌副本 |
-
-站點、評論表單和通知渠道由管理端寫入 SQLite。YAML 裡的 `sites` 只在空庫首次初始化時匯入。
-
-## 版本
-
-容器版本以倉庫根 `VERSION` 為準，Git tag 為 `v` + 該值。`compose.yaml` 使用精確鏡像 tag，不要用 `latest`。
-
-下一步：[特性](/zh-hant/guide/features) 或 [Docker 部署](/zh-hant/self-hosting/docker)。
+站點、表單與通知在管理端設定，保存在 SQLite。首次部署見 [Docker 部署](/zh-hant/self-hosting/docker)，頁面接入見 [通用 HTML](/zh-hant/integration/html)。

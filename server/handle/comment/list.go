@@ -63,6 +63,9 @@ func GetComments(c *gin.Context) {
 		Captcha:             captchaConfig,
 		TurnstileSitekey:    legacyTurnstileSitekey(captchaConfig),
 		BloggerProofEnabled: site.BloggerProofConfigured(),
+		Smoji: config.SmojiPublicConfig{
+			Enabled: site.SmojiEnabled, ManifestURL: site.SmojiManifestURL,
+		},
 	}
 	key := strings.TrimSpace(c.Query("key"))
 	if key == "" || textLength(key) > maxPageKeyLength {

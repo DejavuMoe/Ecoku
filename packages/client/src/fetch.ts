@@ -112,6 +112,7 @@ function normalizeFormConfig(value: unknown): CommentFormConfig {
     if (trimmed && Array.from(trimmed).length <= 255 && !/[\r\n]/.test(trimmed)) turnstileSitekey = trimmed
   }
   const captcha = normalizeCaptchaConfig(raw.captcha, turnstileSitekey)
+  const smoji = normalizeSmojiConfig(raw.smoji)
   return {
     emailRequired: typeof raw.emailRequired === 'boolean'
       ? raw.emailRequired
@@ -129,6 +130,21 @@ function normalizeFormConfig(value: unknown): CommentFormConfig {
     turnstileSitekey,
     bloggerProofEnabled: raw.bloggerProofEnabled === true,
     captcha,
+    smoji,
+  }
+}
+
+function normalizeSmojiConfig(value: unknown): CommentFormConfig['smoji'] {
+  const raw = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+  if (raw.enabled !== true || typeof raw.manifestUrl !== 'string') return { enabled: false, manifestUrl: '' }
+  try {
+    const manifest = new URL(raw.manifestUrl.trim())
+    const loopback = manifest.hostname === 'localhost' || manifest.hostname === '127.0.0.1' || manifest.hostname === '::1'
+    if ((manifest.protocol !== 'https:' && !(manifest.protocol === 'http:' && loopback))
+      || manifest.username || manifest.password || manifest.search || manifest.hash) throw new Error()
+    return { enabled: true, manifestUrl: manifest.toString() }
+  } catch {
+    return { enabled: false, manifestUrl: '' }
   }
 }
 

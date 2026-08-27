@@ -1,6 +1,25 @@
 # 通用 HTML
 
-每个页面提供专用容器和稳定的页面 key。`pageKey` 必须是站内相对路径，不能是绝对 URL，不能带 query。
+每个页面放一个评论容器。`data-page-key` 是当前页的稳定站内相对路径：
+
+- 静态站在模板里插入当前页的 path / permalink。
+- 手写 HTML 时为每页提供唯一且稳定的相对路径。
+
+示例中的 `/posts/example/` 是渲染后的 key，不是所有页面都要照抄。不要用完整 URL 或带 query / fragment 的地址。
+
+## 属性
+
+| 属性 | 必填 | 说明 |
+| --- | --- | --- |
+| `data-server-url` | 是 | 评论服务的绝对 `http(s)` 地址 |
+| `data-site-id` | 是 | 管理端创建的站点 ID |
+| `data-page-key` | 是 | 站内相对路径，1–512 字符 |
+| `data-page-title` | 否 | ≤200 字符 |
+| `data-page-size` | 否 | 根评论每页条数，1–100，默认 10 |
+| `data-theme` | 否 | `auto` / `light` / `dark` |
+| `data-css-url` | 否 | 见 [自定义 CSS](/integration/custom-css) |
+
+## Loader 示例
 
 ```html
 <section
@@ -23,22 +42,33 @@
 <script src="https://comments.example.com/client/ecoku-loader.js" defer></script>
 ```
 
-加载器以 `data-ecoku-*` 为准：外壳、挂载点、加载态、状态文案和重试按钮缺一则不会初始化。规范 id 为 `ecoku-comments` 与 `ecoku-mount`。当前仍兼容旧的 `#tcomment` 与 `.comment-loader` 等类名，新站点不要再用。
+加载器读取上述属性，加载 SDK 并初始化；失败时显示状态与重试。加载过程中不额外提示文案。未配置必要属性时加载器会跳过。不要在页面放入管理员 token 或 management key。
 
-加载过程不显示「正在加载评论…」；失败时才展示状态和「重新加载评论」。未配置站点渲染「评论服务尚未配置。」
+未设置 `data-css-url` 时，SDK **内联**默认评论区样式（不会自动请求 `/client/ecoku.css`）。自定义样式见 [自定义 CSS](/integration/custom-css)。
 
-不要放入管理员 token 或 management key。验证由公共 `formConfig` 下发。
+## 不使用 loader
 
-## 样式
+自行加载 UMD 与 CSS 时传入 `cssURL: 'none'`，避免 SDK 再注入默认样式：
 
-默认 SDK 注入评论区样式。可选 `data-css-url` 后不再注入：
+```html
+<link rel="stylesheet" href="https://comments.example.com/client/ecoku.css">
+<div id="ecoku-mount"></div>
 
-- `/client/ecoku.css`：与默认注入相同
-- `/client/ecoku.unstyled.css`：只保留结构
-- `none`：完全自写 CSS
+<script src="https://comments.example.com/client/ecoku.umd.js"></script>
+<script>
+  const comments = new Ecoku({
+    container: '#ecoku-mount',
+    serverURL: 'https://comments.example.com',
+    siteId: 'blog',
+    pageKey: '/posts/example/',
+    pageTitle: '示例文章',
+    pageSize: 10,
+    theme: 'auto',
+    cssURL: 'none'
+  })
 
-可选 `data-js-url` 替换默认加载器。自定义样式只作用于评论区。
+  comments.init().catch(console.error)
+</script>
+```
 
-上面的代码即为完整示例，可直接复制后替换站点参数。
-
-严格 CSP 见 [常见问题 · 宿主 CSP](/self-hosting/faq#宿主-csp)。
+`ecoku.umd.js` 提供全局 `Ecoku`。这种方式没有 loader 的失败重试 UI。Hugo 接入见 [Hugo PaperMod](/integration/hugo)。

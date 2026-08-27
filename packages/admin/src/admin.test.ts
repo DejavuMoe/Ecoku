@@ -10,11 +10,13 @@ import CommentManagementView from './components/CommentManagementView.vue'
 import NotificationSettingsView from './components/NotificationSettingsView.vue'
 import SecurityView from './components/SecurityView.vue'
 import SiteManagementView from './components/SiteManagementView.vue'
+import SmojiContent from './components/SmojiContent.vue'
 import { adminApi, ApiError } from './api'
 import { messages } from './messages'
 import { useAdminStore } from './stores/admin'
 import { formatDate } from './ui'
 import type { CommentPage, CommentReview, NotificationSettings, SiteSummary } from './types'
+import { tokenizeAdminSmoji } from './smoji'
 
 let pinia = createPinia()
 
@@ -25,6 +27,7 @@ function site(overrides: Partial<SiteSummary> = {}): SiteSummary {
     emailRequired: true, websiteRequired: false,
     placeholder: '写下评论（仅支持纯文本）', commentLimit: 1000,
     emptyMessage: '还没有评论\n成为第一个留下评论的人。', revision: 1,
+    smojiEnabled: false, smojiManifestUrl: '',
     bloggerNickname: 'Dejavu Moe', bloggerEmail: 'admin@example.test',
     bloggerBadge: '[博主]', bloggerPassphraseSet: true,
     createdAt: '2026-08-13T01:00:00Z', updatedAt: '2026-08-13T01:00:00Z',
@@ -68,7 +71,7 @@ describe('administrator API contract', () => {
         id: 'site-a', site_url: 'https://blog.example.test', name: "Dejavu's Blog",
         allowed_origins: ['https://blog.example.test'], default_sort: 'newest',
         email_required: true, website_required: false, placeholder: '写下评论',
-        comment_limit: 2048, empty_message: '暂无评论', blogger_nickname: 'Dejavu Moe',
+        comment_limit: 2048, empty_message: '暂无评论', smoji_enabled: true, smoji_manifest_url: 'https://static.example.test/smoji.json', blogger_nickname: 'Dejavu Moe',
         blogger_email: 'admin@example.test', blogger_badge: '[OP]', blogger_passphrase_set: true, revision: 2,
         created_at: '2026-08-13T00:00:00Z', updated_at: '2026-08-13T00:00:00Z',
         domain: 'MUST_NOT_MAP', default_status: 'MUST_NOT_MAP', management_key_env: 'MUST_NOT_MAP',
@@ -81,7 +84,7 @@ describe('administrator API contract', () => {
     vi.stubGlobal('fetch', fetchMock)
     const sites = await adminApi.listSites('private-token')
     const comments = await adminApi.listComments('private-token', 'site-a', 'published', 1, 20, 'newest')
-    expect(sites[0]).toMatchObject({ name: "Dejavu's Blog", commentLimit: 2048, emptyMessage: '暂无评论', bloggerNickname: 'Dejavu Moe', bloggerEmail: 'admin@example.test', bloggerBadge: '[OP]', bloggerPassphraseSet: true })
+    expect(sites[0]).toMatchObject({ name: "Dejavu's Blog", commentLimit: 2048, emptyMessage: '暂无评论', smojiEnabled: true, smojiManifestUrl: 'https://static.example.test/smoji.json', bloggerNickname: 'Dejavu Moe', bloggerEmail: 'admin@example.test', bloggerBadge: '[OP]', bloggerPassphraseSet: true })
     expect(sites[0]).not.toHaveProperty('bloggerPassphrase')
     expect(sites[0]).not.toHaveProperty('blogger_passphrase')
     expect(sites[0]).not.toHaveProperty('domain')
@@ -101,7 +104,7 @@ describe('administrator API contract', () => {
     const { createdAt: _createdAt, updatedAt: _updatedAt, ...write } = site()
     await adminApi.createSite('token', { ...write, name: '博客', defaultSort: 'oldest', emailRequired: false, websiteRequired: true, placeholder: '评论', commentLimit: 500, emptyMessage: '暂无', bloggerPassphrase: 'correct-horse-battery' })
     const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as Record<string, unknown>
-    expect(payload).toMatchObject({ name: '博客', default_sort: 'oldest', comment_limit: 500, empty_message: '暂无', blogger_nickname: 'Dejavu Moe', blogger_email: 'admin@example.test', blogger_badge: '[博主]', blogger_passphrase: 'correct-horse-battery' })
+    expect(payload).toMatchObject({ name: '博客', default_sort: 'oldest', comment_limit: 500, empty_message: '暂无', smoji_enabled: false, smoji_manifest_url: '', blogger_nickname: 'Dejavu Moe', blogger_email: 'admin@example.test', blogger_badge: '[博主]', blogger_passphrase: 'correct-horse-battery' })
     expect(payload).not.toHaveProperty('blogger_passphrase_set')
     expect(payload).not.toHaveProperty('domain')
     expect(payload).not.toHaveProperty('default_status')
@@ -131,6 +134,19 @@ describe('administrator API contract', () => {
     const loginPayload = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as Record<string, unknown>
     expect(loginPayload).toMatchObject({ username: 'admin', password: 'password', captchaToken: 'cap-token' })
     expect(loginPayload).not.toHaveProperty('turnstileToken')
+  })
+})
+
+describe('administrator Smoji rendering', () => {
+  it('renders only configured-origin markers as images without HTML injection', () => {
+    const manifestUrl = 'https://static.example.test/smoji.json'
+    const marker = '正文 ![smoji:挥手](https://static.example.test/wave.webp)'
+    expect(tokenizeAdminSmoji(marker, true, manifestUrl)).toHaveLength(2)
+    expect(tokenizeAdminSmoji('![smoji:坏](https://tracker.example/bad.webp)', true, manifestUrl)[0]).toMatchObject({ type: 'text' })
+    const wrapper = mount(SmojiContent, { props: { content: marker, enabled: true, manifestUrl } })
+    expect(wrapper.get('img').attributes('alt')).toBe('[表情：挥手]')
+    expect(wrapper.get('img').attributes('src')).toBe('https://static.example.test/wave.webp')
+    expect(wrapper.html()).not.toContain('v-html')
   })
 })
 
@@ -259,6 +275,10 @@ describe('approved production surface', () => {
     expect((wrapper.get('#blogger-passphrase').element as HTMLInputElement).value).toBe('')
     expect(wrapper.text()).toContain('评论区标志')
     expect(wrapper.text()).toContain('留空则不显示')
+    expect(wrapper.text()).toContain('表情包')
+    expect(wrapper.get('#smoji-enabled').attributes('type')).toBe('checkbox')
+    expect(wrapper.get('#smoji-manifest-url').attributes('type')).toBe('url')
+    expect(wrapper.text()).toContain('可能向该站点暴露访客 IP')
     expect(wrapper.text()).not.toContain('通知判定预览')
     expect(wrapper.text()).not.toContain('站点域名')
     expect(wrapper.text()).not.toContain('审核方式')

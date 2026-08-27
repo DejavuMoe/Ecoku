@@ -26,7 +26,14 @@ do
   fi
 done
 
-for excluded_path in internal progress; do
+for excluded_path in \
+  internal \
+  progress \
+  contribute \
+  en/contribute \
+  zh-hant/contribute \
+  ja/contribute
+do
   if [ -e "$site_dir/$excluded_path" ] || [ -L "$site_dir/$excluded_path" ]; then
     echo "excluded documentation was published: $excluded_path" >&2
     exit 65

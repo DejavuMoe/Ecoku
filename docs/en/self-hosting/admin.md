@@ -1,99 +1,69 @@
 # Admin setup
 
-Open `https://comments.example.com/admin/` with the account created at init. The token lives in page memory only; refresh requires login. Admin origins and public comment origins are separate allowlists.
+Open `/admin/` on the instance and sign in with `ECOKU_ADMIN_USERNAME` and the matching password. The admin Bearer token lives only in page memory; closing or refreshing requires signing in again.
+
+`admin.allowed_origins` is separate from comment-site origins; one broad origin cannot stand in for both.
 
 ## Sites
 
-| Field | Notes |
+| Setting | Notes |
 | --- | --- |
-| Site ID | Stable, short; immutable after create |
-| Site URL | e.g. `https://blog.example.com`; notification permalinks are built from this plus the page key |
-| Name | Falls back to the URL host if empty |
-| Allowed origins | One full Origin per line |
-| Default sort | `newest` or `oldest` |
-| Email / website | Required flags; email required, website optional by default |
-| Placeholder | Up to 80 characters |
-| Body limit | 1–10000 Unicode code points, default 1000 |
-| Empty copy | Shown as plain text under the form |
+| ID | Unique value used for integration; cannot change after creation |
+| Site URL, name | Identify the site and build notification links |
+| Allowed origins | Exact Origins allowed to call the comment API (full `https://domain`, no path) |
+| Email, website | Whether visitor fields are **required** (fields still show) |
+| Placeholders, length limits, empty state, sort | Form and list behavior |
 
-Comments go public on submit. A site management key is only for trusted server automation to tombstone-delete that site’s comments; new sites do not get a key in the UI. List/detail GETs with that key return 403.
+Comments publish immediately on submit; there is no moderation queue.
 
-## Blogger
+### Stickers
 
-Nickname and email must both be set or both empty. Enabling them requires a passphrase (12–80 chars). Only a bcrypt hash is stored.
+Each site may enable stickers and provide one `smoji.json` manifest URL. Production URLs must use HTTPS, and every image must share the manifest's origin. Ecoku neither bundles nor proxies these resources; the browser loads them only when a visitor first opens the picker. Direct image requests can expose a visitor's IP address to the resource host, so use a host you trust. Disabling the feature retains the URL and shows historical markers as plain text.
 
-On the public form, put the passphrase in the nickname field. The server rewrites nickname, private email, and website to the site URL. A wrong passphrase with a full guest identity publishes as a guest.
+A management key (if declared in YAML) is only for trusted server-side tombstone deletion on that site—not browser integration. See [Docker](./docker#configuration).
 
-Saving the passphrase backfills unpublished-history `is_blogger` rows by exact nickname and case-insensitive email.
+## Blogger identity
+
+Nickname and email must both be filled or both left empty. When enabled, also set a 12–80 character passphrase; saving backfills the blogger badge on historical comments matching that identity. Public badge text is configurable.
+
+On the public form: when a passphrase is enabled, bloggers enter only the passphrase in the nickname field—no email or website needed. If the passphrase is wrong and visitor identity is also filled in, the comment posts as a normal visitor.
 
 ## Notifications
 
-Instance-wide. SMTP blogger mail, guest-reply mail, and Telegram. Test sends have their own rate limit. SMTP allows `tls` or `starttls` only. Secrets use `ECOKU_NOTIFICATION_ENCRYPTION_KEY`. The UI does not show a decision table or template preview. Matrix: [Features](/en/guide/features#notifications).
+Instance-level SMTP (TLS / STARTTLS only) and Telegram. Credentials are encrypted into SQLite with `ECOKU_NOTIFICATION_ENCRYPTION_KEY`; the admin UI only shows “configured” and does not offer decision tables or template previews. Set `notifications.instance_public_url` before enabling a channel.
+
+Default rules (based on stored `is_blogger`):
+
+| Scenario | Behavior |
+| --- | --- |
+| Visitor posts a root comment | Notify blogger channels |
+| Visitor replies to visitor | Notify blogger channels, and email the direct parent |
+| Blogger replies to visitor | Email the direct parent only |
+| Visitor replies to blogger | Notify blogger channels only |
+| Blogger replies to blogger | No notification |
+| Same email replies to self | No visitor-reply email |
 
 ## Bot protection
 
-Security page: off / Turnstile / Cap. Only one provider when enabled; both comment submit and admin login are covered. Switching does not wipe the other provider’s saved settings. Failures close; no auto-fallback.
+On the Security page choose off, Cloudflare Turnstile, or self-hosted Cap (one of three). When enabled it protects both comment submit and admin login; failure rejects the request and does not fall back to another provider. Switching providers does not delete stored settings for the unused provider.
 
 ### Turnstile
 
-1. Create a widget; add the admin host and every comment-site hostname.
-2. Choose Turnstile in admin; save Sitekey and Secret.
-3. Widget mode is configured only in Cloudflare.
-
-Pre-clearance is also Cloudflare-only. Disable it when the site is not behind Cloudflare proxying, or the console shows `aborting clearance redemption`.
+Create a Widget in Cloudflare and enter the Site key and Secret key. Pre-clearance requires the site to be proxied through Cloudflare; `cf_clearance` does not replace Ecoku Siteverify.
 
 ### Cap
 
-Cap’s `ADMIN_KEY` is for Cap’s own admin, not Ecoku.
+Create a key in Cap Standalone and add the admin Origin plus every comment-site Origin to that Key’s CORS. The instance must serve `/assets/widget.js`, `/assets/cap_wasm_bg.wasm`, and `/<sitekey>/siteverify` over public HTTPS. In Ecoku enter the instance URL, Site key, and Secret key.
 
-1. Create a Key; keep instrumentation on; allow the admin Origin and every comment-site Origin in that Key’s CORS.
-2. Public HTTPS instance with versioned `/assets/widget.js` and `/assets/cap_wasm_bg.wasm`.
-3. Choose Cap; enter instance root, Site key, Secret. HTTPS only — no credentials, query, fragment, localhost, or private IPs.
-4. Verify login and posting in a separate window. Tokens are single-use.
+Admin CSP tightens to the current provider: Turnstile allows Cloudflare; Cap allows the instance Origin, WASM, and Blob Worker; Cap instrumentation may also need `'unsafe-eval'`. If that is unacceptable, disable instrumentation or switch to Turnstile.
 
-From `v0.1.6`, admin CSP adds `'unsafe-eval'` for that exact Cap origin only while Cap is the active provider.
-
-If instrumentation returns `instr_timeout` and `/redeem` is 429, check that the response CSP comes from the current image. Do not work around it with a second loose CSP on Caddy.
-
-Sites on the image-hosted loader pick up Cap automatically. Pinned old npm/UMD clients must be updated to `formConfig.captcha` / `captchaToken` first.
-
-Host CSP notes: [FAQ](/en/self-hosting/faq#host-csp).
-
-## Recover admin login
-
-When the current provider is down:
+## Recover login when verification blocks you
 
 ```bash
-set -euo pipefail
-cd ~/Ecoku
-
 sudo docker compose down
-sudo test ! -e ./data/ecoku.sqlite3-wal
-sudo test ! -e ./data/ecoku.sqlite3-shm
-
-umask 077
-mkdir -p ./backups
-backup_stamp="$(date +%Y%m%d-%H%M%S)"
-sudo cp --reflink=auto --preserve=mode,timestamps \
-  ./data/ecoku.sqlite3 "./backups/ecoku-before-captcha-disable-${backup_stamp}.sqlite3"
-sudo chown "$USER":"$USER" "./backups/ecoku-before-captcha-disable-${backup_stamp}.sqlite3"
-chmod 600 "./backups/ecoku-before-captcha-disable-${backup_stamp}.sqlite3"
-
 sudo docker compose run --rm --no-deps ecoku captcha status
 sudo docker compose run --rm --no-deps ecoku captcha disable
 sudo docker compose up -d
 ```
 
-Log in with CAPTCHA off, then repair or switch the provider. Use the current image tag and the same `./data`. Do not hand-edit the settings table.
-
-## Timezone
-
-`TZ` belongs only in `ecoku.env`. Recreate the container after changing it:
-
-```bash
-printf "\nTZ='Asia/Singapore'\n" >> ecoku.env
-sudo chmod 0600 ./ecoku.env
-sudo docker compose up -d
-```
-
-Hover text looks like `Asia/Singapore UTC+8`. Images at `v0.1.0-rc.7` and older ignore this format.
+Sign in, fix verification settings, then re-enable in the admin UI.

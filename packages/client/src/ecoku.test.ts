@@ -58,6 +58,7 @@ function listResponse(
       turnstileSitekey?: string
       bloggerProofEnabled?: boolean
       captcha?: { provider: 'off' | 'turnstile' | 'cap'; sitekey: string; instanceUrl?: string }
+      smoji?: { enabled: boolean; manifestUrl: string }
     }
     timeZone?: string
   } = {},
@@ -284,6 +285,50 @@ describe('approved production comment surface', () => {
     expect(rows[5]?.querySelector('.ecoku-comment-actions')).toBeNull()
     const requestURL = new URL(String(fetchMock.mock.calls[0]?.[0]))
     expect(requestURL.searchParams.has('sort')).toBe(false)
+  })
+
+  it('orders composer actions, previews Smoji safely, and closes the picker on an outside pointer', async () => {
+    const manifestUrl = 'https://static.example.test/smoji.json'
+    const marker = '![smoji:挥手](https://static.example.test/wave.webp)'
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      if (String(input) === manifestUrl) {
+        return new Response(JSON.stringify({
+          version: 1,
+          packs: [{ id: 'demo', label: '示例', items: [{ id: 'wave', label: '挥手', src: './wave.webp' }] }],
+        }), { status: 200 })
+      }
+      return listResponse([], {
+        formConfig: {
+          emailRequired: false,
+          websiteRequired: false,
+          placeholder: '评论',
+          smoji: { enabled: true, manifestUrl },
+        },
+      })
+    })
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    const form = container.querySelector<HTMLFormElement>('.ecoku-composer')!
+    const labels = Array.from(form.querySelectorAll<HTMLButtonElement>('.ecoku-composer-end > button, .ecoku-composer-end > .ecoku-smoji-control > button'))
+      .map((button) => button.textContent)
+    expect(labels).toEqual(['表情', '预览', '发布'])
+
+    const textarea = form.querySelector<HTMLTextAreaElement>('textarea')!
+    setValue(textarea, `正文 ${marker}`)
+    form.querySelector<HTMLButtonElement>('.ecoku-preview-trigger')!.click()
+    expect(form.querySelector<HTMLImageElement>('.ecoku-composer-preview img')?.alt).toBe('[表情：挥手]')
+
+    form.querySelector<HTMLButtonElement>('.ecoku-smoji-trigger')!.click()
+    await vi.waitFor(() => expect(form.querySelectorAll('.ecoku-smoji-item')).toHaveLength(1))
+    const panel = form.querySelector<HTMLElement>('.ecoku-smoji-panel')!
+    expect(panel.hidden).toBe(false)
+    form.querySelector<HTMLButtonElement>('.ecoku-smoji-item')!.click()
+    expect(panel.hidden).toBe(true)
+    expect(textarea.value).toContain(marker)
+    form.querySelector<HTMLButtonElement>('.ecoku-smoji-trigger')!.click()
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    expect(panel.hidden).toBe(true)
+    expect(form.querySelector('.ecoku-smoji-trigger')?.getAttribute('aria-expanded')).toBe('false')
   })
 
   it('keeps fold controls after the timestamp and hides reply while collapsed', async () => {
@@ -573,7 +618,8 @@ describe('approved production comment surface', () => {
     expect(reply.querySelector('.ecoku-identity-grid')).not.toBeNull()
     expect(reply.querySelector('.ecoku-message-field textarea')).not.toBeNull()
     expect(reply.querySelector('.ecoku-composer-footer')?.firstElementChild?.classList.contains('ecoku-character-count')).toBe(true)
-    expect(reply.querySelector('.ecoku-composer-end .ecoku-secondary-button')?.textContent).toBe(zhCN.cancel)
+    expect(Array.from(reply.querySelectorAll<HTMLButtonElement>('.ecoku-composer-end button')).map((button) => button.textContent))
+      .toEqual(['表情', '预览', zhCN.cancel, zhCN.submitReply])
   })
 
   it('submits an inline reply with the identity entered beside that reply and remembers it after success', async () => {

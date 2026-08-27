@@ -117,6 +117,10 @@ func SubmitComment(c *gin.Context) {
 		utils.SendError(c, http.StatusBadRequest, "评论内容无效")
 		return
 	}
+	if !validSmojiContent(content, site) {
+		utils.SendError(c, http.StatusBadRequest, "评论内容包含无效表情")
+		return
+	}
 	if username == "" || textLength(username) > maxNicknameLength {
 		utils.SendError(c, http.StatusBadRequest, "昵称无效")
 		return

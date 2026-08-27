@@ -256,7 +256,7 @@ func adminStaticSecurityHeaders() gin.HandlerFunc {
 			connectSources += " " + capOrigin
 			workerSources = "blob:"
 		}
-		contentSecurityPolicy := "default-src 'self'; base-uri 'none'; connect-src " + connectSources + "; font-src 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'self' https://challenges.cloudflare.com; img-src 'self' data:; object-src 'none'; script-src " + scriptSources + "; style-src 'self' 'nonce-" + nonce + "'; style-src-attr 'unsafe-inline'; worker-src " + workerSources
+		contentSecurityPolicy := "default-src 'self'; base-uri 'none'; connect-src " + connectSources + "; font-src 'self'; form-action 'self'; frame-ancestors 'none'; frame-src 'self' https://challenges.cloudflare.com; img-src 'self' data: https: http://localhost:* http://127.0.0.1:*; object-src 'none'; script-src " + scriptSources + "; style-src 'self' 'nonce-" + nonce + "'; style-src-attr 'unsafe-inline'; worker-src " + workerSources
 		c.Header("Content-Security-Policy", contentSecurityPolicy)
 		c.Header("Referrer-Policy", "no-referrer")
 		c.Header("X-Content-Type-Options", "nosniff")

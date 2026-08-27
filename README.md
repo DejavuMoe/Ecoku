@@ -1,51 +1,25 @@
 # Ecoku
 
-自托管的多站点纯文本评论系统。提交即发布；公共接口不返回邮箱、IP 或管理字段。
+自托管的多站点纯文本评论系统，适用于静态博客和文档站。评论提交后直接发布。当前提供 Docker 镜像，数据保存在自己的服务器上。
 
-生产使用仓库根 `compose.yaml`：端口绑在 `127.0.0.1:12123`，前面用本机 Caddy 或 Nginx 做 HTTPS。公开配置模板在 `deploy/`。
+当前只发布 Docker 镜像，源码不作为公开发行物提供。站点可选启用 Smoji 表情包；资源由站点配置的远程清单提供，不打包进镜像。
 
-```bash
-pnpm docs:dev
-```
+## 快速开始
 
-文档站点（简体中文 / 繁體中文 / English / 日本語）覆盖介绍、特性、Docker 部署、反向代理、后台配置、备份、按版本升级说明与常见问题。源文在 [`docs/`](docs/)。
+生产环境使用 Docker Compose 和 SQLite3：
 
-## 最小 HTML 接入
+- [Docker 部署](docs/self-hosting/docker.md)
+- [反向代理](docs/self-hosting/reverse-proxy.md)
+- [后台配置](docs/self-hosting/admin.md)
+- [备份与恢复](docs/self-hosting/backup.md)
+- [升级流程](docs/self-hosting/upgrade.md)
 
-镜像同源提供 `/client/ecoku-loader.js`。每个页面必须给出容器、`serverURL`、`siteId` 和站内相对路径 `pageKey`。
+## 接入
 
-```html
-<section
-  id="ecoku-comments"
-  class="ecoku-shell"
-  data-ecoku-comments
-  data-server-url="https://comments.example.com"
-  data-site-id="blog"
-  data-page-key="/posts/example/"
-  data-page-title="示例文章"
->
-  <div class="ecoku-loader" data-ecoku-loader hidden>
-    <p class="ecoku-loader-status" data-ecoku-status></p>
-    <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新加载评论</button>
-  </div>
-  <div id="ecoku-mount" data-ecoku-mount></div>
-</section>
-<script src="https://comments.example.com/client/ecoku-loader.js" defer></script>
-```
+- [通用 HTML](docs/integration/html.md)
+- [Hugo PaperMod](docs/integration/hugo.md)
+- [自定义 CSS](docs/integration/custom-css.md)
 
-Hugo PaperMod 片段见 [`examples/hugo-papermod`](examples/hugo-papermod)，通用 HTML 见 [`examples/html`](examples/html)。完整接入与宿主 CSP 见文档 [通用 HTML](docs/integration/html.md) 与 [后台配置](docs/self-hosting/admin.md)。
+## 产品边界
 
-## 仓库结构
-
-- `server/`：Go API、SQLite3、迁移、Twikoo 导入与通知
-- `packages/client/`：浏览器 SDK、UMD 与加载器
-- `packages/admin/`：同源托管的管理端
-- `docs/`：VitePress 文档站点
-- `designs/`：已批准设计基线，不进入运行时镜像
-- `examples/`、`deploy/`、`compose.yaml`：接入示例与部署模板
-- `VERSION`：不带 `v` 的容器版本；发布 tag 必须与其一致
-- `CHANGELOG.md`：变更与升级边界
-
-## 开发
-
-本地联调见 [本地开发](docs/contribute/local-dev.md)。提交前由 Woodpecker 跑完整门禁（含 `pnpm docs:build`）。
+Ecoku 只处理纯文本评论，不提供富文本、普通用户账户、点赞、头像或 MySQL。邮箱只用于评论身份和可选通知，不通过公共接口返回；管理员凭据和站点管理密钥不放入页面。

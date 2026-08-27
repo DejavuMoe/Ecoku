@@ -1,15 +1,15 @@
-# Upgrade procedure
+# Upgrade
 
-After each release, add a page under [Upgrades](/en/self-hosting/upgrades/). Read that page and root `CHANGELOG.md` before you move.
+Change only the **exact image tag** in Compose. Do not overwrite the whole existing Compose file. Follow the order below; per-version notes are in the index at the end of this page.
 
-## Order
+## Procedure
 
-1. Confirm the target tag, schema, env vars, and directory changes.
-2. Take a [cold backup](/en/self-hosting/backup).
-3. Pin the new exact image tag in `compose.yaml`. Add the current `logging` block if the old file lacks it.
-4. If the release needs a new env var (for example `TZ`), write it to `ecoku.env`, not `config.yaml`.
-5. Pull, start, watch migration logs, confirm `healthy`.
-6. Check admin login, sites, comment timestamps, submit, reply, and notifications. If Turnstile or Cap is on, both login and posting must complete the current challenge.
+1. Read the target version notes and confirm whether schema, environment variables, or mounts change.
+2. Take a stopped cold backup per [Backup & restore](./backup) (database, config, secrets, Compose).
+3. Keep existing resource limits and mounts; change only the image tag.
+4. Add any environment variables or config the version notes require.
+5. Pull and start; check logs and the health endpoint.
+6. Verify admin login, sites, comments, replies, notifications, and any enabled bot protection.
 
 ```bash
 sudo docker compose config --quiet
@@ -20,18 +20,36 @@ sudo docker compose logs --tail=200 ecoku
 curl --fail http://127.0.0.1:12123/api/health
 ```
 
-## Schema
+`/api/health` only means the process can respond; it does not prove migrations or dependencies are fully healthy.
 
-Migrations run inside the existing `data/ecoku.sqlite3` file, one version per transaction. Success only inserts a `schema_migrations` row. There is no down-migration. A database already at a newer schema cannot run on an older image; restore the pre-upgrade backup.
+## Database
 
-| Image | Schema |
+Migrations run inside `data/ecoku.sqlite3` by version and in transactions. Success only appends a `schema_migrations` row; it never auto-deletes the database, WAL, or backups. A failed version is not marked complete, and the service refuses to start. There are no downgrade migrations.
+
+| Images | Schema |
 | --- | --- |
-| `v0.1.0` – `v0.1.2` | v4 |
-| `v0.1.3` – `v0.1.4` | v5 |
-| `v0.1.5` – `v0.1.7` | v6 |
+| `v0.1.0`–`v0.1.2` | v4 |
+| `v0.1.3`–`v0.1.4` | v5 |
+| `v0.1.5`–`v0.1.7` | v6 |
+| `v0.1.8` | v7 |
 
-Current schema is v6 (`captcha_settings` plus Cap fields).
+A database already written at a higher schema cannot be rolled back by changing only the image tag; restore the full pre-stop backup, then start with the old tag.
 
 ## Rollback
 
-Stop → keep the failed file → restore backup → pin the old tag → start. See [Backup](/en/self-hosting/backup#restore).
+Stop the service, keep the failure scene, restore per [Backup & restore](./backup), pin Compose back to the old exact tag, then start.
+
+## Version index
+
+| Version | Date | Schema | Highlights |
+| --- | --- | --- | --- |
+| [v0.1.8](./upgrades/v0.1.8) | 2026-08-27 | v6 → v7 | Smoji stickers; two new site settings |
+| [v0.1.7](./upgrades/v0.1.7) | 2026-08-26 | v6 | Build toolchain and docs site; runtime contract unchanged |
+| [v0.1.6](./upgrades/v0.1.6) | 2026-08-18 | v6 | Admin CSP for Cap instrumentation |
+| [v0.1.5](./upgrades/v0.1.5) | 2026-08-17 | v5 → v6 | Turnstile / Cap tri-state |
+| [v0.1.4](./upgrades/v0.1.4) | 2026-08-15 | v5 | Backfill `is_blogger` when saving passphrase |
+| [v0.1.3](./upgrades/v0.1.3) | 2026-08-15 | v4 → v5 | Blogger passphrase; outbox split per target |
+| [v0.1.2](./upgrades/v0.1.2) | 2026-08-15 | v4 | Comment meta font size |
+| [v0.1.1](./upgrades/v0.1.1) | 2026-08-15 | v4 | Fold controls monospace width |
+| [v0.1.0](./upgrades/v0.1.0) | 2026-08-15 | v4 | First stable release |
+| [Earlier candidates](./upgrades/earlier) | 2026-08-14 | v1–v4 | Directory layout, WAL, timezone, first Turnstile |

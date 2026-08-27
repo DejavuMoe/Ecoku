@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="收到纸片原型占位图">
+  <rect width="96" height="96" rx="22" fill="#e8e0ef"/>
+  <path d="M20 26h56v44H20z" fill="#fffaf2" stroke="#443653" stroke-width="4"/>
+  <text x="48" y="55" text-anchor="middle" fill="#674d79" font-size="18" font-family="system-ui,sans-serif">收到</text>
+</svg>

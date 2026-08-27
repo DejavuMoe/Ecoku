@@ -31,6 +31,7 @@ import {
   resolveTimeZone,
   safeHTTPURL,
 } from './util'
+import { loadSmojiManifest, renderSmojiContent, smojiMarker, type SmojiManifest } from './smoji'
 
 const MAX_NICKNAME_LENGTH = 80
 const COMPOSER_ROWS = 7
@@ -49,6 +50,7 @@ interface ActiveReply {
   widget: ChallengeWidget | null
   error: HTMLParagraphElement
   submit: HTMLButtonElement
+  smojiControl: HTMLElement
 }
 
 type IdentityDraft = StoredVisitorIdentity
@@ -102,8 +104,15 @@ export class CommentSurface {
   private submissionBusy = false
   private destroyed = false
   private readonly handleDocumentPointerDown = (event: PointerEvent): void => {
-    if (!this.sortPicker.contains(event.target as Node)) this.toggleSortMenu(false)
+    const target = event.target as Node
+    if (!this.sortPicker.contains(target)) this.toggleSortMenu(false)
+    for (const control of this.smojiControls) {
+      if (!control.contains(target)) this.closeSmojiControl(control)
+    }
   }
+  private readonly smojiControls = new Set<HTMLElement>()
+  private smojiManifestPromise: Promise<SmojiManifest> | null = null
+  private smojiManifestController: AbortController | null = null
 
   constructor(config: ResolvedEcokuConfig) {
     this.config = config
@@ -128,6 +137,8 @@ export class CommentSurface {
     }
     this.pageRevision += 1
     this.abortRequests()
+    this.smojiManifestController?.abort()
+    this.smojiManifestController = null
     this.closeReply(false)
     this.config = { ...this.config, pageKey }
     this.comments = []
@@ -334,11 +345,12 @@ export class CommentSurface {
     const footer = createElement('div', 'ecoku-composer-footer')
     this.rootContent.setAttribute('aria-describedby', this.rootError.id)
     const end = createElement('div', 'ecoku-composer-end')
+    const previewControl = this.createPreviewControl(this.rootContent)
     this.rootSubmit.type = 'submit'
     this.rootSubmit.disabled = true
-    end.append(this.rootSubmit)
+    end.append(this.createSmojiControl(this.rootContent), previewControl.button, this.rootSubmit)
     footer.append(this.characterCount, end)
-    this.rootForm.append(identityGrid, messageLabel, this.rootCaptcha, this.rootError, footer)
+    this.rootForm.append(identityGrid, messageLabel, previewControl.preview, this.rootCaptcha, this.rootError, footer)
     this.applyFormConfig(this.formConfig, false)
 
     for (const control of [this.nickname, this.email, this.website, this.rootContent]) {
@@ -402,7 +414,10 @@ export class CommentSurface {
   }
 
   private applyFormConfig(next: CommentFormConfig, initializeSort = true): void {
-    this.formConfig = { ...next, captcha: { ...next.captcha } }
+    const previousManifestURL = this.formConfig.smoji.manifestUrl
+    this.formConfig = { ...next, captcha: { ...next.captcha }, smoji: { ...next.smoji } }
+    if (previousManifestURL !== next.smoji.manifestUrl) this.smojiManifestPromise = null
+    for (const control of this.smojiControls) control.hidden = !next.smoji.enabled
     this.email.required = next.emailRequired
     this.website.required = next.websiteRequired
     this.website.removeAttribute('placeholder')
@@ -680,7 +695,10 @@ export class CommentSurface {
     meta.append(metaMain)
 
     const copy = createElement('div', 'ecoku-comment-copy')
-    copy.append(createElement('p', '', comment.deleted ? zhCN.deletedBody : comment.content))
+    const paragraph = createElement('p')
+    if (comment.deleted) paragraph.textContent = zhCN.deletedBody
+    else renderSmojiContent(paragraph, comment.content, this.formConfig.smoji.enabled, this.formConfig.smoji.manifestUrl)
+    copy.append(paragraph)
     contentShell.append(copy)
     if (replySlot) contentShell.append(replySlot)
 
@@ -767,10 +785,12 @@ export class CommentSurface {
     const submit = createElement('button', 'ecoku-primary-button', zhCN.submitReply)
     submit.type = 'submit'
     submit.disabled = true
-    end.append(cancel, submit)
+    const smojiControl = this.createSmojiControl(textarea)
+    const previewControl = this.createPreviewControl(textarea)
+    end.append(smojiControl, previewControl.button, cancel, submit)
     footer.append(counter, end)
     const captchaSlot = createElement('div', 'ecoku-turnstile-slot ecoku-captcha-slot')
-    form.append(identityGrid, messageLabel, captchaSlot, error, footer)
+    form.append(identityGrid, messageLabel, previewControl.preview, captchaSlot, error, footer)
     slot.append(form)
     const reply: ActiveReply = {
       parentId: comment.id,
@@ -785,6 +805,7 @@ export class CommentSurface {
       widget: null,
       error,
       submit,
+      smojiControl,
     }
     this.activeReply = reply
     void this.syncReplyCaptcha(reply)
@@ -812,11 +833,131 @@ export class CommentSurface {
 
   private closeReply(restoreFocus: boolean): void {
     if (!this.activeReply) return
-    const { form, trigger, widget } = this.activeReply
+    const { form, trigger, widget, smojiControl } = this.activeReply
     widget?.remove()
+    this.smojiControls.delete(smojiControl)
     this.activeReply = null
     form.remove()
     if (restoreFocus && trigger.isConnected) trigger.focus()
+  }
+
+  private createSmojiControl(textarea: HTMLTextAreaElement): HTMLElement {
+    const wrapper = createElement('div', 'ecoku-smoji-control')
+    const trigger = createElement('button', 'ecoku-smoji-trigger', '表情')
+    const panel = createElement('div', 'ecoku-smoji-panel')
+    trigger.type = 'button'
+    trigger.setAttribute('aria-haspopup', 'dialog')
+    trigger.setAttribute('aria-expanded', 'false')
+    panel.hidden = true
+    wrapper.hidden = !this.formConfig.smoji.enabled
+    wrapper.append(trigger, panel)
+    this.smojiControls.add(wrapper)
+
+    const populate = (manifest: SmojiManifest): void => {
+      const tabs = createElement('div', 'ecoku-smoji-tabs')
+      const grid = createElement('div', 'ecoku-smoji-grid')
+      const showPack = (index: number): void => {
+        grid.replaceChildren()
+        manifest.packs[index].items.forEach((item) => {
+          const button = createElement('button', 'ecoku-smoji-item')
+          button.type = 'button'
+          button.title = item.label
+          const image = createElement('img')
+          image.src = item.src
+          image.alt = item.label
+          image.loading = 'lazy'
+          image.decoding = 'async'
+          image.referrerPolicy = 'no-referrer'
+          button.append(image)
+          button.addEventListener('click', () => {
+            const marker = smojiMarker(item)
+            const start = textarea.selectionStart ?? textarea.value.length
+            const end = textarea.selectionEnd ?? start
+            textarea.setRangeText(marker, start, end, 'end')
+            textarea.dispatchEvent(new Event('input', { bubbles: true }))
+            this.closeSmojiControl(wrapper)
+            textarea.focus()
+          })
+          grid.append(button)
+        })
+        Array.from(tabs.children).forEach((tab, tabIndex) => tab.setAttribute('aria-selected', String(tabIndex === index)))
+      }
+      manifest.packs.forEach((pack, index) => {
+        const tab = createElement('button', 'ecoku-smoji-tab', pack.label)
+        tab.type = 'button'
+        tab.setAttribute('role', 'tab')
+        tab.addEventListener('click', () => showPack(index))
+        tabs.append(tab)
+      })
+      panel.replaceChildren(tabs, grid)
+      panel.dataset.loaded = 'true'
+      showPack(0)
+    }
+
+    trigger.addEventListener('click', async () => {
+      const opening = panel.hidden
+      if (opening) {
+        for (const control of this.smojiControls) {
+          if (control !== wrapper) this.closeSmojiControl(control)
+        }
+      }
+      panel.hidden = !opening
+      trigger.setAttribute('aria-expanded', String(opening))
+      if (!opening || panel.dataset.loaded === 'true') return
+      panel.replaceChildren(createElement('p', 'ecoku-smoji-state', '正在加载表情…'))
+      try {
+        if (!this.smojiManifestPromise) {
+          const controller = new AbortController()
+          this.smojiManifestController = controller
+          this.smojiManifestPromise = loadSmojiManifest(this.formConfig.smoji.manifestUrl, controller.signal)
+            .finally(() => {
+              if (this.smojiManifestController === controller) this.smojiManifestController = null
+            })
+        }
+        populate(await this.smojiManifestPromise)
+      } catch {
+        this.smojiManifestPromise = null
+        panel.replaceChildren(createElement('p', 'ecoku-smoji-state', '表情加载失败，请重试。'))
+      }
+    })
+    return wrapper
+  }
+
+  private closeSmojiControl(control: HTMLElement): void {
+    const panel = control.querySelector<HTMLElement>('.ecoku-smoji-panel')
+    const trigger = control.querySelector<HTMLButtonElement>('.ecoku-smoji-trigger')
+    if (!panel || !trigger || panel.hidden) return
+    panel.hidden = true
+    trigger.setAttribute('aria-expanded', 'false')
+  }
+
+  private createPreviewControl(textarea: HTMLTextAreaElement): { button: HTMLButtonElement; preview: HTMLElement } {
+    const button = createElement('button', 'ecoku-secondary-button ecoku-preview-trigger', '预览')
+    const preview = createElement('div', 'ecoku-composer-preview')
+    button.type = 'button'
+    button.setAttribute('aria-pressed', 'false')
+    preview.hidden = true
+    preview.setAttribute('aria-label', '评论预览')
+
+    const render = (): void => {
+      preview.replaceChildren()
+      const content = textarea.value.trim()
+      if (!content) {
+        preview.textContent = '暂无可预览内容。'
+        return
+      }
+      renderSmojiContent(preview, content, this.formConfig.smoji.enabled, this.formConfig.smoji.manifestUrl)
+    }
+    button.addEventListener('click', () => {
+      const opening = preview.hidden
+      preview.hidden = !opening
+      button.setAttribute('aria-pressed', String(opening))
+      if (opening) render()
+    })
+    textarea.addEventListener('input', () => {
+      if (!preview.hidden) render()
+    })
+    return { button, preview }
   }
 
   private async handleRootSubmit(event: SubmitEvent): Promise<void> {

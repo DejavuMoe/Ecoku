@@ -9,7 +9,7 @@ const { sites, selectedSite, selectedSiteId, siteBusy, siteMessage } = storeToRe
 const creating = ref(false)
 const originsText = ref('')
 const errors = reactive<Record<string, string>>({})
-const defaults = (): SiteWrite => ({ id: '', siteUrl: '', name: '', allowedOrigins: [], defaultSort: 'newest', emailRequired: true, websiteRequired: false, placeholder: '写下评论（仅支持纯文本）', commentLimit: 1000, emptyMessage: '还没有评论\n成为第一个留下评论的人。', bloggerNickname: '', bloggerEmail: '', bloggerBadge: '[博主]', bloggerPassphrase: '', bloggerPassphraseSet: false, revision: 0 })
+const defaults = (): SiteWrite => ({ id: '', siteUrl: '', name: '', allowedOrigins: [], defaultSort: 'newest', emailRequired: true, websiteRequired: false, placeholder: '写下评论（仅支持纯文本）', commentLimit: 1000, emptyMessage: '还没有评论\n成为第一个留下评论的人。', smojiEnabled: false, smojiManifestUrl: '', bloggerNickname: '', bloggerEmail: '', bloggerBadge: '[博主]', bloggerPassphrase: '', bloggerPassphraseSet: false, revision: 0 })
 const draft = reactive<SiteWrite>(defaults())
 const clearErrors = () => Object.keys(errors).forEach((key) => delete errors[key])
 function applySite(site: SiteSummary | null) {
@@ -25,7 +25,7 @@ function cancelCreating() { applySite(selectedSite.value ?? sites.value[0] ?? nu
 async function chooseSite(site: SiteSummary) { creating.value = false; await store.selectSite(site.id); applySite(site) }
 function displayName(site: SiteSummary) { if (site.name) return site.name; try { return new URL(site.siteUrl).hostname } catch { return site.siteUrl } }
 function validate() {
-  clearErrors(); draft.id = draft.id.trim(); draft.siteUrl = draft.siteUrl.trim(); draft.name = draft.name.trim(); draft.placeholder = draft.placeholder.trim(); draft.emptyMessage = draft.emptyMessage.trim(); draft.bloggerNickname = draft.bloggerNickname.trim(); draft.bloggerEmail = draft.bloggerEmail.trim(); draft.bloggerBadge = draft.bloggerBadge.trim(); draft.bloggerPassphrase = (draft.bloggerPassphrase || '').trim()
+  clearErrors(); draft.id = draft.id.trim(); draft.siteUrl = draft.siteUrl.trim(); draft.name = draft.name.trim(); draft.placeholder = draft.placeholder.trim(); draft.emptyMessage = draft.emptyMessage.trim(); draft.smojiManifestUrl = draft.smojiManifestUrl.trim(); draft.bloggerNickname = draft.bloggerNickname.trim(); draft.bloggerEmail = draft.bloggerEmail.trim(); draft.bloggerBadge = draft.bloggerBadge.trim(); draft.bloggerPassphrase = (draft.bloggerPassphrase || '').trim()
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(draft.id)) errors.id = '站点 ID 格式无效'
   try { const url = new URL(draft.siteUrl); if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error() } catch { errors.siteUrl = '站点 URL 格式无效' }
   if ([...draft.name].length > 120 || /[\r\n]/.test(draft.name)) errors.name = '站点名称不能超过 120 个字符'
@@ -35,6 +35,13 @@ function validate() {
   if (!draft.placeholder || [...draft.placeholder].length > 80 || /[\r\n]/.test(draft.placeholder)) errors.placeholder = '评论占位文案需为 1 至 80 个字符'
   if (!Number.isInteger(draft.commentLimit) || draft.commentLimit < 1 || draft.commentLimit > 10000) errors.commentLimit = '评论长度上限需为 1 至 10000'
   if (!draft.emptyMessage || [...draft.emptyMessage].length > 240) errors.emptyMessage = '无评论文案需为 1 至 240 个字符'
+  if (draft.smojiManifestUrl) {
+    try {
+      const url = new URL(draft.smojiManifestUrl)
+      const loopback = ['localhost', '127.0.0.1', '::1'].includes(url.hostname)
+      if ((url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) || url.username || url.password || url.search || url.hash) throw new Error()
+    } catch { errors.smojiManifestUrl = '清单 URL 无效；生产环境需使用 HTTPS' }
+  } else if (draft.smojiEnabled) errors.smojiManifestUrl = '启用表情包时必须填写清单 URL'
   if (Boolean(draft.bloggerNickname) !== Boolean(draft.bloggerEmail)) {
     errors.bloggerIdentity = '博主昵称与邮箱需同时填写'
   } else if (draft.bloggerNickname && ([...draft.bloggerNickname].length > 80 || /[\r\n]/.test(draft.bloggerNickname))) {
@@ -75,6 +82,11 @@ async function submit() { if (!validate()) return; const saved = await store.sav
           <div class="form-row"><label class="form-label" for="site-placeholder">评论占位文案</label><div class="field-stack"><input id="site-placeholder" v-model="draft.placeholder" class="input" maxlength="80" :aria-invalid="Boolean(errors.placeholder)"><p v-if="errors.placeholder" class="field-error">{{ errors.placeholder }}</p></div></div>
           <div class="form-row"><label class="form-label" for="site-limit">评论长度上限</label><div class="field-stack"><input id="site-limit" v-model.number="draft.commentLimit" class="input" type="number" min="1" max="10000" :aria-invalid="Boolean(errors.commentLimit)"><p class="field-help">中文、日文、韩文与其他 Unicode 字符均按一个字符计数</p><p v-if="errors.commentLimit" class="field-error">{{ errors.commentLimit }}</p></div></div>
           <div class="form-row"><label class="form-label" for="site-empty">无评论文案</label><div class="field-stack"><textarea id="site-empty" v-model="draft.emptyMessage" class="textarea" maxlength="240" :aria-invalid="Boolean(errors.emptyMessage)" /><p v-if="errors.emptyMessage" class="field-error">{{ errors.emptyMessage }}</p></div></div>
+          <section class="site-subsection" aria-labelledby="smoji-settings-title">
+            <div class="site-subsection-heading"><h3 id="smoji-settings-title">表情包</h3><p>启用后，评论区会在访客首次打开表情选择框时动态加载清单。表情图片由清单所在站点直接提供，可能向该站点暴露访客 IP 等请求信息。</p></div>
+            <div class="form-row"><span class="form-label">功能状态</span><div class="check-row"><label class="check-label"><input id="smoji-enabled" v-model="draft.smojiEnabled" type="checkbox">启用表情包</label></div></div>
+            <div class="form-row"><label class="form-label" for="smoji-manifest-url">Smoji 表情包 URL</label><div class="field-stack"><input id="smoji-manifest-url" v-model="draft.smojiManifestUrl" class="input" type="url" maxlength="2048" placeholder="https://static.example.com/smoji.json" :aria-invalid="Boolean(errors.smojiManifestUrl)"><p class="field-help">只加载一个 Smoji JSON 清单；图片须与清单同源。关闭功能时可保留此地址。</p><p v-if="errors.smojiManifestUrl" class="field-error">{{ errors.smojiManifestUrl }}</p></div></div>
+          </section>
           <section class="site-subsection" aria-labelledby="blogger-identity-title">
             <div class="site-subsection-heading"><h3 id="blogger-identity-title">博主身份</h3><p>公开评论只显示下方昵称、可选标志，以及指向站点 URL 的链接。邮箱只用于通知去重和历史评论回填。评论区昵称栏填写口令即可发表为博主。</p></div>
             <div class="form-row"><label class="form-label" for="blogger-nickname">博主昵称</label><div class="field-stack"><input id="blogger-nickname" v-model="draft.bloggerNickname" class="input" maxlength="80" :aria-invalid="Boolean(errors.bloggerNickname || errors.bloggerIdentity)"><p class="field-help">评论区公开显示，并通过站点 URL 链接</p><p v-if="errors.bloggerNickname" class="field-error">{{ errors.bloggerNickname }}</p></div></div>

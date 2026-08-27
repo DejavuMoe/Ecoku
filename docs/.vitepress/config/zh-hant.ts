@@ -1,29 +1,27 @@
 import { defineConfig } from 'vitepress'
-import { GITEA, nav, sidebar, type SidebarCopy } from './shared'
+import { nav, sidebar, type SidebarCopy } from './shared'
 
 const copy: SidebarCopy = {
   guide: '指南',
   selfHosting: '自託管',
   integration: '接入',
-  upgrades: '升級說明',
-  introduction: '專案介紹',
+  introduction: '簡介',
   features: '特性',
   docker: 'Docker 部署',
   proxy: '反向代理',
   admin: '後台設定',
   backup: '備份與還原',
-  upgrade: '升級流程',
+  upgrade: '升級',
   twikoo: 'Twikoo 匯入',
   faq: '常見問題',
   html: '通用 HTML',
   hugo: 'Hugo PaperMod',
-  contribute: '開發',
-  localDev: '本機開發',
+  customCss: '自訂 CSS',
 }
 
 export const zhHant = defineConfig({
   title: 'Ecoku',
-  description: '面向自託管場景的多站點純文字評論系統',
+  description: '自託管多站點純文字評論',
   lang: 'zh-Hant',
   markdown: {
     container: {
@@ -47,10 +45,6 @@ export const zhHant = defineConfig({
     returnToTopLabel: '回到頂部',
     langMenuLabel: '更換語言',
     skipToContentLabel: '跳到正文',
-    editLink: {
-      pattern: `${GITEA}/_edit/master/docs/:path`,
-      text: '在 Git 上編輯此頁',
-    },
     footer: {
       message: '以 MIT License 發布',
       copyright: 'Copyright © 2026 DejavuMoe',

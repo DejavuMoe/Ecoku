@@ -1,6 +1,25 @@
 # Plain HTML
 
-Each page needs its own container and a stable page key. `pageKey` must be an in-site relative path — not an absolute URL, not a query string.
+Put one comment container on each page. `data-page-key` is a stable site-relative path for the current page:
+
+- On a static site, insert the current page’s path / permalink in the template.
+- For hand-written HTML, give each page a unique, stable relative path.
+
+`/posts/example/` in the sample is a rendered key—not a value every page must copy. Do not use a full URL or an address with query / fragment.
+
+## Attributes
+
+| Attribute | Required | Notes |
+| --- | --- | --- |
+| `data-server-url` | Yes | Absolute `http(s)` URL of the comment service |
+| `data-site-id` | Yes | Site ID created in the admin UI |
+| `data-page-key` | Yes | Site-relative path, 1–512 characters |
+| `data-page-title` | No | ≤200 characters |
+| `data-page-size` | No | Root comments per page, 1–100, default 10 |
+| `data-theme` | No | `auto` / `light` / `dark` |
+| `data-css-url` | No | See [Custom CSS](/en/integration/custom-css) |
+
+## Loader example
 
 ```html
 <section
@@ -16,27 +35,40 @@ Each page needs its own container and a stable page key. `pageKey` must be an in
 >
   <div class="ecoku-loader" data-ecoku-loader hidden>
     <p class="ecoku-loader-status" data-ecoku-status></p>
-    <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新加载评论</button>
+    <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>Reload comments</button>
   </div>
   <div id="ecoku-mount" data-ecoku-mount></div>
 </section>
 <script src="https://comments.example.com/client/ecoku-loader.js" defer></script>
 ```
 
-The loader requires `data-ecoku-*` on the shell, mount, loader, status, and retry control. Canonical ids are `ecoku-comments` and `ecoku-mount`. Legacy `#tcomment` still works; do not use it on new sites.
+The loader reads these attributes, loads the SDK, and initializes; on failure it shows status and retry. It does not show extra copy while loading. If required attributes are missing, the loader skips. Never put an admin token or management key on the page.
 
-No loading spinner copy is shown; failures surface status plus retry. An unconfigured site renders “评论服务尚未配置.”
+Without `data-css-url`, the SDK **inlines** the default comment styles (it does not automatically request `/client/ecoku.css`). For custom styling see [Custom CSS](/en/integration/custom-css).
 
-Do not embed admin tokens or management keys. Challenge config arrives in public `formConfig`.
+## Without the loader
 
-## CSS
+When you load UMD and CSS yourself, pass `cssURL: 'none'` so the SDK does not inject default styles again:
 
-The SDK injects styles by default. `data-css-url` disables injection:
+```html
+<link rel="stylesheet" href="https://comments.example.com/client/ecoku.css">
+<div id="ecoku-mount"></div>
 
-- `/client/ecoku.css` — same as the default inject
-- `/client/ecoku.unstyled.css` — structure only
-- `none` — bring your own
+<script src="https://comments.example.com/client/ecoku.umd.js"></script>
+<script>
+  const comments = new Ecoku({
+    container: '#ecoku-mount',
+    serverURL: 'https://comments.example.com',
+    siteId: 'blog',
+    pageKey: '/posts/example/',
+    pageTitle: 'Example post',
+    pageSize: 10,
+    theme: 'auto',
+    cssURL: 'none'
+  })
 
-Optional `data-js-url` replaces the loader. Custom CSS applies only to the comment UI.
+  comments.init().catch(console.error)
+</script>
+```
 
-The snippet above is the complete example; copy it and replace the site parameters. Host CSP: [FAQ](/en/self-hosting/faq#host-csp).
+`ecoku.umd.js` exposes global `Ecoku`. This path has no loader failure-retry UI. For Hugo see [Hugo PaperMod](/en/integration/hugo).

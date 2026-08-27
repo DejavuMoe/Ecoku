@@ -1,127 +1,116 @@
 # Docker 部署
 
-生产只支持 Docker Compose + SQLite3。以仓库根 `compose.yaml` 和 `deploy/` 模板为准，不要为了「对齐文档」改端口或挂载。
+单容器 Docker Compose，数据库为 SQLite。容器只监听宿主机 `127.0.0.1:12123`，公网 HTTPS 交给 Caddy 或 Nginx。
 
-## 前提
+下文 `registry.example.com` 为镜像地址占位符，请换成实际仓库。
 
-Linux、Docker Engine、Compose v2、OpenSSL，以及一个指向服务器的 HTTPS 域名。镜像使用精确 tag：
+## 准备目录
 
-```text
-git.via.moe/dejavu/ecoku:<VERSION>
-```
-
-不要使用 `latest`。建议在普通运维用户目录：
+需要 Docker Engine、Compose v2 和 HTTPS 域名。为每个实例准备独立目录：
 
 ```bash
-mkdir -p ~/Ecoku/app/logs ~/Ecoku/data ~/Ecoku/backups
+mkdir -p ~/Ecoku/app/logs ~/Ecoku/data
 cd ~/Ecoku
-chmod 700 ./backups
+touch app/config.yaml ecoku.env
 ```
 
-```text
-Ecoku/
-├── app/
-│   ├── config.yaml
-│   └── logs/
-├── backups/
-├── compose.yaml
-├── data/
-└── ecoku.env
+容器以非 root 用户 `10001:10001` 运行：
+
+```bash
+sudo chown 10001:10001 app/config.yaml app/logs data
+sudo chmod 640 app/config.yaml
+sudo chmod 750 app/logs data
+sudo chmod 600 ecoku.env
 ```
 
-容器以 UID/GID `10001:10001` 运行。`data/` 保存数据库与 WAL；升级时原样保留。
+## Compose
 
-## 复制模板
-
-从你要部署的 Git tag 复制 `compose.yaml` 与 `deploy/config.yaml.example`。服务端口已绑到 `127.0.0.1:12123`，公网只应打到本机反代。保持三个绑定挂载：`./app/config.yaml`、`./app/logs`、`./data`，以及 `env_file: ./ecoku.env`。
-
-`app/config.yaml` 只改公开网址和管理端来源：
+使用与镜像版本对应的模板。至少核对镜像、端口和三个挂载：
 
 ```yaml
+services:
+  ecoku:
+    image: registry.example.com/ecoku:vX.Y.Z
+    restart: unless-stopped
+    env_file: ./ecoku.env
+    ports:
+      - "127.0.0.1:12123:12123"
+    volumes:
+      - ./app/config.yaml:/app/config.yaml:ro
+      - ./app/logs:/var/log/ecoku
+      - ./data:/data
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+```
+
+模板中的 `read_only`、`tmpfs`、丢弃能力和健康检查应保留。不要使用 `latest`，也不要把端口绑到 `0.0.0.0`。
+
+## 配置
+
+`app/config.yaml` 至少包含：
+
+```yaml
+site:
+  port: 12123
+  log_path: /var/log/ecoku/ecoku.log
+  trusted_proxies: []
 notifications:
-  instance_public_url: "https://comments.example.com"
-
+  encryption_key_env: ECOKU_NOTIFICATION_ENCRYPTION_KEY
+  instance_public_url: https://comments.example.com
+database:
+  sqlite:
+    path: /data/ecoku.sqlite3
 admin:
+  enabled: true
   allowed_origins:
-    - "https://comments.example.com"
+    - https://comments.example.com
 ```
 
-其余与示例保持一致。限流默认使用容器看到的直接连接地址。需要按真实访客限流时，见 [反向代理](/self-hosting/reverse-proxy)。
+`trusted_proxies` 与反代见 [反向代理](./reverse-proxy)。`admin.allowed_origins` 是管理端来源，与评论站点来源分开配置。
 
-## 初始化管理员
+可选：在 YAML 的 `sites[]` 里为站点声明 `management_key_env`，并在 `ecoku.env` 中提供对应变量。management key 只用于可信服务端自动化，且仅对 YAML 注册的站点生效；管理端单独创建的站点没有 management key。不要把 key 写进页面或浏览器。
 
-密码不会出现在命令参数、shell 历史或日志中：
+## 密钥
+
+`ecoku.env`（值勿写入公开页面或 Compose）：
+
+```dotenv
+GIN_MODE=release
+TZ=Asia/Shanghai
+ECOKU_ADMIN_USERNAME=
+ECOKU_ADMIN_PASSWORD_HASH=
+ECOKU_ADMIN_TOKEN_KEY=
+ECOKU_NOTIFICATION_ENCRYPTION_KEY=
+```
+
+生成管理员密码哈希：
 
 ```bash
-ECOKU_IMAGE='git.via.moe/dejavu/ecoku:<VERSION>'
-
-set +x
-umask 077
-
-read -rp 'Ecoku 管理员用户名: ' ECOKU_ADMIN_USERNAME
-read -rsp '设置管理员密码（输入不会显示）: ' ECOKU_PASSWORD_FIRST
-echo
-read -rsp '再次输入管理员密码: ' ECOKU_PASSWORD_SECOND
-echo
-
-test -n "$ECOKU_ADMIN_USERNAME" || { echo '管理员用户名不能为空'; exit 1; }
-test -n "$ECOKU_PASSWORD_FIRST" || { echo '管理员密码不能为空'; exit 1; }
-test "$ECOKU_PASSWORD_FIRST" = "$ECOKU_PASSWORD_SECOND" || {
-  echo '两次输入的密码不一致'
-  unset ECOKU_PASSWORD_FIRST ECOKU_PASSWORD_SECOND
-  exit 1
-}
-
-ECOKU_ADMIN_PASSWORD_HASH="$(
-  printf '%s\n' "$ECOKU_PASSWORD_FIRST" |
-    sudo docker run --rm -i --entrypoint /app/ecoku-server \
-      "$ECOKU_IMAGE" hash-password
-)" || exit 1
-
-ECOKU_ADMIN_TOKEN_KEY="$(openssl rand -hex 32)"
-ECOKU_NOTIFICATION_ENCRYPTION_KEY="$(openssl rand -base64 32)"
-
-{
-  printf "GIN_MODE='release'\n"
-  printf "TZ='Asia/Shanghai'\n"
-  printf "ECOKU_ADMIN_USERNAME='%s'\n" "$ECOKU_ADMIN_USERNAME"
-  printf "ECOKU_ADMIN_PASSWORD_HASH='%s'\n" "$ECOKU_ADMIN_PASSWORD_HASH"
-  printf "ECOKU_ADMIN_TOKEN_KEY='%s'\n" "$ECOKU_ADMIN_TOKEN_KEY"
-  printf "ECOKU_NOTIFICATION_ENCRYPTION_KEY='%s'\n" "$ECOKU_NOTIFICATION_ENCRYPTION_KEY"
-} > ecoku.env
-
-unset ECOKU_PASSWORD_FIRST ECOKU_PASSWORD_SECOND ECOKU_ADMIN_PASSWORD_HASH
-unset ECOKU_ADMIN_TOKEN_KEY ECOKU_NOTIFICATION_ENCRYPTION_KEY ECOKU_IMAGE
+export ECOKU_IMAGE=registry.example.com/ecoku:vX.Y.Z
+read -rsp 'Admin password: ' ECOKU_PASSWORD; echo
+printf '%s\n' "$ECOKU_PASSWORD" | sudo docker run --rm -i --entrypoint /app/ecoku-server "$ECOKU_IMAGE" hash-password
+unset ECOKU_PASSWORD
 ```
 
-`TZ` 为 IANA 名称，控制评论时间显示，未设置时回退 `Asia/Shanghai`。不要把 `TZ` 写进 `app/config.yaml`。单引号包裹环境值，避免 Compose 插值 bcrypt 里的 `$`。
+把输出写入 `ECOKU_ADMIN_PASSWORD_HASH`。其余密钥**分别**生成，且互不相同：
 
-```bash
-sudo chown "$USER":10001 ./app/config.yaml
-sudo chmod 0640 ./app/config.yaml
-sudo chown "$USER":"$USER" ./ecoku.env
-sudo chmod 0600 ./ecoku.env
-sudo chown -R 10001:10001 ./app/logs ./data
-sudo chmod 0750 ./app/logs ./data
-sudo docker compose config --quiet
-```
+| 变量 | 要求 | 示例 |
+| --- | --- | --- |
+| `ECOKU_ADMIN_TOKEN_KEY` | 至少 32 个字符的随机串 | `openssl rand -hex 32` |
+| `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | Base64 编码的 32 字节 | `openssl rand -base64 32` |
 
 ## 启动
 
 ```bash
+sudo docker compose config --quiet
 sudo docker compose pull
 sudo docker compose up -d
 sudo docker compose ps
-sudo docker compose logs --tail=100 ecoku
-
+sudo docker compose logs --tail=200 ecoku
 curl --fail http://127.0.0.1:12123/api/health
-curl --fail --head http://127.0.0.1:12123/client/ecoku-loader.js
 ```
 
-健康状态必须为 `healthy`。空库会按顺序执行全部迁移；未知版本或校验失败会拒绝启动。
-
-日志在 `sudo docker compose logs -f ecoku`。`log_path` 指向挂载文件时，进程另写一份并按约 10MB / 5 份 / 28 天轮转。不要用 `GIN_MODE=debug` 替代访问日志。日志不含 IP、UA、凭据或评论正文。
-
-`/api/health` 只表示进程可响应，不证明数据库或迁移已完成。
-
-接下来配置 [反向代理](/self-hosting/reverse-proxy)，然后在 [后台](/self-hosting/admin) 创建站点。
+`healthy` 只表示进程可响应。管理端与评论页需经反向代理访问后再验收。

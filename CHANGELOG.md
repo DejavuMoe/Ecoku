@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-08-27
+
+### 新增
+
+- 站点管理新增可选 Smoji 开关与单一远程清单 URL；评论区只在首次打开选择器时动态加载 v1 清单，不在 Ecoku 镜像中打包表情资源；
+- 表情选择结果以包含完整直链的 `![smoji:标签](URL)` 标记保存，公开渲染使用安全 DOM 图片节点，功能关闭时按纯文本显示历史标记；评论预览与管理端评论查看也遵循同一安全渲染边界。
+
+### 升级边界
+
+- SQLite schema 从 v6 原位、事务性升级至 v7，为 `sites` 增加 Smoji 启用状态与清单 URL。无新增环境变量、配置键、Compose 挂载或容器权限要求。升级前须停服冷备份；写入 v7 后若回滚旧镜像，必须恢复停服前的整库备份。
+
 ## [0.1.7] - 2026-08-26
 
 ### 变更
@@ -308,3 +319,4 @@
 [0.1.5]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.5
 [0.1.6]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.6
 [0.1.7]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.7
+[0.1.8]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.8

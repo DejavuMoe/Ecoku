@@ -19,37 +19,41 @@ var (
 // stored in this table; optional EcokuSite credentials remain environment-only
 // bindings for trusted server automation.
 type Site struct {
-	ID              string    `gorm:"column:id;primaryKey"`
-	SiteURL         string    `gorm:"column:site_url"`
-	Domain          string    `gorm:"column:domain"`
-	Name            string    `gorm:"column:name"`
-	DefaultSort     string    `gorm:"column:default_sort"`
-	EmailRequired   bool      `gorm:"column:email_required"`
-	WebsiteRequired bool      `gorm:"column:website_required"`
-	Placeholder     string    `gorm:"column:placeholder"`
-	CommentLimit    int       `gorm:"column:comment_limit"`
-	EmptyMessage    string    `gorm:"column:empty_message"`
+	ID                    string    `gorm:"column:id;primaryKey"`
+	SiteURL               string    `gorm:"column:site_url"`
+	Domain                string    `gorm:"column:domain"`
+	Name                  string    `gorm:"column:name"`
+	DefaultSort           string    `gorm:"column:default_sort"`
+	EmailRequired         bool      `gorm:"column:email_required"`
+	WebsiteRequired       bool      `gorm:"column:website_required"`
+	Placeholder           string    `gorm:"column:placeholder"`
+	CommentLimit          int       `gorm:"column:comment_limit"`
+	EmptyMessage          string    `gorm:"column:empty_message"`
+	SmojiEnabled          bool      `gorm:"column:smoji_enabled"`
+	SmojiManifestURL      string    `gorm:"column:smoji_manifest_url"`
 	BloggerNickname       string    `gorm:"column:blogger_nickname"`
 	BloggerEmail          string    `gorm:"column:blogger_email"`
 	BloggerBadge          string    `gorm:"column:blogger_badge"`
 	BloggerPassphraseHash string    `gorm:"column:blogger_passphrase_hash"`
-	Revision        uint      `gorm:"column:revision"`
-	CreatedAt       time.Time `gorm:"column:created_at"`
-	UpdatedAt       time.Time `gorm:"column:updated_at"`
-	AllowedOrigins  []string  `gorm:"-"`
+	Revision              uint      `gorm:"column:revision"`
+	CreatedAt             time.Time `gorm:"column:created_at"`
+	UpdatedAt             time.Time `gorm:"column:updated_at"`
+	AllowedOrigins        []string  `gorm:"-"`
 }
 
 type SiteWrite struct {
-	ID              string
-	SiteURL         string
-	Domain          string
-	Name            string
-	DefaultSort     string
-	EmailRequired   bool
-	WebsiteRequired bool
-	Placeholder     string
-	CommentLimit    int
-	EmptyMessage    string
+	ID                    string
+	SiteURL               string
+	Domain                string
+	Name                  string
+	DefaultSort           string
+	EmailRequired         bool
+	WebsiteRequired       bool
+	Placeholder           string
+	CommentLimit          int
+	EmptyMessage          string
+	SmojiEnabled          bool
+	SmojiManifestURL      string
 	BloggerNickname       string
 	BloggerEmail          string
 	BloggerBadge          string
@@ -122,6 +126,7 @@ func CreateSite(input SiteWrite, now time.Time) (Site, error) {
 			EmailRequired: input.EmailRequired, WebsiteRequired: input.WebsiteRequired,
 			Placeholder: input.Placeholder, CommentLimit: input.CommentLimit,
 			EmptyMessage: input.EmptyMessage, BloggerNickname: input.BloggerNickname,
+			SmojiEnabled: input.SmojiEnabled, SmojiManifestURL: input.SmojiManifestURL,
 			BloggerEmail: input.BloggerEmail, BloggerBadge: input.BloggerBadge,
 			BloggerPassphraseHash: input.BloggerPassphraseHash,
 			Revision:              1, CreatedAt: now, UpdatedAt: now,
@@ -144,17 +149,19 @@ func UpdateSite(siteID string, input SiteWrite, now time.Time) (Site, error) {
 	err := DB.Transaction(func(tx *gorm.DB) error {
 		updates := map[string]any{
 			"site_url": input.SiteURL, "domain": input.Domain,
-			"name":             input.Name,
-			"default_sort":     input.DefaultSort,
-			"email_required":   input.EmailRequired,
-			"website_required": input.WebsiteRequired,
-			"placeholder":      input.Placeholder,
-			"comment_limit":    input.CommentLimit,
-			"empty_message":    input.EmptyMessage,
-			"blogger_nickname": input.BloggerNickname,
-			"blogger_email":    input.BloggerEmail,
-			"blogger_badge":    input.BloggerBadge,
-			"revision":         gorm.Expr("revision + 1"), "updated_at": now,
+			"name":               input.Name,
+			"default_sort":       input.DefaultSort,
+			"email_required":     input.EmailRequired,
+			"website_required":   input.WebsiteRequired,
+			"placeholder":        input.Placeholder,
+			"comment_limit":      input.CommentLimit,
+			"empty_message":      input.EmptyMessage,
+			"smoji_enabled":      input.SmojiEnabled,
+			"smoji_manifest_url": input.SmojiManifestURL,
+			"blogger_nickname":   input.BloggerNickname,
+			"blogger_email":      input.BloggerEmail,
+			"blogger_badge":      input.BloggerBadge,
+			"revision":           gorm.Expr("revision + 1"), "updated_at": now,
 		}
 		if input.UpdatePassphrase {
 			updates["blogger_passphrase_hash"] = input.BloggerPassphraseHash

@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "packs": [
+    {
+      "id": "cats",
+      "label": "猫猫",
+      "items": [
+        { "id": "wave", "label": "挥手", "src": "./fixtures/cat-wave.svg" },
+        { "id": "happy", "label": "开心", "src": "./fixtures/cat-happy.svg" },
+        { "id": "thinking", "label": "思考", "src": "./fixtures/cat-thinking.svg" }
+      ]
+    },
+    {
+      "id": "paper",
+      "label": "纸片",
+      "items": [
+        { "id": "thanks", "label": "谢谢", "src": "./fixtures/paper-thanks.svg" },
+        { "id": "ok", "label": "收到", "src": "./fixtures/paper-ok.svg" }
+      ]
+    }
+  ]
+}
