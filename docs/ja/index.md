@@ -16,7 +16,7 @@ hero:
       link: /ja/guide/features
 features:
   - title: 投稿即公開
-    details: 審査キューはありません。返信はそのコメントの直下。ネストに上限はありません。
+    details: 審査キューはありません。返信はそのコメントの直下。データ層の入れ子に上限はなく、UI の字下げは最大 3 段です。
   - title: 公開 API に非公開フィールドなし
     details: メール、IP、UA は返しません。訪問者の身元は IndexedDB に 7 日間だけ暗号化保存します。
   - title: コンテナ 1 つ

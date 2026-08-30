@@ -1,0 +1,179 @@
+{
+  "name": "caddyfile",
+  "displayName": "Caddyfile",
+  "scopeName": "source.Caddyfile",
+  "fileTypes": ["Caddyfile"],
+  "aliases": ["caddy"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#domains" },
+    { "include": "#status_codes" },
+    { "include": "#path" },
+    { "include": "#global_options" },
+    { "include": "#matchers" },
+    { "include": "#directive" },
+    { "include": "#site_block_common" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.Caddyfile",
+          "match": "\\s#.*"
+        },
+        {
+          "name": "comment.line.Caddyfile",
+          "match": "^#.*"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "begin": "\"",
+          "end": "\"",
+          "name": "string.quoted.double.Caddyfile",
+          "patterns": [
+            {
+              "name": "constant.character.escape.Caddyfile",
+              "match": "\\\\\""
+            }
+          ]
+        },
+        {
+          "begin": "`",
+          "end": "`",
+          "name": "string.quoted.single.Caddyfile"
+        }
+      ]
+    },
+    "status_codes": {
+      "patterns": [
+        {
+          "name": "constant.numeric.decimal",
+          "match": "\\s[0-9]{3}(?!\\.)"
+        }
+      ]
+    },
+    "path": {
+      "patterns": [
+        {
+          "name": "keyword.control.caddyfile",
+          "match": "(unix/)*/[a-zA-Z0-9_\\-./*]+"
+        },
+        {
+          "name": "variable.other.property.caddyfile",
+          "match": "\\*.[a-z]{1,5}"
+        },
+        {
+          "name": "variable.other.property.caddyfile",
+          "match": "\\*/?"
+        },
+        {
+          "name": "variable.other.property.caddyfile",
+          "match": "\\?/"
+        }
+      ]
+    },
+    "domains": {
+      "patterns": [
+        {
+          "name": "keyword.control.caddyfile",
+          "match": "(https?://)*[a-z0-9-\\*]*(?:\\.[a-zA-Z]{2,})+(:[0-9]+)*\\S*"
+        },
+        {
+          "name": "keyword.control.caddyfile",
+          "match": "localhost(:[0-9]+)*"
+        },
+        {
+          "name": "keyword.control.caddyfile",
+          "match": "((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)"
+        },
+        {
+          "name": "keyword.control.caddyfile",
+          "match": ":[0-9]+"
+        }
+      ]
+    },
+    "global_options": {
+      "patterns": [
+        {
+          "begin": "^(\\{)$",
+          "end": "^(\\})$",
+          "beginCaptures": {
+            "0": { "name": "punctuation.definition.dictionary.begin" }
+          },
+          "endCaptures": {
+            "0": { "name": "punctuation.definition.dictionary.end" }
+          },
+          "patterns": [
+            { "include": "#comments" },
+            {
+              "name": "support.constant.Caddyfile",
+              "match": "^\\s*(debug|https?_port|default_bind|order|storage|storage_clean_interval|renew_interval|ocsp_interval|admin|log|grace_period|shutdown_delay|auto_https|email|default_sni|local_certs|skip_install_trust|acme_ca|acme_ca_root|acme_eab|acme_dns|on_demand_tls|key_type|cert_issuer|ocsp_stapling|preferred_chains|servers|pki|events)"
+            }
+          ]
+        }
+      ]
+    },
+    "site_block_common": {
+      "patterns": [{ "include": "#placeholders" }, { "include": "#block" }]
+    },
+    "matchers": {
+      "patterns": [
+        {
+          "name": "support.function.Caddyfile",
+          "match": "@[^\\s]+(?=\\s)"
+        }
+      ]
+    },
+    "placeholders": {
+      "patterns": [
+        {
+          "name": "keyword.control.Caddyfile",
+          "match": "\\{[\\[\\]\\w.\\$+-]+\\}"
+        }
+      ]
+    },
+    "directive": {
+      "patterns": [
+        {
+          "name": "entity.name.function.Caddyfile",
+          "match": "^\\s*[a-zA-Z_\\-+]+"
+        },
+        { "include": "#content_types" }
+      ]
+    },
+    "content_types": {
+      "patterns": [
+        {
+          "name": "variable.other.property.caddyfile",
+          "match": "(application|audio|example|font|image|message|model|multipart|text|video)/[a-zA-Z0-9*+\\-.]+;* *[a-zA-Z0-9=\\-]*"
+        }
+      ]
+    },
+    "block": {
+      "patterns": [
+        {
+          "begin": "\\{",
+          "end": "\\}",
+          "patterns": [{ "include": "#block_content" }]
+        }
+      ]
+    },
+    "block_content": {
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#strings" },
+        { "include": "#domains" },
+        { "include": "#status_codes" },
+        { "include": "#path" },
+        { "include": "#matchers" },
+        { "include": "#placeholders" },
+        { "include": "#directive" },
+        { "include": "#block" }
+      ]
+    }
+  }
+}

@@ -1,4 +1,11 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig, type DefaultTheme, type HeadConfig } from 'vitepress'
+
+const caddyfileGrammar = JSON.parse(
+  readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../caddyfile.tmLanguage.json'), 'utf8'),
+)
 
 export const shared = defineConfig({
   title: 'Ecoku',
@@ -16,6 +23,10 @@ export const shared = defineConfig({
     ['meta', { name: 'og:type', content: 'website' }],
     ['meta', { name: 'og:site_name', content: 'Ecoku' }],
   ] satisfies HeadConfig[],
+  markdown: {
+    // TextMate grammar for ```caddyfile fences (Shiki has no built-in Caddyfile).
+    languages: [caddyfileGrammar],
+  },
   themeConfig: {
     logo: { src: '/logo.svg', alt: 'Ecoku' },
     outline: [2, 3],

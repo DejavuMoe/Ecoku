@@ -21,7 +21,7 @@ const copy: SidebarCopy = {
 
 export const en = defineConfig({
   title: 'Ecoku',
-  description: 'Self-hosted multi-site plain-text comments',
+  description: 'Self-hosted multi-site plain-text comments. Deploy with Docker, store data in SQLite, go live on submit.',
   lang: 'en',
   themeConfig: {
     nav: nav('/en', copy),

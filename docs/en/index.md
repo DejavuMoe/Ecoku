@@ -3,7 +3,7 @@ layout: home
 hero:
   name: Ecoku
   text: Self-hosted plain-text comments
-  tagline: Deploy with Docker, store data in SQLite. One instance serves many sites. Comments go live on submit.
+  tagline: Deploy with Docker and keep data in SQLite. One instance serves many sites. Comments go live on submit.
   image:
     src: /ecoku-hero.png
     alt: Ecoku illustration
@@ -16,7 +16,7 @@ hero:
       link: /en/guide/features
 features:
   - title: Live on submit
-    details: No moderation queue. Reply under the parent comment; nesting has no depth limit in data, visual indent stops at three levels.
+    details: No moderation queue. Reply under the parent comment; nesting is unlimited in data, with UI indent capped at three levels.
   - title: Public APIs omit private fields
     details: No email, IP, or UA in public responses. Guest identity is encrypted in IndexedDB for 7 days.
   - title: One container
