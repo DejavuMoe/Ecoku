@@ -21,7 +21,7 @@ const copy: SidebarCopy & NavCopy = {
 
 export const zh = defineConfig({
   title: 'Ecoku',
-  description: '自托管多站点纯文本评论',
+  description: '自托管、多站点的纯文本评论系统。Docker 部署，数据存 SQLite，提交后立即公开。',
   lang: 'zh-Hans',
   markdown: {
     container: {

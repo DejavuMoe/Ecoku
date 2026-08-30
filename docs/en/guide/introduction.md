@@ -11,7 +11,7 @@ Only Docker images are published. Source code is not publicly distributed.
 - Provide comment sections for multiple sites.
 - Let visitors post comments and replies with a nickname, email, and optional website.
 - Optional email or Telegram notifications; one-time import of historical comments from Twikoo.
-- Bot protection with Turnstile or self-hosted Cap.
+- Bot protection with Cloudflare Turnstile or self-hosted Cap.
 
 ## What it does not provide
 

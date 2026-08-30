@@ -21,7 +21,7 @@ const copy: SidebarCopy = {
 
 export const ja = defineConfig({
   title: 'Ecoku',
-  description: 'セルフホストのマルチサイト純テキストコメント',
+  description: 'セルフホストのマルチサイト純テキストコメント。Docker で導入し、データは SQLite。投稿はその場で公開。',
   lang: 'ja',
   markdown: {
     container: {

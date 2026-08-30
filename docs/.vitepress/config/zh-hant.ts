@@ -21,7 +21,7 @@ const copy: SidebarCopy = {
 
 export const zhHant = defineConfig({
   title: 'Ecoku',
-  description: '自託管多站點純文字評論',
+  description: '自託管、多站點的純文字評論系統。Docker 部署，資料存 SQLite，送出後立即公開。',
   lang: 'zh-Hant',
   markdown: {
     container: {

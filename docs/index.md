@@ -3,7 +3,7 @@ layout: home
 hero:
   name: Ecoku
   text: 自托管的纯文本评论
-  tagline: Docker 部署，数据放 SQLite。一个实例服务多个站点，评论提交后立即公开。
+  tagline: 用 Docker 部署，数据放在 SQLite。一个实例服务多个站点，评论提交后立即公开。
   image:
     src: /ecoku-hero.png
     alt: Ecoku 示意图
@@ -16,9 +16,9 @@ hero:
       link: /guide/features
 features:
   - title: 提交即公开
-    details: 没有审核队列。回复写在原评论下方，可多层嵌套。
+    details: 没有审核队列。回复写在原评论下方；数据层可无限嵌套，界面缩进最多三级。
   - title: 公开接口不含隐私字段
-    details: 不返回邮箱、IP、UA。访客身份只在浏览器 IndexedDB 加密保存 7 天。
+    details: 不返回邮箱、IP、UA。访客身份只在浏览器 IndexedDB 中加密保存 7 天。
   - title: 单个容器
     details: 固定镜像版本，数据挂在宿主机。管理端与评论 SDK 由同一服务提供。
   - title: 邮件与 Telegram

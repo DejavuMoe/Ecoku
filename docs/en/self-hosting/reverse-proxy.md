@@ -1,6 +1,6 @@
 # Reverse proxy
 
-Ecoku listens only on `127.0.0.1:12123`. Terminate HTTPS on a local web server and proxy `/` (including `/api/`, `/admin/`, and `/client/`) to that port.
+Ecoku listens only on `127.0.0.1:12123`. Terminate HTTPS on a local web server and reverse-proxy `/` (including `/api/`, `/admin/`, and `/client/`) to that port.
 
 ## Direct to origin
 

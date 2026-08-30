@@ -20,7 +20,7 @@
 - `/admin/` configures sites, comments, blogger identity, notifications, and bot protection.
 - Bloggers match on nickname and email together and can show a blogger badge; when enabled, a passphrase proves identity.
 - Notifications support SMTP and Telegram; rules and channels are described in [Admin setup](/en/self-hosting/admin#notifications).
-- Bot protection is instance-wide: off, Turnstile, or self-hosted Cap; when enabled it protects both comment submit and admin login.
+- Bot protection is instance-wide: off, Cloudflare Turnstile, or self-hosted Cap; when enabled it protects both comment submit and admin login.
 
 ## Data and integration
 
