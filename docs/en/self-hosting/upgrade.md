@@ -29,13 +29,13 @@ Preparing for **[v0.1.9](./upgrades/v0.1.9)**? Wait for commit CI and image publ
 | `v0.1.3`–`v0.1.4` | `v5` | `sites.blogger_passphrase_hash`, `comments.is_blogger`, outbox target split. |
 | `v0.1.5`–`v0.1.7` | `v6` | Renamed `turnstile_settings` to `captcha_settings`, added Cap provider fields. |
 | `v0.1.8` | `v7` | Added `smoji_enabled` and `smoji_manifest_url` to `sites`. |
-| `v0.1.9` (candidate) | `v7` | No migration; public read budgets/pagination/rate limiting and SQLite reconnection safety. |
+| `v0.1.9` | `v7` | No migration; public read budgets/pagination/rate limiting and SQLite reconnection safety. |
 
 ---
 
 ## Upgrade Index
 
-- [v0.1.9](./upgrades/v0.1.9): Pending release; CWE-400 fix and compatibility notes
+- [v0.1.9](./upgrades/v0.1.9): 2026-08-31; CWE-400 fix and compatibility notes
 - [v0.1.8](./upgrades/v0.1.8): Smoji stickers support
 - [v0.1.7](./upgrades/v0.1.7): Toolchain and docs site
 - [v0.1.6](./upgrades/v0.1.6): Cap instrumentation CSP

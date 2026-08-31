@@ -28,13 +28,13 @@ Ecoku 採用版本化、原位、交易性的 SQLite Schema 遷移體系。
 | `v0.1.3`～`v0.1.4` | `v5` | `sites.blogger_passphrase_hash`、`comments.is_blogger`、Outbox 拆行。 |
 | `v0.1.5`～`v0.1.7` | `v6` | 改為 `captcha_settings` 表，支援自託管 Cap。 |
 | `v0.1.8` | `v7` | 新增 Smoji 貼圖支援欄位。 |
-| `v0.1.9`（候選） | `v7` | 無新遷移；公開讀取預算、分頁、頻控與 SQLite 重連安全設定。 |
+| `v0.1.9` | `v7` | 無新遷移；公開讀取預算、分頁、頻控與 SQLite 重連安全設定。 |
 
 ---
 
 ## 歷史升級索引
 
-- [v0.1.9](./upgrades/v0.1.9)：待發布；CWE-400 修復與相容性說明
+- [v0.1.9](./upgrades/v0.1.9)：2026-08-31；CWE-400 修復與相容性說明
 - [v0.1.8](./upgrades/v0.1.8)
 - [v0.1.7](./upgrades/v0.1.7)
 - [v0.1.6](./upgrades/v0.1.6)

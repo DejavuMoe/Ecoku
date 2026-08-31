@@ -5,7 +5,7 @@
 
 ## [Unreleased]
 
-计划版本：`v0.1.9`。当前为发布候选，尚待 `master` push 或目标为 `master` 的 PR 完成 CI；`v*` tag 只校验版本并发布镜像，不重复测试。正式发版提交时再将本节归入带发布日期的 `[0.1.9]` 章节。
+## [0.1.9] - 2026-08-31
 
 ### 修复
 
@@ -13,7 +13,7 @@
 - 新增 `rate_limit.comment_list`，默认每 IP 每 60 秒 60 次，复用可信代理与 429 / `Retry-After` 行为；各限流器最多保留 10,000 个活跃地址桶，容量用尽拒绝新地址而不淘汰活跃桶。未配置新键时使用默认值；无 schema、环境变量或 Compose 挂载变化。
 - 列表限流、并发预算和超时在 CORS 查询前生效（包含预检和非法来源），来源查询改为单条存在性检查；SQLite 连接重建时重新应用外键、同步级别和忙等待设置，避免取消事务导致后续连接失去外键约束。
 
-### 升级边界（v0.1.9 候选）
+### 升级边界
 
 - 从 v0.1.8 升级保持 schema v7，不新增迁移、环境变量、挂载或容器权限要求；旧配置省略 `rate_limit.comment_list` 时使用默认值。预算内的 SDK 响应不变，超大线程/页面可能返回 422；未配置可信代理时代理后的访客可能共享读取额度。详见四套文档的 `self-hosting/upgrades/v0.1.9`。
 - 升级顺序：停服冷备份 → 修改精确镜像 tag → `sudo docker compose pull && sudo docker compose up -d` → 健康与业务检查。需等待目标镜像发布完成；CI 不部署生产、不操作生产库。
@@ -335,4 +335,4 @@
 [0.1.7]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.7
 [0.1.8]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.8
 [0.1.9]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.9
-[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.1.8...master
+[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.1.9...master
