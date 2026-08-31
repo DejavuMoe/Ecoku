@@ -52,7 +52,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 | **`v0.1.3` ～ `v0.1.4`** | `v5` | `sites` 表增加 `blogger_passphrase_hash`；`comments` 表增加 `is_blogger`；`notification_outbox` 重构为单目标独立行。 |
 | **`v0.1.5` ～ `v0.1.7`** | `v6` | `turnstile_settings` 表原位重命名为 `captcha_settings`，新增 `provider` 与 `cap_instance_url` 等字段以支持自托管 Cap。 |
 | **`v0.1.8`** | `v7` | `sites` 表新增 `smoji_enabled` (布尔) 与 `smoji_manifest_url` (TEXT)，支持站点级表情包。 |
-| **`v0.1.9`（候选）** | `v7` | 不新增迁移；公开列表读取预算、分页与限流，以及 SQLite 重连安全设置。 |
+| **`v0.1.9`** | `v7` | 不新增迁移；公开列表读取预算、分页与限流，以及 SQLite 重连安全设置。 |
 
 ---
 
@@ -60,7 +60,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | 版本 | 发布日期 | Schema 变化 | 升级要点与说明 |
 | :--- | :--- | :---: | :--- |
-| [**v0.1.9**](./upgrades/v0.1.9) | 待发布 | v7（不变） | CWE-400 修复；旧配置可启动，大线程读取和显式新配置键的回滚需留意。 |
+| [**v0.1.9**](./upgrades/v0.1.9) | 2026-08-31 | v7（不变） | CWE-400 修复；旧配置可启动，大线程读取和显式新配置键的回滚需留意。 |
 | [**v0.1.8**](./upgrades/v0.1.8) | 2026-08-27 | v6 → v7 | 新增 Smoji 纯文本表情包；站点新增表情包开关与清单 URL。 |
 | [**v0.1.7**](./upgrades/v0.1.7) | 2026-08-26 | v6 | 构建工具链升级与多语言文档体系落地；运行时契约保持不变。 |
 | [**v0.1.6**](./upgrades/v0.1.6) | 2026-08-18 | v6 | 优化 Cap 客户端在管理端所需的动态 CSP 求值策略。 |
