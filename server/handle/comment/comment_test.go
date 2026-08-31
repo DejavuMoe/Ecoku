@@ -57,7 +57,7 @@ func setupCommentTest(t *testing.T) *gin.Engine {
 	t.Cleanup(func() { model.DB = previous; sqlDB, _ := database.DB(); _ = sqlDB.Close() })
 	router := gin.New()
 	router.POST("/submit", SubmitComment)
-	router.GET("/list", GetComments)
+	router.GET("/list", PublicListBudget, GetComments)
 	return router
 }
 

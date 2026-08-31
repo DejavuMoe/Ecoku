@@ -24,12 +24,26 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Include preflights and rejected Origins in list admission before CORS can
+// touch SQLite. Other API and static routes retain their existing middleware.
+func forCommentList(handler gin.HandlerFunc) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Request.URL.Path == "/api/comment/list" {
+			handler(c)
+		} else {
+			c.Next()
+		}
+	}
+}
+
 func NewRouter() (*gin.Engine, error) {
 	r := gin.New()
 	if err := r.SetTrustedProxies(config.GetTrustedProxies()); err != nil {
 		return nil, err
 	}
-	r.Use(middleware.RequestLogger(), middleware.Recovery(), middleware.Cors())
+	r.Use(middleware.RequestLogger(), middleware.Recovery(),
+		forCommentList(middleware.RateLimit("comment_list")),
+		forCommentList(comment.PublicListBudget), middleware.Cors())
 	if directory := config.GetClientStaticDir(); directory != "" {
 		if err := registerClientStatic(r, directory); err != nil {
 			return nil, err

@@ -15,6 +15,7 @@ client:
 rate_limit:
   window_seconds: 60
   comment_submit: 5
+  comment_list: 60
   comment_delete: 30
   admin_login: 5
   notification_test: 5

@@ -41,17 +41,16 @@ func Cors() gin.HandlerFunc {
 			if isAdminAPIPath(c.Request.URL.Path) {
 				_, allowed = adminOrigins[normalized]
 			} else {
-				origins, queryErr := model.ListPublicOrigins()
+				var queryErr error
+				allowed, queryErr = model.IsPublicOriginAllowedWithContext(c.Request.Context(), normalized)
 				if queryErr != nil {
-					utils.SendError(c, http.StatusInternalServerError, "验证来源失败")
+					status := http.StatusInternalServerError
+					if c.Request.Context().Err() != nil {
+						status = http.StatusServiceUnavailable
+					}
+					utils.SendError(c, status, "验证来源失败")
 					c.Abort()
 					return
-				}
-				for _, candidate := range origins {
-					if candidate == normalized {
-						allowed = true
-						break
-					}
 				}
 			}
 			if !allowed {

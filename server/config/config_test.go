@@ -22,6 +22,9 @@ func TestApplyConfigRegistersSitesAndAppliesCommentDefaults(t *testing.T) {
 	if err := ApplyConfig(loaded); err != nil {
 		t.Fatalf("apply config: %v", err)
 	}
+	if limit, window := GetRateLimit("comment_list"); limit != 60 || window != time.Minute {
+		t.Fatalf("list rate default=%d/%s", limit, window)
+	}
 	if loaded.Sites[0].AllowedOrigins[0] != "https://example.com" {
 		t.Fatalf("normalized origin = %q", loaded.Sites[0].AllowedOrigins[0])
 	}
@@ -41,6 +44,25 @@ func TestApplyConfigRegistersSitesAndAppliesCommentDefaults(t *testing.T) {
 	if !form.EmailRequired || form.WebsiteRequired || form.Placeholder != DefaultCommentPlaceholder ||
 		form.DefaultSort != DefaultCommentSort || form.LengthLimit != DefaultCommentLimit || form.EmptyMessage != DefaultEmptyMessage {
 		t.Fatalf("default form configuration = %#v", form)
+	}
+}
+
+func TestCommentListRateLimitConfiguration(t *testing.T) {
+	for _, value := range []int{7, -1} {
+		loaded := &Config{RateLimit: RateLimitConfig{CommentList: value, WindowSeconds: 30}}
+		err := ApplyConfig(loaded)
+		if value < 0 {
+			if err == nil || !strings.Contains(err.Error(), "comment_list") {
+				t.Fatalf("negative limit error=%v", err)
+			}
+		} else {
+			if err != nil {
+				t.Fatal(err)
+			}
+			if limit, window := GetRateLimit("comment_list"); limit != value || window != 30*time.Second {
+				t.Fatalf("limit=%d window=%s", limit, window)
+			}
+		}
 	}
 }
 

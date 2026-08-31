@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +17,31 @@ import (
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
+
+func TestRateLimiterBoundsAddressStateWithoutEvictingActiveBuckets(t *testing.T) {
+	limiter := NewIPRateLimiter(1, time.Minute)
+	now := time.Now()
+	limiter.now = func() time.Time { return now }
+	for i := 0; i < maxIPRateLimitEntries; i++ {
+		limiter.entries["comment_list\x00"+strconv.Itoa(i)] = rateLimitEntry{count: 1, resetTime: now.Add(time.Minute)}
+	}
+	if allowed, _ := limiter.allow("comment_list", "new-address"); allowed {
+		t.Fatal("address budget bypassed")
+	}
+	if allowed, _ := limiter.allow("comment_list", "0"); allowed {
+		t.Fatal("active bucket evicted")
+	}
+	if len(limiter.entries) != maxIPRateLimitEntries {
+		t.Fatal("limiter state grew")
+	}
+	now = now.Add(time.Minute)
+	if allowed, _ := limiter.allow("comment_list", "new-address"); !allowed {
+		t.Fatal("expired capacity not released")
+	}
+	if len(limiter.entries) != 1 {
+		t.Fatalf("expired entries=%d", len(limiter.entries))
+	}
+}
 
 func configureMiddlewareTestSite(t *testing.T) {
 	t.Helper()

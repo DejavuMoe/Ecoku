@@ -1,0 +1,112 @@
+# 配置字典与环境变量参考
+
+本篇提供 `app/config.yaml` 配置文件与 `ecoku.env` 环境变量的完整字段参考与技术规范。
+
+`rate_limit.comment_list` 控制单 IP 的公开列表读取次数，默认每个 `window_seconds` 窗口 60 次（窗口默认 60 秒）。两种列表模式共用同一桶，超限返回 429 和 `Retry-After`；其他操作使用独立桶。每个限流器最多保存 10,000 个活跃地址桶，满时拒绝新地址，过期后释放。沿用 `trusted_proxies` 规则，反代后未配置可信代理时访客会共享代理 IP 的额度。
+
+两种列表模式的保护均在 CORS 查询前执行；列表路径的预检和被拒绝来源也计入读取额度。提前拒绝不会添加未经验证的跨域许可，因此跨域浏览器可能只显示加载失败。取消事务后若 SQLite 重建连接，外键、同步级别和忙等待设置会自动重新应用。
+
+---
+
+## 配置文件 `app/config.yaml`
+
+`app/config.yaml` 在容器启动时挂载为只读文件（`:ro`），定义了实例的服务端口、存储路径、频控规则与各模块的基础参数。
+
+```yaml
+site:
+  port: 12123
+  log_path: "/var/log/ecoku/ecoku.log"
+  trusted_proxies:
+    - "172.18.0.1/32"
+
+client:
+  static_dir: "/app/client"
+
+rate_limit:
+  window_seconds: 60
+  comment_submit: 5
+  comment_list: 60
+  comment_delete: 30
+  admin_login: 5
+  notification_test: 5
+
+notifications:
+  encryption_key_env: "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
+  instance_public_url: "https://comments.example.com"
+
+database:
+  sqlite:
+    path: "/data/ecoku.sqlite3"
+
+admin:
+  enabled: true
+  static_dir: "/app/admin"
+  username_env: "ECOKU_ADMIN_USERNAME"
+  password_hash_env: "ECOKU_ADMIN_PASSWORD_HASH"
+  token_key_env: "ECOKU_ADMIN_TOKEN_KEY"
+  token_ttl_minutes: 480
+  allowed_origins:
+    - "https://comments.example.com"
+```
+
+### 字段详细说明
+
+#### 1. `site` 基础服务配置
+| 配置项 | 类型 | 必填 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `port` | 整数 | 否 | `12123` | 服务监听的内部端口。 |
+| `log_path` | 字符串 | 否 | `""` | 日志输出路径。为空、`stdout` 或 `-` 时仅写标准输出；指定文件路径时在进程内自动轮转归档。 |
+| `trusted_proxies` | 字符串列表 | 否 | `[]` | 信任的反向代理 IP 或 CIDR 列表（如 Docker 网关 `172.18.0.1/32`）。仅匹配对端的请求才解析 `X-Forwarded-For`。 |
+
+#### 2. `client` 静态资源
+| 配置项 | 类型 | 必填 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `static_dir` | 字符串 | 否 | `/app/client` | 浏览器 SDK 与加载器静态文件所在的目录路径。 |
+
+#### 3. `rate_limit` 频控规则
+所有限流规则基于固定窗口在单进程内存中运行：
+| 配置项 | 类型 | 必填 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `window_seconds` | 整数 | 否 | `60` | 限流时间窗口（秒）。 |
+| `comment_submit` | 整数 | 否 | `5` | 单 IP 在时间窗口内允许的最大评论提交次数。 |
+| `comment_list` | 整数 | 否 | `60` | 单 IP 在时间窗口内允许的最大公开列表读取次数，两种读取模式共用。 |
+| `comment_delete` | 整数 | 否 | `30` | 单 IP 在时间窗口内允许的最大删除请求次数。 |
+| `admin_login` | 整数 | 否 | `5` | 单 IP 在时间窗口内允许的最大管理端登录尝试次数。 |
+| `notification_test`| 整数 | 否 | `5` | 单 IP 在时间窗口内允许的最大通知测试发送次数。 |
+
+#### 4. `notifications` 通知服务
+| 配置项 | 类型 | 必填 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `encryption_key_env` | 字符串 | 是 | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 存储敏感配置的主加密密钥对应的环境变量名称。 |
+| `instance_public_url` | 字符串 | 否 | `""` | Ecoku 实例对外公开访问的 HTTPS 根地址（用于拼装邮件中的链接）。 |
+
+#### 5. `database` 数据库
+| 配置项 | 类型 | 必填 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `sqlite.path` | 字符串 | 是 | `/data/ecoku.sqlite3` | SQLite3 数据库文件的绝对路径。 |
+
+#### 6. `admin` 管理后台
+| 配置项 | 类型 | 必填 | 默认值 | 说明 |
+| :--- | :--- | :--- | :--- | :--- |
+| `enabled` | 布尔 | 否 | `true` | 是否启用管理端后台。 |
+| `static_dir` | 字符串 | 否 | `/app/admin` | 管理端静态 HTML/JS 资源目录。 |
+| `username_env` | 字符串 | 是 | `ECOKU_ADMIN_USERNAME` | 管理员用户名对应的环境变量名。 |
+| `password_hash_env` | 字符串 | 是 | `ECOKU_ADMIN_PASSWORD_HASH` | 管理员 bcrypt 密码哈希对应的环境变量名。 |
+| `token_key_env` | 字符串 | 是 | `ECOKU_ADMIN_TOKEN_KEY` | 管理员 Bearer Token 签名密钥对应的环境变量名。 |
+| `token_ttl_minutes` | 整数 | 否 | `480` | 管理端登录会话生命周期（分钟，默认 8 小时）。 |
+| `allowed_origins` | 字符串列表 | 是 | `[]` | 允许访问管理后台 API 的精确 Origin 列表（需包含协议与域名）。 |
+
+---
+
+## 环境变量 `ecoku.env`
+
+环境变量通过 Docker Compose 的 `env_file` 指令注入，保存所有高敏感机密：
+
+| 变量名 | 必填 | 安全要求 | 示例与生成方式 |
+| :--- | :--- | :--- | :--- |
+| `GIN_MODE` | 否 | 生产环境固定为 `release` | `release` |
+| `TZ` | 否 | 标准 IANA 时区标识 | `Asia/Shanghai` |
+| `ECOKU_ADMIN_USERNAME` | 是 | 管理员登录用户名（1～80 字符） | `admin` |
+| `ECOKU_ADMIN_PASSWORD_HASH` | 是 | 管理员密码的 bcrypt 哈希值 | 由 `ecoku-server hash-password` 命令生成 |
+| `ECOKU_ADMIN_TOKEN_KEY` | 是 | 管理员 Bearer Token HMAC 签名密钥（至少 32 字符） | `openssl rand -hex 32` |
+| `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 是 | 数据库凭据 AES-256-GCM 主加密密钥（Base64 编码的 32 字节串） | `openssl rand -base64 32` |

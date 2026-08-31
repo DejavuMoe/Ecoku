@@ -66,6 +66,7 @@ type SiteConfig struct {
 type RateLimitConfig struct {
 	WindowSeconds    int `yaml:"window_seconds"`
 	CommentSubmit    int `yaml:"comment_submit"`
+	CommentList      int `yaml:"comment_list"`
 	CommentDelete    int `yaml:"comment_delete"`
 	AdminLogin       int `yaml:"admin_login"`
 	NotificationTest int `yaml:"notification_test"`
@@ -222,6 +223,9 @@ func applyDefaults(loaded *Config) {
 	}
 	if loaded.RateLimit.CommentSubmit == 0 {
 		loaded.RateLimit.CommentSubmit = 5
+	}
+	if loaded.RateLimit.CommentList == 0 {
+		loaded.RateLimit.CommentList = 60
 	}
 	if loaded.RateLimit.CommentDelete == 0 {
 		loaded.RateLimit.CommentDelete = 30
@@ -390,6 +394,7 @@ func validateRateLimits(limits RateLimitConfig) error {
 	values := map[string]int{
 		"window_seconds":    limits.WindowSeconds,
 		"comment_submit":    limits.CommentSubmit,
+		"comment_list":      limits.CommentList,
 		"comment_delete":    limits.CommentDelete,
 		"admin_login":       limits.AdminLogin,
 		"notification_test": limits.NotificationTest,
@@ -725,6 +730,8 @@ func GetRateLimit(action string) (int, time.Duration) {
 	switch action {
 	case "comment_submit":
 		limit = limits.CommentSubmit
+	case "comment_list":
+		limit = limits.CommentList
 	case "comment_delete":
 		limit = limits.CommentDelete
 	case "admin_login":

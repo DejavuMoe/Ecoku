@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"context"
 	"ecoku-server/config"
 	"ecoku-server/middleware"
 	"ecoku-server/model"
@@ -10,9 +11,66 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
+
+func TestPublicListAdmissionPrecedesCORSDatabaseWork(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	configureRoutesTest(t)
+	config.GlobalConfig.RateLimit.CommentList = 1
+	router, err := NewRouter()
+	if err != nil {
+		t.Fatal(err)
+	}
+	queries := 0
+	if err := model.DB.Callback().Query().After("gorm:query").Register("test:origin", func(tx *gorm.DB) {
+		if tx.Statement.Table == "site_origins" {
+			queries++
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	defer model.DB.Callback().Query().Remove("test:origin")
+	for _, want := range []int{http.StatusForbidden, http.StatusTooManyRequests} {
+		req := httptest.NewRequest(http.MethodGet, "/api/comment/list?siteId=site-a&key=/post", nil)
+		req.Header.Set("Origin", "https://unregistered.example")
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		if recorder.Code != want || queries != 1 {
+			t.Fatalf("status=%d want=%d origin queries=%d", recorder.Code, want, queries)
+		}
+	}
+	sqlDB, err := model.DB.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	connection, err := sqlDB.Conn(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer connection.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	req := httptest.NewRequest(http.MethodGet, "/api/comment/list?siteId=site-a&key=/post", nil).WithContext(ctx)
+	req.RemoteAddr = "192.0.2.99:1"
+	req.Header.Set("Origin", "https://a.example")
+	recorder := httptest.NewRecorder()
+	done := make(chan struct{})
+	go func() { router.ServeHTTP(recorder, req); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		_ = connection.Close()
+		<-done
+		t.Fatal("CORS ignored the deadline while waiting for SQLite")
+	}
+	if recorder.Code != http.StatusServiceUnavailable {
+		t.Fatalf("CORS wait status=%d", recorder.Code)
+	}
+}
 
 func TestClientStaticAssetsAreServedWithCrossOriginSafeHeaders(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -213,5 +271,43 @@ func TestRouterRecoveryReturns500(t *testing.T) {
 	router.ServeHTTP(recorder, request)
 	if recorder.Code != http.StatusInternalServerError {
 		t.Fatalf("panic status = %d", recorder.Code)
+	}
+}
+
+func TestPublicListRouteRateLimitCannotBeBypassedByQueryOrForwardedIP(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	configureRoutesTest(t)
+	config.GlobalConfig.RateLimit.CommentList = 1
+	router, err := NewRouter()
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := func(query, remote, forwarded string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodGet, "/api/comment/list?siteId=site-a&key=/post"+query, nil)
+		req.RemoteAddr = remote
+		req.Header.Set("X-Forwarded-For", forwarded)
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, req)
+		return recorder
+	}
+	if got := request("", "192.0.2.1:1", "198.51.100.1"); got.Code != http.StatusOK {
+		t.Fatalf("first=%d", got.Code)
+	}
+	for _, query := range []string{"&page=2", "&sort=oldest", "&parentId=0&afterId=5"} {
+		got := request(query, "192.0.2.1:2", "203.0.113.2")
+		if got.Code != http.StatusTooManyRequests || got.Header().Get("Retry-After") == "" {
+			t.Fatalf("%s status=%d", query, got.Code)
+		}
+	}
+	if got := request("&parentId=0", "192.0.2.2:1", ""); got.Code != http.StatusOK {
+		t.Fatalf("other IP=%d", got.Code)
+	}
+	// A list read must not consume the separate submission bucket.
+	req := httptest.NewRequest(http.MethodPost, "/api/comment/submit", strings.NewReader("{"))
+	req.RemoteAddr = "192.0.2.1:1"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, req)
+	if recorder.Code != http.StatusBadRequest {
+		t.Fatalf("submit bucket status=%d", recorder.Code)
 	}
 }

@@ -18,6 +18,8 @@ type rateLimitEntry struct {
 	resetTime time.Time
 }
 
+const maxIPRateLimitEntries = 10000
+
 // IPRateLimiter is intentionally process-local. Its state is cleared whenever
 // the process restarts. Forwarded client addresses are used only when the
 // direct socket peer matches an explicitly configured trusted proxy.
@@ -102,8 +104,13 @@ func (limiter *IPRateLimiter) allow(action, ip string) (bool, time.Duration) {
 
 	entry, exists := limiter.entries[key]
 	if !exists || !now.Before(entry.resetTime) {
-		limiter.entries[key] = rateLimitEntry{count: 1, resetTime: now.Add(limiter.window)}
 		limiter.removeExpired(now, key)
+		// Do not let rotating source addresses turn a public read limiter into
+		// an unbounded map. Keep active buckets so eviction cannot reset limits.
+		if !exists && len(limiter.entries) >= maxIPRateLimitEntries {
+			return false, limiter.window
+		}
+		limiter.entries[key] = rateLimitEntry{count: 1, resetTime: now.Add(limiter.window)}
 		return true, 0
 	}
 	if entry.count >= limiter.limit {
