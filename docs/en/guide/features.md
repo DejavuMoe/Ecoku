@@ -1,29 +1,31 @@
-# Features
+# Features Overview
 
-## Comments
+Ecoku pairs minimalist single-container operations with modern user experience, resilient security, and customizable design tokens.
 
-- Plain text; published immediately on submit; no moderation queue.
-- Replies are written under the comment being replied to; nesting is unlimited in the data layer, with UI indent capped at three levels.
-- Root comments are paginated; each page includes all public replies for those root comments.
-- Sort by newest or oldest.
-- Deletion keeps a placeholder (tombstone) so threads stay intact; tombstones cannot be replied to.
-- Sites may enable Smoji stickers; the picker loads a same-origin manifest on demand and stores selections as plain-text markers.
+---
 
-## Identity and privacy
+## Comment Experience
+- **Live on Submit**: Direct publishing without moderation queues.
+- **Infinite Semantics & Max 3-Level Visual Indent**: Supports deep discussion hierarchies while capping indentation at 3 levels to maintain readability on mobile viewports. Replies at depth $\ge 3$ automatically display clickable `@Author` anchors.
+- **Root-Thread Pagination**: Returns complete root threads within fixed resource budgets; oversized requests fail explicitly. Large threads can be read on demand through the [single-level cursor API](../reference/api.md).
+- **Jitter-Free 3ch Collapse**: Toggle controls `[+]` and `[-]` are fixed at `3ch` tabular width, preventing meta-row layout shifts upon collapsing/expanding.
+- **Context-Preserving Tombstones**: Deleting a comment replaces its content with `[This comment has been deleted]`, preserving the downstream conversation tree.
+- **Smoji Plain-Text Stickers**: Self-hosted sticker packs loaded on-demand and stored as plain text markers `![smoji:label](url)`.
 
-- Nickname is required; whether email and website are required is per-site (defaults: email required, website optional).
-- Visitor identity is encrypted in browser IndexedDB for 7 days; it is not written to localStorage, cookies, or the URL.
-- Public APIs never return email, IP, User-Agent, region, or secrets.
+---
 
-## Admin and notifications
+## Identity & Privacy
+- **Configurable Field Requirements**: Nickname is always required; email and website requirements are configurable per site.
+- **Client-Side AES-GCM Encryption**: Visitor identities are encrypted via WebCrypto AES-GCM and stored in IndexedDB for 7 days. Never written to `localStorage` or cookies.
+- **Blogger Passphrase**: Site owners authenticate by typing a secret passphrase directly in the nickname field.
+- **Zero Privacy Leakage**: Public DTOs omit emails, IPs, User-Agents, and geo-locations.
 
-- `/admin/` configures sites, comments, blogger identity, notifications, and bot protection.
-- Bloggers match on nickname and email together and can show a blogger badge; when enabled, a passphrase proves identity.
-- Notifications support SMTP and Telegram; rules and channels are described in [Admin setup](/en/self-hosting/admin#notifications).
-- Bot protection is instance-wide: off, Cloudflare Turnstile, or self-hosted Cap; when enabled it protects both comment submit and admin login.
+---
 
-## Data and integration
-
-- SQLite only; multi-site; schema migrates in place, in order.
-- Assets: `/client/ecoku-loader.js`, `/client/ecoku.umd.js`, `/client/ecoku.css`, `/client/ecoku.unstyled.css`.
-- Integration needs the service URL, site ID, a stable page key, and an optional page title. See [Plain HTML](/en/integration/html).
+## Security & Operations
+- **Tri-State Bot Protection**: Toggle between `off`, Cloudflare Turnstile, and self-hosted Cap.
+- **Encrypted Database Credentials**: SMTP passwords, Telegram tokens, and CAPTCHA secrets are encrypted with AES-256-GCM using an instance master key.
+- **Dynamic CSP Convergence**: Automatically tightens Content-Security-Policy based on the active CAPTCHA provider.
+- **In-Memory Rate Limiter**: Windowed rate limiting on Socket peer IP and trusted proxy gateways.
+- **Outbox Notifications**: Transactionally enqueues SMTP and Telegram notifications with isolated per-target retries.
+- **Twikoo CLI Importer**: One-shot migration tool for importing legacy Twikoo discussions.

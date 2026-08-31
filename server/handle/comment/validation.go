@@ -30,12 +30,16 @@ func requireRegisteredSite(c *gin.Context, rawSiteID string, requireOrigin bool)
 		utils.SendError(c, http.StatusBadRequest, "siteId 参数无效")
 		return "", false
 	}
-	_, err := model.GetSite(siteID)
+	_, err := model.GetSiteWithContext(c.Request.Context(), siteID)
 	if err == model.ErrSiteNotFound {
 		utils.SendError(c, http.StatusNotFound, "站点不存在")
 		return "", false
 	}
 	if err != nil {
+		if c.Request.Context().Err() != nil {
+			utils.SendError(c, http.StatusServiceUnavailable, "评论读取超时，请稍后重试")
+			return "", false
+		}
 		utils.SendError(c, http.StatusInternalServerError, "读取站点配置失败")
 		return "", false
 	}
@@ -52,8 +56,12 @@ func requireRegisteredSite(c *gin.Context, rawSiteID string, requireOrigin bool)
 			return "", false
 		}
 	}
-	allowed, err := model.IsSiteOriginAllowed(siteID, normalizedOrigin)
+	allowed, err := model.IsSiteOriginAllowedWithContext(c.Request.Context(), siteID, normalizedOrigin)
 	if err != nil {
+		if c.Request.Context().Err() != nil {
+			utils.SendError(c, http.StatusServiceUnavailable, "评论读取超时，请稍后重试")
+			return "", false
+		}
 		utils.SendError(c, http.StatusInternalServerError, "验证站点来源失败")
 		return "", false
 	}

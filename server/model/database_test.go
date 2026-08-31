@@ -1,13 +1,52 @@
 package model
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"gorm.io/gorm"
 )
+
+func TestSQLiteReplacementAfterCanceledTransactionPreservesSafety(t *testing.T) {
+	database, err := OpenSQLiteDatabase(filepath.Join(t.TempDir(), "cancel.sqlite3"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer CloseSQLiteDatabase(database)
+	if err := database.Exec("CREATE TABLE parent_probe (id INTEGER PRIMARY KEY)").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Exec("CREATE TABLE child_probe (parent_id INTEGER REFERENCES parent_probe(id))").Error; err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := database.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	tx, err := sqlDB.BeginTx(ctx, nil)
+	if err != nil {
+		cancel()
+		t.Fatal(err)
+	}
+	defer tx.Rollback()
+	cancel()
+	// Do not synchronously roll back: let database/sql's cancellation worker
+	// discard the original connection, then acquire its replacement.
+	probeCtx, stop := context.WithTimeout(context.Background(), 5*time.Second)
+	defer stop()
+	if err := sqlDB.PingContext(probeCtx); err != nil {
+		t.Fatal(err)
+	}
+	assertSQLiteRuntimePragmas(t, database)
+	if err := database.Exec("INSERT INTO child_probe (parent_id) VALUES (999)").Error; err == nil {
+		t.Fatal("replacement connection lost foreign-key enforcement")
+	}
+}
 
 func TestOpenSQLiteDatabaseConfiguresWALAndSafetyPragmas(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "wal.sqlite3")

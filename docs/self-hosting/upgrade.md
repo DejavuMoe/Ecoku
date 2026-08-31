@@ -1,55 +1,73 @@
-# 升级
+# 升级与迁移
 
-只改 Compose 里的**精确镜像 tag**，不要整体覆盖现有 Compose 文件。操作顺序见下文；各版本变更见页末索引。
+Ecoku 采用版本化、原位（In-Place）、事务性的 SQLite Schema 迁移体系。
 
-## 操作顺序
+准备升级到 **[v0.1.9](./upgrades/v0.1.9)** 时，先确认提交通过 CI、镜像已发布。自 v0.1.8 升级仍为 schema v7；主要影响是公开列表读取预算和限流。回滚到 v0.1.8 前须移除显式新增的 `rate_limit.comment_list`。详细限制、SDK 行为和回滚步骤见版本说明。
 
-1. 阅读目标版本说明，确认 schema、环境变量和挂载是否有变化。
-2. 按 [备份与恢复](./backup) 停服冷备份（数据库、配置、密钥、Compose）。
-3. 保留现有资源限制与挂载，只修改镜像 tag。
-4. 若版本说明要求补充环境变量或配置，一并改好。
-5. 拉取并启动，检查日志与健康接口。
-6. 验证管理登录、站点、评论、回复、通知，以及已启用的人机验证。
+升级过程中，只需修改 Compose 文件中的**精确镜像 Tag**，服务在启动时会自动检测并按版本顺序执行数据库升级。
+
+---
+
+## 升级核心契约
+
+1. **单向事务迁移**：Schema 迁移在同一个 SQLite 文件中顺序向上执行，成功后向 `schema_migrations` 表追加版本记录。Ecoku **不支持自动向下迁移（Down-migration）**。
+2. **严禁浮动 Tag**：生产环境绝对禁止使用 `latest`，必须使用形如 `v0.1.8` 的精确版本。
+3. **不可逆性与回滚原则**：一旦数据库成功升级至高版本 Schema（例如 v7），**不能仅将镜像 Tag 换回旧版本**，否则旧版本服务因无法识别高版本 Schema 会拒绝启动。回滚必须使用升级前冷备份的数据库文件进行恢复。
+
+---
+
+## 标准停服升级 SOP
 
 ```bash
-sudo docker compose config --quiet
+cd ~/Ecoku
+
+# 步骤 1：阅读目标版本的发布说明与升级指南，确认配置变化
+# （见下方各版本升级索引）
+
+# 步骤 2：执行停服冷备份
+sudo docker compose down
+tar -czvf "ecoku-preupgrade-$(date +%Y%m%d_%H%M%S).tar.gz" data/ app/config.yaml ecoku.env compose.yaml
+
+# 步骤 3：修改 compose.yaml 中的 image 为新版本（如 v0.1.8）
+# 若新版本有新环境变量要求，一并补充至 ecoku.env
+
+# 步骤 4：拉取新镜像并启动
 sudo docker compose pull
 sudo docker compose up -d
-sudo docker compose ps
-sudo docker compose logs --tail=200 ecoku
-curl --fail http://127.0.0.1:12123/api/health
+
+# 步骤 5：检查启动日志与 Schema 迁移状态
+sudo docker compose logs --tail=100 -f ecoku
+
+# 步骤 6：业务与接口验收
+curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 ```
 
-`/api/health` 只表示进程可响应，不证明迁移或依赖全部正常。
+---
 
-## 数据库
+## Schema 版本演进历史
 
-迁移在 `data/ecoku.sqlite3` 内按版本、按事务执行。成功只追加 `schema_migrations` 记录，不自动删除数据库、WAL 或备份；失败版本不会标记完成，服务会拒绝启动。没有向下迁移。
+| 镜像版本区间 | Schema 版本 | 核心数据库变更与特性 |
+| :--- | :---: | :--- |
+| **`v0.1.0` ～ `v0.1.2`** | `v4` | 基础表结构、站点注册、评论树模型、通知设置、Turnstile 表。 |
+| **`v0.1.3` ～ `v0.1.4`** | `v5` | `sites` 表增加 `blogger_passphrase_hash`；`comments` 表增加 `is_blogger`；`notification_outbox` 重构为单目标独立行。 |
+| **`v0.1.5` ～ `v0.1.7`** | `v6` | `turnstile_settings` 表原位重命名为 `captcha_settings`，新增 `provider` 与 `cap_instance_url` 等字段以支持自托管 Cap。 |
+| **`v0.1.8`** | `v7` | `sites` 表新增 `smoji_enabled` (布尔) 与 `smoji_manifest_url` (TEXT)，支持站点级表情包。 |
+| **`v0.1.9`（候选）** | `v7` | 不新增迁移；公开列表读取预算、分页与限流，以及 SQLite 重连安全设置。 |
 
-| 镜像 | Schema |
-| --- | --- |
-| `v0.1.0`–`v0.1.2` | v4 |
-| `v0.1.3`–`v0.1.4` | v5 |
-| `v0.1.5`–`v0.1.7` | v6 |
-| `v0.1.8` | v7 |
+---
 
-已写入更高 schema 的数据库不能只换回旧镜像；需要恢复停服前的整库备份后再用旧 tag 启动。
+## 历史版本升级指南索引
 
-## 回滚
-
-停服，保留失败现场，按 [备份与恢复](./backup) 恢复，把 Compose 改回旧的精确 tag，再启动。
-
-## 版本索引
-
-| 版本 | 日期 | Schema | 要点 |
-| --- | --- | --- | --- |
-| [v0.1.8](./upgrades/v0.1.8) | 2026-08-27 | v6 → v7 | Smoji 表情包；站点新增两项配置 |
-| [v0.1.7](./upgrades/v0.1.7) | 2026-08-26 | v6 | 构建工具链与文档站；运行时契约不变 |
-| [v0.1.6](./upgrades/v0.1.6) | 2026-08-18 | v6 | Cap instrumentation 的管理端 CSP |
-| [v0.1.5](./upgrades/v0.1.5) | 2026-08-17 | v5 → v6 | Turnstile / Cap 三态 |
-| [v0.1.4](./upgrades/v0.1.4) | 2026-08-15 | v5 | 保存口令时回填 `is_blogger` |
-| [v0.1.3](./upgrades/v0.1.3) | 2026-08-15 | v4 → v5 | 博主口令、outbox 按目标拆行 |
-| [v0.1.2](./upgrades/v0.1.2) | 2026-08-15 | v4 | 评论元信息字号 |
-| [v0.1.1](./upgrades/v0.1.1) | 2026-08-15 | v4 | 折叠按钮等宽 |
-| [v0.1.0](./upgrades/v0.1.0) | 2026-08-15 | v4 | 首个正式版 |
-| [更早候选](./upgrades/earlier) | 2026-08-14 | v1–v4 | 目录布局、WAL、时区、Turnstile 初版 |
+| 版本 | 发布日期 | Schema 变化 | 升级要点与说明 |
+| :--- | :--- | :---: | :--- |
+| [**v0.1.9**](./upgrades/v0.1.9) | 待发布 | v7（不变） | CWE-400 修复；旧配置可启动，大线程读取和显式新配置键的回滚需留意。 |
+| [**v0.1.8**](./upgrades/v0.1.8) | 2026-08-27 | v6 → v7 | 新增 Smoji 纯文本表情包；站点新增表情包开关与清单 URL。 |
+| [**v0.1.7**](./upgrades/v0.1.7) | 2026-08-26 | v6 | 构建工具链升级与多语言文档体系落地；运行时契约保持不变。 |
+| [**v0.1.6**](./upgrades/v0.1.6) | 2026-08-18 | v6 | 优化 Cap 客户端在管理端所需的动态 CSP 求值策略。 |
+| [**v0.1.5**](./upgrades/v0.1.5) | 2026-08-17 | v5 → v6 | 引入自托管 Cap 人机验证；安全设置升级为三态单选。 |
+| [**v0.1.4**](./upgrades/v0.1.4) | 2026-08-15 | v5 | 管理后台保存博主口令时自动回填历史评论的 `is_blogger` 标记。 |
+| [**v0.1.3**](./upgrades/v0.1.3) | 2026-08-15 | v4 → v5 | 引入博主口令认证；Outbox 通知队列按接收目标拆行入队。 |
+| [**v0.1.2**](./upgrades/v0.1.2) | 2026-08-15 | v4 | 优化评论区元信息排版基线与字号阶梯。 |
+| [**v0.1.1**](./upgrades/v0.1.1) | 2026-08-15 | v4 | 评论折叠按钮 `[+]`/`[-]` 固定为 3ch 等宽，消除折叠切换抖动。 |
+| [**v0.1.0**](./upgrades/v0.1.0) | 2026-08-15 | v4 | 首个正式发布版本。 |
+| [**更早候选版**](./upgrades/earlier) | 2026-08-14 | v1 ～ v4 | 早期单容器架构设计、WAL 模式引入与时区规范。 |

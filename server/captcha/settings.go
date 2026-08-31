@@ -1,6 +1,7 @@
 package captcha
 
 import (
+	"context"
 	"ecoku-server/config"
 	"ecoku-server/model"
 	"errors"
@@ -91,7 +92,11 @@ func GetLegacyTurnstileSettings() (LegacyTurnstileSettings, error) {
 }
 
 func PublicConfig() (config.CaptchaPublicConfig, error) {
-	row, err := loadSetting()
+	return PublicConfigWithContext(context.Background())
+}
+
+func PublicConfigWithContext(ctx context.Context) (config.CaptchaPublicConfig, error) {
+	row, err := loadSettingWithContext(ctx)
 	if err != nil {
 		return config.CaptchaPublicConfig{}, err
 	}
@@ -269,11 +274,15 @@ func ValidateStoredSecrets() error {
 }
 
 func loadSetting() (settingRow, error) {
+	return loadSettingWithContext(context.Background())
+}
+
+func loadSettingWithContext(ctx context.Context) (settingRow, error) {
 	var row settingRow
 	if model.DB == nil {
 		return row, fmt.Errorf("CAPTCHA database unavailable")
 	}
-	if err := model.DB.Table("captcha_settings").Where("id = 1").First(&row).Error; err != nil {
+	if err := model.DB.WithContext(ctx).Table("captcha_settings").Where("id = 1").First(&row).Error; err != nil {
 		return row, err
 	}
 	return row, nil

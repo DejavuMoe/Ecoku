@@ -47,7 +47,15 @@ func OpenSQLiteDatabase(path string) (*gorm.DB, error) {
 	if strings.TrimSpace(path) == "" {
 		return nil, fmt.Errorf("SQLite 数据库路径不能为空")
 	}
-	database, err := gorm.Open(sqlite.Open(path), databaseGORMConfig())
+	// database/sql may discard a connection after a canceled transaction.
+	// Driver DSN pragmas run on EVERY replacement connection, unlike startup
+	// Exec calls. Append last so configured URI parameters cannot undo them.
+	separator := "?"
+	if strings.Contains(path, "?") {
+		separator = "&"
+	}
+	dsn := path + separator + "_pragma=foreign_keys(1)&_pragma=synchronous(1)&_pragma=busy_timeout(5000)"
+	database, err := gorm.Open(sqlite.Open(dsn), databaseGORMConfig())
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sort"
@@ -78,10 +79,14 @@ func ListSites() ([]Site, error) {
 }
 
 func GetSite(siteID string) (Site, error) {
+	return GetSiteWithContext(context.Background(), siteID)
+}
+
+func GetSiteWithContext(ctx context.Context, siteID string) (Site, error) {
 	if DB == nil {
 		return Site{}, fmt.Errorf("database unavailable")
 	}
-	return getSite(DB, siteID)
+	return getSite(DB.WithContext(ctx), siteID)
 }
 
 func getSite(database *gorm.DB, siteID string) (Site, error) {
@@ -223,7 +228,23 @@ func ListPublicOrigins() ([]string, error) {
 	return origins, nil
 }
 
+func IsPublicOriginAllowedWithContext(ctx context.Context, origin string) (bool, error) {
+	if DB == nil {
+		return false, fmt.Errorf("database unavailable")
+	}
+	var row struct{ Origin string }
+	err := DB.WithContext(ctx).Table("site_origins").Select("origin").Where("origin = ?", origin).Take(&row).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
 func IsSiteOriginAllowed(siteID, normalizedOrigin string) (bool, error) {
+	return IsSiteOriginAllowedWithContext(context.Background(), siteID, normalizedOrigin)
+}
+
+func IsSiteOriginAllowedWithContext(ctx context.Context, siteID, normalizedOrigin string) (bool, error) {
 	if DB == nil {
 		return false, fmt.Errorf("database unavailable")
 	}
@@ -231,7 +252,7 @@ func IsSiteOriginAllowed(siteID, normalizedOrigin string) (bool, error) {
 		return true, nil
 	}
 	var count int64
-	if err := DB.Table("site_origins").Where("site_id = ? AND origin = ?", siteID, normalizedOrigin).Count(&count).Error; err != nil {
+	if err := DB.WithContext(ctx).Table("site_origins").Where("site_id = ? AND origin = ?", siteID, normalizedOrigin).Count(&count).Error; err != nil {
 		return false, err
 	}
 	return count == 1, nil
