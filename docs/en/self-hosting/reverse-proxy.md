@@ -4,12 +4,29 @@ Ecoku binds exclusively to `127.0.0.1:12123`. A front-end web server (Caddy / Ng
 
 ---
 
+## Network Topology Model
+
+```mermaid
+flowchart TD
+    V["Visitor (Client)"]
+    CDN["Cloudflare CDN (Optional)"]
+    Proxy["Reverse Proxy (Caddy / Nginx)<br/>• Terminates HTTPS / Forwards X-Forwarded-For"]
+    Container["Ecoku Container<br/>• Binds 127.0.0.1:12123"]
+
+    V -->|Scenario 1: Direct HTTPS| Proxy
+    V -->|Scenario 2: Via CDN| CDN
+    CDN -->|HTTPS| Proxy
+    Proxy -->|Local HTTP| Container
+```
+
+---
+
 ## Direct Origin Proxy (Caddy & Nginx)
 
 ### Caddy (Recommended)
 
 ```caddyfile
-comments.example.com {
+ecoku.example.com {
     encode zstd gzip
 
     reverse_proxy 127.0.0.1:12123 {
@@ -24,10 +41,10 @@ comments.example.com {
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name comments.example.com;
+    server_name ecoku.example.com;
 
-    ssl_certificate /etc/letsencrypt/live/comments.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/comments.example.com/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/ecoku.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ecoku.example.com/privkey.pem;
 
     location / {
         proxy_pass http://127.0.0.1:12123;
@@ -43,7 +60,7 @@ server {
 ## Proxy via Cloudflare CDN
 
 ```caddyfile
-comments.example.com {
+ecoku.example.com {
     encode zstd gzip
 
     reverse_proxy 127.0.0.1:12123 {

@@ -21,7 +21,7 @@ import Ecoku from 'ecoku'
 
 const ecoku = new Ecoku({
   container: '#comments',
-  serverURL: 'https://comments.example.com',
+  serverURL: 'https://ecoku.example.com',
   siteId: 'blog',
   pageKey: '/posts/hello-world/',
   pageTitle: 'こんにちは世界',
@@ -34,6 +34,6 @@ await ecoku.init()
 ### メソッド
 - `init(): Promise<void>`：初期化して描画。
 - `reload(): Promise<void>`：現在のページを再取得。
-- `setPageKey(newPageKey: string, newPageTitle?: string): Promise<void>`：SPA 遷移時にページを変更。
+- `setPageKey(newPageKey: string): Promise<void>`：SPA 遷移時にページを変更。
 - `destroy(): void`：インスタンスを破棄。
 - `isInitialized(): boolean`：初期化状態を取得。

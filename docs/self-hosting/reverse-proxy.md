@@ -6,12 +6,17 @@ Ecoku 容器默认仅在宿主机本地回环 `127.0.0.1:12123` 监听 HTTP 请�
 
 ## 网络拓扑模型
 
-```
-[场景 1: 直连源站]
-访客 ──HTTPS──> [ Caddy / Nginx ] ──HTTP (127.0.0.1:12123)──> [ Ecoku 容器 ]
+```mermaid
+flowchart TD
+    V["访客 (Client)"]
+    CDN["Cloudflare CDN (可选代理)"]
+    Proxy["反向代理 (Caddy / Nginx)<br/>• 终止 HTTPS / 透传 X-Forwarded-For"]
+    Container["Ecoku 容器<br/>• 监听 127.0.0.1:12123"]
 
-[场景 2: 经 CDN 代理]
-访客 ──HTTPS──> [ Cloudflare CDN ] ──HTTPS──> [ Caddy / Nginx ] ──HTTP (127.0.0.1:12123)──> [ Ecoku 容器 ]
+    V -->|场景 1: 直连 HTTPS| Proxy
+    V -->|场景 2: 经 CDN| CDN
+    CDN -->|HTTPS| Proxy
+    Proxy -->|本地 HTTP| Container
 ```
 
 ---
@@ -23,7 +28,7 @@ Ecoku 容器默认仅在宿主机本地回环 `127.0.0.1:12123` 监听 HTTP 请�
 Caddy 具备自动证书申请与维护能力，配置最为精炼：
 
 ```caddyfile
-comments.example.com {
+ecoku.example.com {
     encode zstd gzip
 
     reverse_proxy 127.0.0.1:12123 {
@@ -39,10 +44,10 @@ comments.example.com {
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name comments.example.com;
+    server_name ecoku.example.com;
 
-    ssl_certificate /etc/letsencrypt/live/comments.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/comments.example.com/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/ecoku.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ecoku.example.com/privkey.pem;
 
     # 启用 Gzip 压缩
     gzip on;
@@ -67,7 +72,7 @@ server {
 ### Cloudflare + Caddy 配置
 
 ```caddyfile
-comments.example.com {
+ecoku.example.com {
     encode zstd gzip
 
     reverse_proxy 127.0.0.1:12123 {
@@ -116,11 +121,11 @@ site:
 
 ```bash
 # 验证反向代理健康检查端点
-curl -i https://comments.example.com/api/health
+curl -i https://ecoku.example.com/api/health
 
 # 验证前端静态加载器脚本可访问
-curl -i https://comments.example.com/client/ecoku-loader.js
+curl -i https://ecoku.example.com/client/ecoku-loader.js
 
 # 验证管理后台入口
-curl -i https://comments.example.com/admin/
+curl -i https://ecoku.example.com/admin/
 ```

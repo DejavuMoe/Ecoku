@@ -6,22 +6,27 @@
 
 ## 1. 覆盖评论模板
 
-在您的 Hugo 站点源码根目录下，创建或编辑模板覆盖文件 `layouts/partials/comments.html`：
+PaperMod 支持在站点根目录下通过 `layouts/_partials/comments.html` 覆盖默认评论部分。
+
+在您的 Hugo 站点根目录下创建 `layouts/_partials/comments.html`：
 
 ```html
-{{- /* 仅在文章开启评论时加载 */ -}}
-{{- if (.Param "comments") | default true }}
+{{- $ecoku := site.Params.ecoku -}}
+{{- if and $ecoku $ecoku.server_url $ecoku.site_id -}}
+{{- $js := $ecoku.js_url | default (printf "%s/client/ecoku-loader.js" $ecoku.server_url) -}}
 <div class="ecoku-container" style="margin-top: 2rem;">
   <section
     id="ecoku-comments"
     class="ecoku-shell"
     data-ecoku-comments
-    data-server-url="https://comments.example.com"
-    data-site-id="blog"
+    aria-label="评论区"
+    data-server-url="{{ $ecoku.server_url }}"
+    data-site-id="{{ $ecoku.site_id }}"
     data-page-key="{{ .RelPermalink }}"
     data-page-title="{{ .Title }}"
     data-page-size="10"
     data-theme="auto"
+    {{- with $ecoku.css_url }} data-css-url="{{ . }}"{{ end }}
   >
     <div class="ecoku-loader" data-ecoku-loader hidden>
       <p class="ecoku-loader-status" data-ecoku-status></p>
@@ -29,9 +34,22 @@
     </div>
     <div id="ecoku-mount" data-ecoku-mount></div>
   </section>
-  <script src="https://comments.example.com/client/ecoku-loader.js" defer></script>
+  <script src="{{ $js }}" defer></script>
 </div>
 {{- end }}
+```
+
+并在 Hugo 站点配置文件（如 `hugo.yaml`）的 `params` 中加入配置：
+
+```yaml
+params:
+  comments: true
+  ecoku:
+    server_url: "https://ecoku.example.com"
+    site_id: "blog"
+    # 可选：自定义加载器或样式 CDN 地址
+    # js_url: "https://ecoku.example.com/client/ecoku-loader.js"
+    # css_url: "https://ecoku.example.com/client/ecoku.css"
 ```
 
 ---

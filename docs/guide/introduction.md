@@ -18,50 +18,33 @@ Ecoku 是一个专为静态博客与内容驱动型站点设计的**自托管、
 
 ## 系统架构全景
 
-```
-+----------------------------------------------------------------------------------------------------+
-|                                    Client Layer (Browser / Web)                                    |
-+----------------------------------------------------------------------------------------------------+
-|                                                                                                    |
-|  [ Visitor Page / Static Blog ]                      [ Admin Console: /admin/ ]                    |
-|  - ecoku-loader.js (2KB Standalone)                  - Vue 3 + Pinia + System Serif                |
-|  - Ecoku SDK (ESM / UMD / CJS)                       - Memory-only Bearer Token (No Storage)       |
-|  - WebCrypto AES-GCM (IndexedDB 7-Day TTL)           - Multi-Site & Security Configuration         |
-|  - Smoji Sticker Lazy Loader (smoji.json)            - Comment Tombstone & Purge Management        |
-|                                                                                                    |
-+---------------------------------+----------------------------------+-------------------------------+
-                                  | HTTPS REST Requests              |
-                                  v                                  v
-+----------------------------------------------------------------------------------------------------+
-|                                    Edge / Reverse Proxy Layer                                      |
-+----------------------------------------------------------------------------------------------------+
-|                                                                                                    |
-|  [ Caddy / Nginx / CDN ]                                                                           |
-|  - SSL / TLS Termination                                                                           |
-|  - Forward to 127.0.0.1:12123                                                                      |
-|  - Overwrite X-Forwarded-For with {remote_host} / CF-Connecting-IP                                 |
-|                                                                                                    |
-+-------------------------------------------------+--------------------------------------------------+
-                                                  | Local TCP Connection
-                                                  v
-+----------------------------------------------------------------------------------------------------+
-|                                    Ecoku Single Container Runtime                                  |
-+----------------------------------------------------------------------------------------------------+
-|                                                                                                    |
-|  [ Go 1.24 HTTP Core (Gin Engine) ]                                                                |
-|  ├── In-Memory Rate Limiter (Socket Peer IP / Trusted Proxies)                                     |
-|  ├── Dynamic CSP Policy Engine (Cap / Turnstile Converged Policy)                                  |
-|  ├── Captcha Siteverify Client (Turnstile API / Self-Hosted Cap Endpoint)                          |
-|  ├── Admin Auth Guard (Bcrypt Hash + HMAC Credential-Versioned Token)                              |
-|  └── Outbox Notification Worker (Single-Instance Polling & Exponential Backoff)                    |
-|       ├── SMTP Mailer (TLS / STARTTLS)                                                             |
-|       └── Telegram Bot Client                                                                      |
-|                                                                                                    |
-|  [ Storage Layer: SQLite3 (WAL Mode) ]                                                             |
-|  - /data/ecoku.sqlite3 (Strict Foreign Keys, In-Place Schema Migrations v1~v7)                     |
-|  - AES-256-GCM Credential Encryption (SMTP Passwords / Bot Tokens / Captcha Secrets)               |
-|                                                                                                    |
-+----------------------------------------------------------------------------------------------------+
+```mermaid
+flowchart TD
+    subgraph Client["🌐 客户端层 (Browser / Web)"]
+        direction LR
+        Visitor["📱 博客访客接入<br/>• 2KB 极简加载器 (ecoku-loader.js)<br/>• 原生 SDK (ESM / UMD / CJS)<br/>• 身份凭据本地加密 7 天 (IndexedDB)<br/>• Smoji 轻量纯文本表情包按需加载"]
+        Admin["💻 管理端后台 (/admin/)<br/>• Vue 3 + Pinia + 系统衬线栈<br/>• 纯内存短效 Bearer Token (无存储)<br/>• 多站点配置 / 安全人机验证管理<br/>• 评论软删除墓碑与物理彻底清除"]
+    end
+
+    subgraph Edge["🛡️ 边界反代层 (Reverse Proxy)"]
+        Proxy["Caddy / Nginx / CDN<br/>• HTTPS / SSL 证书自动申请与终结<br/>• 客户端真实 IP 识别与透传 (防头伪造)<br/>• 本地 TCP 连接转发至 127.0.0.1:12123"]
+    end
+
+    subgraph Runtime["📦 Ecoku 单容器运行环境 (10001:10001)"]
+        direction TB
+        subgraph Core["Go 1.24 HTTP 核心引擎"]
+            direction LR
+            Engine["⚡ Gin HTTP 核心服务<br/>• 进程内 IP 频控限流 (Rate Limiter)<br/>• 动态收敛 CSP 安全策略 (Turnstile / Cap)<br/>• 人机验证 Siteverify 远端校验<br/>• 管理员 Bcrypt 会话鉴权与版本控制"]
+            Outbox["📬 Outbox 异步通知工作协程<br/>• 单实例轮询机制与指数退避重试<br/>• SMTP 邮件通知 (TLS / STARTTLS)<br/>• Telegram Bot 机器人消息推送<br/>• 博主口令免密身份识别与通知去重"]
+        end
+        Storage["💾 SQLite3 存储引擎 (WAL 模式)<br/>• /data/ecoku.sqlite3 (严格外键约束 · 原位版本迁移 v1~v7)<br/>• AES-256-GCM 敏感字段落盘加密 (SMTP 密码 / Bot Token / 验证码 Secret)"]
+        Core --> Storage
+    end
+
+    Visitor -->|HTTPS REST| Proxy
+    Admin -->|HTTPS REST| Proxy
+    Proxy -->|127.0.0.1:12123| Engine
+    Engine -.->|写入待发任务| Outbox
 ```
 
 ---

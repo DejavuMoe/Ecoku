@@ -4,10 +4,27 @@ Ecoku は `127.0.0.1:12123` でのみ待ち受けるため、フロントエン�
 
 ---
 
+## ネットワークトポロジモデル
+
+```mermaid
+flowchart TD
+    V["訪問者 (Client)"]
+    CDN["Cloudflare CDN (任意)"]
+    Proxy["リバースプロキシ (Caddy / Nginx)<br/>• HTTPS 終端 / X-Forwarded-For 転送"]
+    Container["Ecoku コンテナ<br/>• 127.0.0.1:12123 待受"]
+
+    V -->|シナリオ 1: 直連 HTTPS| Proxy
+    V -->|シナリオ 2: CDN 経由| CDN
+    CDN -->|HTTPS| Proxy
+    Proxy -->|ローカル HTTP| Container
+```
+
+---
+
 ## Caddy 設定（推奨）
 
 ```caddyfile
-comments.example.com {
+ecoku.example.com {
     encode zstd gzip
 
     reverse_proxy 127.0.0.1:12123 {
@@ -24,10 +41,10 @@ comments.example.com {
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name comments.example.com;
+    server_name ecoku.example.com;
 
-    ssl_certificate /etc/letsencrypt/live/comments.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/comments.example.com/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/ecoku.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ecoku.example.com/privkey.pem;
 
     location / {
         proxy_pass http://127.0.0.1:12123;

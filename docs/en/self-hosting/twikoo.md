@@ -1,6 +1,10 @@
 # Twikoo Migration
 
 Ecoku provides a built-in CLI tool to migrate discussions from Twikoo JSON exports.
+> [!IMPORTANT]
+> **Initial Deployment Only**:
+> The Twikoo import command (`import-twikoo`) **only supports target sites that have exactly 0 comments**.
+> If new comments have already been submitted to the site, import will be strictly rejected to safeguard discussion trees, foreign keys, and comment ID continuity.
 
 ---
 
@@ -14,17 +18,19 @@ Ecoku provides a built-in CLI tool to migrate discussions from Twikoo JSON expor
 ## Usage
 
 ```bash
+cd ~/Ecoku
+
 # 1. Dry run verification
 sudo docker compose run --rm --no-deps ecoku \
-  ecoku-server import-twikoo \
-  --site-id=blog \
+  import-twikoo \
+  --site=blog \
   --file=/data/twikoo.json \
   --dry-run
 
 # 2. Execute import
 sudo docker compose run --rm --no-deps ecoku \
-  ecoku-server import-twikoo \
-  --site-id=blog \
+  import-twikoo \
+  --site=blog \
   --file=/data/twikoo.json
 
 # 3. Clean up export file and restart

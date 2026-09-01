@@ -30,7 +30,7 @@ rate_limit:
 
 notifications:
   encryption_key_env: "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
-  instance_public_url: "https://comments.example.com"
+  instance_public_url: "https://ecoku.example.com"
 
 database:
   sqlite:
@@ -44,7 +44,7 @@ admin:
   token_key_env: "ECOKU_ADMIN_TOKEN_KEY"
   token_ttl_minutes: 480
   allowed_origins:
-    - "https://comments.example.com"
+    - "https://ecoku.example.com"
 ```
 
 ---

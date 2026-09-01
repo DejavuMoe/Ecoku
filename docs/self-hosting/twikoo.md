@@ -1,6 +1,10 @@
 # Twikoo 历史数据导入
 
 Ecoku 提供了专用的 CLI 工具，支持从 Twikoo 导出的 JSON 文件无损迁移历史评论数据。
+> [!IMPORTANT]
+> **仅限全新初始部署阶段执行**：
+> Twikoo 评论导入命令（`import-twikoo`）**仅支持导入到已在管理端注册但评论数为 0 的纯净站点**。
+> 一旦目标站点已有任何新评论写入，系统为保障树状结构层级、父子引用约束与评论 ID 连续性，将**严格拒绝导入**。
 
 ---
 
@@ -37,9 +41,11 @@ Ecoku 提供了专用的 CLI 工具，支持从 Twikoo 导出的 JSON 文件无�
 将 Twikoo 导出的 JSON 文件放置于宿主机（例如 `~/Ecoku/data/twikoo.json`），先执行 Dry-Run 验证：
 
 ```bash
+cd ~/Ecoku
+
 sudo docker compose run --rm --no-deps ecoku \
-  ecoku-server import-twikoo \
-  --site-id=blog \
+  import-twikoo \
+  --site=blog \
   --file=/data/twikoo.json \
   --dry-run
 ```
@@ -51,9 +57,11 @@ sudo docker compose run --rm --no-deps ecoku \
 确认预演统计无误后，执行正式写入：
 
 ```bash
+cd ~/Ecoku
+
 sudo docker compose run --rm --no-deps ecoku \
-  ecoku-server import-twikoo \
-  --site-id=blog \
+  import-twikoo \
+  --site=blog \
   --file=/data/twikoo.json
 ```
 

@@ -12,7 +12,7 @@ export const shared = defineConfig({
   lastUpdated: true,
   cleanUrls: true,
   ignoreDeadLinks: [
-    /^https?:\/\/(comments|blog|cdn|downloads)\.example\.com/,
+    /^https?:\/\/([a-zA-Z0-9_-]+\.)?example\.com/,
     /^https?:\/\/localhost/,
     /^https?:\/\/127\.0\.0\.1/,
   ],

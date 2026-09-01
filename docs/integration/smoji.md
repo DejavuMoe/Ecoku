@@ -9,23 +9,14 @@ Smoji 是 Ecoku 采用的**纯文本轻量级表情包协议**。
 ## 协议工作流程
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor Visitor as 访客
-    participant Browser as 浏览器 / SDK
-    participant CDN as 表情清单托管源
-    participant Server as Ecoku 服务端
-
-    Visitor->>Browser: 点击“表情”图标
-    Browser->>CDN: GET smoji.json (无凭据, no-referrer)
-    CDN-->>Browser: 返回表情包清单 JSON
-    Visitor->>Browser: 选择表情 [赞]
-    Browser->>Browser: 向评论框插入纯文本: ![smoji:赞](https://cdn.example.com/stickers/like.png)
-    Visitor->>Server: 提交纯文本评论正文
-    Server->>Server: 校验图片 URL 与站点配置的 Manifest 必须同源
-    Server->>Server: 原样存储纯文本标记至 SQLite
-    Server-->>Browser: 返回成功
-    Browser->>Browser: 客户端渲染时将同源标记渲染为 <img> 标签
+flowchart TD
+    A["访客点击表情图标"] --> B["SDK 异步拉取 smoji.json (no-referrer)"]
+    B --> C["选定表情 · 插入 Markdown 纯文本标记<br/>![smoji:赞](https://cdn.example.com/...)"]
+    C --> D["提交纯文本评论至 Ecoku 服务端"]
+    D --> E{"校验 Manifest 同源"}
+    E -->|合法同源| F["以纯文本入库 SQLite (零富文本注入风险)"]
+    E -->|非法外链| G["拒绝入库存储"]
+    F --> H["前端 SDK 消费时基于同源清单安全渲染为 <img>"]
 ```
 
 ---
@@ -58,14 +49,18 @@ sequenceDiagram
 }
 ```
 
-### 字段约束与限制
+### 字段约束与技术规范
 
 - `version`：必须为整数 `1`。
 - `packs`：表情包分组数组（1～32 组）。
 - `packs[].id`：分组唯一标识（匹配正则 `/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/`）。
 - `packs[].label`：分组显示名称（最多 40 字符）。
 - `packs[].items`：表情项列表（每组 1～300 项，全清单总表情数不超过 2000 个）。
-- `items[].src`：表情图片的绝对直链地址。
+- `items[].id`：表情项唯一标识（匹配正则 `/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/`）。
+- `items[].label`：表情显示文字（1～40 字符，用于 Markdown alt 与插入标记）。
+- `items[].src`：表情图片地址（支持同源绝对直链，或基于 `smoji.json` 的相对路径）。
+- **严格白名单（Exact Keys）**：JSON 结构严格匹配上述键集合，出现任何未定义冗余字段将直接拒绝解析。
+- **体积与拉取约束**：清单文件大小上限为 **256 KiB**，网络拉取超时为 8 秒。
 - **严格同源约束**：图片 `src` 的 Origin **必须与 `smoji.json` 自身的 Origin 严格保持一致**，生产环境必须使用 `https://` 协议。
 
 ---

@@ -11,7 +11,7 @@ Ecoku includes a ~2KB standalone loader `ecoku-loader.js`.
   id="ecoku-comments"
   class="ecoku-shell"
   data-ecoku-comments
-  data-server-url="https://comments.example.com"
+  data-server-url="https://ecoku.example.com"
   data-site-id="blog"
   data-page-key="/posts/hello-world/"
   data-page-title="Hello World"
@@ -25,7 +25,7 @@ Ecoku includes a ~2KB standalone loader `ecoku-loader.js`.
   <div id="ecoku-mount" data-ecoku-mount></div>
 </section>
 
-<script src="https://comments.example.com/client/ecoku-loader.js" defer></script>
+<script src="https://ecoku.example.com/client/ecoku-loader.js" defer></script>
 ```
 
 ---
@@ -33,14 +33,14 @@ Ecoku includes a ~2KB standalone loader `ecoku-loader.js`.
 ## Direct UMD Initialization
 
 ```html
-<link rel="stylesheet" href="https://comments.example.com/client/ecoku.css">
+<link rel="stylesheet" href="https://ecoku.example.com/client/ecoku.css">
 <div id="ecoku-mount"></div>
 
-<script src="https://comments.example.com/client/ecoku.umd.js"></script>
+<script src="https://ecoku.example.com/client/ecoku.umd.js"></script>
 <script>
   const comments = new Ecoku({
     container: '#ecoku-mount',
-    serverURL: 'https://comments.example.com',
+    serverURL: 'https://ecoku.example.com',
     siteId: 'blog',
     pageKey: window.location.pathname,
     pageTitle: document.title,

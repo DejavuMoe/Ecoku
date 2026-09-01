@@ -1,5 +1,3 @@
-name: ecoku
-
 services:
   ecoku:
     image: "git.via.moe/dejavu/ecoku:v0.1.9"
@@ -14,6 +12,10 @@ services:
       - ./app/config.yaml:/app/config.yaml:ro
       - ./app/logs:/var/log/ecoku
       - ./data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 384M
     logging:
       driver: json-file
       options:

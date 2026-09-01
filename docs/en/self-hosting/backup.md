@@ -15,13 +15,17 @@ sudo docker compose up -d
 
 ---
 
-## 2. Online Backup (`VACUUM INTO`)
+## 2. Host Online Snapshot (`VACUUM INTO`)
+
+If `sqlite3` CLI is installed on the host and zero downtime is desired:
 
 ```bash
 BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
-sudo docker compose exec ecoku sqlite3 /data/ecoku.sqlite3 "VACUUM INTO '/data/backup_${BACKUP_DATE}.sqlite3'"
-mv ~/Ecoku/data/backup_${BACKUP_DATE}.sqlite3 ~/backups/
+sqlite3 ~/Ecoku/data/ecoku.sqlite3 "VACUUM INTO '$HOME/backups/backup_${BACKUP_DATE}.sqlite3'"
 ```
+
+> [!NOTE]
+> The minimal Alpine container image does not bundle the `sqlite3` CLI. Cold backup remains the recommended, dependency-free method.
 
 ---
 

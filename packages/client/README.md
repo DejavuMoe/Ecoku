@@ -40,13 +40,13 @@ import Ecoku from 'ecoku'
 
 const comments = new Ecoku({
   container: '#comments',
-  serverURL: 'https://comments.example.com/',
+  serverURL: 'https://ecoku.example.com/',
   siteId: 'docs',
   pageKey: 'guides/windows-11-iot-ltsc',
   pageTitle: 'Windows 11 IoT LTSC 养老指南',
   pageSize: 10,
   theme: 'auto', // auto | light | dark
-  // cssURL: 'https://comments.example.com/client/ecoku.unstyled.css',
+  // cssURL: 'https://ecoku.example.com/client/ecoku.unstyled.css',
 })
 
 await comments.init()

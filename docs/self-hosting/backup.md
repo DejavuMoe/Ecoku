@@ -28,21 +28,19 @@ sudo docker compose up -d
 
 ---
 
-## 2. 在线备份（`VACUUM INTO`）
+## 2. 宿主机在线快照（`VACUUM INTO`）
 
-若不希望中断服务，可以利用 SQLite 原生原子事务快照命令 `VACUUM INTO` 在线生成一份无锁、已整理的高质量备份文件：
+若宿主机已安装 `sqlite3` 命令行工具且不希望短暂停服，可以在宿主机上对数据文件直接执行 SQLite 原生原子快照命令 `VACUUM INTO`，在线生成一份无锁、已整理的高质量单文件备份：
 
 ```bash
-# 在运行中的容器内执行 VACUUM INTO 生成快照
 BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
-sudo docker compose exec ecoku sqlite3 /data/ecoku.sqlite3 "VACUUM INTO '/data/backup_${BACKUP_DATE}.sqlite3'"
 
-# 将生成的快照移动到宿主机备份目录
-mv ~/Ecoku/data/backup_${BACKUP_DATE}.sqlite3 ~/backups/
+# 宿主机直接执行 VACUUM INTO 生成快照
+sqlite3 ~/Ecoku/data/ecoku.sqlite3 "VACUUM INTO '$HOME/backups/backup_${BACKUP_DATE}.sqlite3'"
 ```
 
 > [!NOTE]
-> `VACUUM INTO` 是原子且并发安全的，但在写入大型数据库快照时会消耗一定的磁盘 I/O。
+> 容器运行环境采用极简 Alpine 镜像，未内置 `sqlite3` 命令行工具。若宿主机未安装 `sqlite3`，推荐使用上述「停服冷备份」（最可靠、零额外依赖）。
 
 ---
 
@@ -83,7 +81,7 @@ curl -f http://127.0.0.1:12123/api/health
 
 恢复完成后，请按以下清单进行业务功能验收：
 
-- [ ] `curl -f http://127.0.0.1:12123/api/health` 返回 `ok`。
+- [ ] `curl -f http://127.0.0.1:12123/api/health` 正常返回，`data.status` 为 `healthy`。
 - [ ] 管理后台 `/admin/` 可以正常登录。
 - [ ] 站点列表与配置完好，博主口令与徽章正常展示。
 - [ ] 博客前台评论区能够正常加载历史树状评论。

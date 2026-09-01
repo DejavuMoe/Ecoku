@@ -21,7 +21,7 @@ import Ecoku from 'ecoku'
 
 const ecoku = new Ecoku({
   container: '#comments',
-  serverURL: 'https://comments.example.com',
+  serverURL: 'https://ecoku.example.com',
   siteId: 'blog',
   pageKey: '/posts/hello-world/',
   pageTitle: '你好，世界',
@@ -34,6 +34,6 @@ await ecoku.init()
 ### 方法
 - `init(): Promise<void>`：初始化並掛載。
 - `reload(): Promise<void>`：重新載入當前頁評論。
-- `setPageKey(newPageKey: string, newPageTitle?: string): Promise<void>`：SPA 路由切換時動態切換頁面。
+- `setPageKey(newPageKey: string): Promise<void>`：SPA 路由切換時動態切換頁面。
 - `destroy(): void`：完全銷毀實例並解綁事件。
 - `isInitialized(): boolean`：查詢就緒狀態。

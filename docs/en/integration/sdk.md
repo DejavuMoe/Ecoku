@@ -21,7 +21,7 @@ import Ecoku, { type EcokuConfig } from 'ecoku'
 
 const ecoku = new Ecoku({
   container: '#comments',
-  serverURL: 'https://comments.example.com',
+  serverURL: 'https://ecoku.example.com',
   siteId: 'blog',
   pageKey: '/posts/hello-world/',
   pageTitle: 'Hello World',
@@ -36,6 +36,6 @@ await ecoku.init()
 ### Methods
 - `init(): Promise<void>`: Mounts and loads comments.
 - `reload(): Promise<void>`: Re-fetches the current page of comments.
-- `setPageKey(newPageKey: string, newPageTitle?: string): Promise<void>`: Switches page discussions dynamically in SPAs.
+- `setPageKey(newPageKey: string): Promise<void>`: Switches page discussions dynamically in SPAs.
 - `destroy(): void`: Unmounts DOM and cleans up controllers and event listeners.
 - `isInitialized(): boolean`: Returns current mount status.

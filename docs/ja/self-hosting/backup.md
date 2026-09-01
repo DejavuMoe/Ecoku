@@ -15,13 +15,17 @@ sudo docker compose up -d
 
 ---
 
-## 2. オンラインバックアップ (`VACUUM INTO`)
+## 2. ホスト側オンラインスナップショット (`VACUUM INTO`)
+
+ホスト側に `sqlite3` コマンドがインストールされており、無停止での取得を希望する場合：
 
 ```bash
 BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
-sudo docker compose exec ecoku sqlite3 /data/ecoku.sqlite3 "VACUUM INTO '/data/backup_${BACKUP_DATE}.sqlite3'"
-mv ~/Ecoku/data/backup_${BACKUP_DATE}.sqlite3 ~/backups/
+sqlite3 ~/Ecoku/data/ecoku.sqlite3 "VACUUM INTO '$HOME/backups/backup_${BACKUP_DATE}.sqlite3'"
 ```
+
+> [!NOTE]
+> Alpine ベースの軽量コンテナ内には `sqlite3` CLI は含まれていません。完全停止コールドバックアップが最も確実で推奨される方法です。
 
 ---
 

@@ -32,7 +32,7 @@ const ecoku = new Ecoku(options: EcokuConfig)
 | 属性名 | 类型 | 必填 | 默认值 | 约束与说明 |
 | :--- | :--- | :---: | :---: | :--- |
 | `container` | `string \| HTMLElement` | **是** | — | 挂载目标容器的选择器字符串（如 `#comments`）或 DOM 元素实例。 |
-| `serverURL` | `string` | **是** | — | Ecoku 服务端绝对地址（如 `https://comments.example.com`）。 |
+| `serverURL` | `string` | **是** | — | Ecoku 服务端绝对地址（如 `https://ecoku.example.com`）。 |
 | `siteId` | `string` | **是** | — | 站点唯一标识符（匹配正则 `/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/`）。 |
 | `pageKey` | `string` | **是** | — | 站内相对路径（1～512 字符，如 `/posts/my-first-post/`）。 |
 | `pageTitle` | `string` | 否 | `""` | 文章标题（最多 200 字符），用于邮件和 TG 消息展示。 |
@@ -53,7 +53,7 @@ const ecoku = new Ecoku(options: EcokuConfig)
 ### `reload(): Promise<void>`
 重新拉取当前页码的最新评论数据并重新渲染，保持现有排序不变。
 
-### `setPageKey(newPageKey: string, newPageTitle?: string): Promise<void>`
+### `setPageKey(newPageKey: string): Promise<void>`
 在单页应用（SPA）无刷新路由切换时，无缝切换评论区绑定的页面。
 - 若传入的 `newPageKey` 与当前相同，静默触发 `reload()`。
 - 若为全新页面，自动中止前一页面所有在途网络请求、关闭活动回复框、重置分页与表单，并重新载入新页面的第 1 页评论。
@@ -88,7 +88,7 @@ onMounted(async () => {
   if (!mountEl.value) return
   ecokuInstance = new Ecoku({
     container: mountEl.value,
-    serverURL: 'https://comments.example.com',
+    serverURL: 'https://ecoku.example.com',
     siteId: 'blog',
     pageKey: route.path,
     pageTitle: document.title,
@@ -99,7 +99,7 @@ onMounted(async () => {
 
 // 监听 SPA 路由变化无刷新切换
 watch(() => route.path, (newPath) => {
-  ecokuInstance?.setPageKey(newPath, document.title)
+  ecokuInstance?.setPageKey(newPath)
 })
 
 onUnmounted(() => {
@@ -133,7 +133,7 @@ export const CommentBox: React.FC<CommentProps> = ({ pageKey, pageTitle }) => {
 
     const ecoku = new Ecoku({
       container: containerRef.current,
-      serverURL: 'https://comments.example.com',
+      serverURL: 'https://ecoku.example.com',
       siteId: 'blog',
       pageKey,
       pageTitle,

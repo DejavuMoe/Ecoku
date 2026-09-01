@@ -15,13 +15,17 @@ sudo docker compose up -d
 
 ---
 
-## 2. 線上備份 (`VACUUM INTO`)
+## 2. 宿主機線上快照 (`VACUUM INTO`)
+
+若宿主機已安裝 `sqlite3` 命令列工具且不希望中斷服務：
 
 ```bash
 BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
-sudo docker compose exec ecoku sqlite3 /data/ecoku.sqlite3 "VACUUM INTO '/data/backup_${BACKUP_DATE}.sqlite3'"
-mv ~/Ecoku/data/backup_${BACKUP_DATE}.sqlite3 ~/backups/
+sqlite3 ~/Ecoku/data/ecoku.sqlite3 "VACUUM INTO '$HOME/backups/backup_${BACKUP_DATE}.sqlite3'"
 ```
+
+> [!NOTE]
+> 容器執行環境採用極簡 Alpine 映像檔，未內建 `sqlite3` 命令列工具。停服冷備份仍為最推薦、零依賴的備份方式。
 
 ---
 
