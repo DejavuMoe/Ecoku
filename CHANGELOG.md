@@ -7,7 +7,7 @@
 
 ### 变更
 
-- 文档发布流水线固定调度到 `netcup-vps1000`，并将构建产物原子发布到 `/var/www/ecoku.zsh.moe`。
+- `master` push 自动触发文档发布流水线；流水线固定调度到 `netcup-vps1000`，并将构建产物原子发布到 `/var/www/ecoku.zsh.moe`。
 
 ## [0.1.9] - 2026-08-31
 

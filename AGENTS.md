@@ -41,7 +41,7 @@
   对应章节与页脚链接。若该 tag 影响部署，同时在 `docs/self-hosting/upgrades/` 增加对应页面（四套 locale）。
 - Git tag 必须为 `v` + `VERSION`。Woodpecker 只在 `v*` tag 上构建镜像，并用 `CI_COMMIT_TAG`
   作为镜像 tag。tag 流水线会校验 tag 与 `VERSION`、`compose.yaml` 一致。改 `VERSION` 不会出镜像。
-  镜像 CI 不部署应用生产、不碰生产库。文档站点仅由 `master` 上的 manual Woodpecker 流程构建并原子发布，
+  镜像 CI 不部署应用生产、不碰生产库。文档站点仅由 `master` push 的 Woodpecker 流程自动构建并原子发布，
   固定调度到 `role=netcup-vps1000`、`server=netcup-vps1000` 的 agent；发布 step 通过 trusted volume
   将 `/var/www/ecoku.zsh.moe` 原子切换到 `/var/www/.ecoku.zsh.moe-releases/` 下的新候选，成功后立即尝试删除旧候选。
 - 文档和示例只用占位符。真实域名、密码、token、SMTP、Telegram、数据库和日志不得进 Git。
@@ -59,7 +59,7 @@
 Woodpecker 在 `master` push 与目标为 `master` 的 pull request 上运行
 `pnpm verify:client`、`pnpm verify:admin`、`pnpm docs:build`、`go test -count=1 ./...`、`go vet ./...` 和 server 构建；
 `v*` tag 不重复测试，只做 tag / `VERSION` / `compose.yaml` 一致性校验后直接并行构建 amd64/arm64
-镜像并发布 manifest。manual 只运行独立文档构建/发布流程，不依赖完整测试流程。这些不要在本地重复跑，交给 CI。
+镜像并发布 manifest。文档发布流程在 `master` push 时独立运行，不依赖完整测试流程。这些不要在本地重复跑，交给 CI。
 
 本地只做 CI 覆盖不到的：
 
