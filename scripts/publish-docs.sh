@@ -5,6 +5,7 @@ set -eu
 source_dir="${1:-}"
 release_id="${2:-}"
 deploy_parent="${DOCS_DEPLOY_PARENT:-/deploy}"
+site_name="${DOCS_DEPLOY_SITE:-docs.via.moe}"
 
 if [ -z "$source_dir" ] || [ -z "$release_id" ]; then
   echo "usage: $0 SITE_DIR RELEASE_ID" >&2
@@ -12,6 +13,10 @@ if [ -z "$source_dir" ] || [ -z "$release_id" ]; then
 fi
 if ! printf '%s' "$release_id" | grep -Eq '^[0-9a-f]{40}-[0-9]+-[0-9]+$'; then
   echo "invalid release id: $release_id" >&2
+  exit 64
+fi
+if ! printf '%s' "$site_name" | grep -Eq '^[a-z0-9]+([.-][a-z0-9]+)*$'; then
+  echo "invalid DOCS_DEPLOY_SITE: $site_name" >&2
   exit 64
 fi
 case "$deploy_parent" in
@@ -27,12 +32,12 @@ if [ ! -d "$deploy_parent" ] || [ -L "$deploy_parent" ]; then
   exit 66
 fi
 
-release_root="$deploy_parent/.docs.via.moe-releases"
-live_path="$deploy_parent/docs.via.moe"
+release_root="$deploy_parent/.$site_name-releases"
+live_path="$deploy_parent/$site_name"
 build_dir="$release_root/.build-$release_id"
 candidate_dir="$release_root/.site-$release_id"
-next_link="$deploy_parent/.docs.via.moe-next-$release_id"
-rollback_link="$deploy_parent/.docs.via.moe-rollback-$release_id"
+next_link="$deploy_parent/.$site_name-next-$release_id"
+rollback_link="$deploy_parent/.$site_name-rollback-$release_id"
 lock_file="$release_root/.deploy.lock"
 
 cleanup_temporary_paths() {
@@ -115,7 +120,7 @@ if [ ! -d "$candidate_dir" ] || [ -L "$candidate_dir" ] || [ ! -s "$candidate_di
 fi
 
 candidate_name="$(basename "$candidate_dir")"
-candidate_link_value=".docs.via.moe-releases/$candidate_name"
+candidate_link_value=".$site_name-releases/$candidate_name"
 ln -s "$candidate_link_value" "$next_link"
 if [ ! -s "$next_link/index.html" ]; then
   echo "new documentation symlink does not resolve to the candidate" >&2
@@ -159,4 +164,4 @@ fi
 
 trap - EXIT HUP INT TERM
 cleanup_temporary_paths
-echo "documentation activated atomically: docs.via.moe -> $candidate_link_value"
+echo "documentation activated atomically: $site_name -> $candidate_link_value"
