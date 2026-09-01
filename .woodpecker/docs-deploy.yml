@@ -5,7 +5,7 @@ labels:
   server: netcup-vps1000
 
 when:
-  - event: manual
+  - event: push
     branch: master
 
 steps:
