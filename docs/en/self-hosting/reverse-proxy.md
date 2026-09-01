@@ -1,18 +1,17 @@
-# Reverse proxy
+# Reverse Proxy & Rate Limiting
 
-Ecoku listens only on `127.0.0.1:12123`. Terminate HTTPS on a local web server and reverse-proxy `/` (including `/api/`, `/admin/`, and `/client/`) to that port.
+Ecoku binds exclusively to `127.0.0.1:12123`. A front-end web server (Caddy / Nginx) must terminate HTTPS.
 
-## Direct to origin
+---
 
-```text
-Visitor → Caddy / Nginx → 127.0.0.1:12123
-```
+## Direct Origin Proxy (Caddy & Nginx)
 
-### Caddy
+### Caddy (Recommended)
 
 ```caddyfile
 comments.example.com {
     encode zstd gzip
+
     reverse_proxy 127.0.0.1:12123 {
         header_up X-Forwarded-For {remote_host}
         header_up X-Forwarded-Proto {scheme}
@@ -24,8 +23,11 @@ comments.example.com {
 
 ```nginx
 server {
-    listen 443 ssl;
+    listen 443 ssl http2;
     server_name comments.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/comments.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/comments.example.com/privkey.pem;
 
     location / {
         proxy_pass http://127.0.0.1:12123;
@@ -36,17 +38,14 @@ server {
 }
 ```
 
-## Via CDN
+---
 
-```text
-Visitor → CDN → Caddy / Nginx → 127.0.0.1:12123
-```
-
-### Cloudflare + Caddy
+## Proxy via Cloudflare CDN
 
 ```caddyfile
 comments.example.com {
     encode zstd gzip
+
     reverse_proxy 127.0.0.1:12123 {
         header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
         header_up X-Forwarded-Proto {scheme}
@@ -54,31 +53,21 @@ comments.example.com {
 }
 ```
 
-Allow only CDN ranges to reach origin HTTPS, and disable origin bypass. Trust `CF-Connecting-IP` only when that edge restriction holds. Ecoku `trusted_proxies` still lists only the Docker gateway—not CDN ranges.
+---
 
-If Turnstile Pre-clearance is enabled, the site must be proxied through Cloudflare; `cf_clearance` does not skip Ecoku Siteverify.
+## `trusted_proxies` Configuration
 
-## Client address and rate limits
-
-By default `X-Forwarded-For` is not trusted, and rate limits use the direct connection address. The proxied client address is read only when the Docker gateway matches `trusted_proxies`.
-
-| Path | `trusted_proxies` | Reverse proxy |
-| --- | --- | --- |
-| Visitor → proxy → Ecoku | Docker gateway `/32` | **Overwrite** `X-Forwarded-For` with the visitor address |
-| Visitor → CDN → proxy → Ecoku | Docker gateway `/32` | Overwrite with the visitor address supplied by the CDN |
-| Unconfigured | `[]` | All visitors share one rate-limit bucket |
+Ecoku ignores `X-Forwarded-For` unless the incoming TCP connection matches a CIDR listed in `trusted_proxies`:
 
 ```bash
+# Retrieve Docker network gateway IP
 sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
 ```
 
-Write the real gateway into `app/config.yaml`, for example `172.18.0.1/32`. Never use `0.0.0.0/0` or `::/0`.
+Add the gateway to `app/config.yaml`:
 
-## Checks
-
-```bash
-curl --fail https://comments.example.com/api/health
-curl --fail https://comments.example.com/client/ecoku-loader.js
+```yaml
+site:
+  trusted_proxies:
+    - "172.18.0.1/32"
 ```
-
-Confirm the admin UI, comment pages, and static assets are reachable, then test login and submit.

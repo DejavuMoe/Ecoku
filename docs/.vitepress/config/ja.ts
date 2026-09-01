@@ -1,22 +1,28 @@
 import { defineConfig } from 'vitepress'
-import { nav, sidebar, type SidebarCopy } from './shared'
+import { nav, sidebar, type SidebarCopy, type NavCopy } from './shared'
 
-const copy: SidebarCopy = {
+const copy: SidebarCopy & NavCopy = {
   guide: 'ガイド',
   selfHosting: 'セルフホスト',
   integration: '組み込み',
-  introduction: '紹介',
-  features: '機能',
+  reference: 'リファレンス',
+  introduction: '概要と構成',
+  features: '機能一覧',
+  concepts: 'コアコンセプト',
   docker: 'Docker 導入',
   proxy: 'リバースプロキシ',
   admin: '管理画面',
+  configuration: '設定リファレンス',
   backup: 'バックアップと復元',
-  upgrade: 'アップグレード',
+  upgrade: 'アップグレードと移行',
   twikoo: 'Twikoo 取り込み',
-  faq: 'よくある質問',
+  faq: 'よくある質問とトラブル解決',
   html: '汎用 HTML',
+  sdk: 'JavaScript SDK',
   hugo: 'Hugo PaperMod',
   customCss: 'カスタム CSS',
+  smoji: 'Smoji スタンプ',
+  api: 'REST API',
 }
 
 export const ja = defineConfig({

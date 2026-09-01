@@ -1,84 +1,126 @@
-# 反向代理
+# 反向代理与网络限流
 
-Ecoku 只监听 `127.0.0.1:12123`。请在本机 Web 服务器上终止 HTTPS，并把 `/`（含 `/api/`、`/admin/`、`/client/`）反代到该端口。
+Ecoku 容器默认仅在宿主机本地回环 `127.0.0.1:12123` 监听 HTTP 请求。在生产环境中，必须通过前端 Web 服务器（如 Caddy 或 Nginx）终止 HTTPS，并将流量反向代理到容器端口。
 
-## 直连源站
+---
 
-```text
-访客 → Caddy / Nginx → 127.0.0.1:12123
+## 网络拓扑模型
+
+```
+[场景 1: 直连源站]
+访客 ──HTTPS──> [ Caddy / Nginx ] ──HTTP (127.0.0.1:12123)──> [ Ecoku 容器 ]
+
+[场景 2: 经 CDN 代理]
+访客 ──HTTPS──> [ Cloudflare CDN ] ──HTTPS──> [ Caddy / Nginx ] ──HTTP (127.0.0.1:12123)──> [ Ecoku 容器 ]
 ```
 
-### Caddy
+---
+
+## 场景 1：直连源站反向代理
+
+### Caddy 配置（推荐）
+
+Caddy 具备自动证书申请与维护能力，配置最为精炼：
 
 ```caddyfile
 comments.example.com {
     encode zstd gzip
+
     reverse_proxy 127.0.0.1:12123 {
+        # 强制覆盖 X-Forwarded-For 为对端直连 IP，防止客户端伪造 Header 欺骗限流
         header_up X-Forwarded-For {remote_host}
         header_up X-Forwarded-Proto {scheme}
     }
 }
 ```
 
-### Nginx
+### Nginx 配置
 
 ```nginx
 server {
-    listen 443 ssl;
+    listen 443 ssl http2;
     server_name comments.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/comments.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/comments.example.com/privkey.pem;
+
+    # 启用 Gzip 压缩
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript;
 
     location / {
         proxy_pass http://127.0.0.1:12123;
         proxy_set_header Host $host;
+        # 覆盖 X-Forwarded-For 为当前直接 TCP 对端 IP
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
 
-## 经 CDN
+---
 
-```text
-访客 → CDN → Caddy / Nginx → 127.0.0.1:12123
-```
+## 场景 2：经 CDN（如 Cloudflare）反向代理
 
-### Cloudflare + Caddy
+当域名通过 Cloudflare CDN 代理时，直接对端是 CDN 节点。必须配置反向代理将 CDN 注入的真实客户端 IP 写入 `X-Forwarded-For`。
+
+### Cloudflare + Caddy 配置
 
 ```caddyfile
 comments.example.com {
     encode zstd gzip
+
     reverse_proxy 127.0.0.1:12123 {
+        # 将 Cloudflare 鉴权后的访客真实 IP 覆盖写入 X-Forwarded-For
         header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
         header_up X-Forwarded-Proto {scheme}
     }
 }
 ```
 
-只允许 CDN 网段访问源站 HTTPS，并关闭回源绕过。`CF-Connecting-IP` 仅在入口限制成立时可信。Ecoku 的 `trusted_proxies` 仍只填 Docker 网关，不要填 CDN 网段。
+> [!WARNING]
+> - 开启 CDN 时，源站防火墙应严格限制仅放行 Cloudflare 官方 IP 段，禁止通过公网 IP 绕过 CDN 直接回源。
+> - 在 Ecoku 的 `trusted_proxies` 配置中，**仍旧只填写 Docker 网关 IP**，绝不能将整个 CDN 庞大的网段填入 `trusted_proxies`。
 
-若启用 Turnstile Pre-clearance，站点须经 Cloudflare 代理；`cf_clearance` 不会跳过 Ecoku 的 Siteverify。
+---
 
-## 客户端地址与限流
+## 客户端 IP 判定与 `trusted_proxies`
 
-默认不信任 `X-Forwarded-For`，按直连地址限流。仅当 Docker 网关命中 `trusted_proxies` 时，才读取反代覆盖后的客户端地址。
+Ecoku 内置严格的防伪造保护机制：
 
-| 链路 | `trusted_proxies` | 反代 |
-| --- | --- | --- |
-| 访客 → 反代 → Ecoku | Docker 网关 `/32` | 用访客地址**覆盖** `X-Forwarded-For` |
-| 访客 → CDN → 反代 → Ecoku | Docker 网关 `/32` | 用 CDN 提供的访客地址覆盖 |
-| 不配置 | `[]` | 所有访客共用一个限流桶 |
+1. **默认不信任**：若 `trusted_proxies` 为空（`[]`），Ecoku 默认不解析任何 `X-Forwarded-For` 请求头，所有请求均按 TCP Socket 对端 IP（通常为反向代理网关 IP）处理。此时所有访客共用一个限流桶。
+2. **精确信任**：只有当 TCP 直接连接对端**精确匹配** `trusted_proxies` 中声明的单个 IP 或 CIDR 时，Ecoku 才会从 `X-Forwarded-For` 读取真实客户端 IP 进行独立限流。
+
+### 查询 Docker 网关 IP
+
+执行以下命令获取当前容器所在的 Docker 桥接网络网关：
 
 ```bash
 sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
 ```
 
-把实际网关写入 `app/config.yaml`，例如 `172.18.0.1/32`。禁止 `0.0.0.0/0` 与 `::/0`。
+例如输出为 `172.18.0.1`，则在 `app/config.yaml` 中配置：
 
-## 检查
-
-```bash
-curl --fail https://comments.example.com/api/health
-curl --fail https://comments.example.com/client/ecoku-loader.js
+```yaml
+site:
+  trusted_proxies:
+    - "172.18.0.1/32"
 ```
 
-确认管理端、评论页与静态资源可访问后，再测登录与提交。
+> [!CAUTION]
+> 绝对禁止在 `trusted_proxies` 中配置 `0.0.0.0/0` 或 `::/0`，否则任何外部请求均可通过伪造 `X-Forwarded-For` 绕过限流。
+
+---
+
+## 连通性测试
+
+```bash
+# 验证反向代理健康检查端点
+curl -i https://comments.example.com/api/health
+
+# 验证前端静态加载器脚本可访问
+curl -i https://comments.example.com/client/ecoku-loader.js
+
+# 验证管理后台入口
+curl -i https://comments.example.com/admin/
+```
