@@ -1,22 +1,28 @@
 import { defineConfig } from 'vitepress'
-import { nav, sidebar, type SidebarCopy } from './shared'
+import { nav, sidebar, type SidebarCopy, type NavCopy } from './shared'
 
-const copy: SidebarCopy = {
+const copy: SidebarCopy & NavCopy = {
   guide: '指南',
   selfHosting: '自託管',
   integration: '接入',
-  introduction: '簡介',
-  features: '特性',
+  reference: '參考',
+  introduction: '簡介與架構',
+  features: '特性全覽',
+  concepts: '核心機制',
   docker: 'Docker 部署',
   proxy: '反向代理',
   admin: '後台設定',
+  configuration: '設定字典',
   backup: '備份與還原',
-  upgrade: '升級',
+  upgrade: '升級與遷移',
   twikoo: 'Twikoo 匯入',
-  faq: '常見問題',
+  faq: '常見問題與排錯',
   html: '通用 HTML',
+  sdk: 'JavaScript SDK',
   hugo: 'Hugo PaperMod',
   customCss: '自訂 CSS',
+  smoji: 'Smoji 貼圖包',
+  api: 'REST API',
 }
 
 export const zhHant = defineConfig({

@@ -1,26 +1,81 @@
-# Introduction
+# Introduction & Architecture
 
-Ecoku is a self-hosted multi-site plain-text comment system. One instance can serve many sites. Comments go live as soon as they are submitted.
+Ecoku is a **self-hosted, multi-site plain-text comment system** engineered for static blogs, documentation hubs, and independent websites.
 
-It fits static blogs, documentation sites, and personal sites that want comment data on their own servers. Production uses Docker Compose and SQLite3.
+It eliminates bloated moderation queues, user registration databases, and third-party tracking services. Delivered as a single container with SQLite3, comments become live immediately after basic security checks.
 
-Only Docker images are published. Source code is not publicly distributed.
+---
 
-## What it is for
+## Design Philosophy
 
-- Provide comment sections for multiple sites.
-- Let visitors post comments and replies with a nickname, email, and optional website.
-- Optional email or Telegram notifications; one-time import of historical comments from Twikoo.
-- Bot protection with Cloudflare Turnstile or self-hosted Cap.
+- **Minimal Single Container**: A single Go binary simultaneously serves the REST API, the embedded admin panel (`/admin/`), and the client SDK assets (`/client/`). SQLite3 acts as the single-file transactional storage.
+- **Pure Text Conversations**: Comment bodies are never parsed as arbitrary HTML or Markdown, preventing XSS attacks by design.
+- **Live on Submit**: No artificial moderation delays. Safety is maintained via in-memory rate limiting, blogger passphrases, and modern CAPTCHA (Turnstile / Cap).
+- **Zero Privacy Leakage**: Public APIs never return email addresses, IP addresses, User-Agents, or internal database IDs. Visitor identity is stored strictly on the client side in IndexedDB with AES-GCM encryption for 7 days.
+- **In-Place Schema Evolution**: Versioned SQLite schema migrations (v1–v7) upgrade sequentially in a single transaction without external migration binaries.
 
-## What it does not provide
+---
 
-Comment bodies are plain text; HTML and Markdown are not parsed. There are no avatars, votes, rich text, end-user accounts, per-site moderation queues, or MySQL.
+## Architecture Overview
 
-Never put admin credentials or a site management key in the browser, URL, or page markup.
+```
++----------------------------------------------------------------------------------------------------+
+|                                    Client Layer (Browser / Web)                                    |
++----------------------------------------------------------------------------------------------------+
+|                                                                                                    |
+|  [ Visitor Blog / Static Site ]                      [ Admin Console: /admin/ ]                    |
+|  - ecoku-loader.js (2KB Standalone)                  - Vue 3 + Pinia + System Serif                |
+|  - Ecoku SDK (ESM / UMD / CJS)                       - Memory-only Bearer Token (No Storage)       |
+|  - WebCrypto AES-GCM (IndexedDB 7-Day TTL)           - Multi-Site & Security Configuration         |
+|  - Smoji Sticker Lazy Loader (smoji.json)            - Comment Tombstone & Purge Management        |
+|                                                                                                    |
++---------------------------------+----------------------------------+-------------------------------+
+                                  | HTTPS REST Requests              |
+                                  v                                  v
++----------------------------------------------------------------------------------------------------+
+|                                    Edge / Reverse Proxy Layer                                      |
++----------------------------------------------------------------------------------------------------+
+|                                                                                                    |
+|  [ Caddy / Nginx / CDN ]                                                                           |
+|  - SSL / TLS Termination                                                                           |
+|  - Forward to 127.0.0.1:12123                                                                      |
+|  - Overwrite X-Forwarded-For with {remote_host} / CF-Connecting-IP                                 |
+|                                                                                                    |
++-------------------------------------------------+--------------------------------------------------+
+                                                  | Local TCP Connection
+                                                  v
++----------------------------------------------------------------------------------------------------+
+|                                    Ecoku Single Container Runtime                                  |
++----------------------------------------------------------------------------------------------------+
+|                                                                                                    |
+|  [ Go 1.24 HTTP Core (Gin Engine) ]                                                                |
+|  ├── In-Memory Rate Limiter (Socket Peer IP / Trusted Proxies)                                     |
+|  ├── Dynamic CSP Policy Engine (Cap / Turnstile Converged Policy)                                  |
+|  ├── Captcha Siteverify Client (Turnstile API / Self-Hosted Cap Endpoint)                          |
+|  ├── Admin Auth Guard (Bcrypt Hash + HMAC Credential-Versioned Token)                              |
+|  └── Outbox Notification Worker (Single-Instance Polling & Exponential Backoff)                    |
+|       ├── SMTP Mailer (TLS / STARTTLS)                                                             |
+|       └── Telegram Bot Client                                                                      |
+|                                                                                                    |
+|  [ Storage Layer: SQLite3 (WAL Mode) ]                                                             |
+|  - /data/ecoku.sqlite3 (Strict Foreign Keys, In-Place Schema Migrations v1~v7)                     |
+|  - AES-256-GCM Credential Encryption (SMTP Passwords / Bot Tokens / Captcha Secrets)               |
+|                                                                                                    |
++----------------------------------------------------------------------------------------------------+
+```
 
-## How it runs
+---
 
-One non-root container serves the API, the admin UI at `/admin/`, and the comment frontend at `/client/`. By default it binds only to host `127.0.0.1:12123`; public access goes through an HTTPS reverse proxy.
+## Scope & Boundaries
 
-Sites, forms, and notifications are configured in the admin UI and stored in SQLite. For first deploy see [Docker](/en/self-hosting/docker); for page integration see [Plain HTML](/en/integration/html).
+### What Ecoku Is
+- Multi-site hosting from a single deployment instance.
+- Direct posting with instant availability.
+- Privacy-first storage with zero client-side tracking.
+- Resilient notifications via SMTP (TLS/STARTTLS) and Telegram.
+
+### What Ecoku Is Not
+- ❌ **No Rich Text / Markdown Parsing**: Bodies remain pure text (except structured Smoji stickers).
+- ❌ **No User Registration**: Visitors post with a nickname, private email, and optional website.
+- ❌ **No Avatars, Likes, or Reactions**: No calls to Gravatar, external IP databases, or analytics scripts.
+- ❌ **No MySQL / Postgres Requirement**: Built exclusively on SQLite3 with WAL mode.

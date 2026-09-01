@@ -135,3 +135,21 @@
   height: 28px;
   border-radius: 7px;
 }
+
+.mermaid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  background-color: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  overflow-x: auto;
+  min-height: 80px;
+}
+
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}

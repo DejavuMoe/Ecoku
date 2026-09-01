@@ -26,6 +26,19 @@ export const shared = defineConfig({
   markdown: {
     // TextMate grammar for ```caddyfile fences (Shiki has no built-in Caddyfile).
     languages: [caddyfileGrammar],
+    config(md) {
+      const defaultFence = md.renderer.rules.fence!
+      md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+        const token = tokens[idx]
+        const info = token.info.trim()
+        if (info === 'mermaid') {
+          const rawCode = token.content.trim()
+          const encodedCode = encodeURIComponent(rawCode)
+          return `<div class="mermaid" data-code="${encodedCode}" v-pre>${md.utils.escapeHtml(rawCode)}</div>`
+        }
+        return defaultFence(tokens, idx, options, env, self)
+      }
+    },
   },
   themeConfig: {
     logo: { src: '/logo.svg', alt: 'Ecoku' },
@@ -120,6 +133,7 @@ export function sidebar(prefix: string, t: SidebarCopy): DefaultTheme.SidebarIte
       items: [
         { text: t.introduction, link: `${p}/guide/introduction` },
         { text: t.features, link: `${p}/guide/features` },
+        { text: t.concepts, link: `${p}/guide/concepts` },
       ],
     },
     {
@@ -128,6 +142,7 @@ export function sidebar(prefix: string, t: SidebarCopy): DefaultTheme.SidebarIte
         { text: t.docker, link: `${p}/self-hosting/docker` },
         { text: t.proxy, link: `${p}/self-hosting/reverse-proxy` },
         { text: t.admin, link: `${p}/self-hosting/admin` },
+        { text: t.configuration, link: `${p}/self-hosting/configuration` },
         { text: t.backup, link: `${p}/self-hosting/backup` },
         { text: t.upgrade, link: `${p}/self-hosting/upgrade` },
         { text: t.twikoo, link: `${p}/self-hosting/twikoo` },
@@ -138,8 +153,16 @@ export function sidebar(prefix: string, t: SidebarCopy): DefaultTheme.SidebarIte
       text: t.integration,
       items: [
         { text: t.html, link: `${p}/integration/html` },
+        { text: t.sdk, link: `${p}/integration/sdk` },
         { text: t.hugo, link: `${p}/integration/hugo` },
         { text: t.customCss, link: `${p}/integration/custom-css` },
+        { text: t.smoji, link: `${p}/integration/smoji` },
+      ],
+    },
+    {
+      text: t.reference,
+      items: [
+        { text: t.api, link: `${p}/reference/api` },
       ],
     },
   ]
@@ -158,6 +181,11 @@ export function nav(prefix: string, t: NavCopy): DefaultTheme.NavItem[] {
       link: `${prefix}/integration/html`,
       activeMatch: `${prefix}/integration/`,
     },
+    {
+      text: t.reference,
+      link: `${prefix}/reference/api`,
+      activeMatch: `${prefix}/reference/`,
+    },
   ]
 }
 
@@ -165,19 +193,25 @@ export interface NavCopy {
   guide: string
   selfHosting: string
   integration: string
+  reference: string
 }
 
 export interface SidebarCopy extends NavCopy {
   introduction: string
   features: string
+  concepts: string
   docker: string
   proxy: string
   admin: string
+  configuration: string
   backup: string
   upgrade: string
   twikoo: string
   faq: string
   html: string
+  sdk: string
   hugo: string
   customCss: string
+  smoji: string
+  api: string
 }

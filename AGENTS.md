@@ -42,7 +42,7 @@
 - Git tag 必须为 `v` + `VERSION`。Woodpecker 只在 `v*` tag 上构建镜像，并用 `CI_COMMIT_TAG`
   作为镜像 tag。tag 流水线会校验 tag 与 `VERSION`、`compose.yaml` 一致。改 `VERSION` 不会出镜像。
   镜像 CI 不部署应用生产、不碰生产库。文档站点仅由 `master` push 的 Woodpecker 流程自动构建并原子发布，
-  固定调度到 `role=netcup-vps1000`、`server=netcup-vps1000` 的 agent；发布 step 通过 trusted volume
+  固定调度到 `role=netcup-nano`、`server=netcup-nano` 的 agent；发布 step 通过 trusted volume
   将 `/var/www/ecoku.zsh.moe` 原子切换到 `/var/www/.ecoku.zsh.moe-releases/` 下的新候选，成功后立即尝试删除旧候选。
 - 文档和示例只用占位符。真实域名、密码、token、SMTP、Telegram、数据库和日志不得进 Git。
 - 提交、推送、tag、镜像发布、生产部署和真实数据库操作需要当前任务的明确授权。
