@@ -20,6 +20,8 @@ steps:
 
   - name: publish-docs
     image: alpine:3.24.1
+    environment:
+      DOCS_DEPLOY_SITE: ecoku.zsh.moe
     volumes:
       - /var/www:/deploy
     commands:
