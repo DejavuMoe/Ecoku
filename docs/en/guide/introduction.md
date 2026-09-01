@@ -18,50 +18,33 @@ It eliminates bloated moderation queues, user registration databases, and third-
 
 ## Architecture Overview
 
-```
-+----------------------------------------------------------------------------------------------------+
-|                                    Client Layer (Browser / Web)                                    |
-+----------------------------------------------------------------------------------------------------+
-|                                                                                                    |
-|  [ Visitor Blog / Static Site ]                      [ Admin Console: /admin/ ]                    |
-|  - ecoku-loader.js (2KB Standalone)                  - Vue 3 + Pinia + System Serif                |
-|  - Ecoku SDK (ESM / UMD / CJS)                       - Memory-only Bearer Token (No Storage)       |
-|  - WebCrypto AES-GCM (IndexedDB 7-Day TTL)           - Multi-Site & Security Configuration         |
-|  - Smoji Sticker Lazy Loader (smoji.json)            - Comment Tombstone & Purge Management        |
-|                                                                                                    |
-+---------------------------------+----------------------------------+-------------------------------+
-                                  | HTTPS REST Requests              |
-                                  v                                  v
-+----------------------------------------------------------------------------------------------------+
-|                                    Edge / Reverse Proxy Layer                                      |
-+----------------------------------------------------------------------------------------------------+
-|                                                                                                    |
-|  [ Caddy / Nginx / CDN ]                                                                           |
-|  - SSL / TLS Termination                                                                           |
-|  - Forward to 127.0.0.1:12123                                                                      |
-|  - Overwrite X-Forwarded-For with {remote_host} / CF-Connecting-IP                                 |
-|                                                                                                    |
-+-------------------------------------------------+--------------------------------------------------+
-                                                  | Local TCP Connection
-                                                  v
-+----------------------------------------------------------------------------------------------------+
-|                                    Ecoku Single Container Runtime                                  |
-+----------------------------------------------------------------------------------------------------+
-|                                                                                                    |
-|  [ Go 1.24 HTTP Core (Gin Engine) ]                                                                |
-|  ├── In-Memory Rate Limiter (Socket Peer IP / Trusted Proxies)                                     |
-|  ├── Dynamic CSP Policy Engine (Cap / Turnstile Converged Policy)                                  |
-|  ├── Captcha Siteverify Client (Turnstile API / Self-Hosted Cap Endpoint)                          |
-|  ├── Admin Auth Guard (Bcrypt Hash + HMAC Credential-Versioned Token)                              |
-|  └── Outbox Notification Worker (Single-Instance Polling & Exponential Backoff)                    |
-|       ├── SMTP Mailer (TLS / STARTTLS)                                                             |
-|       └── Telegram Bot Client                                                                      |
-|                                                                                                    |
-|  [ Storage Layer: SQLite3 (WAL Mode) ]                                                             |
-|  - /data/ecoku.sqlite3 (Strict Foreign Keys, In-Place Schema Migrations v1~v7)                     |
-|  - AES-256-GCM Credential Encryption (SMTP Passwords / Bot Tokens / Captcha Secrets)               |
-|                                                                                                    |
-+----------------------------------------------------------------------------------------------------+
+```mermaid
+flowchart TD
+    subgraph Client["🌐 Client Layer (Browser / Web)"]
+        direction LR
+        Visitor["📱 Visitor Integration<br/>• 2KB Standalone Loader (ecoku-loader.js)<br/>• Native SDK (ESM / UMD / CJS)<br/>• 7-Day Encrypted Storage (IndexedDB)<br/>• Smoji Plain-Text Stickers on Demand"]
+        Admin["💻 Admin Console (/admin/)<br/>• Vue 3 + Pinia + System Serif<br/>• Memory-only Bearer Token (No Storage)<br/>• Multi-site & CAPTCHA Security Settings<br/>• Comment Tombstones & Hard Purge"]
+    end
+
+    subgraph Edge["🛡️ Edge & Reverse Proxy"]
+        Proxy["Caddy / Nginx / CDN<br/>• Automatic TLS / SSL Termination<br/>• Trusted Client IP Forwarding & Anti-Spoofing<br/>• Forward to Local 127.0.0.1:12123"]
+    end
+
+    subgraph Runtime["📦 Ecoku Single Container (10001:10001)"]
+        direction TB
+        subgraph Core["Go 1.24 HTTP Core Engine"]
+            direction LR
+            Engine["⚡ Gin HTTP Core Service<br/>• In-Memory IP Rate Limiter<br/>• Dynamic CSP Policies (Turnstile / Cap)<br/>• Remote Captcha Siteverify<br/>• Admin Bcrypt Auth & Credential Versioning"]
+            Outbox["📬 Outbox Notification Worker<br/>• Single-instance Polling & Exponential Backoff<br/>• SMTP Email Notifications (TLS / STARTTLS)<br/>• Telegram Bot Message Push<br/>• Blogger Passphrase Zero-Auth Match"]
+        end
+        Storage["💾 SQLite3 Storage Engine (WAL Mode)<br/>• /data/ecoku.sqlite3 (Strict Foreign Keys · In-Place Migrations v1~v7)<br/>• AES-256-GCM Sensitive Field Encryption (SMTP / Bot / Captcha Secrets)"]
+        Core --> Storage
+    end
+
+    Visitor -->|HTTPS REST| Proxy
+    Admin -->|HTTPS REST| Proxy
+    Proxy -->|127.0.0.1:12123| Engine
+    Engine -.->|Enqueue Tasks| Outbox
 ```
 
 ---

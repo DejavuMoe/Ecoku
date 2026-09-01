@@ -2,7 +2,7 @@
 
 Ecoku 采用版本化、原位（In-Place）、事务性的 SQLite Schema 迁移体系。
 
-准备升级到 **[v0.1.9](./upgrades/v0.1.9)** 时，先确认提交通过 CI、镜像已发布。自 v0.1.8 升级仍为 schema v7；主要影响是公开列表读取预算和限流。回滚到 v0.1.8 前须移除显式新增的 `rate_limit.comment_list`。详细限制、SDK 行为和回滚步骤见版本说明。
+准备升级到 **[v0.1.9](./upgrades/v0.1.9)** 时，请先查阅对应版本说明。自 v0.1.8 升级仍为 schema v7，无需执行数据库结构迁移；主要影响是公开列表读取预算保护与频控限流。回滚到 v0.1.8 前须移除显式新增的 `rate_limit.comment_list` 字段。详细限制、客户端表现与回滚步骤见版本说明。
 
 升级过程中，只需修改 Compose 文件中的**精确镜像 Tag**，服务在启动时会自动检测并按版本顺序执行数据库升级。
 
@@ -11,7 +11,7 @@ Ecoku 采用版本化、原位（In-Place）、事务性的 SQLite Schema 迁移
 ## 升级核心契约
 
 1. **单向事务迁移**：Schema 迁移在同一个 SQLite 文件中顺序向上执行，成功后向 `schema_migrations` 表追加版本记录。Ecoku **不支持自动向下迁移（Down-migration）**。
-2. **严禁浮动 Tag**：生产环境绝对禁止使用 `latest`，必须使用形如 `v0.1.8` 的精确版本。
+2. **严禁浮动 Tag**：生产环境绝对禁止使用 `latest`，必须使用形如 `v0.1.9` 的精确发布版本。
 3. **不可逆性与回滚原则**：一旦数据库成功升级至高版本 Schema（例如 v7），**不能仅将镜像 Tag 换回旧版本**，否则旧版本服务因无法识别高版本 Schema 会拒绝启动。回滚必须使用升级前冷备份的数据库文件进行恢复。
 
 ---
@@ -28,7 +28,7 @@ cd ~/Ecoku
 sudo docker compose down
 tar -czvf "ecoku-preupgrade-$(date +%Y%m%d_%H%M%S).tar.gz" data/ app/config.yaml ecoku.env compose.yaml
 
-# 步骤 3：修改 compose.yaml 中的 image 为新版本（如 v0.1.8）
+# 步骤 3：修改 compose.yaml 中的 image 为新版本（如 git.via.moe/dejavu/ecoku:v0.1.9）
 # 若新版本有新环境变量要求，一并补充至 ecoku.env
 
 # 步骤 4：拉取新镜像并启动
@@ -46,13 +46,19 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 ## Schema 版本演进历史
 
-| 镜像版本区间 | Schema 版本 | 核心数据库变更与特性 |
+| 镜像版本 | Schema 版本 | 核心数据库变更与特性 |
 | :--- | :---: | :--- |
-| **`v0.1.0` ～ `v0.1.2`** | `v4` | 基础表结构、站点注册、评论树模型、通知设置、Turnstile 表。 |
-| **`v0.1.3` ～ `v0.1.4`** | `v5` | `sites` 表增加 `blogger_passphrase_hash`；`comments` 表增加 `is_blogger`；`notification_outbox` 重构为单目标独立行。 |
-| **`v0.1.5` ～ `v0.1.7`** | `v6` | `turnstile_settings` 表原位重命名为 `captcha_settings`，新增 `provider` 与 `cap_instance_url` 等字段以支持自托管 Cap。 |
+| **`v0.1.9`** | `v7`（不变） | 不新增迁移；公开评论列表 CWE-400 资源预算防护、单层游标分页与独立列表读取频控。 |
 | **`v0.1.8`** | `v7` | `sites` 表新增 `smoji_enabled` (布尔) 与 `smoji_manifest_url` (TEXT)，支持站点级表情包。 |
-| **`v0.1.9`** | `v7` | 不新增迁移；公开列表读取预算、分页与限流，以及 SQLite 重连安全设置。 |
+| **`v0.1.7`** | `v6`（不变） | 不改变 Schema；构建工具链升级、多语言文档体系落地与 CI 镜像构建优化。 |
+| **`v0.1.6`** | `v6`（不变） | 不改变 Schema；修复 Cap instrumentation 脚本所需动态 CSP 策略。 |
+| **`v0.1.5`** | `v6` | `turnstile_settings` 表原位重命名为 `captcha_settings`，新增 `provider` 及自托管 Cap 相关配置字段。 |
+| **`v0.1.4`** | `v5`（不变） | 不改变 Schema；后台保存博主口令时自动回填历史所有未删除评论的 `is_blogger` 标记。 |
+| **`v0.1.3`** | `v5` | `sites` 表增加 `blogger_passphrase_hash`；`comments` 表增加 `is_blogger`；`notification_outbox` 拆为每接收目标单行。 |
+| **`v0.1.2`** | `v4`（不变） | 不改变 Schema；优化评论区昵称排版基线对齐与 14px 字号阶梯。 |
+| **`v0.1.1`** | `v4`（不变） | 不改变 Schema；评论折叠按钮 `[+]`/`[-]` 提高优先级并固定 3ch 等宽。 |
+| **`v0.1.0`** | `v4` | 首个正式发布版本；多站点纯文本评论模型、墓碑软删除、通知配置与 Cloudflare Turnstile 支持。 |
+| **更早候选版** | `v1` ～ `v4` | RC 候选阶段：单容器极简架构演进、SQLite WAL 模式引入与时区支持。 |
 
 ---
 

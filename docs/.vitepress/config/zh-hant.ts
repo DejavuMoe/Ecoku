@@ -52,7 +52,6 @@ export const zhHant = defineConfig({
     langMenuLabel: '更換語言',
     skipToContentLabel: '跳到正文',
     footer: {
-      message: '以 MIT License 發布',
       copyright: 'Copyright © 2026 DejavuMoe',
     },
   },

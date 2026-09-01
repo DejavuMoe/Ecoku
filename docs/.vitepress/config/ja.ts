@@ -52,7 +52,6 @@ export const ja = defineConfig({
     langMenuLabel: '言語を変更',
     skipToContentLabel: '本文へスキップ',
     footer: {
-      message: 'MIT License で公開',
       copyright: 'Copyright © 2026 DejavuMoe',
     },
   },

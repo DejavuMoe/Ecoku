@@ -7,13 +7,10 @@ Ecoku 提供了细致的样式覆盖方案。您可以通过 CSS 变量微调配
 ## 三种样式接入策略
 
 ```mermaid
-graph TD
-    A["选择样式接入方式"] --> B["方案 1: 默认样式 + CSS 变量微调"]
-    A --> C["方案 2: 引入 ecoku.unstyled.css 骨架"]
-    A --> D["方案 3: 完全自绘 cssURL: 'none'"]
-    B --> E["适合绝大多数博客，开箱即用"]
-    C --> F["保留布局与 3ch 折叠尺寸，完全自定义颜色与阴影"]
-    D --> G["适合深度定制前端组件库与主题"]
+flowchart LR
+    A["选择接入方式"] --> B["🎨 方案 1: 默认样式 + 变量微调<br/>(开箱即用，适合绝大多数博客)"]
+    A --> C["🦴 方案 2: 引入 unstyled 骨架样式<br/>(保留布局，自由定制颜色与阴影)"]
+    A --> D["✨ 方案 3: cssURL: 'none' 完全自绘<br/>(适合深度适配前端组件库与主题)"]
 ```
 
 ### 1. 方案一：默认样式 + CSS 变量微调（推荐）
@@ -30,10 +27,16 @@ graph TD
 
 ## 核心 Design Tokens / CSS 变量全清单
 
-Ecoku 所有的视觉属性均通过标准 CSS 自定义属性驱动：
+Ecoku 所有的视觉属性均通过标准 CSS 自定义属性驱动。
+
+> [!TIP]
+> **覆盖作用域建议**：
+> - 若使用 Hugo PaperMod 等主题，可在 `:root` 直接声明 `--theme`、`--primary`、`--border` 等主题通用变量，Ecoku 会自动继承回退。
+> - 若需针对评论区单独定制，建议在 `.ecoku-comments` 作用域上覆盖专属的 `--ecoku-*` 变量。
 
 ```css
-:root {
+/* 精确针对评论区容器进行视觉定制 */
+.ecoku-comments {
   /* 基础背景色体系 */
   --ecoku-theme: rgb(250, 249, 245);          /* 评论区最底层背景色 / 身份输入框底色 */
   --ecoku-entry: rgb(252, 251, 247);          /* 发表卡片背景色 / 按钮默认背景色 */
@@ -49,13 +52,13 @@ Ecoku 所有的视觉属性均通过标准 CSS 自定义属性驱动：
   --ecoku-border: rgb(150, 143, 132);         /* 强实体边框 / 按钮 hover 边框 */
   --ecoku-border-soft: rgba(20, 20, 19, 0.14);/* 浅色分割线 / 卡片描边 / 输入框边框 */
 
-  /* 交互与焦点 */
-  --ecoku-focus: #0d9488;                     /* 输入框与按钮 focus 轮廓色 */
+  /* 交互焦点（默认基于 primary 动态混合: color-mix(in srgb, var(--ecoku-primary) 72%, #2f73ff)） */
+  --ecoku-focus: #2f73ff;                     /* 输入框与按钮 focus 轮廓高亮色 */
 }
 
 /* 暗色模式自适应覆盖 */
 @media (prefers-color-scheme: dark) {
-  :root {
+  .ecoku-comments {
     --ecoku-theme: rgb(26, 29, 32);
     --ecoku-entry: rgb(34, 38, 42);
     --ecoku-code-bg: rgb(44, 48, 53);
@@ -67,7 +70,7 @@ Ecoku 所有的视觉属性均通过标准 CSS 自定义属性驱动：
 
     --ecoku-border: rgb(109, 114, 120);
     --ecoku-border-soft: rgba(242, 236, 226, 0.14);
-    --ecoku-focus: #2dd4bf;
+    --ecoku-focus: #3b82f6;
   }
 }
 ```

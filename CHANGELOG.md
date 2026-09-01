@@ -8,6 +8,7 @@
 ### 变更
 
 - `master` push 自动触发文档发布流水线；流水线固定调度到 `netcup-nano`，并将构建产物原子发布到 `/var/www/ecoku.zsh.moe`。
+- 文档全面审查与事实纠偏：修正 `import-twikoo` CLI 语法与参数名称（`--site`），重构生产备份恢复 SOP；修正 `POST /api/comment/submit` 请求体字段（`mark`/`content`）与状态码（201 Created），补全管理端端点与配置字典种子说明；重构全景架构图与 Mermaid 布局比例，统一部署示例规范。
 
 ## [0.1.9] - 2026-08-31
 

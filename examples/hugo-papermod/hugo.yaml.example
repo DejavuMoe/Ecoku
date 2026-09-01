@@ -2,10 +2,10 @@ params:
   comments: true
   ecoku:
     # 不要以 / 结尾；加载器、UMD 与可选 CSS 均由 Ecoku 容器直接提供。
-    server_url: "https://comments.example.com"
+    server_url: "https://ecoku.example.com"
     site_id: "blog"
     # 可选。默认 {server_url}/client/ecoku-loader.js
     # js_url: "https://cdn.example.com/ecoku-loader.js"
     # 可选。设置后 SDK 不再注入默认样式。可用容器的 /client/ecoku.css、
     # /client/ecoku.unstyled.css，或自己的样式表；none 表示完全自写 CSS。
-    # css_url: "https://comments.example.com/client/ecoku.unstyled.css"
+    # css_url: "https://ecoku.example.com/client/ecoku.unstyled.css"

@@ -6,7 +6,7 @@ Ecoku 的管理后台位于实例的 `/admin/` 路径。
 
 ## 1. 登录与会话特性
 
-- **访问地址**：`https://comments.example.com/admin/`
+- **访问地址**：`https://ecoku.example.com/admin/`
 - **身份凭据**：输入在 `ecoku.env` 中配置的 `ECOKU_ADMIN_USERNAME` 与对应密码。
 - **内存 Bearer Token**：
   - 登录成功后签发的 Bearer Token 仅保存在浏览器当前运行时的 Vue 内存中。
@@ -75,7 +75,7 @@ Ecoku 的管理后台位于实例的 `/admin/` 路径。
 
 ## 5. 安全与人机验证（Captcha）
 
-在「安全」视图中，可为整个实例配置统一生效的机器人验证（单选三选一），同时保护**访客评论提交**与**管理后台登录**：
+在「安全」视图中，可为整个实例配置统一生效的机器人验证（三态单选切换），同时保护**访客评论提交**与**管理后台登录**：
 
 ```mermaid
 graph LR
@@ -84,17 +84,180 @@ graph LR
     A --> D[开源自托管 Cap]
 ```
 
-### 1. Cloudflare Turnstile
-- 访问 Cloudflare 控制台创建 Turnstile Widget，填入 `Site Key` 与 `Secret Key`。
-- 适配 300px 紧凑槽位，无感验证。
-
-### 2. 开源自托管 Cap
-- 支持完全自托管的 Cap 验证码实例。
-- 填入 Cap 的 `实例地址`（必须 HTTPS）、`Site Key` 与 `Secret Key`。
-- 服务端自动生成精确的 CSP 规则，放行 Cap 的 Origin、WASM、Blob Worker 与必要的 eval 权限。
-
 > [!NOTE]
 > Turnstile 与 Cap 的 Secret Key 均使用实例主密钥以 AES-256-GCM 密文存储，管理端界面永不回显明文。切换或关闭提供方时，已保存的密钥配置不会丢失。
+
+### 1. Cloudflare Turnstile
+
+[Cloudflare Turnstile 官方文档](https://developers.cloudflare.com/turnstile/)
+
+- 前往 Cloudflare 仪表盘创建 Turnstile Widget（推荐托管模式 Managed 或非交互式 Non-interactive）。
+- 在 **Domains** 域名允许列表中，添加博客前端域名（如 `blog.example.com`）与 Ecoku 服务端域名（如 `ecoku.example.com`）。
+- 复制生成的 `Site Key` 与 `Secret Key`，在 Ecoku 管理后台「安全」页面中选择 Turnstile 并填入保存。
+- 评论区与后台登录页将自动渲染 300px 紧凑无感验证槽位。
+
+### 2. 开源自托管 Cap (Capjs)
+
+[Cap (Capjs) 官方网站](https://capjs.org/) · [GitHub 仓库](https://github.com/tiago2/cap)
+
+Cap 是一款现代、轻量、注重隐私且完全开源的自托管验证码服务。Ecoku 深度支持 Cap，并根据安全模式动态收敛管理端 CSP 策略（精确放行 Cap Origin、WASM、Blob Worker 与必要的 eval 权限）。
+
+#### Cap 自托管部署参考
+
+假设部署在宿主机 `~/capjs` 目录下，使用 Valkey 作为高速缓存后端：
+
+```bash
+# 1. 创建 Cap 与 Valkey 数据目录
+mkdir -p ~/capjs/data/cap ~/capjs/data/valkey && cd ~/capjs
+
+# 2. 配置 Valkey 运行权限（UID/GID 999:1000）
+sudo chown -R 999:1000 data/valkey
+chmod 750 data/cap data/valkey
+```
+
+使用 `cat <<'EOF'` 写入 `~/capjs/compose.yml`（固定安全稳定版本）：
+
+```bash
+cd ~/capjs
+
+cat <<'EOF' > compose.yml
+services:
+  cap:
+    image: tiago2/cap:3.1.8
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    depends_on:
+      valkey:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      ADMIN_KEY: ${ADMIN_KEY:?ADMIN_KEY is required}
+      REDIS_URL: redis://valkey:6379
+      SERVER_PORT: "3000"
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required}
+      ENABLE_ASSETS_SERVER: "true"
+      WIDGET_VERSION: ${WIDGET_VERSION:?WIDGET_VERSION is required}
+      WASM_VERSION: ${WASM_VERSION:?WASM_VERSION is required}
+    volumes:
+      - ./data/cap:/usr/src/app/data
+    networks:
+      - public
+      - data
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    healthcheck:
+      test:
+        - CMD
+        - bun
+        - -e
+        - "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  valkey:
+    image: valkey/valkey:9.1.1-alpine
+    restart: unless-stopped
+    stop_grace_period: 30s
+    user: "${VALKEY_UID:?VALKEY_UID is required}:${VALKEY_GID:?VALKEY_GID is required}"
+    command:
+      - valkey-server
+      - --save
+      - "60"
+      - "1"
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --loglevel
+      - warning
+      - --maxmemory-policy
+      - noeviction
+    volumes:
+      - ./data/valkey:/data
+    networks:
+      - data
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=32m
+    healthcheck:
+      test:
+        - CMD
+        - valkey-cli
+        - ping
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+networks:
+  public:
+  data:
+    internal: true
+EOF
+```
+
+使用 `cat <<'EOF'` 写入 `~/capjs/.env` 环境变量：
+
+```bash
+cd ~/capjs
+
+cat <<'EOF' > .env
+CAP_IMAGE=tiago2/cap:3.1.8
+VALKEY_IMAGE=valkey/valkey:9.1.1-alpine
+
+# Cap 管理控制台访问密钥（建议使用 openssl rand -hex 32 生成）
+ADMIN_KEY=your_secure_admin_key_here
+
+# 允许跨域调用的 Origin（包含博客前台与 Ecoku 评论服务域名）
+CORS_ORIGIN=https://blog.example.com,https://ecoku.example.com
+
+# 静态 Widget 与 WASM 资源版本锁定
+WIDGET_VERSION=0.1.56
+WASM_VERSION=0.0.7
+
+# Valkey 容器用户权限
+VALKEY_UID=999
+VALKEY_GID=1000
+EOF
+
+chmod 600 .env
+```
+
+#### Cap 反向代理示例 (Caddy)
+
+Cap 容器监听在本地 `127.0.0.1:3000`，通过 Caddy 暴露 HTTPS（例如域名 `cap.example.com`）：
+
+```caddyfile
+cap.example.com {
+    reverse_proxy 127.0.0.1:3000
+}
+```
+
+#### 对接到 Ecoku 后台
+
+1. 启动 Cap 服务：`cd ~/capjs && sudo docker compose pull && sudo docker compose up -d`。
+2. 浏览器打开 `https://cap.example.com`，输入 `.env` 中的 `ADMIN_KEY` 登录 Cap 控制台。
+3. 创建新 Key，将前台博客域名（如 `blog.example.com`）与 Ecoku 域名（如 `ecoku.example.com`）加入允许 Host 列表。
+4. 获取该 Key 的 `Site Key` 与 `Secret Key`。
+5. 打开 Ecoku 管理后台 `/admin/` ->「安全」：
+   - 选择 **开源自托管 Cap**
+   - **实例地址**：`https://cap.example.com`（必须为 HTTPS 规范 URL，末尾不带斜杠）
+   - **Site Key**：填入 Cap 生成的 Site Key
+   - **Secret Key**：填入 Cap 生成的 Secret Key
+6. 点击「保存设置」，系统即可无缝切换为 Cap 验证码防护。
 
 ---
 

@@ -14,7 +14,7 @@ Ecoku 提供了仅 ~2KB 的极轻量级异步加载器 `ecoku-loader.js`。通�
   id="ecoku-comments"
   class="ecoku-shell"
   data-ecoku-comments
-  data-server-url="https://comments.example.com"
+  data-server-url="https://ecoku.example.com"
   data-site-id="blog"
   data-page-key="/posts/hello-world/"
   data-page-title="你好，世界"
@@ -31,7 +31,7 @@ Ecoku 提供了仅 ~2KB 的极轻量级异步加载器 `ecoku-loader.js`。通�
 </section>
 
 <!-- 异步引入加载器脚本 -->
-<script src="https://comments.example.com/client/ecoku-loader.js" defer></script>
+<script src="https://ecoku.example.com/client/ecoku-loader.js" defer></script>
 ```
 
 ---
@@ -40,7 +40,7 @@ Ecoku 提供了仅 ~2KB 的极轻量级异步加载器 `ecoku-loader.js`。通�
 
 | 属性名 | 必填 | 类型 | 规范与说明 |
 | :--- | :---: | :--- | :--- |
-| `data-server-url` | **是** | String | Ecoku 后端服务的绝对 HTTPS 地址（如 `https://comments.example.com`）。 |
+| `data-server-url` | **是** | String | Ecoku 后端服务的绝对 HTTPS 地址（如 `https://ecoku.example.com`）。 |
 | `data-site-id` | **是** | String | 在管理后台创建的站点唯一标识符。 |
 | `data-page-key` | **是** | String | 当前页面的**稳定站内相对路径**（1～512 字符，如 `/posts/hello-world/`）。严禁使用完整 URL 或带 query/fragment 的参数。 |
 | `data-page-title` | 否 | String | 当前页面的文章标题（最多 200 字符），用于在邮件通知中清晰展示来源。 |
@@ -65,19 +65,19 @@ Ecoku 提供了仅 ~2KB 的极轻量级异步加载器 `ecoku-loader.js`。通�
 
 ```html
 <!-- 1. 引入样式表 -->
-<link rel="stylesheet" href="https://comments.example.com/client/ecoku.css">
+<link rel="stylesheet" href="https://ecoku.example.com/client/ecoku.css">
 
 <!-- 2. 挂载容器 -->
 <div id="ecoku-mount"></div>
 
 <!-- 3. 引入 UMD 核心脚本 -->
-<script src="https://comments.example.com/client/ecoku.umd.js"></script>
+<script src="https://ecoku.example.com/client/ecoku.umd.js"></script>
 
 <!-- 4. 初始化实例 -->
 <script>
   const comments = new Ecoku({
     container: '#ecoku-mount',
-    serverURL: 'https://comments.example.com',
+    serverURL: 'https://ecoku.example.com',
     siteId: 'blog',
     pageKey: window.location.pathname,
     pageTitle: document.title,

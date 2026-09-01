@@ -35,7 +35,6 @@ export const en = defineConfig({
     outline: { label: 'On this page', level: [2, 3] },
     lastUpdated: { text: 'Updated' },
     footer: {
-      message: 'Released under the MIT License',
       copyright: 'Copyright © 2026 DejavuMoe',
     },
   },

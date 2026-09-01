@@ -22,6 +22,7 @@ client:
 rate_limit:
   window_seconds: 60
   comment_submit: 5
+  comment_list: 60
   comment_delete: 30
   admin_login: 5
   notification_test: 5
@@ -58,7 +59,7 @@ sites:
 notifications:
   encryption_key_env: "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
   # 管理端对外公开网址；永不信任请求 Host。
-  instance_public_url: "https://comments.example.com"
+  instance_public_url: "https://ecoku.example.com"
 
 # SQLite3 数据库配置。Ecoku P2 起不再支持 MySQL。
 database:

@@ -15,7 +15,7 @@
     id="ecoku-comments"
     class="ecoku-shell"
     data-ecoku-comments
-    data-server-url="https://comments.example.com"
+    data-server-url="https://ecoku.example.com"
     data-site-id="blog"
     data-page-key="{{ .RelPermalink }}"
     data-page-title="{{ .Title }}"
@@ -28,7 +28,7 @@
     </div>
     <div id="ecoku-mount" data-ecoku-mount></div>
   </section>
-  <script src="https://comments.example.com/client/ecoku-loader.js" defer></script>
+  <script src="https://ecoku.example.com/client/ecoku-loader.js" defer></script>
 </div>
 {{- end }}
 ```

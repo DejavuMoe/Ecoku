@@ -153,3 +153,11 @@
   max-width: 100%;
   height: auto;
 }
+
+.mermaid foreignObject p,
+.mermaid foreignObject div,
+.mermaid .nodeLabel {
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1.45 !important;
+}

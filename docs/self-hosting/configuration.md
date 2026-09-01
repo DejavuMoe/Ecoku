@@ -32,7 +32,7 @@ rate_limit:
 
 notifications:
   encryption_key_env: "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
-  instance_public_url: "https://comments.example.com"
+  instance_public_url: "https://ecoku.example.com"
 
 database:
   sqlite:
@@ -46,7 +46,7 @@ admin:
   token_key_env: "ECOKU_ADMIN_TOKEN_KEY"
   token_ttl_minutes: 480
   allowed_origins:
-    - "https://comments.example.com"
+    - "https://ecoku.example.com"
 ```
 
 ### 字段详细说明
@@ -83,18 +83,29 @@ admin:
 #### 5. `database` 数据库
 | 配置项 | 类型 | 必填 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
-| `sqlite.path` | 字符串 | 是 | `/data/ecoku.sqlite3` | SQLite3 数据库文件的绝对路径。 |
+| `sqlite.path` | 字符串 | 是 | `/data/ecoku.sqlite3` | SQLite3 数据库文件的绝对路径（代码内置兜底为 `./data/ecoku.bin`，容器部署固定为 `/data/ecoku.sqlite3`）。 |
 
 #### 6. `admin` 管理后台
 | 配置项 | 类型 | 必填 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
-| `enabled` | 布尔 | 否 | `true` | 是否启用管理端后台。 |
-| `static_dir` | 字符串 | 否 | `/app/admin` | 管理端静态 HTML/JS 资源目录。 |
+| `enabled` | 布尔 | 否 | `false` | 是否启用管理端后台。生产环境部署需显式配置为 `true`。 |
+| `static_dir` | 字符串 | 否 | `/app/admin` | 管理端静态 HTML/JS 资源目录（代码内置兜底为 `./admin`，容器部署固定为 `/app/admin`）。 |
 | `username_env` | 字符串 | 是 | `ECOKU_ADMIN_USERNAME` | 管理员用户名对应的环境变量名。 |
 | `password_hash_env` | 字符串 | 是 | `ECOKU_ADMIN_PASSWORD_HASH` | 管理员 bcrypt 密码哈希对应的环境变量名。 |
 | `token_key_env` | 字符串 | 是 | `ECOKU_ADMIN_TOKEN_KEY` | 管理员 Bearer Token 签名密钥对应的环境变量名。 |
 | `token_ttl_minutes` | 整数 | 否 | `480` | 管理端登录会话生命周期（分钟，默认 8 小时）。 |
 | `allowed_origins` | 字符串列表 | 是 | `[]` | 允许访问管理后台 API 的精确 Origin 列表（需包含协议与域名）。 |
+
+#### 7. `sites` 初始站点种子（可选）
+仅在数据库**首次初始化**时将配置项作为种子站点写入数据库。初始化后，所有站点配置以数据库为准，后续可在管理后台随时新增与调整：
+| 配置项 | 类型 | 必填 | 说明 |
+| :--- | :--- | :--- | :--- |
+| `id` | 字符串 | 是 | 站点唯一标识符（字母/数字开头，匹配 `^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$`）。 |
+| `site_url` | 字符串 | 是 | 规范站点 URL（如 `https://blog.example.com`）。 |
+| `name` | 字符串 | 否 | 站点可读名称（留空时自动回退为域名）。 |
+| `allowed_origins` | 字符串列表 | 是 | 允许调用评论接口的前端精确 Origin 列表。 |
+| `management_key_env` | 字符串 | 否 | 外部自动化调用评论删除 API 的独立凭据环境变量名（至少 32 字符，各站点不可共享）。 |
+| `comment` | 对象 | 否 | 评论表单默认规则（`placeholder`, `default_sort`, `length_limit`, `empty_message`, `email_required`, `website_required`）。 |
 
 ---
 

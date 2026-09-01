@@ -4,10 +4,27 @@ Ecoku 容器預設僅在 `127.0.0.1:12123` 監聽。在生產環境中，必須�
 
 ---
 
+## 網路拓撲模型
+
+```mermaid
+flowchart TD
+    V["訪客 (Client)"]
+    CDN["Cloudflare CDN (可選代理)"]
+    Proxy["反向代理 (Caddy / Nginx)<br/>• 終止 HTTPS / 透傳 X-Forwarded-For"]
+    Container["Ecoku 容器<br/>• 監聽 127.0.0.1:12123"]
+
+    V -->|場景 1: 直連 HTTPS| Proxy
+    V -->|場景 2: 經 CDN| CDN
+    CDN -->|HTTPS| Proxy
+    Proxy -->|本地 HTTP| Container
+```
+
+---
+
 ## Caddy 設定（推薦）
 
 ```caddyfile
-comments.example.com {
+ecoku.example.com {
     encode zstd gzip
 
     reverse_proxy 127.0.0.1:12123 {
@@ -24,10 +41,10 @@ comments.example.com {
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name comments.example.com;
+    server_name ecoku.example.com;
 
-    ssl_certificate /etc/letsencrypt/live/comments.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/comments.example.com/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/ecoku.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/ecoku.example.com/privkey.pem;
 
     location / {
         proxy_pass http://127.0.0.1:12123;

@@ -23,10 +23,15 @@ Ecoku 提供了整洁的 RESTful HTTP 接口，分为面向访客的**公开评�
 ### 健康检查 `GET /api/health`
 - **请求方法**：`GET`
 - **认证方式**：公开无认证
-- **响应示例**：
+- **响应示例 (HTTP 200)**：
   ```json
   {
-    "status": "ok"
+    "code": 200,
+    "message": "Success",
+    "data": {
+      "status": "healthy",
+      "timestamp": 1756700000
+    }
   }
   ```
 
@@ -53,7 +58,7 @@ GET /api/comment/list?siteId=blog&key=/posts/example/&parentId=101&afterId=120&p
   - `pageSize` (number, 可选)：每页根评论数量（默认 10，最大 100）。
   - `sort` (string, 可选)：排序方式，`newest` 或 `oldest`。
 
-- **响应示例**：
+- **响应示例 (HTTP 200)**：
   ```json
   {
     "code": 200,
@@ -83,13 +88,19 @@ GET /api/comment/list?siteId=blog&key=/posts/example/&parentId=101&afterId=120&p
         "emailRequired": true,
         "websiteRequired": false,
         "placeholder": "写下评论（仅支持纯文本）",
+        "defaultSort": "newest",
         "lengthLimit": 1000,
         "emptyMessage": "还没有评论\n成为第一个留下评论的人。",
         "bloggerBadge": "[博主]",
         "bloggerProofEnabled": true,
+        "turnstileSitekey": "example-sitekey",
         "captcha": {
           "provider": "turnstile",
           "sitekey": "example-sitekey"
+        },
+        "smoji": {
+          "enabled": false,
+          "manifestUrl": ""
         }
       }
     }
@@ -99,20 +110,32 @@ GET /api/comment/list?siteId=blog&key=/posts/example/&parentId=101&afterId=120&p
 ---
 
 ### 提交评论 `POST /api/comment/submit`
-提交一条新的根评论或对已有评论发表回复。
+提交一条新的根评论或对已有评论发表回复。请求体上限为 **80 KiB**。
 
 - **请求体 (JSON)**：
   ```json
   {
     "siteId": "blog",
-    "pageKey": "/posts/hello-world/",
+    "mark": "/posts/hello-world/",
     "pageTitle": "你好，世界",
     "parent": 0,
     "username": "张三",
     "email": "zhangsan@example.com",
     "url": "https://example.com",
-    "comment": "纯文本正文内容",
+    "content": "纯文本正文内容",
     "captchaToken": "0.xxxxxx"
+  }
+  ```
+
+- **响应示例 (HTTP 201 Created)**：
+  ```json
+  {
+    "code": 201,
+    "message": "评论提交成功",
+    "data": {
+      "id": 102,
+      "isBlogger": false
+    }
   }
   ```
 
@@ -123,10 +146,11 @@ GET /api/comment/list?siteId=blog&key=/posts/example/&parentId=101&afterId=120&p
 
 ## 2. 管理端端点（Admin Endpoints）
 
-所有管理端端点必须在请求头中携带 Bearer Token：
+所有管理端端点（除获取登录配置与登录接口外）必须在请求头中携带 Bearer Token：
 ```http
 Authorization: Bearer {ADMIN_TOKEN}
 ```
+管理端所有写操作（POST / PUT / DELETE）请求体上限为 **16 KiB**。
 
 ### 管理员登录 `POST /api/admin/login`
 - **请求体**：
@@ -137,19 +161,42 @@ Authorization: Bearer {ADMIN_TOKEN}
     "captchaToken": "0.xxxxxx"
   }
   ```
-- **响应体**：
+- **响应示例 (HTTP 200)**：
   ```json
   {
-    "code": 0,
+    "code": 200,
+    "message": "Success",
     "data": {
       "token": "eyJ2IjoxLCJzdWIiOiJhZG1pbiIs...",
-      "expiresAt": "2026-08-20T20:00:00Z"
+      "token_type": "Bearer",
+      "expires_at": "2026-08-20T20:00:00Z",
+      "expires_in": 28800
     }
   }
   ```
 
-### 评论软删除 `DELETE /api/admin/sites/:siteId/comments/:commentId`
-对评论执行墓碑化软删除，清空隐私并保留树结构。
+### 获取管理端配置 `GET /api/admin/login-config`
+获取管理端登录界面所需的人机验证公钥与参数（无需登录）。
 
-### 评论彻底清除 `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent`
-对**没有任何子评论**的孤立墓碑评论执行物理 DELETE 清除。
+### 站点管理接口
+- `GET /api/admin/sites`：获取全部注册站点列表与配置。
+- `POST /api/admin/sites`：注册新站点（需提供 `id`, `site_url`, `name`, `allowed_origins` 等）。
+- `GET /api/admin/sites/:siteId`：获取指定站点的详细配置。
+- `PUT /api/admin/sites/:siteId`：更新指定站点的配置（支持乐观锁 `revision`）。
+
+### 安全与人机验证接口
+- `GET /api/admin/captcha`：获取当前人机验证三态配置（密码部分掩码保护）。
+- `PUT /api/admin/captcha`：更新人机验证三态配置（关闭 / Turnstile / Cap）。
+
+### 通知渠道管理接口
+- `GET /api/admin/notifications`：获取 SMTP 邮件与 Telegram 通知渠道配置。
+- `PUT /api/admin/notifications/email`：更新邮件通知配置（SMTP 凭据使用主密钥 AES-GCM 加密存储）。
+- `POST /api/admin/notifications/email/test`：发送一封测试邮件验证 SMTP 连通性。
+- `PUT /api/admin/notifications/telegram`：更新 Telegram Bot 通知配置。
+- `POST /api/admin/notifications/telegram/test`：发送测试 Telegram 消息验证 Bot 连通性。
+
+### 评论治理接口
+- `GET /api/admin/sites/:siteId/comments`：管理端多条件分页查询评论列表。
+- `GET /api/admin/sites/:siteId/comments/:commentId`：获取单条评论详情与上下文。
+- `DELETE /api/admin/sites/:siteId/comments/:commentId`：将评论执行墓碑化软删除，清空隐私并保留树结构。
+- `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent`：对**没有任何子评论**的孤立墓碑评论执行物理 DELETE 清除。

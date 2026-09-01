@@ -34,6 +34,7 @@ async function renderMermaidDiagrams() {
           primaryColor: '#0f766e',
           primaryTextColor: '#f2ece2',
           lineColor: '#6ee7b7',
+          fontSize: '13px',
         }
       : {
           darkMode: false,
@@ -41,7 +42,16 @@ async function renderMermaidDiagrams() {
           primaryColor: '#0f766e',
           primaryTextColor: '#141413',
           lineColor: '#0f766e',
+          fontSize: '13px',
         },
+    flowchart: {
+      htmlLabels: true,
+      curve: 'basis',
+      padding: 18,
+      nodeSpacing: 36,
+      rankSpacing: 40,
+      wrappingWidth: 320,
+    },
     securityLevel: 'loose',
     fontFamily: 'inherit',
   })

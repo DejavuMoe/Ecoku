@@ -72,14 +72,14 @@ Ecoku 绝不使用可能跨站泄漏或被脚本轻易读取的 `localStorage` �
 sequenceDiagram
     autonumber
     actor Visitor as 访客
-    participant SDK as 浏览器 Client SDK
+    participant SDK as 浏览器 SDK
     participant IDB as 本地 IndexedDB
 
-    Visitor->>SDK: 填写昵称、邮箱、网址并提交
-    SDK->>SDK: WebCrypto 生成非导出 256-bit AES-GCM 密钥
-    SDK->>SDK: 生成 12 字节随机 IV，加密身份数据
-    SDK->>IDB: 存入密文与密钥 (TTL = 7 天, 按 serverURL+siteId 隔离)
-    Note over SDK,IDB: 7 天后静默失效，绝不写 localStorage / Cookie / URL
+    Visitor->>SDK: 填写昵称、私有邮箱并提交
+    SDK->>SDK: WebCrypto 生成 256-bit AES-GCM 密钥
+    SDK->>SDK: 强随机 IV 加密访客身份数据
+    SDK->>IDB: 写入密文与密钥 (TTL = 7 天)<br/>按 serverURL + siteId 命名空间隔离
+    Note over SDK,IDB: 7 天后静默失效<br/>绝不写 localStorage / Cookie / URL
 ```
 
 - **隔离命名空间**：基于 `serverURL + "::" + siteId` 进行独立存储隔离。

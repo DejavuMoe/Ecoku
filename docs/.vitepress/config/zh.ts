@@ -52,7 +52,6 @@ export const zh = defineConfig({
     langMenuLabel: '更换语言',
     skipToContentLabel: '跳到正文',
     footer: {
-      message: '以 MIT License 发布',
       copyright: 'Copyright © 2026 DejavuMoe',
     },
   },

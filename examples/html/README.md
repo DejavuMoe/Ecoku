@@ -14,8 +14,8 @@
 - JS：把 `<script src>` 换成自己的加载器地址，仍须能解析到同目录的 `ecoku.umd.js`。
 - CSS：给外壳加上 `data-css-url`。设置后 SDK 不再注入默认样式，加载器会插入对应
   `<link>`。可用：
-  - `https://comments.example.com/client/ecoku.css`（与默认注入相同）
-  - `https://comments.example.com/client/ecoku.unstyled.css`（只保留结构，自己写外观）
+  - `https://ecoku.example.com/client/ecoku.css`（与默认注入相同）
+  - `https://ecoku.example.com/client/ecoku.unstyled.css`（只保留结构，自己写外观）
   - 自己的样式表 URL
   - `none`：不注入也不加载文件，完全自写 CSS
 

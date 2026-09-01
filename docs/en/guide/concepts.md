@@ -64,6 +64,20 @@ stateDiagram-v2
 
 Ecoku stores visitor credentials strictly on the client side using WebCrypto AES-GCM:
 
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Visitor
+    participant SDK as Browser SDK
+    participant IDB as Local IndexedDB
+
+    Visitor->>SDK: Submit nickname & email
+    SDK->>SDK: WebCrypto generates 256-bit AES-GCM key
+    SDK->>SDK: Encrypt profile with random IV
+    SDK->>IDB: Write ciphertext & key (TTL = 7 Days)<br/>Scoped by serverURL + siteId
+    Note over SDK,IDB: Silent TTL expiration after 7 days<br/>Never written to localStorage / Cookies
+```
+
 - **Isolated Namespace**: Scoped by `serverURL + "::" + siteId`.
 - **Zero Disk Leakage**: Stored in IndexedDB; never written to `localStorage`, `sessionStorage`, or cookies.
 - **7-Day Automatic TTL**: Decryption keys and ciphertext expire after 7 days.
@@ -84,6 +98,20 @@ Site owners authenticate without entering private emails on public devices:
 ## Transactional Outbox Notifications
 
 Ecoku guarantees notification delivery by enqueuing notification events in the same SQLite transaction that commits the comment:
+
+```mermaid
+flowchart TD
+    A["Visitor Submits Comment"] --> B["Begin SQLite Transaction"]
+    B --> C["Insert comments Record"]
+    B --> D["Compute Matrix & Enqueue notification_outbox"]
+    D --> E["Commit Transaction"]
+    E --> F["Single-Worker Polling Outbox"]
+    F --> G{"Delivery Channel"}
+    G -->|SMTP| H["Send Email (TLS / STARTTLS)"]
+    G -->|Telegram Bot| I["Invoke Telegram Bot API"]
+    H --> J["Update Outbox Status (Sent / Retry)"]
+    I --> J
+```
 
 | Scenario | Blogger Channels (Email/TG) | Recipient Visitor Email |
 | :--- | :---: | :---: |
