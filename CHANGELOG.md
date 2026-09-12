@@ -5,7 +5,15 @@
 
 ## [Unreleased]
 
-暂无。
+## [0.2.1] - 2026-09-12
+
+### 修复
+
+- Smoji 容量与当前素材库对齐：64 包、每包 600 项、总计 6000 项、1 MiB UTF-8；流式限制正文大小，8 秒超时覆盖完整下载，补齐 JSON 类型、标签控制字符和图片 URL 校验。
+
+### 新增
+
+- Smoji v1 支持可选 `base` URL 模板，条目可省略重复 `src`；保留旧格式和显式地址覆盖，展开后维持同源限制。无 UI 布局、数据库或配置键变化。
 
 ## [0.2.0] - 2026-09-12
 
@@ -352,4 +360,5 @@
 [0.1.8]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.8
 [0.1.9]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.9
 [0.2.0]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.0
-[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.2.0...master
+[0.2.1]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.1
+[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.2.1...master

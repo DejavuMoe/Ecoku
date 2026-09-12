@@ -2,7 +2,7 @@
 
 Ecoku 採用版本化、原位（In-Place）、交易性的 SQLite Schema 遷移體系。
 
-準備升級至 **[v0.2.0](./upgrades/v0.2.0)** 時，請先查閱對應版本說明。自 v0.1.8 升級維持 schema v7，無需執行資料庫結構遷移；主要影響是公開列表讀取預算保護與頻控限流。回滾至 v0.1.8 前須移除明確新增的 `rate_limit.comment_list` 欄位。詳細限制、客戶端表現與回滾步驟見版本說明。
+準備升級至 **[v0.2.1](./upgrades/v0.2.1)** 時，請先查閱對應版本說明。本版本維持 schema v7，無需資料庫結構遷移；主要變更是 Smoji 清單容量提升與可選 `base` 模板支援。詳細限制、客戶端表現與回滾步驟見版本說明。
 
 升級過程中，只需修改 Compose 檔案中的**精確映像檔標籤**，服務在啟動時會自動偵測並按版本順序執行資料庫升級。
 
@@ -11,7 +11,7 @@ Ecoku 採用版本化、原位（In-Place）、交易性的 SQLite Schema 遷移
 ## 升級核心契約
 
 1. **單向交易遷移**：Schema 遷移在同一個 SQLite 檔案中順序向上執行，成功後向 `schema_migrations` 表追加版本記錄。Ecoku **不支援自動向下遷移（Down-migration）**。
-2. **嚴禁浮動標籤**：生產環境絕對禁止使用 `latest`，必須使用形如 `v0.2.0` 的精確發布版本。
+2. **嚴禁浮動標籤**：生產環境絕對禁止使用 `latest`，必須使用形如 `v0.2.1` 的精確發布版本。
 3. **不可逆性與回滾原則**：一旦資料庫成功升級至高版本 Schema（例如 v7），**不能僅將映像檔標籤換回舊版本**，否則舊版本服務因無法識別高版本 Schema 會拒絕啟動。回滾必須使用升級前冷備份的資料庫檔案進行復原。
 
 ---
@@ -28,7 +28,7 @@ cd ~/Ecoku
 sudo docker compose down
 tar -czvf "ecoku-preupgrade-$(date +%Y%m%d_%H%M%S).tar.gz" data/ app/config.yaml ecoku.env compose.yaml
 
-# 步驟 3：修改 compose.yaml 中的 image 為新版本（如 git.via.moe/dejavu/ecoku:v0.2.0）
+# 步驟 3：修改 compose.yaml 中的 image 為新版本（如 git.via.moe/dejavu/ecoku:v0.2.1）
 # 若新版本有新環境變數要求，一併補充至 ecoku.env
 
 # 步驟 4：拉取新映像檔並啟動
@@ -66,6 +66,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | 版本 | 發布日期 | Schema 變化 | 升級要點與說明 |
 | :--- | :--- | :---: | :--- |
+| [**v0.2.1**](./upgrades/v0.2.1) | 2026-09-12 | v7（不變） | Smoji 清單容量提升與精簡 `base` 模板支援。 |
 | [**v0.2.0**](./upgrades/v0.2.0) | 2026-09-12 | v7（不變） | 文件、接入範例與 API 參考事實校正和完善。 |
 | [**v0.1.9**](./upgrades/v0.1.9) | 2026-08-31 | v7（不變） | CWE-400 修復；舊設定可啟動，大討論串讀取和明確新設定鍵的回滾需留意。 |
 | [**v0.1.8**](./upgrades/v0.1.8) | 2026-08-27 | v6 → v7 | 新增 Smoji 純文字表情包；站點新增表情包開關與清單 URL。 |
