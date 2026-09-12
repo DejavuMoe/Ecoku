@@ -2,7 +2,7 @@
 
 Ecoku employs a versioned, in-place, and strictly transactional SQLite schema migration system.
 
-When preparing to upgrade to **[v0.2.1](./upgrades/v0.2.1)**, consult its specific upgrade notes first. This release remains on schema v7 with no schema migrations; its main changes are larger Smoji manifests and optional `base` templates. For full constraints, client behavior, and rollback steps, see the version notes.
+When preparing to upgrade to **v0.2.2**, consult the release notes first. This release remains on schema v7 with no schema migrations; its main change is fixing the Smoji picker layout on narrow screens. For full constraints, client behavior, and rollback steps, see the version notes.
 
 During upgrades, update only the **exact image tag** in your Compose file. Upon boot, the service automatically detects your current schema version and executes pending migrations sequentially within database transactions.
 
@@ -11,7 +11,7 @@ During upgrades, update only the **exact image tag** in your Compose file. Upon 
 ## Core Upgrade Contracts
 
 1. **Unidirectional Transactional Migrations**: Schema migrations run forward sequentially on your SQLite file, appending version records to `schema_migrations` upon success. Ecoku **does not support automated down-migrations**.
-2. **Strictly Prohibited Floating Tags**: Never use `latest` in production. Always specify an exact semantic tag like `v0.2.1`.
+2. **Strictly Prohibited Floating Tags**: Never use `latest` in production. Always specify an exact semantic tag like `v0.2.2`.
 3. **Irreversibility & Rollback Principle**: Once the database upgrades to a higher schema version (e.g. v7), **you cannot simply revert the image tag**, as older binaries refuse to boot against newer schemas. Rollbacks strictly require restoring the pre-upgrade cold backup.
 
 ---
@@ -28,7 +28,7 @@ cd ~/Ecoku
 sudo docker compose down
 tar -czvf "ecoku-preupgrade-$(date +%Y%m%d_%H%M%S).tar.gz" data/ app/config.yaml ecoku.env compose.yaml
 
-# Step 3: Update image tag in compose.yaml to target version (e.g. git.via.moe/dejavu/ecoku:v0.2.1)
+# Step 3: Update image tag in compose.yaml to target version (e.g. git.via.moe/dejavu/ecoku:v0.2.2)
 # Add any newly required environment variables to ecoku.env if applicable
 
 # Step 4: Pull new image and restart
@@ -66,6 +66,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | Version | Release Date | Schema | Upgrade Highlights & Notes |
 | :--- | :--- | :---: | :--- |
+| **v0.2.2** | 2026-09-13 | v7 (unchanged) | Fixed Smoji picker layout on narrow screens. |
 | [**v0.2.1**](./upgrades/v0.2.1) | 2026-09-12 | v7 (unchanged) | Larger Smoji manifests and compact `base` template support. |
 | [**v0.2.0**](./upgrades/v0.2.0) | 2026-09-12 | v7 (unchanged) | Documentation, integration examples, and API reference corrections. |
 | [**v0.1.9**](./upgrades/v0.1.9) | 2026-08-31 | v7 (unchanged) | CWE-400 mitigation; backward-compatible configs, note large thread read budget limits and rollback steps. |

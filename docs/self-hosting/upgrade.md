@@ -2,7 +2,7 @@
 
 Ecoku 采用版本化、原位（In-Place）、事务性的 SQLite Schema 迁移体系。
 
-准备升级到 **[v0.2.1](./upgrades/v0.2.1)** 时，请先查阅对应版本说明。此版本保持 schema v7，无需执行数据库结构迁移；主要变化是 Smoji 清单容量提升并支持可选 `base` 模板。详细限制、客户端表现与回滚步骤见版本说明。
+准备升级到 **v0.2.2** 时，请先查阅发布说明。此版本保持 schema v7，无需执行数据库结构迁移；主要变化是修复 Smoji 选择器在窄屏下的布局问题。详细限制、客户端表现与回滚步骤见版本说明。
 
 升级过程中，只需修改 Compose 文件中的**精确镜像 Tag**，服务在启动时会自动检测并按版本顺序执行数据库升级。
 
@@ -11,7 +11,7 @@ Ecoku 采用版本化、原位（In-Place）、事务性的 SQLite Schema 迁移
 ## 升级核心契约
 
 1. **单向事务迁移**：Schema 迁移在同一个 SQLite 文件中顺序向上执行，成功后向 `schema_migrations` 表追加版本记录。Ecoku **不支持自动向下迁移（Down-migration）**。
-2. **严禁浮动 Tag**：生产环境绝对禁止使用 `latest`，必须使用形如 `v0.2.1` 的精确发布版本。
+2. **严禁浮动 Tag**：生产环境绝对禁止使用 `latest`，必须使用形如 `v0.2.2` 的精确发布版本。
 3. **不可逆性与回滚原则**：一旦数据库成功升级至高版本 Schema（例如 v7），**不能仅将镜像 Tag 换回旧版本**，否则旧版本服务因无法识别高版本 Schema 会拒绝启动。回滚必须使用升级前冷备份的数据库文件进行恢复。
 
 ---
@@ -28,7 +28,7 @@ cd ~/Ecoku
 sudo docker compose down
 tar -czvf "ecoku-preupgrade-$(date +%Y%m%d_%H%M%S).tar.gz" data/ app/config.yaml ecoku.env compose.yaml
 
-# 步骤 3：修改 compose.yaml 中的 image 为新版本（如 git.via.moe/dejavu/ecoku:v0.2.1）
+# 步骤 3：修改 compose.yaml 中的 image 为新版本（如 git.via.moe/dejavu/ecoku:v0.2.2）
 # 若新版本有新环境变量要求，一并补充至 ecoku.env
 
 # 步骤 4：拉取新镜像并启动
@@ -66,6 +66,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | 版本 | 发布日期 | Schema 变化 | 升级要点与说明 |
 | :--- | :--- | :---: | :--- |
+| **v0.2.2** | 2026-09-13 | v7（不变） | 修复 Smoji 选择器在窄屏下的布局问题。 |
 | [**v0.2.1**](./upgrades/v0.2.1) | 2026-09-12 | v7（不变） | Smoji 清单容量提升与精简 `base` 模板支持。 |
 | [**v0.2.0**](./upgrades/v0.2.0) | 2026-09-12 | v7（不变） | 文档、接入示例与 API 参考事实校正和完善。 |
 | [**v0.1.9**](./upgrades/v0.1.9) | 2026-08-31 | v7（不变） | CWE-400 修复；旧配置可启动，大线程读取和显式新配置键的回滚需留意。 |
