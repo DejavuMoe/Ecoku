@@ -23,7 +23,7 @@ flowchart TD
 
 ## `smoji.json` 清单 Schema 规范 (v1)
 
-自建表情源需在 Web 服务器根目录下提供一个符合 JSON Schema 规范的 `smoji.json` 文件：
+自建表情源需在可访问的 URL 提供一个符合 JSON Schema 规范的 `smoji.json` 文件：
 
 ```json
 {
@@ -54,11 +54,11 @@ flowchart TD
 - `version`：必须为整数 `1`。
 - `packs`：表情包分组数组（1～32 组）。
 - `packs[].id`：分组唯一标识（匹配正则 `/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/`）。
-- `packs[].label`：分组显示名称（最多 40 字符）。
+- `packs[].label`：分组显示名称（去除首尾空白后最多 40 个字符）。
 - `packs[].items`：表情项列表（每组 1～300 项，全清单总表情数不超过 2000 个）。
 - `items[].id`：表情项唯一标识（匹配正则 `/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/`）。
-- `items[].label`：表情显示文字（1～40 字符，用于 Markdown alt 与插入标记）。
-- `items[].src`：表情图片地址（支持同源绝对直链，或基于 `smoji.json` 的相对路径）。
+- `items[].label`：表情显示文字（去除首尾空白后 1～40 个字符，禁止 `]` 与换行，用于 Markdown alt 与插入标记）。
+- `items[].src`：表情图片地址（支持同源绝对直链，或基于 `smoji.json` 的相对路径，不得带用户名、密码、查询参数或片段）。
 - **严格白名单（Exact Keys）**：JSON 结构严格匹配上述键集合，出现任何未定义冗余字段将直接拒绝解析。
 - **体积与拉取约束**：清单文件大小上限为 **256 KiB**，网络拉取超时为 8 秒。
 - **严格同源约束**：图片 `src` 的 Origin **必须与 `smoji.json` 自身的 Origin 严格保持一致**，生产环境必须使用 `https://` 协议。
@@ -67,8 +67,17 @@ flowchart TD
 
 ## 纯文本标记格式
 
-- **标记语法**：`![smoji:标签名称](图片绝对URL)`
+- **标记语法**：`![smoji:标签名称](https://图片绝对URL)`
 - **示例**：`![smoji:赞](https://stickers.example.com/paopao/thumbsup.png)`
 
 ### 安全降级规则
 若评论正文中包含了与当前站点已配置清单不同源的图片标记，或者站点关闭了 Smoji 功能，客户端在渲染时会自动将其原样作为纯文本显示，绝对不会解释为 HTML 图片标签，杜绝跨站 IP 追踪与钓鱼攻击。
+
+
+## 配置与素材更新
+
+在后台站点设置中启用 Smoji，填写清单 URL。清单与图片地址不得带用户名、密码、查询参数或片段；HTTP 仅用于回环开发地址。跨域托管清单时，资源服务器需允许评论页面来源的 CORS 请求。
+
+Smoji 工作台导出的“Ecoku 响应示例”展示公共接口的 `formConfig.smoji`，不是后台可导入的配置文件。后台表单内部使用 `smojiEnabled` / `smojiManifestUrl`；管理 API 请求字段为 `smoji_enabled` / `smoji_manifest_url`。
+
+评论保存完整图片 URL。更新素材时保留原有域名和旧图片路径；使用 Smoji 工作台构建发布时部署包含旧路径兼容副本的完整 `demo/dist`。单独替换清单不会修复历史评论中的失效地址。若改用其他 Origin，旧标记会按文本显示。

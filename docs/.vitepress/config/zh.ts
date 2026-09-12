@@ -23,6 +23,8 @@ const copy: SidebarCopy & NavCopy = {
   customCss: '自定义 CSS',
   smoji: 'Smoji 表情包',
   api: 'REST API',
+  earlierVersions: '更早版本 (v0.0.x)',
+  versionLatest: ' (最新)',
 }
 
 export const zh = defineConfig({

@@ -3,7 +3,7 @@
 Ecoku はシングルコンテナの Docker Compose 構成で動作し、`127.0.0.1:12123` でリクエストを待ち受けます。HTTPS はリバースプロキシ（Caddy / Nginx）で終端します。
 
 > [!NOTE]
-> `git.via.moe/dejavu/ecoku:v0.1.9` は公式リリースイメージです。`ecoku.example.com` はプレースホルダーですので、実際のドメインに置き換えてください。
+> `git.via.moe/dejavu/ecoku:v0.2.0` は公式リリースイメージです。`ecoku.example.com` はプレースホルダーですので、実際のドメインに置き換えてください。
 
 ---
 
@@ -31,7 +31,7 @@ cd ~/Ecoku
 cat <<'EOF' > compose.yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.1.9"
+    image: "git.via.moe/dejavu/ecoku:v0.2.0"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -71,7 +71,7 @@ EOF
 ```
 
 > [!IMPORTANT]
-> - 本番環境では `latest` などの変動タグを**絶対に使用しないでください**。必ず具体的なセマンティックバージョニングタグ（例：`v0.1.9`）を指定してください。
+> - 本番環境では `latest` などの変動タグを**絶対に使用しないでください**。必ず具体的なセマンティックバージョニングタグ（例：`v0.2.0`）を指定してください。
 > - リバースプロキシを経由させるため、コンテナポートは必ず `127.0.0.1:12123` にバインドしてください。
 
 ---
@@ -98,6 +98,7 @@ client:
 rate_limit:
   window_seconds: 60
   comment_submit: 5      # コメント投稿レート制限（回/ウィンドウ）
+  comment_list: 60       # コメント一覧取得レート制限（回/ウィンドウ）
   comment_delete: 30     # コメント削除レート制限
   admin_login: 5         # 管理者ログインレート制限
   notification_test: 5   # 通知テスト送信レート制限
@@ -152,7 +153,7 @@ grep -q "^ECOKU_ADMIN_USERNAME=" ecoku.env || echo "ECOKU_ADMIN_USERNAME='admin'
 # 3. 管理者パスワードを対話型で入力し、Bcrypt ハッシュを生成して書き込み（入力非表示、既に存在する場合はスキップ）
 if ! grep -q "^ECOKU_ADMIN_PASSWORD_HASH=" ecoku.env; then
   read -rsp '管理者パスワードを入力: ' ADMIN_PASS; echo
-  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i --entrypoint /app/ecoku-server "git.via.moe/dejavu/ecoku:v0.1.9" hash-password)
+  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i --entrypoint /app/ecoku-server "git.via.moe/dejavu/ecoku:v0.2.0" hash-password)
   unset ADMIN_PASS
   echo "ECOKU_ADMIN_PASSWORD_HASH='$HASH'" >> ecoku.env
 fi
@@ -191,7 +192,7 @@ sudo docker compose logs --tail=100 -f ecoku
 
 ```bash
 curl -fail http://127.0.0.1:12123/api/health
-# 期待される出力: {"status":"ok"}
+# 期待される出力: {"code":200,"message":"success","data":{"status":"healthy","timestamp":...}}
 ```
 
 次に、フロントエンドの [リバースプロキシ](/ja/self-hosting/reverse-proxy) を設定して HTTPS を終端し、公開転送を行ってください。または [管理画面設定](/ja/self-hosting/admin) でサイトとブロガー身元を登録してください。

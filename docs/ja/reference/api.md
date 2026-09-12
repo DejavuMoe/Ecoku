@@ -1,8 +1,27 @@
 # REST API リファレンス
 
+Ecoku は、訪問者向けの**公開コメント API**と管理者向けの**管理コンソール API**に分かれた、整然とした RESTful HTTP インターフェースを提供します。
+
 ---
 
-## 1. 公開エンドポイント
+## 共通仕様とステータスコード
+
+- **レスポンス形式**：すべてのエンドポイントは `application/json; charset=utf-8` を返します。
+- **タイムスタンプ**：ISO 8601 UTC 形式（例: `2026-08-20T12:00:00Z`）。
+- **標準 HTTP ステータスコード**：
+  - `200 OK`：リクエスト成功。
+  - `201 Created`：リソース作成成功。
+  - `400 Bad Request`：パラメーターの検証不合格または不正。
+  - `401 Unauthorized`：認証情報なし、または Bearer トークンの有効期限切れ。
+  - `403 Forbidden`：リクエスト Origin がサイトのホワイトリストに未登録。
+  - `404 Not Found`：対象サイト、親コメント、またはリソースが存在しない。
+  - `422 Unprocessable Entity`：リソース上限超過（200 ノード、16 階層、集計 10,000 件、1 MiB JSON）。
+  - `429 Too Many Requests`：単一 IP のインメモリレート制限超過（`Retry-After` ヘッダーを含む）。
+  - `503 Service Unavailable`：サーバー混雑（4 つのワーカースロットが満杯）または DB 読み取りタイムアウト（2 秒）。
+
+---
+
+## 1. 公開エンドポイント（Public Endpoints）
 
 ### ヘルスチェック `GET /api/health`
 - **メソッド**：`GET`
@@ -11,7 +30,7 @@
   ```json
   {
     "code": 200,
-    "message": "Success",
+    "message": "success",
     "data": {
       "status": "healthy",
       "timestamp": 1756700000
@@ -19,23 +38,135 @@
   }
   ```
 
+---
+
 ### コメント一覧取得 `GET /api/comment/list`
-- クエリパラメータ：`siteId`, `key`, `page`, `pageSize`, `sort`
-- 既定モードの成功レスポンスは `data.data`、ルート数 `total`、到達可能なコメント数 `commentTotal`、`page/pageSize/pageCount`、`formConfig`、`timeZone` を維持します。
-- 完全スレッドモードは **200 ノード、子孫 16 階層**（ルートは深さ 0）まで。件数集計で調べる ID と親の組は同一サイト/ページの **10,000 件**までです。超過時は **422** を返し、部分ツリーや概算件数を成功として返しません。記事全体が上限を超えると `pageSize=1` でも失敗します。現行 SDK は既存の読み込み失敗表示を使い、モードを自動変更しません。
-- 必要な分だけ読む場合は `parentId=0` でルート、正の親 ID でその直接の子だけを取得します。同一サイト/ページの墓標も含みます。`afterId`（既定 0）で **ID 昇順**のカーソルページングを行い、`pageSize` は既定 10、最大 100。`page/sort` とは併用できません。子孫展開と総数集計は行わず、レスポンスの `data` はコメント配列 `data` と `parentId/pageSize/hasMore/nextAfterId/formConfig/timeZone` を含みます。`hasMore=true` の場合だけ `nextAfterId` で続けます。親が存在しないか範囲外なら 404、不正なパラメーターは 400 です。
+既定ではルートコメントごとにページングされた完全なコメントツリーを返します。成功レスポンスは `data.data`、ルート数 `total`、到達可能コメント数 `commentTotal`、`page/pageSize/pageCount`、`formConfig`、サーバーの `timeZone` を保持します。
+
+完全スレッドモードは最大 **200 ノード、子孫 16 階層**（ルート深さ 0）まで。件数集計で調べる ID と親の組み合わせは同一サイト/ページで最大 **10,000 件**までです。いずれかの予算を超過した場合は、不完全なツリーや概算数を返すことなく、厳格に **422 Unprocessable Entity** を返します。ページ全体の総記録数が 10,000 件を超える場合は `pageSize=1` でも失敗します。現行 SDK は標準の読み込み失敗状態を表示し、自動でモードを切り替えません。
+
+必要な階層のみを読み取る場合は、明示的に `parentId` を指定します：`0` はルートノードのみを取得し、正の整数はその親コメントの直接の子（同一サイト/ページの墓標を含む）のみを取得します。`afterId`（既定 0）を指定して **ID 昇順**のカーソルページングを行い、`pageSize` は既定 10、最大 100。このモードでは `page` や `sort` は併用できません。子孫の再帰展開や総数集計は行わず、レスポンス `data` には `data`（コメント配列）、`parentId`、`pageSize`、`hasMore`、`nextAfterId`、`formConfig`、`timeZone` が含まれます。`hasMore: true` の場合のみ `nextAfterId` を使用して次のバッチを取得します。親が存在しないか範囲外なら 404、不正なパラメーターは 400 です。
 
 ```http
 GET /api/comment/list?siteId=blog&key=/posts/example/&parentId=0&pageSize=20
 GET /api/comment/list?siteId=blog&key=/posts/example/&parentId=101&afterId=120&pageSize=20
 ```
 
-両モードともエスケープとエンベロープを含む JSON 全体は **1 MiB** までです。超過時は 422 となり、`pageSize` を減らして再試行できます。一覧処理は **同時 4 件**、データベース読み取り期限は **2 秒**。満杯なら 503 / `Retry-After: 1`、期限切れなら 503 を返します。集計と子孫の取得は同じ SQLite スナップショットを使います。[読み取り頻度制限](../self-hosting/configuration.md)は既定で IP ごとに 60 秒間に 60 回、超過時は 429 / `Retry-After` です。
+両モードともエスケープを含む完全な JSON の上限は **1 MiB** です。超過時は 422 となり、`pageSize` を減らして再試行できます。一覧処理は **同時 4 件**の枠を共有し、データベース読み取り期限は **2 秒**です。混雑時は 503 と `Retry-After: 1`、期限切れ時は 503 を返します。コメント集計と子孫読み取りは同一の SQLite スナップショットで実行されます。[読み取りレート制限](../self-hosting/configuration.md)は既定で IP ごとに 60 秒間に 60 回、超過時は 429 と `Retry-After` を返します。
+
+- **クエリパラメーター**：
+  - `siteId` (string, 必須)：サイトの一意な識別子。
+  - `key` (string, 必須)：サイト内相対パス。
+  - `page` (number, 任意)：ルートコメントのページ番号（既定 1）。
+  - `pageSize` (number, 任意)：1 ページあたりのルートコメント数（既定 10、最大 100）。
+  - `sort` (string, 任意)：並べ替え順序。`newest`（既定）または `oldest`。
+  - `parentId` (number, 任意)：単層カーソルモードの有効化。`0` でルート、正の整数で特定親の子。
+  - `afterId` (number, 任意)：カーソルページングのアンカー ID。
+
+- **完全スレッドレスポンス例 (HTTP 200)**：
+  ```json
+  {
+    "code": 200,
+    "message": "获取评论成功",
+    "data": {
+      "data": [
+        {
+          "id": 101,
+          "site_id": "blog",
+          "mark": "/posts/example/",
+          "parent": 0,
+          "username": "田中",
+          "url": "https://example.com",
+          "content": "これは親コメントです",
+          "isBlogger": false,
+          "deleted": false,
+          "created_at": "2026-08-20T12:00:00Z",
+          "updated_at": "2026-08-20T12:00:00Z"
+        }
+      ],
+      "total": 1,
+      "commentTotal": 1,
+      "page": 1,
+      "pageSize": 10,
+      "pageCount": 1,
+      "timeZone": "Asia/Tokyo",
+      "formConfig": {
+        "emailRequired": true,
+        "websiteRequired": false,
+        "placeholder": "コメントを書く（純テキストのみ）",
+        "defaultSort": "newest",
+        "lengthLimit": 1000,
+        "emptyMessage": "まだコメントはありません。\n最初のコメントを投稿しましょう。",
+        "bloggerBadge": "[管理者]",
+        "bloggerProofEnabled": true,
+        "turnstileSitekey": "example-sitekey",
+        "captcha": {
+          "provider": "turnstile",
+          "sitekey": "example-sitekey"
+        },
+        "smoji": {
+          "enabled": false,
+          "manifestUrl": ""
+        }
+      }
+    }
+  }
+  ```
+
+- **カーソルモードレスポンス例 (HTTP 200、parentId 指定時)**：
+  ```json
+  {
+    "code": 200,
+    "message": "获取评论成功",
+    "data": {
+      "data": [
+        {
+          "id": 105,
+          "site_id": "blog",
+          "mark": "/posts/example/",
+          "parent": 101,
+          "username": "佐藤",
+          "content": "これはコメント 101 への返信です",
+          "isBlogger": false,
+          "deleted": false,
+          "created_at": "2026-08-20T12:05:00Z",
+          "updated_at": "2026-08-20T12:05:00Z"
+        }
+      ],
+      "parentId": 101,
+      "pageSize": 20,
+      "hasMore": true,
+      "nextAfterId": 105,
+      "timeZone": "Asia/Tokyo",
+      "formConfig": {
+        "emailRequired": true,
+        "websiteRequired": false,
+        "placeholder": "コメントを書く（純テキストのみ）",
+        "defaultSort": "newest",
+        "lengthLimit": 1000,
+        "emptyMessage": "まだコメントはありません。\n最初のコメントを投稿しましょう。",
+        "bloggerBadge": "[管理者]",
+        "bloggerProofEnabled": true,
+        "turnstileSitekey": "example-sitekey",
+        "captcha": {
+          "provider": "turnstile",
+          "sitekey": "example-sitekey"
+        },
+        "smoji": {
+          "enabled": false,
+          "manifestUrl": ""
+        }
+      }
+    }
+  }
+  ```
+
+---
 
 ### コメント投稿 `POST /api/comment/submit`
 新しいルートコメントの投稿または既存コメントへの返信。リクエストボディ上限は **80 KiB** です。
 
-- **JSON リクエストボディ**：
+- **リクエストボディ (JSON)**：
   ```json
   {
     "siteId": "blog",
@@ -62,29 +193,64 @@ GET /api/comment/list?siteId=blog&key=/posts/example/&parentId=101&afterId=120&p
   }
   ```
 
-- **ブロガー認証投稿**：
-  サイトでブロガー合言葉が設定されている場合、`username` に合言葉を入力し、`email` と `url` を空にして送信することで、ブロガーバッジが付与されます。
+- **ブロガー合言葉投稿**：
+  サイトにブロガー合言葉が設定されている場合、`username` に合言葉を入力し、`email` と `url` を空にして送信することで、サーバー側で自動的にブロガー身元が認証されバッジが付与されます。
 
 ---
 
-## 2. 管理用エンドポイント
+## 2. 管理用エンドポイント（Admin Endpoints）
 
-すべての管理用エンドポイント（ログイン設定取得およびログインを除く）は `Authorization: Bearer {TOKEN}` ヘッダーが必要です。リクエストボディ上限は **16 KiB** です。
+すべての管理用エンドポイント（ログイン設定取得およびログインを除く）は、リクエストヘッダーに Bearer トークンが必要です：
+```http
+Authorization: Bearer {ADMIN_TOKEN}
+```
+管理系の更新リクエスト（POST / PUT / DELETE）のリクエストボディ上限は厳格に **16 KiB** です。
 
-- `GET /api/admin/login-config`：ログイン画面用 CAPTCHA 設定の取得。
-- `POST /api/admin/login`：管理者認証。レスポンス `{ "code": 200, "data": { "token": "...", "token_type": "Bearer", "expires_at": "...", "expires_in": 28800 } }`。
-- `GET /api/admin/sites`：サイト一覧。
-- `POST /api/admin/sites`：新規サイト登録。
-- `GET /api/admin/sites/:siteId`：サイト設定詳細。
-- `PUT /api/admin/sites/:siteId`：サイト設定更新。
-- `GET /api/admin/captcha`：ボット対策設定の取得。
-- `PUT /api/admin/captcha`：ボット対策更新（無効 / Turnstile / Cap）。
-- `GET /api/admin/notifications`：通知設定の取得。
-- `PUT /api/admin/notifications/email`：メール SMTP 設定更新。
-- `POST /api/admin/notifications/email/test`：テストメール送信。
-- `PUT /api/admin/notifications/telegram`：Telegram Bot 設定更新。
-- `POST /api/admin/notifications/telegram/test`：テスト Telegram 送信。
-- `GET /api/admin/sites/:siteId/comments`：コメント管理一覧（ページング・絞り込み）。
-- `GET /api/admin/sites/:siteId/comments/:commentId`：コメント詳細。
-- `DELETE /api/admin/sites/:siteId/comments/:commentId`：墓標ソフトデリート。
-- `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent`：子孫を持たない墓標の完全削除。
+### 管理者ログイン `POST /api/admin/login`
+- **リクエストボディ**：
+  ```json
+  {
+    "username": "admin",
+    "password": "my-strong-password",
+    "captchaToken": "0.xxxxxx"
+  }
+  ```
+- **レスポンス例 (HTTP 200)**：
+  ```json
+  {
+    "code": 200,
+    "message": "Success",
+    "data": {
+      "token": "eyJ2IjoxLCJzdWIiOiJhZG1pbiIs...",
+      "token_type": "Bearer",
+      "expires_at": "2026-08-20T20:00:00Z",
+      "expires_in": 28800
+    }
+  }
+  ```
+
+### ログイン設定取得 `GET /api/admin/login-config`
+管理画面ログインフォームに必要なボット対策の公開設定とパラメーターを取得（未認証でアクセス可能）。
+
+### サイト管理インターフェース
+- `GET /api/admin/sites`：登録済み全サイトの一覧と設定を取得。
+- `POST /api/admin/sites`：新規サイトの登録（`id`、`site_url`、`name`、`allowed_origins` など）。
+- `GET /api/admin/sites/:siteId`：指定サイトの設定詳細を取得。
+- `PUT /api/admin/sites/:siteId`：指定サイトの設定を更新（楽観的ロック `revision` をサポート）。
+
+### セキュリティおよびボット対策インターフェース
+- `GET /api/admin/captcha`：現在のボット対策 3 態設定を取得（パスワード等はマスク）。
+- `PUT /api/admin/captcha`：ボット対策設定を更新（無効 / Turnstile / Cap）。
+
+### 通知チャネル管理インターフェース
+- `GET /api/admin/notifications`：SMTP メールおよび Telegram 通知の設定を取得。
+- `PUT /api/admin/notifications/email`：メール通知設定を更新（SMTP パスワードはマスターキーで AES-256-GCM 暗号化保存）。
+- `POST /api/admin/notifications/email/test`：テストメールを送信して SMTP 疎通性を確認。
+- `PUT /api/admin/notifications/telegram`：Telegram Bot 設定を更新。
+- `POST /api/admin/notifications/telegram/test`：テスト Telegram メッセージを送信。
+
+### コメント管理インターフェース
+- `GET /api/admin/sites/:siteId/comments`：公開中・削除済みを跨ぐ管理用コメント検索・一覧。
+- `GET /api/admin/sites/:siteId/comments/:commentId`：コメントの詳細とツリー文脈の取得。
+- `DELETE /api/admin/sites/:siteId/comments/:commentId`：墓標論理削除（個人情報を消去し、ツリー構造を維持）。
+- `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent`：**子返信を一切持たない**孤立した墓標コメントの物理完全削除。

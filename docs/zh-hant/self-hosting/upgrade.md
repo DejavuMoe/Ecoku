@@ -1,53 +1,80 @@
 # 升級與遷移
 
-Ecoku 採用版本化、原位、交易性的 SQLite Schema 遷移體系。
+Ecoku 採用版本化、原位（In-Place）、交易性的 SQLite Schema 遷移體系。
 
-準備升級至 **[v0.1.9](./upgrades/v0.1.9)** 時，請先查閱對應版本說明。自 v0.1.8 升級維持 schema v7，無需執行資料庫遷移；主要影響是公開讀取預算保護與頻控限流。回滾至 v0.1.8 前須移除明確新增的 `rate_limit.comment_list` 欄位；詳細限制、客戶端表現與回滾步驟見版本說明。
+準備升級至 **[v0.2.0](./upgrades/v0.2.0)** 時，請先查閱對應版本說明。自 v0.1.8 升級維持 schema v7，無需執行資料庫結構遷移；主要影響是公開列表讀取預算保護與頻控限流。回滾至 v0.1.8 前須移除明確新增的 `rate_limit.comment_list` 欄位。詳細限制、客戶端表現與回滾步驟見版本說明。
 
----
-
-## 升級步驟
-
-1. 閱讀目標版本說明並執行停服冷備份。
-2. 修改 `compose.yaml` 中的精確鏡像標籤（如 `git.via.moe/dejavu/ecoku:v0.1.9`）。
-3. 拉取鏡像並重啟：
-   ```bash
-   sudo docker compose pull
-   sudo docker compose up -d
-   sudo docker compose logs --tail=100 -f ecoku
-   curl -f http://127.0.0.1:12123/api/health
-   ```
+升級過程中，只需修改 Compose 檔案中的**精確映像檔標籤**，服務在啟動時會自動偵測並按版本順序執行資料庫升級。
 
 ---
 
-## Schema 版本演進
+## 升級核心契約
 
-| 鏡像版本 | Schema 版本 | 核心資料庫變更 |
+1. **單向交易遷移**：Schema 遷移在同一個 SQLite 檔案中順序向上執行，成功後向 `schema_migrations` 表追加版本記錄。Ecoku **不支援自動向下遷移（Down-migration）**。
+2. **嚴禁浮動標籤**：生產環境絕對禁止使用 `latest`，必須使用形如 `v0.2.0` 的精確發布版本。
+3. **不可逆性與回滾原則**：一旦資料庫成功升級至高版本 Schema（例如 v7），**不能僅將映像檔標籤換回舊版本**，否則舊版本服務因無法識別高版本 Schema 會拒絕啟動。回滾必須使用升級前冷備份的資料庫檔案進行復原。
+
+---
+
+## 標準停服升級 SOP
+
+```bash
+cd ~/Ecoku
+
+# 步驟 1：閱讀目標版本的發布說明與升級指南，確認設定變化
+# （見下方各版本升級索引）
+
+# 步驟 2：執行停服冷備份
+sudo docker compose down
+tar -czvf "ecoku-preupgrade-$(date +%Y%m%d_%H%M%S).tar.gz" data/ app/config.yaml ecoku.env compose.yaml
+
+# 步驟 3：修改 compose.yaml 中的 image 為新版本（如 git.via.moe/dejavu/ecoku:v0.2.0）
+# 若新版本有新環境變數要求，一併補充至 ecoku.env
+
+# 步驟 4：拉取新映像檔並啟動
+sudo docker compose pull
+sudo docker compose up -d
+
+# 步驟 5：檢查啟動日誌與 Schema 遷移狀態
+sudo docker compose logs --tail=100 -f ecoku
+
+# 步驟 6：業務與介面驗收
+curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+```
+
+---
+
+## Schema 版本演進歷史
+
+| 映像檔版本 | Schema 版本 | 核心資料庫變更與特性 |
 | :--- | :---: | :--- |
-| **`v0.1.9`** | `v7`（不變） | 無新遷移；公開評論列表 CWE-400 資源預算防護、單層游標分頁與獨立讀取頻控。 |
-| **`v0.1.8`** | `v7` | `sites` 表新增 `smoji_enabled` 與 `smoji_manifest_url`，支援站點級表情包。 |
-| **`v0.1.7`** | `v6`（不變） | 不改變 Schema；建置工具鏈升級、多語言文件體系落地。 |
-| **`v0.1.6`** | `v6`（不變） | 不改變 Schema；Cap instrumentation 所需動態 CSP 策略調整。 |
-| **`v0.1.5`** | `v6` | `turnstile_settings` 表原位重命名為 `captcha_settings`，新增自託管 Cap 支援。 |
-| **`v0.1.4`** | `v5`（不變） | 不改變 Schema；管理後台儲存站長口令時自動回填歷史評論 `is_blogger` 標記。 |
-| **`v0.1.3`** | `v5` | `sites` 表增加 `blogger_passphrase_hash`；`comments` 表增加 `is_blogger`；Outbox 拆行。 |
-| **`v0.1.2`** | `v4`（不變） | 不改變 Schema；優化評論區字型階梯與基線對齊。 |
-| **`v0.1.1`** | `v4`（不變） | 不改變 Schema；評論折疊按鈕固定 3ch 等寬。 |
-| **`v0.1.0`** | `v4` | 首個正式發布版本；多站點純文字評論模型、墓碑軟刪除、通知與 Turnstile。 |
-| **更早候選版** | `v1`～`v4` | RC 候選階段：單容器架構演進、SQLite WAL 模式引入與時區規範。 |
+| **`v0.1.9`** | `v7`（不變） | 不新增遷移；公開評論列表 CWE-400 資源預算防護、單層游標分頁與獨立列表讀取頻控。 |
+| **`v0.1.8`** | `v7` | `sites` 表新增 `smoji_enabled` (布林) 與 `smoji_manifest_url` (TEXT)，支援站點級表情包。 |
+| **`v0.1.7`** | `v6`（不變） | 不改變 Schema；建置工具鏈升級、多語言文件體系落地與 CI 映像檔建置優化。 |
+| **`v0.1.6`** | `v6`（不變） | 不改變 Schema；修復 Cap instrumentation 腳本所需動態 CSP 策略。 |
+| **`v0.1.5`** | `v6` | `turnstile_settings` 表原位重命名為 `captcha_settings`，新增 `provider` 及自託管 Cap 相關設定欄位。 |
+| **`v0.1.4`** | `v5`（不變） | 不改變 Schema；後台儲存站長通關密語時自動回填歷史所有未刪除評論的 `is_blogger` 標記。 |
+| **`v0.1.3`** | `v5` | `sites` 表增加 `blogger_passphrase_hash`；`comments` 表增加 `is_blogger`；`notification_outbox` 拆為每接收目標單行。 |
+| **`v0.1.2`** | `v4`（不變） | 不改變 Schema；優化評論區暱稱排版基線對齊與 14px 字級階梯。 |
+| **`v0.1.1`** | `v4`（不變） | 不改變 Schema；評論折疊按鈕 `[+]`/`[-]` 提高優先級並固定 3ch 等寬。 |
+| **`v0.1.0`** | `v4` | 首個正式發布版本；多站點純文字評論模型、墓碑軟刪除、通知設定與 Cloudflare Turnstile 支援。 |
+| **更早候選版** | `v1` ～ `v4` | RC 候選階段：單容器極簡架構演進、SQLite WAL 模式引入與時區支援。 |
 
 ---
 
-## 歷史升級索引
+## 歷史版本升級指南索引
 
-- [v0.1.9](./upgrades/v0.1.9)：2026-08-31；CWE-400 修復與相容性說明
-- [v0.1.8](./upgrades/v0.1.8)
-- [v0.1.7](./upgrades/v0.1.7)
-- [v0.1.6](./upgrades/v0.1.6)
-- [v0.1.5](./upgrades/v0.1.5)
-- [v0.1.4](./upgrades/v0.1.4)
-- [v0.1.3](./upgrades/v0.1.3)
-- [v0.1.2](./upgrades/v0.1.2)
-- [v0.1.1](./upgrades/v0.1.1)
-- [v0.1.0](./upgrades/v0.1.0)
-- [更早候選版](./upgrades/earlier)
+| 版本 | 發布日期 | Schema 變化 | 升級要點與說明 |
+| :--- | :--- | :---: | :--- |
+| [**v0.2.0**](./upgrades/v0.2.0) | 2026-09-12 | v7（不變） | 文件、接入範例與 API 參考事實校正和完善。 |
+| [**v0.1.9**](./upgrades/v0.1.9) | 2026-08-31 | v7（不變） | CWE-400 修復；舊設定可啟動，大討論串讀取和明確新設定鍵的回滾需留意。 |
+| [**v0.1.8**](./upgrades/v0.1.8) | 2026-08-27 | v6 → v7 | 新增 Smoji 純文字表情包；站點新增表情包開關與清單 URL。 |
+| [**v0.1.7**](./upgrades/v0.1.7) | 2026-08-26 | v6 | 建置工具鏈升級與多語言文件體系落地；執行期契約保持不變。 |
+| [**v0.1.6**](./upgrades/v0.1.6) | 2026-08-18 | v6 | 優化 Cap 客戶端在管理端所需的動態 CSP 求值策略。 |
+| [**v0.1.5**](./upgrades/v0.1.5) | 2026-08-17 | v5 → v6 | 引入自託管 Cap 人機驗證；安全設定升級為三態單選。 |
+| [**v0.1.4**](./upgrades/v0.1.4) | 2026-08-15 | v5 | 管理後台儲存站長通關密語時自動回填歷史評論的 `is_blogger` 標記。 |
+| [**v0.1.3**](./upgrades/v0.1.3) | 2026-08-15 | v4 → v5 | 引入站長通關密語認證；Outbox 通知佇列按接收目標拆行入隊。 |
+| [**v0.1.2**](./upgrades/v0.1.2) | 2026-08-15 | v4 | 優化評論區元資訊排版基線與字級階梯。 |
+| [**v0.1.1**](./upgrades/v0.1.1) | 2026-08-15 | v4 | 評論折疊按鈕 `[+]`/`[-]` 固定為 3ch 等寬，消除折疊切換抖動。 |
+| [**v0.1.0**](./upgrades/v0.1.0) | 2026-08-15 | v4 | 首個正式發布版本。 |
+| [**更早候選版**](./upgrades/earlier) | 2026-08-14 | v1 ～ v4 | 早期單容器架構設計、WAL 模式引入與時區規範。 |

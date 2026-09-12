@@ -1,54 +1,80 @@
-# Upgrade & Migrations
+# Upgrades & Schema Migrations
 
-Ecoku features sequential, in-place SQLite schema migrations.
+Ecoku employs a versioned, in-place, and strictly transactional SQLite schema migration system.
 
-Preparing for **[v0.1.9](./upgrades/v0.1.9)**? Review the target version notes. Upgrading from v0.1.8 retains schema v7 without database schema changes; public read budgets and rate limits change. Remove an explicitly added `rate_limit.comment_list` before rolling back to v0.1.8. Read the version notes for details and rollback steps.
+When preparing to upgrade to **[v0.2.0](./upgrades/v0.2.0)**, consult its specific upgrade notes first. Upgrading from v0.1.8 remains on schema v7 with no schema migrations required; the primary impacts are public list read budget protection and dedicated read rate limiting. Before rolling back to v0.1.8, remove any explicitly added `rate_limit.comment_list` key. For full constraints, client behavior, and rollback steps, see the version notes.
+
+During upgrades, update only the **exact image tag** in your Compose file. Upon boot, the service automatically detects your current schema version and executes pending migrations sequentially within database transactions.
 
 ---
 
-## Upgrade SOP
+## Core Upgrade Contracts
 
-1. Review the upgrade release notes for your target version.
-2. Execute a cold backup (`sudo docker compose down && tar ...`).
-3. Update the exact image tag in `compose.yaml` (e.g. `git.via.moe/dejavu/ecoku:v0.1.9`).
-4. Pull the new image and launch:
-   ```bash
-   sudo docker compose pull
-   sudo docker compose up -d
-   sudo docker compose logs --tail=100 -f ecoku
-   curl -f http://127.0.0.1:12123/api/health
-   ```
+1. **Unidirectional Transactional Migrations**: Schema migrations run forward sequentially on your SQLite file, appending version records to `schema_migrations` upon success. Ecoku **does not support automated down-migrations**.
+2. **Strictly Prohibited Floating Tags**: Never use `latest` in production. Always specify an exact semantic tag like `v0.2.0`.
+3. **Irreversibility & Rollback Principle**: Once the database upgrades to a higher schema version (e.g. v7), **you cannot simply revert the image tag**, as older binaries refuse to boot against newer schemas. Rollbacks strictly require restoring the pre-upgrade cold backup.
+
+---
+
+## Standard Cold Upgrade SOP
+
+```bash
+cd ~/Ecoku
+
+# Step 1: Review release notes and upgrade guide for the target version
+# (See the Upgrade Guide Index below)
+
+# Step 2: Perform cold backup
+sudo docker compose down
+tar -czvf "ecoku-preupgrade-$(date +%Y%m%d_%H%M%S).tar.gz" data/ app/config.yaml ecoku.env compose.yaml
+
+# Step 3: Update image tag in compose.yaml to target version (e.g. git.via.moe/dejavu/ecoku:v0.2.0)
+# Add any newly required environment variables to ecoku.env if applicable
+
+# Step 4: Pull new image and restart
+sudo docker compose pull
+sudo docker compose up -d
+
+# Step 5: Verify boot logs and schema migration status
+sudo docker compose logs --tail=100 -f ecoku
+
+# Step 6: Verify health and API readiness
+curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+```
 
 ---
 
 ## Schema Evolution History
 
-| Image Version | Schema | Core Database Changes |
+| Image Version | Schema Version | Core Database Changes & Highlights |
 | :--- | :---: | :--- |
 | **`v0.1.9`** | `v7` (unchanged) | No migration; CWE-400 resource budget protection, single-layer cursor pagination, and dedicated read rate limiting. |
-| **`v0.1.8`** | `v7` | Added `smoji_enabled` and `smoji_manifest_url` to `sites` for site-level stickers. |
-| **`v0.1.7`** | `v6` (unchanged) | No schema change; toolchain upgrade and multilingual documentation. |
-| **`v0.1.6`** | `v6` (unchanged) | No schema change; Cap instrumentation CSP dynamic policy tuning. |
-| **`v0.1.5`** | `v6` | Renamed `turnstile_settings` to `captcha_settings`, added Cap provider fields. |
-| **`v0.1.4`** | `v5` (unchanged) | No schema change; blogger passphrase auto-backfill of `is_blogger` on comments. |
+| **`v0.1.8`** | `v7` | Added `smoji_enabled` (boolean) and `smoji_manifest_url` (TEXT) to `sites` for site-level sticker packs. |
+| **`v0.1.7`** | `v6` (unchanged) | No schema change; toolchain upgrades, multilingual documentation architecture, and CI image optimizations. |
+| **`v0.1.6`** | `v6` (unchanged) | No schema change; dynamic CSP adjustments for Cap client instrumentation scripts. |
+| **`v0.1.5`** | `v6` | Renamed `turnstile_settings` to `captcha_settings`, added `provider` and self-hosted Cap configuration fields. |
+| **`v0.1.4`** | `v5` (unchanged) | No schema change; blogger passphrase save automatically backfills `is_blogger` flag on historical comments. |
 | **`v0.1.3`** | `v5` | Added `sites.blogger_passphrase_hash`, `comments.is_blogger`, and split outbox queue by target recipient. |
-| **`v0.1.2`** | `v4` (unchanged) | No schema change; comment header metadata typography baseline alignment. |
-| **`v0.1.1`** | `v4` (unchanged) | No schema change; 3ch fixed-width comment collapse toggles. |
-| **`v0.1.0`** | `v4` | Initial release; multi-site comment model, tombstones, notifications, and Turnstile. |
-| **Earlier** | `v1`–`v4` | Early release candidates; WAL mode and timezone normalization. |
+| **`v0.1.2`** | `v4` (unchanged) | No schema change; comment header metadata typography baseline alignment and 14px type scale. |
+| **`v0.1.1`** | `v4` (unchanged) | No schema change; 3ch fixed-width comment collapse toggles (`[+]`/`[-]`) to eliminate jitter. |
+| **`v0.1.0`** | `v4` | Initial release; multi-site comment model, tombstones, notifications, and Cloudflare Turnstile. |
+| **Earlier** | `v1`–`v4` | Pre-release candidates: single-container architecture, SQLite WAL mode, and timezone normalization. |
 
 ---
 
-## Upgrade Index
+## Historical Upgrade Guide Index
 
-- [v0.1.9](./upgrades/v0.1.9): 2026-08-31; CWE-400 fix and compatibility notes
-- [v0.1.8](./upgrades/v0.1.8): Smoji stickers support
-- [v0.1.7](./upgrades/v0.1.7): Toolchain and docs site
-- [v0.1.6](./upgrades/v0.1.6): Cap instrumentation CSP
-- [v0.1.5](./upgrades/v0.1.5): Cap CAPTCHA provider
-- [v0.1.4](./upgrades/v0.1.4): Passphrase `is_blogger` backfill
-- [v0.1.3](./upgrades/v0.1.3): Passphrases and outbox refactor
-- [v0.1.2](./upgrades/v0.1.2): Typography baseline
-- [v0.1.1](./upgrades/v0.1.1): Jitter-free 3ch collapse
-- [v0.1.0](./upgrades/v0.1.0): Initial release
-- [Earlier](./upgrades/earlier): Pre-releases
+| Version | Release Date | Schema | Upgrade Highlights & Notes |
+| :--- | :--- | :---: | :--- |
+| [**v0.2.0**](./upgrades/v0.2.0) | 2026-09-12 | v7 (unchanged) | Documentation, integration examples, and API reference corrections. |
+| [**v0.1.9**](./upgrades/v0.1.9) | 2026-08-31 | v7 (unchanged) | CWE-400 mitigation; backward-compatible configs, note large thread read budget limits and rollback steps. |
+| [**v0.1.8**](./upgrades/v0.1.8) | 2026-08-27 | v6 → v7 | Smoji plaintext sticker packs; site-level sticker toggle and manifest URL. |
+| [**v0.1.7**](./upgrades/v0.1.7) | 2026-08-26 | v6 | Build toolchain upgrades and multilingual documentation site; runtime contracts unchanged. |
+| [**v0.1.6**](./upgrades/v0.1.6) | 2026-08-18 | v6 | Optimized dynamic CSP evaluation policies for Cap client in the admin console. |
+| [**v0.1.5**](./upgrades/v0.1.5) | 2026-08-17 | v5 → v6 | Introduced self-hosted Cap CAPTCHA; upgraded security settings to tri-state selector. |
+| [**v0.1.4**](./upgrades/v0.1.4) | 2026-08-15 | v5 | Admin console automatically backfills `is_blogger` flag on existing comments when saving passphrase. |
+| [**v0.1.3**](./upgrades/v0.1.3) | 2026-08-15 | v4 → v5 | Added blogger passphrase authentication; outbox notification queue split per recipient. |
+| [**v0.1.2**](./upgrades/v0.1.2) | 2026-08-15 | v4 | Refined comment metadata typography baseline alignment and size hierarchy. |
+| [**v0.1.1**](./upgrades/v0.1.1) | 2026-08-15 | v4 | Fixed comment collapse buttons (`[+]`/`[-]`) to 3ch monospace width, eliminating layout shifts. |
+| [**v0.1.0**](./upgrades/v0.1.0) | 2026-08-15 | v4 | First official production release. |
+| [**Earlier**](./upgrades/earlier) | 2026-08-14 | v1–v4 | Early single-container design, SQLite WAL mode, and timezone standards. |

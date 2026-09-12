@@ -33,15 +33,37 @@ The management interface is located at `/admin/`.
 
 ---
 
-## 5. Bot Protection (CAPTCHA)
+## 5. Bot Protection (CAPTCHA) {#bot-protection-captcha}
 
 Ecoku provides instance-wide bot protection supporting three states, protecting both **visitor comment submission** and **admin console login**:
 
 ```mermaid
-graph LR
-    A[Bot Protection Provider] --> B[Off]
-    A --> C[Cloudflare Turnstile]
-    A --> D[Self-Hosted Cap]
+graph TD
+    subgraph Provider["Bot Protection Provider (Tri-state)"]
+        P1["Off"]
+        P2["Cloudflare Turnstile"]
+        P3["Self-Hosted Cap"]
+    end
+
+    subgraph Protection["Dual Protection Boundary"]
+        Visitor["Visitor Comment Submission (/api/comment/submit)"]
+        Admin["Admin Console Login (/api/admin/login)"]
+    end
+
+    subgraph Verification["Server-Side Verification"]
+        VerifyToken["Verify Token & IP<br/>(AES-256-GCM encrypted credentials)"]
+        Pass["Allow Request"]
+        Reject["Reject Request (400/403)"]
+    end
+
+    P2 -->|Enforce| Visitor
+    P2 -->|Enforce| Admin
+    P3 -->|Enforce| Visitor
+    P3 -->|Enforce| Admin
+    Visitor --> VerifyToken
+    Admin --> VerifyToken
+    VerifyToken -->|Valid| Pass
+    VerifyToken -->|Invalid| Reject
 ```
 
 > [!NOTE]

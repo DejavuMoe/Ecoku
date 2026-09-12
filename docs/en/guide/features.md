@@ -10,7 +10,7 @@ Ecoku pairs minimalist single-container operations with modern user experience, 
 - **Root-Thread Pagination**: Returns complete root threads within fixed resource budgets; oversized requests fail explicitly. Large threads can be read on demand through the [single-level cursor API](../reference/api.md).
 - **Jitter-Free 3ch Collapse**: Toggle controls `[+]` and `[-]` are fixed at `3ch` tabular width, preventing meta-row layout shifts upon collapsing/expanding.
 - **Context-Preserving Tombstones**: Deleting a comment replaces its content with `[This comment has been deleted]`, preserving the downstream conversation tree.
-- **Smoji Plain-Text Stickers**: Self-hosted sticker packs loaded on-demand and stored as plain text markers `![smoji:label](url)`.
+- **Smoji Plaintext Stickers**: Site-level customizable sticker packs using `![smoji:label](https://...)` markdown tokens, loaded on demand under strict same-origin rules.
 
 ---
 

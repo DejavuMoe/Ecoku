@@ -10,11 +10,18 @@ Ecoku 的设计围绕**轻量化**、**纯文本直接发布**、**强隐私边�
 
 ### 1. 语义与视觉分层
 
-```text
-[根评论 1] (aria-level=1, 缩进 0)
-  ├── [子评论 1.1] (aria-level=2, 缩进 22px)
-  │     └── [子评论 1.1.1] (aria-level=3, 缩进 44px)
-  │           └── [子评论 1.1.1.1] (aria-level=4, 缩进 66px 封顶) -> @子评论1.1.1
+```mermaid
+graph TD
+    Root["根评论 1 (aria-level=1, 缩进 0)"]
+    Child1["子评论 1.1 (aria-level=2, 缩进 22px)"]
+    Child2["子评论 1.1.1 (aria-level=3, 缩进 44px)"]
+    Child3["子评论 1.1.1.1 (aria-level=4, 缩进 66px 封顶)"]
+    Anchor["@子评论1.1.1 (上下文补偿锚点)"]
+
+    Root --> Child1
+    Child1 --> Child2
+    Child2 --> Child3
+    Child3 -.->|视觉补偿| Anchor
 ```
 
 - **语义层级（Semantic Level）**：DOM 元素的 `aria-level` 与 `data-depth` 真实反映树的物理嵌套深度（1, 2, 3, 4, 5...），确保屏幕阅读器等无障碍设备能准确理解对话层级。
