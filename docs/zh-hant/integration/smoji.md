@@ -77,6 +77,8 @@ flowchart TD
 
 ## 配置與素材更新
 
+在評論或回覆框中點擊「表情」即可開啟選擇器。面板在表單底欄上方向右對齊，窄螢幕時會隨表單縮窄；預設樣式和無主題樣式均採用這個版面配置。
+
 在後台站點設定中啟用 Smoji，填寫清單 URL。清單與圖片位址不得帶使用者名稱、密碼、查詢參數或片段；HTTP 僅用於回環開發位址。跨來源託管清單時，資源伺服器需允許評論頁面來源的 CORS 請求。
 
 Smoji 工作台匯出的「Ecoku 回應範例」呈現公開介面的 `formConfig.smoji`，不是後台可匯入的設定檔。後台表單內部使用 `smojiEnabled` / `smojiManifestUrl`；管理 API 請求欄位為 `smoji_enabled` / `smoji_manifest_url`。

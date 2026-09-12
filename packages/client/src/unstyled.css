@@ -62,7 +62,7 @@
   align-items: center;
 }
 
-.ecoku-smoji-control {
+.ecoku-composer-footer {
   position: relative;
 }
 
@@ -71,7 +71,7 @@
   z-index: 20;
   right: 0;
   bottom: 100%;
-  width: min(276px, calc(100vw - 24px));
+  width: min(276px, 100%);
   max-height: 224px;
   overflow: auto;
   scrollbar-width: thin;

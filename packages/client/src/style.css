@@ -349,6 +349,7 @@
 }
 
 .ecoku-composer-footer {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -364,16 +365,12 @@
   margin-inline-start: auto;
 }
 
-.ecoku-smoji-control {
-  position: relative;
-}
-
 .ecoku-smoji-panel {
   position: absolute;
   z-index: 20;
   right: 0;
   bottom: calc(100% + 8px);
-  width: min(276px, calc(100vw - 24px));
+  width: min(276px, 100%);
   max-height: 224px;
   padding: 6px;
   overflow: auto;

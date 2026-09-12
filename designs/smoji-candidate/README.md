@@ -12,6 +12,9 @@ Review surfaces:
 - `architecture.md` — proposed data, loading, persistence, validation, and failure contracts;
 - `smoji.json` and `fixtures/` — local, non-production fixture data used only by the prototype.
 
+The picker opens above the composer footer, aligned to its right edge. Its width
+is capped at 276px and at the footer width, including in the inline reply form.
+
 Preview from the repository root:
 
 ```text

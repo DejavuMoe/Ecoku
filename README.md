@@ -2,8 +2,8 @@
 
 自托管的多站点纯文本评论系统，专为静态博客（Hugo / Hexo / Astro / VitePress）与个人站点设计。评论提交后直接发布，无审核队列，极致轻量，数据全量持久化在本地单文件 SQLite3 中。
 
-> **当前正式版本**：`v0.2.1`
-> **生产镜像**：`git.via.moe/dejavu/ecoku:v0.2.1`
+> **当前正式版本**：`v0.2.2`
+> **生产镜像**：`git.via.moe/dejavu/ecoku:v0.2.2`
 
 ---
 
@@ -35,7 +35,7 @@ sudo install -d -o 10001 -g 10001 -m 750 app/logs data
 ```yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.2.1"
+    image: "git.via.moe/dejavu/ecoku:v0.2.2"
     init: true
     restart: unless-stopped
     container_name: ecoku

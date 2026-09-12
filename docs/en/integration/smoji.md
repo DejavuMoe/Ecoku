@@ -77,6 +77,8 @@ If a comment contains an image marker whose origin does not match the active sit
 
 ## Configuration & Asset Updates
 
+Click the sticker button in a comment or reply form to open the picker. The panel opens above the form footer, aligned to its right edge, and shrinks to fit narrow forms. Both the default and unstyled stylesheets use this layout.
+
 Enable Smoji in the admin console under Site Settings and enter your manifest URL. Manifest and image URLs must not contain usernames, passwords, query parameters, or hash fragments. HTTP is permitted exclusively on loopback development hosts (`localhost`). If hosting the manifest cross-origin, your resource server must allow CORS requests from your blog domain.
 
 The "Ecoku Response Example" exported by the Smoji workbench illustrates the public endpoint's `formConfig.smoji` structure—it is not an admin import file. The admin form uses `smojiEnabled` / `smojiManifestUrl`, while the management API uses `smoji_enabled` / `smoji_manifest_url`.

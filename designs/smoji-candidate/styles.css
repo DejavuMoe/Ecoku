@@ -14,13 +14,13 @@
 .candidate-banner strong, .candidate-pill { color: var(--candidate-accent); }
 .candidate-banner a { color: inherit; }
 .candidate-composer { position: relative; }
-.candidate-footer { align-items: center; }
+.candidate-footer { position: relative; align-items: center; }
 .composer-tools { display: flex; align-items: center; gap: 12px; }
 .smoji-trigger { display: inline-flex; min-height: 30px; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--border-soft); border-radius: 999px; color: var(--secondary); background: transparent; font-size: 12px; }
 .smoji-trigger:hover, .smoji-trigger[aria-expanded="true"] { color: var(--primary); background: var(--surface-muted); }
 .smoji-trigger-face { font: 17px/1 Georgia, serif; transform: translateY(-1px); }
 .smoji-slot:empty { display: none; }
-.smoji-slot:not(:empty) { margin-top: 10px; }
+.smoji-slot { position: absolute; z-index: 20; right: 0; bottom: calc(100% + 8px); width: min(276px, 100%); }
 .smoji-picker { overflow: hidden; border: 1px solid var(--border-soft); border-radius: 12px; background: var(--entry); box-shadow: 0 14px 38px rgba(20, 20, 19, .12); }
 .smoji-picker-head { display: flex; min-height: 42px; align-items: center; justify-content: space-between; padding: 0 12px 0 14px; border-bottom: 1px solid var(--border-soft); }
 .smoji-picker-head strong { font-size: 13px; }
@@ -31,7 +31,7 @@
 .smoji-tabs { display: flex; gap: 4px; padding: 8px; overflow-x: auto; border-bottom: 1px solid var(--border-soft); }
 .smoji-tab { flex: none; min-height: 30px; padding: 0 11px; border: 0; border-radius: 8px; color: var(--secondary); background: transparent; font-size: 12px; }
 .smoji-tab[aria-selected="true"] { color: var(--primary); background: var(--surface-muted); font-weight: 600; }
-.smoji-grid { display: grid; max-height: 238px; padding: 10px; overflow: auto; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 6px; }
+.smoji-grid { display: grid; max-height: 238px; padding: 10px; overflow: auto; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .smoji-item { display: grid; min-width: 0; aspect-ratio: 1; padding: 6px; place-items: center; border: 0; border-radius: 10px; background: transparent; }
 .smoji-item:hover, .smoji-item:focus-visible { background: var(--surface-muted); }
 .smoji-item img { width: 100%; height: 100%; object-fit: contain; }
@@ -99,7 +99,6 @@
 
 @media (max-width: 720px) {
   .candidate-banner { align-items: flex-start; flex-direction: column; gap: 2px; }
-  .smoji-grid { grid-template-columns: repeat(4, minmax(48px, 1fr)); }
   .prototype-controls, .admin-scenario { position: static; width: auto; margin: 18px 14px; }
   .lazy-note { display: none; }
   .reply-example { margin-left: 16px; }

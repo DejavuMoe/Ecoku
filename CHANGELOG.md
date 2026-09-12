@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+暂无。
+
+## [0.2.2] - 2026-09-13
+
+### 修复
+
+- Smoji 选择器改为对齐评论或回复表单底栏右侧，宽度不超过底栏，修复窄屏下弹层左侧超出页面的问题；默认样式与无主题样式同步调整。
+
 ## [0.2.1] - 2026-09-12
 
 ### 修复
@@ -361,4 +369,5 @@
 [0.1.9]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.9
 [0.2.0]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.0
 [0.2.1]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.1
-[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.2.1...master
+[0.2.2]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.2
+[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.2.2...master
