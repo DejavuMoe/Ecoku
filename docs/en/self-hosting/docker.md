@@ -3,7 +3,7 @@
 Ecoku runs as a hardened single container listening on `127.0.0.1:12123`. A host-level reverse proxy (Caddy / Nginx) terminates HTTPS.
 
 > [!NOTE]
-> `git.via.moe/dejavu/ecoku:v0.1.9` is the official release image. `ecoku.example.com` is a placeholder—replace it with your real domain.
+> `git.via.moe/dejavu/ecoku:v0.2.0` is the official release image. `ecoku.example.com` is a placeholder—replace it with your real domain.
 
 ---
 
@@ -31,7 +31,7 @@ cd ~/Ecoku
 cat <<'EOF' > compose.yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.1.9"
+    image: "git.via.moe/dejavu/ecoku:v0.2.0"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -71,7 +71,7 @@ EOF
 ```
 
 > [!IMPORTANT]
-> - Never use floating tags like `latest` in production. Always specify an exact semantic version tag (e.g. `v0.1.9`).
+> - Never use floating tags like `latest` in production. Always specify an exact semantic version tag (e.g. `v0.2.0`).
 > - Always bind the port to `127.0.0.1:12123` so requests must pass through your reverse proxy.
 
 ---
@@ -98,6 +98,7 @@ client:
 rate_limit:
   window_seconds: 60
   comment_submit: 5      # Comment submission rate limit (req/window)
+  comment_list: 60       # Comment list read rate limit (req/window)
   comment_delete: 30     # Comment deletion rate limit
   admin_login: 5         # Admin login rate limit
   notification_test: 5   # Notification test rate limit
@@ -150,7 +151,7 @@ grep -q "^ECOKU_ADMIN_USERNAME=" ecoku.env || echo "ECOKU_ADMIN_USERNAME='admin'
 # 3. Interactively enter admin password and generate bcrypt hash (silent input, skipped if already set)
 if ! grep -q "^ECOKU_ADMIN_PASSWORD_HASH=" ecoku.env; then
   read -rsp 'Enter admin password: ' ADMIN_PASS; echo
-  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i --entrypoint /app/ecoku-server "git.via.moe/dejavu/ecoku:v0.1.9" hash-password)
+  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i --entrypoint /app/ecoku-server "git.via.moe/dejavu/ecoku:v0.2.0" hash-password)
   unset ADMIN_PASS
   echo "ECOKU_ADMIN_PASSWORD_HASH='$HASH'" >> ecoku.env
 fi
@@ -189,7 +190,7 @@ sudo docker compose logs --tail=100 -f ecoku
 
 ```bash
 curl -fail http://127.0.0.1:12123/api/health
-# Expected output: {"status":"ok"}
+# Expected output: {"code":200,"message":"success","data":{"status":"healthy","timestamp":...}}
 ```
 
 Next, configure your [Reverse Proxy](/en/self-hosting/reverse-proxy) to terminate HTTPS, or visit the [Admin Console](/en/self-hosting/admin) to register sites and set up your blogger passphrase.

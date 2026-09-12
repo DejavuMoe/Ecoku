@@ -1,25 +1,107 @@
 # Ecoku
 
-自托管的多站点纯文本评论系统，适用于静态博客和文档站。评论提交后直接发布。当前提供 Docker 镜像，数据保存在自己的服务器上。
+自托管的多站点纯文本评论系统，专为静态博客（Hugo / Hexo / Astro / VitePress）与个人站点设计。评论提交后直接发布，无审核队列，极致轻量，数据全量持久化在本地单文件 SQLite3 中。
 
-当前只发布 Docker 镜像，源码不作为公开发行物提供。站点可选启用 Smoji 表情包；资源由站点配置的远程清单提供，不打包进镜像。
+> **当前正式版本**：`v0.2.0`
+> **生产镜像**：`git.via.moe/dejavu/ecoku:v0.2.0`
+
+---
+
+## 核心设计与特性
+
+- **极简单容器拓扑**：单个 Go 二进制同源提供后端 REST API、嵌入式管理控制台（`/admin/`）与浏览器 SDK / 极简加载器（`/client/`）。
+- **提交即发布 · 讨论不中断**：评论无审核队列，提交后立即呈现在被回复评论下方；数据层保持无限嵌套树状语义，视觉端呈现至多 3 级缩进。
+- **严格隐私边界**：公共 DTO 绝不暴露访客邮箱、IP、User-Agent、地理位置或管理字段；访客身份在浏览器本地 IndexedDB 中通过 WebCrypto AES-GCM 加密保存 7 天。
+- **高安全内存会话**：管理后台 Bearer Token 仅保存在 Vue 运行时内存中，绝不持久化至 `localStorage`、`sessionStorage` 或 Cookie，刷新或关闭标签页立即回收注销。
+- **现代化人机验证**：实例级支持三态安全切换（关闭、Cloudflare Turnstile、开源自托管 Cap），全链路动态收敛 CSP 策略。
+- **事务一致性异步通知**：基于 SQLite 事务的 Outbox 队列模式，支持 SMTP（TLS/STARTTLS）与 Telegram 机器人通知，按目标拆行重试。
+- **极轻量接入**：仅 ~2KB 的无依赖异步加载器 `ecoku-loader.js`，支持原生 HTML、Hugo PaperMod 以及 React / Vue 3。
+
+---
 
 ## 快速开始
 
-生产环境使用 Docker Compose 和 SQLite3：
+### 1. Docker Compose 部署
 
-- [Docker 部署](docs/self-hosting/docker.md)
-- [反向代理](docs/self-hosting/reverse-proxy.md)
-- [后台配置](docs/self-hosting/admin.md)
-- [备份与恢复](docs/self-hosting/backup.md)
-- [升级流程](docs/self-hosting/upgrade.md)
+在宿主机创建部署目录并配置运行权限（非 root 用户 `10001:10001`）：
 
-## 接入
+```bash
+mkdir -p ~/Ecoku && cd ~/Ecoku
+sudo install -d -o 10001 -g 10001 -m 750 app/logs data
+```
 
-- [通用 HTML](docs/integration/html.md)
-- [Hugo PaperMod](docs/integration/hugo.md)
-- [自定义 CSS](docs/integration/custom-css.md)
+编写 `compose.yaml`：
 
-## 产品边界
+```yaml
+services:
+  ecoku:
+    image: "git.via.moe/dejavu/ecoku:v0.2.0"
+    init: true
+    restart: unless-stopped
+    container_name: ecoku
+    env_file:
+      - ./ecoku.env
+    ports:
+      - "127.0.0.1:12123:12123"
+    volumes:
+      - ./app/config.yaml:/app/config.yaml:ro
+      - ./app/logs:/var/log/ecoku
+      - ./data:/data
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+```
 
-Ecoku 只处理纯文本评论，不提供富文本、普通用户账户、点赞、头像或 MySQL。邮箱只用于评论身份和可选通知，不通过公共接口返回；管理员凭据和站点管理密钥不放入页面。
+配置 `ecoku.env` 与 `app/config.yaml` 详细指引请参考 [Docker 部署文档](docs/self-hosting/docker.md)。
+
+### 2. 前端嵌入接入 (~2KB Loader)
+
+在您的静态博客或页面模板的评论区插入：
+
+```html
+<section
+  id="ecoku-comments"
+  class="ecoku-shell"
+  data-ecoku-comments
+  data-server-url="https://ecoku.example.com"
+  data-site-id="blog"
+  data-page-key="/posts/hello-world/"
+  data-page-title="你好，世界"
+  data-page-size="10"
+  data-theme="auto"
+>
+  <div class="ecoku-loader" data-ecoku-loader hidden>
+    <p class="ecoku-loader-status" data-ecoku-status></p>
+    <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新加载评论</button>
+  </div>
+  <div id="ecoku-mount" data-ecoku-mount></div>
+</section>
+
+<script src="https://ecoku.example.com/client/ecoku-loader.js" defer></script>
+```
+
+---
+
+## 文档索引
+
+- **系统指南**：[系统介绍](docs/guide/introduction.md) · [核心特性](docs/guide/features.md) · [设计概念](docs/guide/concepts.md)
+- **运维部署**：[Docker 部署](docs/self-hosting/docker.md) · [反向代理](docs/self-hosting/reverse-proxy.md) · [后台配置](docs/self-hosting/admin.md) · [备份恢复](docs/self-hosting/backup.md) · [升级指南](docs/self-hosting/upgrade.md) · [Twikoo 迁移](docs/self-hosting/twikoo.md) · [常见排错](docs/self-hosting/faq.md)
+- **客户端接入**：[HTML / Loader](docs/integration/html.md) · [JavaScript SDK](docs/integration/sdk.md) · [Hugo PaperMod](docs/integration/hugo.md) · [自定义 CSS](docs/integration/custom-css.md) · [Smoji 表情](docs/integration/smoji.md)
+- **接口参考**：[REST API 规范](docs/reference/api.md)
+
+---
+
+## 产品边界与约束
+
+- **SQLite3-Only**：专注单机极致轻量与零维护，不引入 MySQL、PostgreSQL 或 Redis。
+- **纯文本评论**：不引入富文本、Markdown 复杂渲染（除 Smoji 表情外）、点赞、排行榜或普通用户账户体系。
+- **隐私优先**：严禁收集访客客户端 IP 服务信息；管理员凭证与加密主密钥永不外泄。
+- **单向迁移**：SQLite schema 迁移原位、顺序、事务化；成功后向 `schema_migrations` 记录版本，不提供自动向下迁移。

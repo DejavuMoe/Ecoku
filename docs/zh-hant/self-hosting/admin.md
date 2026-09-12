@@ -31,15 +31,37 @@
 
 ---
 
-## 5. 安全與人機驗證（Captcha）
+## 5. 安全與人機驗證（Captcha） {#人機驗證}
 
 在「安全」視圖中，可為整個實例配置統一生效的機器人驗證（三態單選切換），同時保護**訪客評論提交**與**管理後台登入**：
 
 ```mermaid
-graph LR
-    A[安全驗證提供方] --> B[關閉 Off]
-    A --> C[Cloudflare Turnstile]
-    A --> D[開源自託管 Cap]
+graph TD
+    subgraph Provider["安全驗證提供方（三態單選）"]
+        P1["關閉 (Off)"]
+        P2["Cloudflare Turnstile"]
+        P3["開源自託管 Cap"]
+    end
+
+    subgraph Protection["雙向攔截保護"]
+        Visitor["訪客評論提交 (/api/comment/submit)"]
+        Admin["管理後台登入 (/api/admin/login)"]
+    end
+
+    subgraph Verification["伺服端校驗"]
+        VerifyToken["校驗 Token & IP<br/>(AES-256-GCM 密文儲存金鑰)"]
+        Pass["放行通過"]
+        Reject["拒絕請求 (400/403)"]
+    end
+
+    P2 -->|啟用| Visitor
+    P2 -->|啟用| Admin
+    P3 -->|啟用| Visitor
+    P3 -->|啟用| Admin
+    Visitor --> VerifyToken
+    Admin --> VerifyToken
+    VerifyToken -->|有效| Pass
+    VerifyToken -->|無效| Reject
 ```
 
 > [!NOTE]

@@ -144,7 +144,25 @@ export function sidebar(prefix: string, t: SidebarCopy): DefaultTheme.SidebarIte
         { text: t.admin, link: `${p}/self-hosting/admin` },
         { text: t.configuration, link: `${p}/self-hosting/configuration` },
         { text: t.backup, link: `${p}/self-hosting/backup` },
-        { text: t.upgrade, link: `${p}/self-hosting/upgrade` },
+        {
+          text: t.upgrade,
+          link: `${p}/self-hosting/upgrade`,
+          collapsed: true,
+          items: [
+            { text: `v0.2.0${t.versionLatest}`, link: `${p}/self-hosting/upgrades/v0.2.0` },
+            { text: 'v0.1.9', link: `${p}/self-hosting/upgrades/v0.1.9` },
+            { text: 'v0.1.8', link: `${p}/self-hosting/upgrades/v0.1.8` },
+            { text: 'v0.1.7', link: `${p}/self-hosting/upgrades/v0.1.7` },
+            { text: 'v0.1.6', link: `${p}/self-hosting/upgrades/v0.1.6` },
+            { text: 'v0.1.5', link: `${p}/self-hosting/upgrades/v0.1.5` },
+            { text: 'v0.1.4', link: `${p}/self-hosting/upgrades/v0.1.4` },
+            { text: 'v0.1.3', link: `${p}/self-hosting/upgrades/v0.1.3` },
+            { text: 'v0.1.2', link: `${p}/self-hosting/upgrades/v0.1.2` },
+            { text: 'v0.1.1', link: `${p}/self-hosting/upgrades/v0.1.1` },
+            { text: 'v0.1.0', link: `${p}/self-hosting/upgrades/v0.1.0` },
+            { text: t.earlierVersions, link: `${p}/self-hosting/upgrades/earlier` },
+          ],
+        },
         { text: t.twikoo, link: `${p}/self-hosting/twikoo` },
         { text: t.faq, link: `${p}/self-hosting/faq` },
       ],
@@ -214,4 +232,6 @@ export interface SidebarCopy extends NavCopy {
   customCss: string
   smoji: string
   api: string
+  earlierVersions: string
+  versionLatest: string
 }

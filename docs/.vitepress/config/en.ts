@@ -23,6 +23,8 @@ const copy: SidebarCopy & NavCopy = {
   customCss: 'Custom Styling & Tokens',
   smoji: 'Smoji Stickers',
   api: 'REST API',
+  earlierVersions: 'Earlier versions (v0.0.x)',
+  versionLatest: ' (Latest)',
 }
 
 export const en = defineConfig({

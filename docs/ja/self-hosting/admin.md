@@ -31,15 +31,37 @@
 
 ---
 
-## 5. ボット対策・認証 (CAPTCHA)
+## 5. ボット対策・認証 (CAPTCHA) {#ボット対策-captcha}
 
 「セキュリティ」画面では、インスタンス全体に適用されるボット対策（3つの状態から選択）を設定でき、**訪問者のコメント投稿**と**管理画面ログイン**の両方を保護します：
 
 ```mermaid
-graph LR
-    A[ボット対策プロバイダー] --> B[無効 Off]
-    A --> C[Cloudflare Turnstile]
-    A --> D[セルフホスト Cap]
+graph TD
+    subgraph Provider["ボット対策プロバイダー（3態選択）"]
+        P1["無効 (Off)"]
+        P2["Cloudflare Turnstile"]
+        P3["セルフホスト Cap"]
+    end
+
+    subgraph Protection["二重防御の境界"]
+        Visitor["訪問者コメント投稿 (/api/comment/submit)"]
+        Admin["管理画面ログイン (/api/admin/login)"]
+    end
+
+    subgraph Verification["サーバー側検証"]
+        VerifyToken["Token と IP を検証<br/>(AES-256-GCM 暗号化保存)"]
+        Pass["リクエスト通過"]
+        Reject["リクエスト拒否 (400/403)"]
+    end
+
+    P2 -->|有効化| Visitor
+    P2 -->|有効化| Admin
+    P3 -->|有効化| Visitor
+    P3 -->|有効化| Admin
+    Visitor --> VerifyToken
+    Admin --> VerifyToken
+    VerifyToken -->|有効| Pass
+    VerifyToken -->|無効| Reject
 ```
 
 > [!NOTE]

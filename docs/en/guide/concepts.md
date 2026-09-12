@@ -10,11 +10,18 @@ Ecoku balances deep tree-structured discussions with mobile readability using an
 
 ### 1. Visual and Semantic Layers
 
-```text
-[Root Comment 1] (aria-level=1, indent: 0)
-  ├── [Child 1.1] (aria-level=2, indent: 22px)
-  │     └── [Child 1.1.1] (aria-level=3, indent: 44px)
-  │           └── [Child 1.1.1.1] (aria-level=4, indent: 66px cap) -> @Child 1.1.1
+```mermaid
+graph TD
+    Root["Root Comment 1 (aria-level=1, indent: 0)"]
+    Child1["Child 1.1 (aria-level=2, indent: 22px)"]
+    Child2["Child 1.1.1 (aria-level=3, indent: 44px)"]
+    Child3["Child 1.1.1.1 (aria-level=4, indent: 66px cap)"]
+    Anchor["@Child 1.1.1 (Context anchor link)"]
+
+    Root --> Child1
+    Child1 --> Child2
+    Child2 --> Child3
+    Child3 -.->|Visual compensation| Anchor
 ```
 
 - **Semantic Depth**: `aria-level` and `data-depth` mirror the actual nesting depth in the database for assistive technologies.
@@ -122,3 +129,15 @@ flowchart TD
 | **Blogger replies to visitor** | ❌ Not sent | ✅ Sent |
 | **Blogger replies to blogger** | ❌ Not sent | ❌ Not sent |
 | **Self-reply with same email** | — | ❌ Not sent |
+
+---
+
+## Session & Dynamic CSP Security Model
+
+1. **In-Memory Admin Session**:
+   - The admin Bearer Token is held strictly in browser JavaScript runtime memory and is never written to persistent browser storage.
+   - Refreshing or closing the tab instantly clears the session.
+   - The token contains a credential hash version identifier (`cv`). Changing the administrator password hash immediately invalidates all previously issued active tokens across all sessions.
+2. **Dynamic Content-Security-Policy (CSP) Convergence**:
+   - When self-hosted Cap is active, the server dynamically permits Cap's HTTPS instance origin, WASM, Blob Worker, and nonce-scoped `'unsafe-eval'` required by Cap's sandboxed instrumentation.
+   - When switching to Turnstile or disabling CAPTCHA, the server immediately strips Cap's origins and evaluation directives, reverting to a strictly locked-down CSP baseline.

@@ -23,6 +23,8 @@ const copy: SidebarCopy & NavCopy = {
   customCss: 'カスタム CSS',
   smoji: 'Smoji スタンプ',
   api: 'REST API',
+  earlierVersions: '以前のバージョン (v0.0.x)',
+  versionLatest: ' (最新)',
 }
 
 export const ja = defineConfig({

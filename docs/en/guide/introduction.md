@@ -51,14 +51,32 @@ flowchart TD
 
 ## Scope & Boundaries
 
-### What Ecoku Is
-- Multi-site hosting from a single deployment instance.
-- Direct posting with instant availability.
-- Privacy-first storage with zero client-side tracking.
-- Resilient notifications via SMTP (TLS/STARTTLS) and Telegram.
+### What Ecoku Is Ideal For
 
-### What Ecoku Is Not
-- ❌ **No Rich Text / Markdown Parsing**: Bodies remain pure text (except structured Smoji stickers).
-- ❌ **No User Registration**: Visitors post with a nickname, private email, and optional website.
-- ❌ **No Avatars, Likes, or Reactions**: No calls to Gravatar, external IP databases, or analytics scripts.
-- ❌ **No MySQL / Postgres Requirement**: Built exclusively on SQLite3 with WAL mode.
+- **Multi-Site Unified Hosting**: A single Ecoku instance can simultaneously provide isolated comment services for multiple independent domains, subdomains, and blogs.
+- **Static Blogs & Documentation**: Seamlessly integrates with modern static site generators such as Hugo, Hexo, Astro, VitePress, Next.js, and SvelteKit.
+- **Privacy-Conscious Creators**: Complete ownership of your discussion data in a local SQLite file, with zero external tracking or closed-source cloud dependencies.
+- **Flexible Anti-Bot Verification**: Freely toggle between in-memory IP rate limiting, Cloudflare Turnstile, and fully self-hosted open-source Cap.
+
+### What Ecoku Deliberately Omits
+
+To maintain absolute simplicity, security, and performance, Ecoku explicitly excludes the following:
+
+- ❌ **Rich Text & Raw HTML Rendering**: Comments are permanently treated as pure text to eliminate XSS injection risks (except strict same-origin Smoji stickers).
+- ❌ **User Registration & Accounts**: Visitors do not register or maintain passwords; they post using a nickname, private email, and optional website.
+- ❌ **Likes, Reactions, & Avatars**: No network calls to Gravatar, external IP databases, analytics, or telemetry services.
+- ❌ **Pre-Publish Moderation Queues**: Valid comments publish immediately upon passing rate limits and CAPTCHA.
+- ❌ **MySQL / PostgreSQL Complexity**: Exclusively built around SQLite3 with WAL mode for zero-ops, single-file resilience.
+
+---
+
+## Deployment Overview
+
+Ecoku runs in Docker as an unprivileged user (`10001:10001`), listening internally on `127.0.0.1:12123`:
+
+1. **Prepare Environment**: Configure `compose.yaml`, `app/config.yaml`, and `ecoku.env`.
+2. **Reverse Proxy**: Terminate HTTPS and forward traffic via Caddy or Nginx.
+3. **Admin Console**: Access `/admin/` to register sites, configure blogger passphrases, and set up notifications.
+4. **Site Integration**: Embed the ~2KB `ecoku-loader.js` snippet into your blog template.
+
+For complete step-by-step instructions, see [Docker Deployment](/en/self-hosting/docker).

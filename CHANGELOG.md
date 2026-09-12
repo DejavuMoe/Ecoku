@@ -5,10 +5,21 @@
 
 ## [Unreleased]
 
-### 变更
+暂无。
 
-- `master` push 自动触发文档发布流水线；流水线固定调度到 `netcup-nano`，并将构建产物原子发布到 `/var/www/ecoku.zsh.moe`。
-- 文档全面审查与事实纠偏：修正 `import-twikoo` CLI 语法与参数名称（`--site`），重构生产备份恢复 SOP；修正 `POST /api/comment/submit` 请求体字段（`mark`/`content`）与状态码（201 Created），补全管理端端点与配置字典种子说明；重构全景架构图与 Mermaid 布局比例，统一部署示例规范。
+## [0.2.0] - 2026-09-12
+
+### 文档与接入
+
+- 全面审查并校正文档中的 API、配置、部署、备份恢复、反向代理与 Twikoo 导入说明，统一四套语言文档的运行时契约。
+- 补充评论列表预算、游标分页、读取限流、状态码和管理端接口参考；完善 HTML、Hugo、SDK、Smoji 接入示例。
+- 修正 `import-twikoo` CLI 语法与参数名称（`--site`），修正评论提交请求体字段（`mark`/`content`）与状态码（201 Created），补全管理端端点与配置字典种子说明。
+- 重构 VitePress 文档导航、搜索、Mermaid 图表与响应式样式，并新增根 README 的快速开始和文档索引；`master` push 自动发布文档。
+
+### 升级边界
+
+- 本版本不改变 SQLite schema、运行时镜像构建契约、环境变量或 Compose 挂载；升级仍使用精确镜像 tag。
+- 从 v0.1.9 升级：停服冷备份 → 修改精确镜像 tag → `sudo docker compose pull && sudo docker compose up -d` → 健康与业务检查。详见四套文档的 `self-hosting/upgrades/v0.2.0`。
 
 ## [0.1.9] - 2026-08-31
 
@@ -340,4 +351,5 @@
 [0.1.7]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.7
 [0.1.8]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.8
 [0.1.9]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.1.9
-[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.1.9...master
+[0.2.0]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.0
+[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.2.0...master

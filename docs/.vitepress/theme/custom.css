@@ -2,45 +2,48 @@
   --vp-c-brand-1: #0f766e;
   --vp-c-brand-2: #0d9488;
   --vp-c-brand-3: #14b8a6;
-  --vp-c-brand-soft: rgba(13, 148, 136, 0.14);
+  --vp-c-brand-soft: rgba(15, 118, 110, 0.08);
   --vp-home-hero-name-color: transparent;
-  --vp-home-hero-name-background: linear-gradient(120deg, #0f766e 12%, #65a30d 88%);
-  --vp-home-hero-image-background-image: linear-gradient(160deg, #99f6e4 20%, #d9f99d 65%);
-  --vp-home-hero-image-filter: blur(36px);
+  --vp-home-hero-name-background: linear-gradient(125deg, #0f766e 10%, #0d9488 45%, #65a30d 95%);
+  --vp-home-hero-image-background-image: linear-gradient(145deg, #99f6e4 15%, #ccfbf1 45%, #d9f99d 85%);
+  --vp-home-hero-image-filter: blur(40px);
   --vp-button-brand-bg: #0f766e;
   --vp-button-brand-hover-bg: #0d9488;
   --vp-button-brand-active-bg: #115e59;
+  --vp-button-brand-border: transparent;
+  --vp-button-brand-text: #ffffff;
 
-  /* Latin + emoji; CJK stacks below override per :lang() */
+  /* Font stacks */
   --vp-font-family-base:
-    'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif,
+    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, 'Noto Sans', sans-serif,
     'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   --vp-font-family-mono:
-    ui-monospace, 'SFMono-Regular', 'SF Mono', Menlo, Monaco, Consolas,
+    ui-monospace, 'Maple Mono', 'SFMono-Regular', 'SF Mono', Menlo, Monaco, Consolas,
     'Liberation Mono', 'Courier New', monospace;
+
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
 }
 
-/* Simplified Chinese — macOS / Windows / Linux / Android mainstream faces */
+/* Simplified Chinese */
 :root:lang(zh-Hans),
 :root:lang(zh-CN) {
   --vp-font-family-base:
-    'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
     'PingFang SC', 'Hiragino Sans GB', 'Noto Sans SC', 'Noto Sans CJK SC',
-    'Source Han Sans SC', 'Microsoft YaHei UI', 'Microsoft YaHei',
-    'WenQuanYi Micro Hei', 'WenQuanYi Zen Hei', sans-serif,
+    'Source Han Sans SC', 'Microsoft YaHei UI', 'Microsoft YaHei', sans-serif,
     'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
-/* Traditional Chinese — Taiwan / HK / Mac faces first */
+/* Traditional Chinese */
 :root:lang(zh-Hant),
 :root:lang(zh-TW),
 :root:lang(zh-HK) {
   --vp-font-family-base:
-    'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
     'PingFang TC', 'PingFang HK', 'Hiragino Sans CNS', 'Hiragino Sans TC',
     'Noto Sans TC', 'Noto Sans CJK TC', 'Source Han Sans TC',
     'Microsoft JhengHei UI', 'Microsoft JhengHei', sans-serif,
@@ -50,24 +53,28 @@
 /* Japanese */
 :root:lang(ja) {
   --vp-font-family-base:
-    'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
     'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', 'Yu Gothic',
     'Noto Sans JP', 'Noto Sans CJK JP', 'Source Han Sans JP', Meiryo, sans-serif,
     'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
 .dark {
-  --vp-c-brand-1: #5eead4;
-  --vp-c-brand-2: #2dd4bf;
-  --vp-c-brand-3: #14b8a6;
-  --vp-c-brand-soft: rgba(45, 212, 191, 0.16);
-  --vp-home-hero-name-background: linear-gradient(120deg, #5eead4 8%, #a3e635 92%);
-  --vp-home-hero-image-background-image: linear-gradient(160deg, #134e4a 10%, #3f6212 80%);
+  --vp-c-brand-1: #2dd4bf;
+  --vp-c-brand-2: #5eead4;
+  --vp-c-brand-3: #99f6e4;
+  --vp-c-brand-soft: rgba(45, 212, 191, 0.12);
+  --vp-home-hero-name-background: linear-gradient(125deg, #2dd4bf 5%, #5eead4 40%, #a3e635 95%);
+  --vp-home-hero-image-background-image: linear-gradient(145deg, #115e59 10%, #134e4a 45%, #365314 90%);
+  --vp-home-hero-image-filter: blur(48px);
   --vp-button-brand-bg: #0d9488;
   --vp-button-brand-hover-bg: #14b8a6;
   --vp-button-brand-active-bg: #0f766e;
+  --vp-button-brand-border: transparent;
+  --vp-button-brand-text: #ffffff;
 }
 
+/* Home hero styling */
 .VPHome {
   position: relative;
   isolation: isolate;
@@ -80,31 +87,41 @@
   z-index: -1;
   pointer-events: none;
   background-image:
-    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(13, 148, 136, 0.16), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(163, 230, 53, 0.12), transparent 50%),
-    linear-gradient(rgba(15, 118, 110, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(15, 118, 110, 0.04) 1px, transparent 1px);
-  background-size: auto, auto, 48px 48px, 48px 48px;
-  mask-image: linear-gradient(to bottom, black 0%, black 42%, transparent 78%);
+    radial-gradient(ellipse 70% 45% at 15% -5%, rgba(13, 148, 136, 0.15), transparent 60%),
+    radial-gradient(ellipse 55% 35% at 85% 0%, rgba(163, 230, 53, 0.10), transparent 55%),
+    linear-gradient(rgba(15, 118, 110, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(15, 118, 110, 0.035) 1px, transparent 1px);
+  background-size: auto, auto, 40px 40px, 40px 40px;
+  mask-image: linear-gradient(to bottom, black 0%, black 50%, transparent 85%);
 }
 
 .dark .VPHome::before {
   background-image:
-    radial-gradient(ellipse 80% 50% at 10% -10%, rgba(45, 212, 191, 0.14), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(163, 230, 53, 0.08), transparent 50%),
-    linear-gradient(rgba(94, 234, 212, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(94, 234, 212, 0.05) 1px, transparent 1px);
+    radial-gradient(ellipse 70% 45% at 15% -5%, rgba(45, 212, 191, 0.14), transparent 60%),
+    radial-gradient(ellipse 55% 35% at 85% 0%, rgba(163, 230, 53, 0.07), transparent 55%),
+    linear-gradient(rgba(94, 234, 212, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(94, 234, 212, 0.04) 1px, transparent 1px);
 }
 
 .VPHomeHero .image-src {
-  width: min(340px, 78vw);
-  max-width: 340px;
-  max-height: 340px;
-  filter: drop-shadow(0 22px 24px rgba(15, 118, 110, 0.24));
+  width: min(350px, 78vw);
+  max-width: 350px;
+  max-height: 350px;
+  filter: drop-shadow(0 20px 30px rgba(15, 118, 110, 0.22));
+  transition: transform 0.35s ease, filter 0.35s ease;
+}
+
+.VPHomeHero .image-src:hover {
+  transform: translateY(-4px) scale(1.02);
+  filter: drop-shadow(0 26px 36px rgba(15, 118, 110, 0.28));
 }
 
 .dark .VPHomeHero .image-src {
-  filter: drop-shadow(0 24px 28px rgba(0, 0, 0, 0.32));
+  filter: drop-shadow(0 22px 32px rgba(0, 0, 0, 0.4));
+}
+
+.dark .VPHomeHero .image-src:hover {
+  filter: drop-shadow(0 28px 40px rgba(45, 212, 191, 0.2));
 }
 
 @media (max-width: 639px) {
@@ -114,21 +131,127 @@
   }
 }
 
+/* Feature card cards */
 .VPFeature {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid var(--vp-c-default-soft);
+  border-radius: 12px;
+  background-color: var(--vp-c-bg-soft);
+  transition: transform 0.25s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.25s cubic-bezier(0.2, 0, 0, 1), border-color 0.25s ease;
 }
 
 .VPFeature:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  border-color: var(--vp-c-brand-1);
+  box-shadow: 0 12px 24px -4px rgba(15, 118, 110, 0.12);
 }
 
+.dark .VPFeature:hover {
+  box-shadow: 0 12px 24px -4px rgba(0, 0, 0, 0.35);
+  border-color: rgba(45, 212, 191, 0.4);
+}
+
+/* Content typography & reading rhythm */
+.vp-doc {
+  line-height: 1.75;
+}
+
+.vp-doc h1 {
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+
+.vp-doc h2 {
+  letter-spacing: -0.02em;
+  font-weight: 650;
+  border-top: 1px solid var(--vp-c-divider);
+  padding-top: 24px;
+  margin-top: 36px;
+}
+
+.vp-doc h3 {
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+
+/* Table styling */
 .vp-doc table {
-  display: table;
-  width: 100%;
+  display: block;
+  max-width: 100%;
+  width: max-content;
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 8px;
+  margin: 20px 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.vp-doc th {
+  background-color: var(--vp-c-bg-soft);
+  font-weight: 600;
+  text-align: left;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--vp-c-divider);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.vp-doc td {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--vp-c-divider);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.vp-doc tr:last-child td {
+  border-bottom: none;
+}
+
+.vp-doc tr:nth-child(even) td {
+  background-color: var(--vp-c-bg-alt);
+}
+
+.vp-doc tr:hover td {
+  background-color: var(--vp-c-brand-soft);
+}
+
+/* Inline code formatting */
+.vp-doc :not(pre) > code {
+  font-size: 0.88em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: var(--vp-c-bg-alt);
+  border: 1px solid var(--vp-c-divider);
+  color: var(--vp-c-brand-1);
+}
+
+.dark .vp-doc :not(pre) > code {
+  color: var(--vp-c-brand-2);
+}
+
+/* Custom blocks refinement */
+.vp-doc .custom-block {
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 20px 0;
 }
 
 .vp-doc .custom-block.tip {
   border-color: var(--vp-c-brand-1);
+  background-color: var(--vp-c-brand-soft);
+}
+
+.vp-doc .custom-block.warning {
+  border-color: #f59e0b;
+  background-color: rgba(245, 158, 11, 0.08);
+}
+
+.vp-doc .custom-block.danger {
+  border-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.08);
 }
 
 .VPNavBarTitle .logo {
@@ -136,17 +259,25 @@
   border-radius: 7px;
 }
 
+/* Mermaid diagrams */
 .mermaid {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 1.5rem 0;
-  padding: 1.25rem;
+  margin: 1.75rem 0;
+  padding: 1.5rem;
   background-color: var(--vp-c-bg-soft);
   border: 1px solid var(--vp-c-divider);
-  border-radius: 8px;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   min-height: 80px;
+  transition: border-color 0.2s ease;
+}
+
+.mermaid:hover {
+  border-color: var(--vp-c-brand-soft);
 }
 
 .mermaid svg {
@@ -160,4 +291,27 @@
   margin: 0 !important;
   padding: 0 !important;
   line-height: 1.45 !important;
+}
+
+/* Smooth custom scrollbars for tables and diagrams */
+.vp-doc table::-webkit-scrollbar,
+.mermaid::-webkit-scrollbar {
+  height: 6px;
+}
+
+.vp-doc table::-webkit-scrollbar-track,
+.mermaid::-webkit-scrollbar-track {
+  background: var(--vp-c-bg-soft);
+  border-radius: 3px;
+}
+
+.vp-doc table::-webkit-scrollbar-thumb,
+.mermaid::-webkit-scrollbar-thumb {
+  background: var(--vp-c-divider);
+  border-radius: 3px;
+}
+
+.vp-doc table::-webkit-scrollbar-thumb:hover,
+.mermaid::-webkit-scrollbar-thumb:hover {
+  background: var(--vp-c-brand-2);
 }

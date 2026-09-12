@@ -73,15 +73,37 @@ Ecoku 的管理后台位于实例的 `/admin/` 路径。
 
 ---
 
-## 5. 安全与人机验证（Captcha）
+## 5. 安全与人机验证（Captcha） {#人机验证}
 
 在「安全」视图中，可为整个实例配置统一生效的机器人验证（三态单选切换），同时保护**访客评论提交**与**管理后台登录**：
 
 ```mermaid
-graph LR
-    A[安全验证提供方] --> B[关闭 Off]
-    A --> C[Cloudflare Turnstile]
-    A --> D[开源自托管 Cap]
+graph TD
+    subgraph Provider["安全验证提供方（三态单选）"]
+        P1["关闭 (Off)"]
+        P2["Cloudflare Turnstile"]
+        P3["开源自托管 Cap"]
+    end
+
+    subgraph Protection["双向拦截保护"]
+        Visitor["访客评论提交 (/api/comment/submit)"]
+        Admin["管理后台登录 (/api/admin/login)"]
+    end
+
+    subgraph Verification["服务端校验"]
+        VerifyToken["校验 Token & IP<br/>(AES-256-GCM 密文存储密钥)"]
+        Pass["放行通过"]
+        Reject["拒绝请求 (400/403)"]
+    end
+
+    P2 -->|启用| Visitor
+    P2 -->|启用| Admin
+    P3 -->|启用| Visitor
+    P3 -->|启用| Admin
+    Visitor --> VerifyToken
+    Admin --> VerifyToken
+    VerifyToken -->|有效| Pass
+    VerifyToken -->|无效| Reject
 ```
 
 > [!NOTE]

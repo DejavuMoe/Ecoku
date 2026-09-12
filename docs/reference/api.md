@@ -107,6 +107,54 @@ GET /api/comment/list?siteId=blog&key=/posts/example/&parentId=101&afterId=120&p
   }
   ```
 
+- **游标模式响应示例 (HTTP 200，传入 parentId)**：
+  ```json
+  {
+    "code": 200,
+    "message": "获取评论成功",
+    "data": {
+      "data": [
+        {
+          "id": 105,
+          "site_id": "blog",
+          "mark": "/posts/example/",
+          "parent": 101,
+          "username": "李四",
+          "content": "这是一条子评论",
+          "isBlogger": false,
+          "deleted": false,
+          "created_at": "2026-08-20T12:05:00Z",
+          "updated_at": "2026-08-20T12:05:00Z"
+        }
+      ],
+      "parentId": 101,
+      "pageSize": 20,
+      "hasMore": true,
+      "nextAfterId": 105,
+      "timeZone": "Asia/Shanghai",
+      "formConfig": {
+        "emailRequired": true,
+        "websiteRequired": false,
+        "placeholder": "写下评论（仅支持纯文本）",
+        "defaultSort": "newest",
+        "lengthLimit": 1000,
+        "emptyMessage": "还没有评论\n成为第一个留下评论的人。",
+        "bloggerBadge": "[博主]",
+        "bloggerProofEnabled": true,
+        "turnstileSitekey": "example-sitekey",
+        "captcha": {
+          "provider": "turnstile",
+          "sitekey": "example-sitekey"
+        },
+        "smoji": {
+          "enabled": false,
+          "manifestUrl": ""
+        }
+      }
+    }
+  }
+  ```
+
 ---
 
 ### 提交评论 `POST /api/comment/submit`

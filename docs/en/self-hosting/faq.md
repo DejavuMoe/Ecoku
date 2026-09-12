@@ -1,14 +1,16 @@
 # FAQ & Troubleshooting
 
+A consolidated diagnostic guide and troubleshooting solutions for common deployment, operation, and administration scenarios in Ecoku.
+
 ---
 
 ## 1. Authentication & Permissions
 
-### Q: Why does the admin panel log out when I refresh the page?
-**A**: Ecoku uses an **in-memory session model** for optimal security. Bearer tokens are kept only in JavaScript runtime memory and never written to `localStorage` or cookies.
+### Q: Why does the admin console log out when I refresh the page or reopen the browser?
+**A**: This is an intentional **high-security in-memory session design**. The administrator's Bearer token exists solely within Vue runtime memory variables and is never persisted into `localStorage`, `sessionStorage`, or cookies. Once the browser tab is refreshed or closed, the token is reclaimed by the browser engine, guaranteeing zero credential leaks even on shared or public workstations.
 
-### Q: Container startup fails with `permission denied`?
-**A**: Fix ownership for UID/GID `10001:10001`:
+### Q: Container startup fails with `permission denied` or cannot access SQLite database?
+**A**: The Ecoku container runs as non-root user `10001:10001`. Fix directory and file ownership on the host:
 ```bash
 sudo chown -R 10001:10001 ~/Ecoku/data ~/Ecoku/app/logs ~/Ecoku/app/config.yaml
 sudo chmod 750 ~/Ecoku/data ~/Ecoku/app/logs
@@ -17,23 +19,48 @@ sudo chmod 640 ~/Ecoku/app/config.yaml
 
 ---
 
-## 2. Emergency Recovery
+## 2. Bot Protection (CAPTCHA) & Emergency Recovery
 
-### Q: Locked out of the admin panel due to CAPTCHA failure?
-**A**: Disable CAPTCHA via CLI:
+### Q: Locked out of the admin console due to misconfigured Turnstile or Cap?
+**A**: Use the built-in CLI recovery tool to disable bot verification offline:
 ```bash
 sudo docker compose down
 sudo docker compose run --rm --no-deps ecoku captcha disable
 sudo docker compose up -d
 ```
+Once the service restarts, log into the admin console with your username and password, correct the credentials, and save.
+
+### Q: Console shows Content Security Policy (CSP) errors when using self-hosted Cap?
+**A**: Ecoku generates an exact CSP dynamically based on the active provider. If using Cap, ensure:
+1. In admin security settings, the Cap **instance address must begin with `https://`** (local HTTP allowed only on `localhost`).
+2. The Cap verify endpoint (`/<sitekey>/siteverify`) must be served under the same HTTPS origin.
+3. If the Cap client enables client-side instrumentation, Ecoku's CSP automatically allows the required `'unsafe-eval'` and WebAssembly evaluation.
 
 ---
 
-## 3. Proxy & Rate Limiting
+## 3. Reverse Proxy & Rate Limiting
 
-### Q: Visitors constantly receive `429 Too Many Requests`?
-**A**: Add the Docker bridge gateway to `site.trusted_proxies` in `app/config.yaml`:
-```bash
-sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
-```
-And verify that your Caddy/Nginx reverse proxy is overwriting `X-Forwarded-For`.
+### Q: Visitors frequently encounter `429 Too Many Requests` when submitting comments?
+**A**: This typically happens when `trusted_proxies` is not configured, causing all incoming requests to be seen as originating from the single reverse proxy gateway IP (e.g. Docker bridge `172.18.0.1`), sharing a single rate-limit bucket.
+**Resolution**:
+1. Query the Docker container gateway:
+   ```bash
+   sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
+   ```
+2. Add the gateway IP to `site.trusted_proxies` in `app/config.yaml` (e.g. `172.18.0.1/32`).
+3. Ensure Caddy or Nginx **overwrites** `X-Forwarded-For` with `{remote_host}` or `$remote_addr`.
+
+---
+
+## 4. Notifications & Timezone
+
+### Q: Test email delivery fails or times out with TLS handshake errors?
+**A**:
+- Ecoku enforces encrypted SMTP connections on port `465` (direct SSL/TLS) or `587` (STARTTLS). **Port 25 plaintext is strictly prohibited**.
+- Ensure host firewall and cloud provider security groups allow outbound TCP on ports 465 and 587.
+- Verify that `ECOKU_NOTIFICATION_ENCRYPTION_KEY` in `ecoku.env` is properly set; without it, encrypted SMTP credentials cannot be decrypted from the database.
+
+### Q: Comment timestamps do not match local server time?
+**A**:
+- Ecoku formats timestamps according to the `TZ` environment variable in `ecoku.env` (e.g. `TZ=Asia/Shanghai`, `TZ=America/New_York`, or `TZ=UTC`).
+- Update `TZ` in `ecoku.env` and execute `sudo docker compose restart` to apply immediately.
