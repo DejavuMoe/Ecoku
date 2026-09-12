@@ -295,7 +295,7 @@ describe('approved production comment surface', () => {
         return new Response(JSON.stringify({
           version: 1,
           packs: [{ id: 'demo', label: '示例', items: [{ id: 'wave', label: '挥手', src: './wave.webp' }] }],
-        }), { status: 200 })
+        }), { status: 200, headers: { 'content-type': 'application/json' } })
       }
       return listResponse([], {
         formConfig: {

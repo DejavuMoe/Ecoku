@@ -11,31 +11,74 @@ export async function loadSmojiManifest(manifestUrl: string, signal?: AbortSigna
   const abort = (): void => controller.abort()
   if (signal?.aborted) controller.abort()
   else signal?.addEventListener('abort', abort, { once: true })
-  let response: Response
   try {
-    response = await fetch(manifestUrl, {
+    const response = await fetch(manifestUrl, {
       credentials: 'omit',
       referrerPolicy: 'no-referrer',
       signal: controller.signal,
     })
+
+    if (!response.ok) throw new Error('manifest-request-failed')
+    const media = response.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase()
+    if (media !== 'application/json' && !media?.endsWith('+json')) {
+      throw new Error('invalid-manifest')
+    }
+
+    const declaredLength = Number(response.headers.get('content-length') || 0)
+    if (declaredLength > 1024 * 1024) {
+      throw new Error('manifest-too-large')
+    }
+
+    let text = ''
+    if (response.body) {
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let bytes = 0
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          bytes += value.byteLength
+          if (bytes > 1024 * 1024) {
+            controller.abort()
+            throw new Error('manifest-too-large')
+          }
+          text += decoder.decode(value, { stream: true })
+        }
+        text += decoder.decode()
+      } finally {
+        reader.releaseLock()
+      }
+    } else {
+      text = await response.text()
+    }
+    if (text.length > 1024 * 1024 || new TextEncoder().encode(text).length > 1024 * 1024) throw new Error('manifest-too-large')
+
+    let value: unknown
+    try {
+      value = JSON.parse(text) as unknown
+    } catch {
+      throw new Error('invalid-manifest')
+    }
+
+    return normalizeManifest(value, manifestUrl)
   } finally {
     clearTimeout(timeout)
     signal?.removeEventListener('abort', abort)
   }
-  if (!response.ok) throw new Error('manifest-request-failed')
-  const declaredLength = Number(response.headers.get('content-length') || 0)
-  if (declaredLength > 256 * 1024) throw new Error('manifest-too-large')
-  const text = await response.text()
-  if (text.length > 256 * 1024) throw new Error('manifest-too-large')
-  const value: unknown = JSON.parse(text)
-  return normalizeManifest(value, manifestUrl)
 }
 
 function normalizeManifest(value: unknown, manifestUrl: string): SmojiManifest {
   if (!value || typeof value !== 'object') throw new Error('invalid-manifest')
   const raw = value as Record<string, unknown>
-  if (!hasExactKeys(raw, ['version', 'packs']) || raw.version !== 1 || !Array.isArray(raw.packs) || raw.packs.length < 1 || raw.packs.length > 32) throw new Error('invalid-manifest')
+  if (!hasExactKeys(raw, 'base' in raw ? ['version', 'base', 'packs'] : ['version', 'packs']) || raw.version !== 1 || !Array.isArray(raw.packs) || raw.packs.length < 1 || raw.packs.length > 64) throw new Error('invalid-manifest')
   const manifestOrigin = new URL(manifestUrl).origin
+  if ('base' in raw) {
+    if (typeof raw.base !== 'string' || !raw.base.includes('{pack}') || !raw.base.includes('{id}')) throw new Error('invalid-manifest')
+    const sample = raw.base.split('{pack}').join('pack').split('{id}').join('item')
+    const base = new URL(sample, manifestUrl)
+    if (/[{}]/.test(sample) || base.origin !== manifestOrigin || !['http:', 'https:'].includes(base.protocol) || base.username || base.password || base.search || base.hash) throw new Error('invalid-manifest')
+  }
   let itemCount = 0
   const packIDs = new Set<string>()
   const packs = raw.packs.map((pack): SmojiPack => {
@@ -44,21 +87,22 @@ function normalizeManifest(value: unknown, manifestUrl: string): SmojiManifest {
     if (!hasExactKeys(source, ['id', 'label', 'items'])
       || typeof source.id !== 'string' || !ID_PATTERN.test(source.id) || packIDs.has(source.id)
       || !validLabel(source.label)
-      || !Array.isArray(source.items) || source.items.length < 1 || source.items.length > 300) throw new Error('invalid-manifest')
+      || !Array.isArray(source.items) || source.items.length < 1 || source.items.length > 600) throw new Error('invalid-manifest')
     packIDs.add(source.id)
     const itemIDs = new Set<string>()
     const items = source.items.map((item): SmojiItem => {
       if (!item || typeof item !== 'object') throw new Error('invalid-manifest')
       const entry = item as Record<string, unknown>
-      if (!hasExactKeys(entry, ['id', 'label', 'src'])
+      if (!hasExactKeys(entry, 'src' in entry ? ['id', 'label', 'src'] : ['id', 'label'])
         || typeof entry.id !== 'string' || !ID_PATTERN.test(entry.id) || itemIDs.has(entry.id)
         || !validLabel(entry.label)
-        || typeof entry.src !== 'string') throw new Error('invalid-manifest')
+        || ('src' in entry ? typeof entry.src !== 'string' : typeof raw.base !== 'string')) throw new Error('invalid-manifest')
       itemIDs.add(entry.id)
-      const src = new URL(entry.src, manifestUrl)
+      const path = typeof entry.src === 'string' ? entry.src : (raw.base as string).split('{pack}').join(source.id as string).split('{id}').join(entry.id)
+      const src = new URL(path, manifestUrl)
       if (src.origin !== manifestOrigin || !['http:', 'https:'].includes(src.protocol) || src.username || src.password || src.search || src.hash) throw new Error('invalid-manifest')
       itemCount += 1
-      if (itemCount > 2000) throw new Error('invalid-manifest')
+      if (itemCount > 6000) throw new Error('invalid-manifest')
       return { id: entry.id, label: entry.label.trim(), src: src.toString() }
     })
     return { id: source.id, label: source.label.trim(), items }
@@ -72,7 +116,7 @@ function hasExactKeys(value: Record<string, unknown>, expected: string[]): boole
 }
 
 function validLabel(value: unknown): value is string {
-  return typeof value === 'string' && value.trim() !== '' && Array.from(value).length <= 40 && !/[\]\r\n]/.test(value)
+  return typeof value === 'string' && value.trim() !== '' && Array.from(value.trim()).length <= 40 && !/[\]\u0000-\u001f\u007f-\u009f]/.test(value)
 }
 
 export function smojiMarker(item: SmojiItem): string {
@@ -91,7 +135,7 @@ export function renderSmojiContent(target: HTMLElement, content: string, enabled
     target.append(document.createTextNode(content.slice(cursor, match.index)))
     try {
       const source = new URL(match[2])
-      if (source.origin !== origin) throw new Error()
+      if (source.origin !== origin || source.username || source.password || source.search || source.hash) throw new Error()
       const image = document.createElement('img')
       image.className = 'ecoku-smoji-inline'
       image.src = source.toString()

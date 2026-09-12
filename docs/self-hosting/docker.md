@@ -3,7 +3,7 @@
 Ecoku 采用单容器 Docker Compose 部署模型，以极小资源开销提供全套服务。容器在内部监听 `127.0.0.1:12123`，公网 HTTPS 由宿主机反向代理（Caddy / Nginx）终止。
 
 > [!NOTE]
-> 文档中的 `git.via.moe/dejavu/ecoku:v0.2.0` 为当前正式镜像；`ecoku.example.com` 均为示例占位符，实际部署时请替换为您的真实域名。
+> 文档中的 `git.via.moe/dejavu/ecoku:v0.2.1` 为当前正式镜像；`ecoku.example.com` 均为示例占位符，实际部署时请替换为您的真实域名。
 
 ---
 
@@ -31,7 +31,7 @@ cd ~/Ecoku
 cat <<'EOF' > compose.yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.2.0"
+    image: "git.via.moe/dejavu/ecoku:v0.2.1"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -71,7 +71,7 @@ EOF
 ```
 
 > [!IMPORTANT]
-> - 生产环境**严禁**使用 `latest` 等浮动标签，必须显式指定具体的语义化版本号（如 `v0.2.0`）。
+> - 生产环境**严禁**使用 `latest` 等浮动标签，必须显式指定具体的语义化版本号（如 `v0.2.1`）。
 > - 容器端口请务必绑定到 `127.0.0.1:12123`，防止绕过反向代理直接访问裸端口。
 
 ---
@@ -153,7 +153,7 @@ grep -q "^ECOKU_ADMIN_USERNAME=" ecoku.env || echo "ECOKU_ADMIN_USERNAME='admin'
 # 3. 交互式输入管理员密码，生成 Bcrypt 哈希并写入（密码输入不回显，已存在则自动跳过）
 if ! grep -q "^ECOKU_ADMIN_PASSWORD_HASH=" ecoku.env; then
   read -rsp '输入管理员密码: ' ADMIN_PASS; echo
-  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i --entrypoint /app/ecoku-server "git.via.moe/dejavu/ecoku:v0.2.0" hash-password)
+  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i --entrypoint /app/ecoku-server "git.via.moe/dejavu/ecoku:v0.2.1" hash-password)
   unset ADMIN_PASS
   echo "ECOKU_ADMIN_PASSWORD_HASH='$HASH'" >> ecoku.env
 fi

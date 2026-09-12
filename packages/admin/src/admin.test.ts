@@ -143,6 +143,10 @@ describe('administrator Smoji rendering', () => {
     const marker = '正文 ![smoji:挥手](https://static.example.test/wave.webp)'
     expect(tokenizeAdminSmoji(marker, true, manifestUrl)).toHaveLength(2)
     expect(tokenizeAdminSmoji('![smoji:坏](https://tracker.example/bad.webp)', true, manifestUrl)[0]).toMatchObject({ type: 'text' })
+    for (const src of ['https://user:pass@static.example.test/a.webp', 'https://static.example.test/a.webp?q=1', 'https://static.example.test/a.webp#frag']) {
+      const unsafe = `![smoji:表情](${src})`
+      expect(tokenizeAdminSmoji(unsafe, true, manifestUrl)).toEqual([{ type: 'text', value: unsafe }])
+    }
     const wrapper = mount(SmojiContent, { props: { content: marker, enabled: true, manifestUrl } })
     expect(wrapper.get('img').attributes('alt')).toBe('[表情：挥手]')
     expect(wrapper.get('img').attributes('src')).toBe('https://static.example.test/wave.webp')

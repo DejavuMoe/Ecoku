@@ -52,15 +52,15 @@ To host a custom sticker source, serve a `smoji.json` file compliant with the fo
 ### Field Constraints & Technical Specifications
 
 - `version`: Must be integer `1`.
-- `packs`: Array of sticker pack groupings (1–32 packs).
+- `packs`: Array of sticker pack groupings (1–64 packs).
 - `packs[].id`: Unique pack identifier (regex `/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/`).
 - `packs[].label`: Pack display name (trimmed, up to 40 characters).
-- `packs[].items`: List of sticker items (1–300 items per pack; total items across the entire manifest cannot exceed 2,000).
+- `packs[].items`: List of sticker items (1–600 items per pack; total items across the entire manifest cannot exceed 6,000).
 - `items[].id`: Unique item identifier (regex `/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/`).
 - `items[].label`: Sticker display label (trimmed, 1–40 characters, no `]` or newlines).
 - `items[].src`: Sticker image URL (same-origin absolute URL, or relative path resolved against `smoji.json`, no username, password, query, or hash).
 - **Exact Keys Enforcement**: The JSON structure strictly permits only these keys. Any undefined or extraneous fields cause immediate validation failure.
-- **Payload & Network Limits**: Manifest file size is capped at **256 KiB**. Total request-to-read timeout is 8 seconds.
+- **Payload & Network Limits**: Manifest file size is capped at **1 MiB**. Total request-to-read timeout is 8 seconds.
 - **Strict Same-Origin Enforcement**: The `src` of every sticker image **must share the exact same Origin as `smoji.json` itself**. Production manifests must use the `https://` scheme.
 
 ---
@@ -82,3 +82,15 @@ Enable Smoji in the admin console under Site Settings and enter your manifest UR
 The "Ecoku Response Example" exported by the Smoji workbench illustrates the public endpoint's `formConfig.smoji` structure—it is not an admin import file. The admin form uses `smojiEnabled` / `smojiManifestUrl`, while the management API uses `smoji_enabled` / `smoji_manifest_url`.
 
 Comments persist full, absolute image URLs in the database. When updating sticker assets, preserve your domain name and historical image paths. When publishing builds from the Smoji workbench, deploy the full `demo/dist` folder including compatibility copies of old assets. Replacing a manifest alone cannot repair broken URLs in historical comments. Switching to a new Origin will cause existing markers to fall back to plain-text display.
+
+## Compact manifests (v0.2.1)
+
+```json
+{"version":1,"base":"https://s3-cdn.zsh.moe/smoji/{pack}/{id}.webp","packs":[{"id":"douyin-current","label":"抖音","items":[{"id":"fehpikklicec","label":"微笑"}]}]}
+```
+
+The optional `base` URL template must contain `{pack}` and `{id}`, expanded from the pack and item IDs. Items without `src` use this template; custom groups and other file extensions can override it with `src`. The parser still returns full URLs and comments retain their existing marker format. Legacy per-item `src` manifests remain supported; unknown fields are rejected.
+
+Expanded images must share the manifest origin, without credentials, queries or fragments. Do not publish localhost image URLs. Local Smoji workbench exports use the configured CDN `https://s3-cdn.zsh.moe/smoji/`. Serve JSON with `application/json` or a `+json` media type. The size limit counts UTF-8 bytes; the 8-second timeout covers body reading.
+
+v0.2.0 cannot read `base` and allows only 32 packs, 300 items per pack, 2000 total items and 256 KiB. Export a smaller per-item `src` manifest for that version; switch to compact manifests after upgrading. Publish both the manifest and assets to the CDN. Replacing JSON does not deploy application code or repair old comment URLs.

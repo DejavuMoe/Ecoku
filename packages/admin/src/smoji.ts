@@ -19,7 +19,7 @@ export function tokenizeAdminSmoji(content: string, enabled: boolean, manifestUr
     if (match.index > cursor) tokens.push({ type: 'text', value: content.slice(cursor, match.index) })
     try {
       const source = new URL(match[2])
-      if (source.origin !== origin) throw new Error()
+      if (source.origin !== origin || source.username || source.password || source.search || source.hash) throw new Error()
       tokens.push({ type: 'image', label: match[1], src: source.toString() })
     } catch {
       tokens.push({ type: 'text', value: match[0] })
