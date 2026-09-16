@@ -44,7 +44,7 @@
   镜像 CI 不部署应用生产、不碰生产库。文档站点仅由 `master` push 的 Woodpecker 流程自动构建并原子发布，
   固定调度到 `role=netcup-nano`、`server=netcup-nano` 的 agent；发布 step 通过 trusted volume
   仅挂载 `/var/www/ecoku.zsh.moe:/deploy`；站点目录内的 `html` 软链接原子切换到 `releases/<发布标识>`，
-  `.deploy.lock` 位于站点目录内，成功后立即尝试删除旧候选。Web 服务根目录为 `/var/www/ecoku.zsh.moe/html`。
+  `.deploy.lock` 位于站点目录内，成功后仅保留当前版与刚被替换的上一版，清理更早发布目录。Web 服务根目录为 `/var/www/ecoku.zsh.moe/html`。
 - 文档与 Compose 模板中的 Docker 镜像统一使用实际注册地址与精确发布版本号（`git.via.moe/dejavu/ecoku:v` + `VERSION`，禁止占位镜像或浮动 tag，当前为 `v0.2.4`）；真实域名、密码、token、SMTP、Telegram、数据库和日志等敏感信息仍使用占位符，不得进 Git。
 - 提交、推送、tag、镜像发布、生产部署和真实数据库操作需要当前任务的明确授权。
 - 新 tag 若可能影响平滑升级（schema、Compose 挂载、配置键、日志出口、镜像契约），回复中先写：

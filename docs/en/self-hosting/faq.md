@@ -84,7 +84,7 @@ For Nginx, use `deploy/nginx-docs.conf.example` from the repository and replace 
     └── <commit>-<pipeline>-<rerun>/
 ```
 
-The script validates the output, then locks and atomically replaces `html`, preventing older pipelines from overwriting newer releases. After activation verification, it immediately attempts to delete the previous release. Verification checks local files and symlinks, not live HTTP health; the previous release is not retained for later rollback.
+The script validates the output, then locks and atomically replaces `html`, preventing older pipelines from overwriting newer releases. After activation verification, it keeps the current and immediately previous release and removes older release directories. Failed or stale publications do not prune releases. The first deployment has one version; subsequent deployments normally keep two, allowing a manual rollback. Cleanup failures produce warnings. Verification checks local files and symlinks, not live HTTP health.
 
 To migrate, first ensure no documentation publication is running or queued. Remove the old `/var/www/<DOCS_DOMAIN>` symlink, create a real directory with the same name, and update the web server document root. Before deleting `/var/www/.<DOCS_DOMAIN>-releases`, confirm its static files are no longer needed. Clearing the old deployment makes documentation unavailable until the new CI deployment succeeds and the web configuration takes effect; the comment service and database are unaffected. Push the new CI only after preparation, and do not rerun old publication jobs.
 
