@@ -80,18 +80,18 @@ flowchart TD
 
 在后台站点设置中启用 Smoji，填写清单 URL。清单与图片地址不得带用户名、密码、查询参数或片段；HTTP 仅用于回环开发地址。跨域托管清单时，资源服务器需允许评论页面来源的 CORS 请求。
 
-Smoji 工作台导出的“Ecoku 响应示例”展示公共接口的 `formConfig.smoji`，不是后台可导入的配置文件。后台表单内部使用 `smojiEnabled` / `smojiManifestUrl`；管理 API 请求字段为 `smoji_enabled` / `smoji_manifest_url`。
+公共接口通过 `formConfig.smoji` 返回安全配置；管理 API 使用 `smoji_enabled` / `smoji_manifest_url`。在后台填写清单 URL，不直接导入公共响应 JSON。
 
 评论保存完整图片 URL。更新素材时保留原有域名和旧图片路径；使用 Smoji 工作台构建发布时部署包含旧路径兼容副本的完整 `demo/dist`。单独替换清单不会修复历史评论中的失效地址。若改用其他 Origin，旧标记会按文本显示。
 
 ## 精简清单（v0.2.1）
 
 ```json
-{"version":1,"base":"https://s3-cdn.zsh.moe/smoji/{pack}/{id}.webp","packs":[{"id":"douyin-current","label":"抖音","items":[{"id":"fehpikklicec","label":"微笑"}]}]}
+{"version":1,"base":"https://stickers.example.com/smoji/{pack}/{id}.webp","packs":[{"id":"douyin-current","label":"抖音","items":[{"id":"fehpikklicec","label":"微笑"}]}]}
 ```
 
 `base` 是可选 URL 模板，必须包含 `{pack}` 与 `{id}`，分别替换为分组和条目的 ID。省略 `src` 的条目使用该模板；自选分组或不同扩展名可保留 `src` 覆盖。解析后仍得到完整 URL，评论存储格式不变。旧版逐项 `src` 清单继续受支持，未知字段仍被拒绝。
 
-清单与展开后的图片仍须同源，禁止凭据、query 和 fragment。生产清单不要包含 `localhost` 图片地址；Smoji 工作台本地导出会使用配置的 CDN `https://s3-cdn.zsh.moe/smoji/`。JSON 响应需使用 `application/json` 或 `+json` 类型，体积按 UTF-8 字节计算，8 秒超时覆盖正文读取。
+清单与展开后的图片仍须同源，禁止凭据、query 和 fragment。生产清单不要包含 `localhost` 图片地址；导出时将资源地址配置为自己的 CDN，例如 `https://stickers.example.com/smoji/`。JSON 响应需使用 `application/json` 或 `+json` 类型，体积按 UTF-8 字节计算，8 秒超时覆盖正文读取。
 
 v0.2.0 不支持 `base`，且仍限制为 32 包、每包 300 项、总计 2000 项、256 KiB。使用该版本时需保留逐项 `src` 并导出容量内的子集；升级后再切换精简清单。清单和图片均需要发布到 CDN，更换 JSON 不会自动发布代码或修复历史评论 URL。

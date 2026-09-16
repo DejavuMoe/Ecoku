@@ -27,7 +27,7 @@ Ecoku 在保持极简架构的同时，提供了完善的评论交互、现代�
 ## 现代化安全与人机防护
 
 - **三态人机验证切换**：实例级自由切换 **关闭 (`off`)**、**Cloudflare Turnstile** 或 **自托管 Cap**。
-- **端到端凭据加密**：数据库内存储的 Turnstile Secret、Cap Secret、SMTP 密码及 Telegram Token 均由主密钥采用 AES-256-GCM 强加密保存，管理端仅显示“已设置”，永不回显明文。
+- **数据库凭据加密**：数据库内存储的 Turnstile Secret、Cap Secret、SMTP 密码及 Telegram Token 均由主密钥采用 AES-256-GCM 强加密保存，管理端仅显示“已设置”，永不回显明文。
 - **动态 CSP 安全收敛**：管理端 Content-Security-Policy 随当前验证提供方动态收敛，仅在启用 Cap 时精准放行其 HTTPS 实例域名与必要求值权限，其余模式全面收紧。
 - **多维度单进程限流**：内置基于 Socket 对端 IP 与可信反代网关的内存限流器，对评论提交、删除、管理登录与通知测试施加精准频控。
 

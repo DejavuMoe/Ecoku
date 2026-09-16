@@ -1,6 +1,6 @@
 # 反向代理與網路限流
 
-Ecoku 容器預設僅在宿主機本地回環 `127.0.0.1:12123` 監聽 HTTP 請求。在生產環境中，必須透過前端 Web 伺服器（如 Caddy 或 Nginx）終止 HTTPS，並將流量反向代理到容器連接埠。
+Ecoku 在容器內監聽 `:12123`；Compose 僅在宿主機回環 `127.0.0.1:12123` 發佈連接埠。在生產環境中，必須透過前端 Web 伺服器（如 Caddy 或 Nginx）終止 HTTPS，並將流量反向代理到容器連接埠。
 
 ---
 
@@ -11,7 +11,7 @@ flowchart TD
     V["訪客 (Client)"]
     CDN["Cloudflare CDN (可選代理)"]
     Proxy["反向代理 (Caddy / Nginx)<br/>• 終止 HTTPS / 透傳 X-Forwarded-For"]
-    Container["Ecoku 容器<br/>• 監聽 127.0.0.1:12123"]
+    Container["Ecoku 容器<br/>• 容器內 :12123 / 宿主機 127.0.0.1:12123"]
 
     V -->|場景 1: 直連 HTTPS| Proxy
     V -->|場景 2: 經 CDN| CDN

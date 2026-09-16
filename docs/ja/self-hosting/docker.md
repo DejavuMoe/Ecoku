@@ -3,7 +3,7 @@
 コンテナは `:12123` で待ち受け、Compose はホストの `127.0.0.1:12123` にのみ公開します。HTTPS はホストのリバースプロキシで終端します。
 
 > [!NOTE]
-> 対象イメージ `git.via.moe/dejavu/ecoku:v0.2.4` は公開準備中です。以下の配備コマンドはイメージ公開後に使います。`ecoku.example.com` はプレースホルダーです。
+> 以下のコマンドは公開済みイメージ `git.via.moe/dejavu/ecoku:v0.2.4` を使用します。`ecoku.example.com` はプレースホルダーです。
 
 ---
 
@@ -191,8 +191,8 @@ sudo docker compose logs --tail=100 -f ecoku
 ### ヘルスチェックの検証
 
 ```bash
-curl -fail http://127.0.0.1:12123/api/health
-# 期待される出力: {"code":200,"message":"success","data":{"status":"healthy","timestamp":...}}
+curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+# 期待される出力: {"code":200,"message":"Success","data":{"status":"healthy","timestamp":...}}
 ```
 
 次に、フロントエンドの [リバースプロキシ](/ja/self-hosting/reverse-proxy) を設定して HTTPS を終端し、公開転送を行ってください。または [管理画面設定](/ja/self-hosting/admin) でサイトとブロガー身元を登録してください。

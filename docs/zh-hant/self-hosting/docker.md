@@ -3,7 +3,7 @@
 容器內監聽 `:12123`，Compose 僅在主機 `127.0.0.1:12123` 發佈連接埠；HTTPS 由主機反向代理終止。
 
 > [!NOTE]
-> 目標鏡像 `git.via.moe/dejavu/ecoku:v0.2.4` 尚待發佈；以下命令用於鏡像發佈後部署。`ecoku.example.com` 為預留網域。
+> 以下命令使用已發佈鏡像 `git.via.moe/dejavu/ecoku:v0.2.4`。`ecoku.example.com` 為預留網域。
 
 ---
 
@@ -191,8 +191,8 @@ sudo docker compose logs --tail=100 -f ecoku
 ### 健康檢查驗證
 
 ```bash
-curl -fail http://127.0.0.1:12123/api/health
-# 預期輸出: {"code":200,"message":"success","data":{"status":"healthy","timestamp":...}}
+curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+# 預期輸出: {"code":200,"message":"Success","data":{"status":"healthy","timestamp":...}}
 ```
 
 接下來，請配置前端 [反向代理](/zh-hant/self-hosting/reverse-proxy) 終止 HTTPS 並完成公網轉發，或造訪 [管理後台配置](/zh-hant/self-hosting/admin) 註冊站點與博主身分。

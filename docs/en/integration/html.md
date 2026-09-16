@@ -1,6 +1,6 @@
 # Plain HTML & Loader Integration
 
-Ecoku provides a lightweight asynchronous loader `ecoku-loader.js` (~2KB). By declaring `data-*` attributes in your HTML, the loader automatically pulls the core SDK and stylesheet asynchronously before mounting the comment widget.
+Ecoku provides a lightweight asynchronous loader `ecoku-loader.js`. By declaring `data-*` attributes in your HTML, the loader automatically pulls the core SDK and stylesheet asynchronously before mounting the comment widget.
 
 ---
 
@@ -52,7 +52,7 @@ Insert the following HTML structure at your comment mount point:
 
 ## Architecture & Benefits
 
-1. **Zero Render Blocking**: With a ~2KB footprint and `defer` loading, `ecoku-loader.js` never blocks your blog's initial paint.
+1. **Deferred Execution**: The example uses `defer` to execute the loader after HTML parsing, then load the SDK asynchronously.
 2. **Silent Loading**: No intrusive "Loading..." spinners or skeleton flashes; the comment area mounts seamlessly once assets are ready.
 3. **Fault Tolerance & Interactive Retry**: If network instability causes the SDK to fail or exceed the 12-second timeout, the `.ecoku-loader` activates automatically with an interactive retry button.
 4. **Automatic Style Injection**: Unless `data-css-url="none"` is specified, the SDK automatically injects optimized inline styles on initialization, eliminating the need for an extra `<link rel="stylesheet">`.

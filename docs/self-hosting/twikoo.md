@@ -1,78 +1,50 @@
 # Twikoo 历史数据导入
 
-Ecoku 提供了专用的 CLI 工具，支持从 Twikoo 导出的 JSON 文件无损迁移历史评论数据。
-> [!IMPORTANT]
-> **仅限全新初始部署阶段执行**：
-> Twikoo 评论导入命令（`import-twikoo`）**仅支持导入到已在管理端注册但评论数为 0 的纯净站点**。
-> 一旦目标站点已有任何新评论写入，系统为保障树状结构层级、父子引用约束与评论 ID 连续性，将**严格拒绝导入**。
+`import-twikoo` 将 Twikoo JSON 数组中的受支持字段转换为 Ecoku 纯文本评论。目标站点必须已注册且零评论（包括墓碑）。导入不会发送通知，也不会保留 IP、UA、头像、赞踩或外部用户身份。
 
----
+## 字段与转换
 
-## 导入前提与契约
-
-1. **目标站点必须为空**：Twikoo 导入仅允许导入到一个**已在管理后台注册、但评论数为 0** 的纯净目标站点。禁止向已有评论的站点追加导入。
-2. **强制冷备份**：执行实际导入前，必须完成数据库的冷备份。
-3. **支持预演（Dry-Run）**：支持在不写入数据库的情况下预先解析并校验数据格式。
-4. **单事务原子提交**：整个导入过程在单个 SQLite 事务中完成，任何单条格式错误都会导致全量回滚，绝不残留部分导入数据。
-5. **通知静默**：历史导入过程**绝不触发**任何邮件或 Telegram 通知。
-
----
-
-## 字段映射与清洗规则
-
-| Twikoo 原始字段 | Ecoku 映射与转换规则 |
+| JSON | Ecoku |
 | :--- | :--- |
-| `_id` / `rid` / `pid` | 自动映射并重建父子评论层级关系（`parent_id`）。 |
-| `url` (页面标识) | 自动清洗为规范的站内相对路径（剔除协议、Host、Query 参数与 Hash 锚点）。 |
-| `comment` (正文) | 将历史 HTML / Markdown 正文提取并转换为安全的纯文本，剔除标签注入。 |
-| `nick` | 映射为评论作者昵称。 |
-| `mail` | 映射为私有邮箱（仅用于未来接收回复通知，绝不向公开 API 暴露）。 |
-| `link` | 校验合法性后映射为作者个人网站（仅保留安全的 `http://` / `https://` 链接）。 |
-| `created` | 保留精确历史发表时间戳。 |
-| `ip` / `ua` / `os` | **直接丢弃**，严格符合 Ecoku 隐私边界。 |
-| `is_blogger` | 导入完成后，系统自动根据目标站点的博主昵称与邮箱匹配并批量回填博主标记。 |
+| `_id` / `id`、`pid` / `rid` | 重建评论 ID 与父子关系，优先直接父评论；缺失、跨页面或无法解析的父关系可能转为根评论并计入缺失父记录。 |
+| `url` | 提取站内路径并去掉 query / fragment。 |
+| `comment` | 提取 HTML 文本，丢弃 script/style，图片保留 alt 或 `[图片]`；不解析 Markdown 语法。 |
+| `nick` / `mail` / `link` | 保存昵称、私有邮箱和合法 http(s) 作者网站。 |
+| `created` / `updated` | 转换并保存时间。 |
+| 博主标记 | 依据目标站点已配置的昵称与邮箱回填，不读取导出文件中的 `is_blogger`。 |
 
----
+## 1. 预检前准备
 
-## 导入操作实战
-
-### 1. 预演检查（Dry-Run）
-
-将 Twikoo 导出的 JSON 文件放置于宿主机（例如 `~/Ecoku/data/twikoo.json`），先执行 Dry-Run 验证：
+先注册目标站点，按[备份与恢复](./backup)完成停服冷备份并验证归档。备份示例最后会启动服务，因此导入前再次停服。以下命令将原始导出复制为临时文件，并使容器用户 UID 10001 可读；将 `/path/to/twikoo.json` 替换为自己的源文件，保留原件。
 
 ```bash
 cd ~/Ecoku
-
-sudo docker compose run --rm --no-deps ecoku \
-  import-twikoo \
-  --site=blog \
-  --file=/data/twikoo.json \
-  --dry-run
+sudo docker compose down
+sudo install -o 10001 -g 10001 -m 600 /path/to/twikoo.json data/twikoo.json
 ```
 
-检查控制台输出的解析统计信息（根评论数、子回复数、跳过异常数等）。
+## 2. 执行 dry-run
 
-### 2. 执行正式导入
-
-确认预演统计无误后，执行正式写入：
+将 `blog` 替换为目标站点 ID。dry-run 会执行导入事务后回滚，不持久化导入的评论；但 CLI 启动时仍会初始化或迁移数据库，因此不是纯只读检查。
 
 ```bash
+sudo docker compose run --rm --no-deps ecoku \
+  import-twikoo --site=blog --file=/data/twikoo.json --dry-run
+```
+
+核对输出的评论、根评论、回复、页面、邮箱、网站及缺失父记录数量。无效 JSON、重复 ID 等错误会中止；缺失父关系会保留为根评论，不应当作“跳过异常”。
+
+## 3. 正式导入与清理
+
+预检结果无误且备份已验证后，保持服务停止，执行不带 `--dry-run` 的同一命令。导入事务失败会整体回滚。成功后删除本次临时副本、启动服务，检查目标站点和历史评论；源文件与备份按自己的保留策略管理。
+
+```bash
+(
+set -eu
 cd ~/Ecoku
-
 sudo docker compose run --rm --no-deps ecoku \
-  import-twikoo \
-  --site=blog \
-  --file=/data/twikoo.json
-```
-
-### 3. 清理导入文件并启动服务
-
-导入完成后，请及时从服务器磁盘彻底删除原始的 `twikoo.json` 导出文件（因其包含明文历史 IP/邮箱等敏感数据），并启动服务：
-
-```bash
-# 安全删除临时导出文件
-rm -f ~/Ecoku/data/twikoo.json
-
-# 启动服务
+  import-twikoo --site=blog --file=/data/twikoo.json
+sudo rm -- data/twikoo.json
 sudo docker compose up -d
+)
 ```

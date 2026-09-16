@@ -22,7 +22,7 @@ Ecoku は、静的ブログやドキュメントサイトのために設計さ�
 flowchart TD
     subgraph Client["🌐 クライアント層 (Browser / Web)"]
         direction LR
-        Visitor["📱 ブログ訪問者組み込み<br/>• 2KB 最小非同期ローダー (ecoku-loader.js)<br/>• ネイティブ SDK (ESM / UMD / CJS)<br/>• 資格情報ローカル 7 日間暗号化 (IndexedDB)<br/>• Smoji 軽量テキスト絵文字オンデマンド読込"]
+        Visitor["📱 ブログ訪問者組み込み<br/>• 最小非同期ローダー (ecoku-loader.js)<br/>• ネイティブ SDK (ESM / UMD / CJS)<br/>• 資格情報ローカル 7 日間暗号化 (IndexedDB)<br/>• Smoji 軽量テキスト絵文字オンデマンド読込"]
         Admin["💻 管理画面 (/admin/)<br/>• Vue 3 + Pinia + システム明朝体<br/>• HttpOnly Cookie + SQLite セッション<br/>• マルチサイト設定 / ボット認証管理<br/>• コメント墓標化と物理完全削除"]
     end
 
@@ -77,6 +77,6 @@ Ecoku コンテナは非 root ユーザー（`10001:10001`）で動作し、内�
 1. **環境の準備**：`compose.yaml`、`app/config.yaml`、`ecoku.env` を配置。
 2. **リバースプロキシ設定**：Caddy や Nginx で HTTPS を終端し、ローカルポートへ転送。
 3. **管理画面の設定**：`/admin/` にアクセスし、サイト登録、ブロガー合言葉、通知設定を完了。
-4. **サイトへの組み込み**：ブログテンプレートに約 2KB の `ecoku-loader.js` を追加。
+4. **サイトへの組み込み**：ブログテンプレートに`ecoku-loader.js` を追加。
 
 詳細な手順については [Docker 導入](/ja/self-hosting/docker) をご覧ください。

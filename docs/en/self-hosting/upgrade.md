@@ -2,7 +2,7 @@
 
 Ecoku employs a versioned, in-place, and strictly transactional SQLite schema migration system.
 
-Prepare for **[v0.2.4](./upgrades/v0.2.4)**: security fixes, revocable administrator sessions and reply depth limits; schema v7 → v8. Await master CI acceptance and tag image publication before upgrading.
+**[v0.2.4](./upgrades/v0.2.4)** was released on 2026-09-16: security fixes, revocable administrator sessions and reply depth limits; schema v7 → v8.
 
 Review the version-specific configuration changes before upgrading. Set the exact Compose image tag; startup applies database migrations in order.
 
@@ -64,8 +64,8 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | Version | Release Date | Schema | Upgrade Highlights & Notes |
 | :--- | :--- | :---: | :--- |
-| [**v0.2.4**](./upgrades/v0.2.4) | Pending | v7 → v8 | HttpOnly cookie + SQLite revocable session |
-| [**v0.2.3**](./upgrades/v0.2.3) | Pending | v7 (unchanged) | Audit fixes for identity, notifications, imports and clients. |
+| [**v0.2.4**](./upgrades/v0.2.4) | 2026-09-16 | v7 → v8 | HttpOnly cookie + SQLite revocable session |
+| [**v0.2.3**](./upgrades/v0.2.3) | 2026-09-16 (tag) | v7 (unchanged) | Audit fixes for identity, notifications, imports and clients. |
 | [**v0.2.2**](./upgrades/v0.2.2) | 2026-09-13 | v7 (unchanged) | Fixed Smoji picker layout on narrow screens. |
 | [**v0.2.1**](./upgrades/v0.2.1) | 2026-09-12 | v7 (unchanged) | Larger Smoji manifests and compact `base` template support. |
 | [**v0.2.0**](./upgrades/v0.2.0) | 2026-09-12 | v7 (unchanged) | Documentation, integration examples, and API reference corrections. |
@@ -81,6 +81,6 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 | [**v0.1.0**](./upgrades/v0.1.0) | 2026-08-15 | v4 | First official production release. |
 | [**Earlier**](./upgrades/earlier) | 2026-08-14 | v1–v4 | Early single-container design, SQLite WAL mode, and timezone standards. |
 
-## v0.2.4 compatibility (pending release)
+## v0.2.4 compatibility
 
-Schema v8 adds `admin_sessions` and an expiry index without rewriting comments, settings or existing migration history. Previous logins expire and require a new login. Omit `admin.token_ttl_minutes` or set it to 480; other existing values prevent startup. Mounts, environment variables and password hashes remain unchanged. To roll back to v0.2.3 or earlier, stop the service, preserve the current state, then restore the complete pre-upgrade cold backup and original image. An old image alone cannot open a v8 database. Restoring a backup loses later writes and requires an explicit operator decision.
+Schema v8 adds `admin_sessions` and an expiry index without rewriting comments, settings or existing migration history. Previous logins expire and require a new login. Omit `admin.token_ttl_minutes` or set it to 480; existing values other than `0` and `480` prevent startup. Mounts, environment variables and password hashes remain unchanged. To roll back to v0.2.3 or earlier, stop the service, preserve the current state, then restore the complete pre-upgrade cold backup and original image. An old image alone cannot open a v8 database. Restoring a backup loses later writes and requires an explicit operator decision.

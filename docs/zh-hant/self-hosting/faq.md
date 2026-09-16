@@ -57,15 +57,15 @@ sudo docker compose up -d
 
 ### Q: 發送郵件測試提示逾時或握手失敗？
 **答**：
-- Ecoku 強制要求使用加密連線，只支援 `465`（SSL/TLS 直連）或 `587`（STARTTLS 直連）。**嚴禁使用未加密的 25 連接埠**。
-- 請確認雲端伺服器安全性群組已放行出方向的 465 / 587 連接埠。
+- Ecoku 僅接受 `tls` 或 `starttls` 加密方式；連接埠依郵件服務商要求填寫（常見為 465 / 587），不支援明文 SMTP。
+- 請確認雲端伺服器安全性群組已放行實際設定的 SMTP 出站連接埠。
 - 確認 `ecoku.env` 中的 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 已經正確設定，若主金鑰缺失或不合法，資料庫內加密的密碼將無法解密。
 
 ### Q: 評論區時間顯示與目前時區不一致？
 **答**：
 - Ecoku 評論時間由 `ecoku.env` 中的環境變數 `TZ` 控制（如 `TZ=Asia/Taipei` 或 `TZ=Asia/Tokyo`）。
 - 該變數由 Docker Compose 注入給容器執行期，預設回退為 `Asia/Shanghai`。
-- 修改 `ecoku.env` 中的 `TZ` 並執行 `sudo docker compose restart` 即可即時生效。
+- 修改 `ecoku.env` 中的 `TZ` 後執行 `sudo docker compose up -d --force-recreate ecoku`，重建容器以載入新環境變數；`restart` 不會更新容器環境變數。參見 [Docker Compose restart 說明](https://docs.docker.com/reference/cli/docker/compose/restart/)。
 
 ---
 
@@ -75,7 +75,7 @@ sudo docker compose up -d
 
 儲存庫的 `.woodpecker/docs-deploy.yml` 在 `master` push 時獨立建置並發佈文件，固定使用文件伺服器 agent。發佈容器僅掛載單一站點目錄 `/var/www/<DOCS_DOMAIN>:/deploy`；該目錄必須是實體目錄，Web 服務根目錄設為 `/var/www/<DOCS_DOMAIN>/html`。
 
-Nginx 可參考儲存庫的 `deploy/nginx-docs.conf.example`，替換網域與 TLS snippet 佔位符；從舊設定遷移僅需在現有 `root` 路徑後追加 `/html`，執行 `sudo nginx -t && sudo systemctl reload nginx` 後生效。
+Nginx 可參考儲存庫的 `deploy/nginx-docs.conf.example`，替換網域與 TLS snippet 佔位符；從舊目錄配置遷移時在現有 `root` 路徑後追加 `/html`。本站啟用了 VitePress `cleanUrls: true`，`location /` 中需使用 `try_files $uri $uri.html $uri/ =404;`，讓 `/self-hosting/docker` 等無副檔名路徑匹配產生的 `.html` 檔案，否則直接存取或重新整理會回傳 404。執行 `sudo nginx -t && sudo systemctl reload nginx` 後生效。
 
 ```text
 /var/www/<DOCS_DOMAIN>/

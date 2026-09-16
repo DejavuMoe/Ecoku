@@ -1,79 +1,50 @@
 # Twikoo Historical Data Import
 
-Ecoku provides a dedicated CLI tool to migrate historical comment data from Twikoo JSON exports with full data fidelity.
+`import-twikoo` converts supported fields from a Twikoo JSON array into Ecoku plain-text comments. The target site must already exist and contain zero comments, including tombstones. Import sends no notifications and discards IPs, user agents, avatars, reactions and external user identities.
 
-> [!IMPORTANT]
-> **Initial Deployment Only**:
-> The Twikoo import command (`import-twikoo`) **only supports target sites that are registered in the admin console and contain exactly 0 comments**.
-> If new comments have already been submitted to the target site, the system **strictly rejects the import** to protect thread hierarchies, foreign key integrity, and comment ID continuity.
+## Fields and conversions
 
----
-
-## Import Prerequisites & Contracts
-
-1. **Target Site Must Be Empty**: Import is permitted only on a registered site with exactly zero comments. Appending into an active site is strictly prohibited.
-2. **Mandatory Cold Backup**: Complete a cold backup before running the actual import.
-3. **Dry-Run Support**: Supports dry-run execution (`--dry-run`) to parse and validate format without writing to the database.
-4. **Single Atomic Transaction**: The entire import runs within a single SQLite transaction. Any syntax or structure error rolls back all operations, leaving no partial state.
-5. **Silent Notifications**: The import process **never triggers** email or Telegram notifications.
-
----
-
-## Field Mapping & Sanitization Rules
-
-| Twikoo Source Field | Ecoku Mapping & Sanitization Rules |
+| JSON | Ecoku |
 | :--- | :--- |
-| `_id` / `rid` / `pid` | Automatically mapped to reconstruct parent-child thread hierarchy (`parent_id`). |
-| `url` (page identifier) | Sanitized into a canonical site-relative path (strips protocol, host, query params, and hash anchors). |
-| `comment` (body) | Extracted and converted from historical HTML/Markdown into safe plain text, stripping all tags. |
-| `nick` | Mapped to comment author nickname. |
-| `mail` | Mapped to private email (used solely for future reply notifications, never exposed in public APIs). |
-| `link` | Validated and mapped to author website (retains only safe `http://` or `https://` URLs). |
-| `created` | Preserves original UNIX publication timestamp. |
-| `ip` / `ua` / `os` | **Discarded immediately**, adhering strictly to Ecoku privacy boundaries. |
-| `is_blogger` | Upon completion, automatically matched against the target site's blogger nickname and email to backfill badge flags. |
+| `_id` / `id`, `pid` / `rid` | Rebuild IDs and parent relationships, preferring the direct parent. Missing, cross-page or unresolved parents may become root comments and count as orphaned records. |
+| `url` | Extract the site-relative path and remove query / fragment. |
+| `comment` | Extract HTML text, discard script/style, and replace images with alt text or `[图片]`. Markdown syntax is not parsed. |
+| `nick` / `mail` / `link` | Preserve nickname, private email and valid http(s) author websites. |
+| `created` / `updated` | Convert and preserve timestamps. |
+| Blogger flag | Backfill using the target site’s configured nickname and email; the export’s `is_blogger` field is not read. |
 
----
+## 1. Prepare before validation
 
-## Step-by-Step Import Guide
-
-### 1. Dry-Run Verification
-
-Place the exported JSON file on the host (e.g. `~/Ecoku/data/twikoo.json`) and run a dry-run validation:
+Register the target site and complete a verified cold backup using [Backup and recovery](./backup). The backup example restarts the service at the end, so stop it again before importing. The commands below copy the export into a temporary file readable by container UID 10001. Replace `/path/to/twikoo.json` with your source file and retain the original.
 
 ```bash
 cd ~/Ecoku
-
-sudo docker compose run --rm --no-deps ecoku \
-  import-twikoo \
-  --site=blog \
-  --file=/data/twikoo.json \
-  --dry-run
+sudo docker compose down
+sudo install -o 10001 -g 10001 -m 600 /path/to/twikoo.json data/twikoo.json
 ```
 
-Review the printed summary (root comments, descendant replies, skipped anomalies, etc.).
+## 2. Run a dry run
 
-### 2. Execute Formal Import
-
-Once the dry run completes without errors, execute the real database write:
+Replace `blog` with the target site ID. A dry run executes the import transaction and rolls it back, so imported comments are not persisted. CLI startup can still initialize or migrate the database; this is not a read-only operation.
 
 ```bash
+sudo docker compose run --rm --no-deps ecoku \
+  import-twikoo --site=blog --file=/data/twikoo.json --dry-run
+```
+
+Review the counts for comments, roots, replies, pages, emails, websites and orphaned records. Invalid JSON, duplicate IDs and similar errors abort the import. Unresolved parent relationships are retained as roots, not skipped.
+
+## 3. Import and clean up
+
+After reviewing the dry run and verifying the backup, keep the service stopped and run the same command without `--dry-run`. A failed import transaction rolls back in full. On success, remove only this temporary copy, start the service and check the target site and historical comments. Retain originals and backups according to your own retention policy.
+
+```bash
+(
+set -eu
 cd ~/Ecoku
-
 sudo docker compose run --rm --no-deps ecoku \
-  import-twikoo \
-  --site=blog \
-  --file=/data/twikoo.json
-```
-
-### 3. Clean Up & Start Service
-
-Immediately delete the unencrypted `twikoo.json` export file from disk (as it contains historical plaintext IPs and emails), then start the service:
-
-```bash
-# Safely remove temporary export file
-rm -f ~/Ecoku/data/twikoo.json
-
-# Start service
+  import-twikoo --site=blog --file=/data/twikoo.json
+sudo rm -- data/twikoo.json
 sudo docker compose up -d
+)
 ```

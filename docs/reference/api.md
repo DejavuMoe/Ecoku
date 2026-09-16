@@ -62,6 +62,7 @@ GET /api/comment/list?siteId=blog&key=/posts/example/&parentId=101&afterId=120&p
   ```json
   {
     "code": 200,
+    "message": "获取评论成功",
     "data": {
       "data": [
         {
@@ -218,7 +219,7 @@ GET /api/comment/list?siteId=blog&key=/posts/example/&parentId=101&afterId=120&p
   ```json
   {
     "code": 200,
-    "message": "Success",
+    "message": "管理员登录成功",
     "data": {
       "expires_at": "2026-08-20T20:00:00Z",
       "expires_in": 28800

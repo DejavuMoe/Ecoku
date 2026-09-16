@@ -22,7 +22,7 @@ Ecoku 是一个专为静态博客与内容驱动型站点设计的**自托管、
 flowchart TD
     subgraph Client["🌐 客户端层 (Browser / Web)"]
         direction LR
-        Visitor["📱 博客访客接入<br/>• 2KB 极简加载器 (ecoku-loader.js)<br/>• 原生 SDK (ESM / UMD / CJS)<br/>• 身份凭据本地加密 7 天 (IndexedDB)<br/>• Smoji 轻量纯文本表情包按需加载"]
+        Visitor["📱 博客访客接入<br/>• 极简加载器 (ecoku-loader.js)<br/>• 原生 SDK (ESM / UMD / CJS)<br/>• 身份凭据本地加密 7 天 (IndexedDB)<br/>• Smoji 轻量纯文本表情包按需加载"]
         Admin["💻 管理端后台 (/admin/)<br/>• Vue 3 + Pinia + 系统衬线栈<br/>• HttpOnly Cookie + SQLite 可撤销会话<br/>• 多站点配置 / 安全人机验证管理<br/>• 评论软删除墓碑与物理彻底清除"]
     end
 
@@ -77,6 +77,6 @@ Ecoku 镜像采用非 root 用户（`10001:10001`）运行，对外仅监听本�
 1. **准备环境**：配置 `compose.yaml`、`app/config.yaml` 与 `ecoku.env`。
 2. **反向代理**：通过 Caddy 或 Nginx 配置域名与 HTTPS 证书并反代至本地端口。
 3. **管理后台**：访问 `/admin/` 完成站点注册、博主口令与通知配置。
-4. **页面接入**：在博客模板中引入 2KB 的 `ecoku-loader.js` 即可完成接入。
+4. **页面接入**：在博客模板中引入 `ecoku-loader.js` 即可完成接入。
 
 详细部署指引请参阅 [Docker 部署](/self-hosting/docker)。
