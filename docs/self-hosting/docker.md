@@ -3,7 +3,7 @@
 容器内部监听 `:12123`，Compose 仅在宿主机 `127.0.0.1:12123` 发布端口；公网 HTTPS 由宿主反向代理终止。
 
 > [!NOTE]
-> 目标镜像 `git.via.moe/dejavu/ecoku:v0.2.4` 尚待发布；以下命令用于镜像发布后的部署。`ecoku.example.com` 为占位域名。
+> 以下命令使用已发布镜像 `git.via.moe/dejavu/ecoku:v0.2.4`。`ecoku.example.com` 为占位域名。
 
 ---
 
@@ -191,8 +191,8 @@ sudo docker compose logs --tail=100 -f ecoku
 ### 健康检查验证
 
 ```bash
-curl -fail http://127.0.0.1:12123/api/health
-# 预期输出: {"code":200,"message":"success","data":{"status":"healthy","timestamp":...}}
+curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+# 预期输出: {"code":200,"message":"Success","data":{"status":"healthy","timestamp":...}}
 ```
 
 接下来，请配置前端 [反向代理](/self-hosting/reverse-proxy) 终止 HTTPS 并完成公网转发，或访问 [管理后台配置](/self-hosting/admin) 注册站点与博主身份。

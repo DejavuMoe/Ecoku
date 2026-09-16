@@ -46,7 +46,7 @@ stateDiagram-v2
       Wipes nickname, email, URL, and body
       Sets is_blogger = 0
       Preserves ID, parent_id, and timestamps
-      Displays "[This comment has been deleted]"
+      Displays "[该评论已删除]"
     end note
     Tombstone --> Purged: Hard purge (only if no child replies exist)
     note right of Purged
@@ -59,7 +59,7 @@ stateDiagram-v2
 1. **Soft Delete (Tombstone)**:
    - Erases author nickname, email, website, and raw body. Sets `deleted_at`.
    - Preserves `id` and `parent_id` so child replies retain their context.
-   - Public DTO returns `deleted: true` with text `[This comment has been deleted]`.
+   - Public DTO returns `deleted: true` with text `[该评论已删除]`.
    - Replies to tombstones are rejected.
 2. **Hard Purge**:
    - Only allowed if the tombstone has **no descendant comments**.
@@ -86,8 +86,8 @@ sequenceDiagram
 ```
 
 - **Isolated Namespace**: Scoped by `serverURL + "::" + siteId`.
-- **Zero Disk Leakage**: Stored in IndexedDB; never written to `localStorage`, `sessionStorage`, or cookies.
-- **7-Day Automatic TTL**: Decryption keys and ciphertext expire after 7 days.
+- **Encrypted Local Storage**: Stored in IndexedDB; never written to `localStorage`, `sessionStorage`, or cookies.
+- **7-Day Automatic TTL**: Saved identities are ignored after 7 days. Stored ciphertext and keys are not automatically deleted; use the browser’s site-data controls to remove them.
 
 ---
 

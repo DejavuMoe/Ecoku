@@ -1,79 +1,50 @@
 # Twikoo 歷史資料匯入
 
-Ecoku 提供了專用的 CLI 工具，支援從 Twikoo 匯出的 JSON 檔案無損遷移歷史評論資料。
+`import-twikoo` 將 Twikoo JSON 陣列中的支援欄位轉換為 Ecoku 純文字留言。目標站點必須已註冊且零留言（包括墓碑）。匯入不發送通知，也不保留 IP、UA、頭像、讚踩或外部使用者身分。
 
-> [!IMPORTANT]
-> **僅限全新初始部署階段執行**：
-> Twikoo 評論匯入命令（`import-twikoo`）**僅支援匯入到已在管理端註冊但評論數為 0 的純淨站點**。
-> 一旦目標站點已有任何新評論寫入，系統為保障樹狀結構階層、父子引用約束與評論 ID 連續性，將**嚴格拒絕匯入**。
+## 欄位與轉換
 
----
-
-## 匯入前提與契約
-
-1. **目標站點必須為空**：Twikoo 匯入僅允許匯入到一個**已在管理後台註冊、但評論數為 0** 的純淨目標站點。禁止向已有評論的站點追加匯入。
-2. **強制冷備份**：執行實際匯入前，必須完成資料庫的冷備份。
-3. **支援預演（Dry-Run）**：支援在不寫入資料庫的情況下預先解析並校驗資料格式。
-4. **單交易不可分割提交**：整個匯入過程在單個 SQLite 交易中完成，任何單筆格式錯誤都會導致全量回滾，絕不殘留部分匯入資料。
-5. **通知靜默**：歷史匯入過程**絕不觸發**任何郵件或 Telegram 通知。
-
----
-
-## 欄位對應與清洗規則
-
-| Twikoo 原始欄位 | Ecoku 對應與轉換規則 |
+| JSON | Ecoku |
 | :--- | :--- |
-| `_id` / `rid` / `pid` | 自動對應並重建父子評論階層關係（`parent_id`）。 |
-| `url` (頁面標識) | 自動清洗為規範的站內相對路徑（剔除協定、Host、Query 參數與 Hash 錨點）。 |
-| `comment` (內文) | 將歷史 HTML / Markdown 內文提取並轉換為安全的純文字，剔除標籤注入。 |
-| `nick` | 對應為評論作者暱稱。 |
-| `mail` | 對應為私有信箱（僅用於未來接收回覆通知，絕不向公開 API 暴露）。 |
-| `link` | 校驗合法性後對應為作者個人網站（僅保留安全的 `http://` / `https://` 連結）。 |
-| `created` | 保留精確歷史發表時間戳記。 |
-| `ip` / `ua` / `os` | **直接丟棄**，嚴格符合 Ecoku 隱私邊界。 |
-| `is_blogger` | 匯入完成後，系統自動根據目標站點的站長暱稱與信箱匹配並批次回填站長標記。 |
+| `_id` / `id`、`pid` / `rid` | 重建 ID 與父子關係，優先直接父留言；缺失、跨頁面或無法解析的父關係可能轉為根留言並計入缺失父記錄。 |
+| `url` | 提取站內路徑並移除 query / fragment。 |
+| `comment` | 提取 HTML 文字，丟棄 script/style，圖片保留 alt 或 `[图片]`；不解析 Markdown 語法。 |
+| `nick` / `mail` / `link` | 保存暱稱、私有電子郵件及合法 http(s) 作者網站。 |
+| `created` / `updated` | 轉換並保存時間。 |
+| 博主標記 | 依目標站點已設定的暱稱與電子郵件回填，不讀取匯出檔案中的 `is_blogger`。 |
 
----
+## 1. 預檢前準備
 
-## 匯入操作實戰
-
-### 1. 預演檢查（Dry-Run）
-
-將 Twikoo 匯出的 JSON 檔案放置於宿主機（例如 `~/Ecoku/data/twikoo.json`），先執行 Dry-Run 驗證：
+先註冊目標站點，依[備份與恢復](./backup)完成停服冷備份並驗證歸檔。備份範例最後會啟動服務，因此匯入前再次停服。以下命令將原始匯出複製為臨時檔案，並讓容器 UID 10001 可讀；將 `/path/to/twikoo.json` 替換為自己的來源檔案，保留原件。
 
 ```bash
 cd ~/Ecoku
-
-sudo docker compose run --rm --no-deps ecoku \
-  import-twikoo \
-  --site=blog \
-  --file=/data/twikoo.json \
-  --dry-run
+sudo docker compose down
+sudo install -o 10001 -g 10001 -m 600 /path/to/twikoo.json data/twikoo.json
 ```
 
-檢查主控台輸出的解析統計資訊（根評論數、子回覆數、跳過異常數等）。
+## 2. 執行 dry-run
 
-### 2. 執行正式匯入
-
-確認預演統計無誤後，執行正式寫入：
+將 `blog` 替換為目標站點 ID。dry-run 執行匯入交易後回滾，不持久化匯入的留言；但 CLI 啟動時仍會初始化或遷移資料庫，因此不是純唯讀檢查。
 
 ```bash
+sudo docker compose run --rm --no-deps ecoku \
+  import-twikoo --site=blog --file=/data/twikoo.json --dry-run
+```
+
+核對輸出的留言、根留言、回覆、頁面、電子郵件、網站及缺失父記錄數量。無效 JSON、重複 ID 等錯誤會中止；無法解析的父關係會保留為根留言，不是跳過異常資料。
+
+## 3. 正式匯入與清理
+
+預檢結果無誤且備份已驗證後，保持服務停止，執行不帶 `--dry-run` 的相同命令。匯入交易失敗會整體回滾。成功後刪除本次臨時副本、啟動服務，檢查目標站點與歷史留言；原件與備份依自己的保留策略管理。
+
+```bash
+(
+set -eu
 cd ~/Ecoku
-
 sudo docker compose run --rm --no-deps ecoku \
-  import-twikoo \
-  --site=blog \
-  --file=/data/twikoo.json
-```
-
-### 3. 清理匯入檔案並啟動服務
-
-匯入完成後，請及時從伺服器磁碟徹底刪除原始的 `twikoo.json` 匯出檔案（因其包含明文歷史 IP/信箱等敏感資料），並啟動服務：
-
-```bash
-# 安全刪除臨時匯出檔案
-rm -f ~/Ecoku/data/twikoo.json
-
-# 啟動服務
+  import-twikoo --site=blog --file=/data/twikoo.json
+sudo rm -- data/twikoo.json
 sudo docker compose up -d
+)
 ```

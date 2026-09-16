@@ -81,18 +81,18 @@ flowchart TD
 
 在後台站點設定中啟用 Smoji，填寫清單 URL。清單與圖片位址不得帶使用者名稱、密碼、查詢參數或片段；HTTP 僅用於回環開發位址。跨來源託管清單時，資源伺服器需允許評論頁面來源的 CORS 請求。
 
-Smoji 工作台匯出的「Ecoku 回應範例」呈現公開介面的 `formConfig.smoji`，不是後台可匯入的設定檔。後台表單內部使用 `smojiEnabled` / `smojiManifestUrl`；管理 API 請求欄位為 `smoji_enabled` / `smoji_manifest_url`。
+公開介面透過 `formConfig.smoji` 回傳安全設定；管理 API 使用 `smoji_enabled` / `smoji_manifest_url`。在後台填寫清單 URL，不直接匯入公開回應 JSON。
 
 評論儲存完整圖片 URL。更新素材時保留原有網域名稱和舊圖片路徑；使用 Smoji 工作台建置發布時部署包含舊路徑相容副本的完整 `demo/dist`。單獨替換清單不會修復歷史評論中的失效位址。若改用其他 Origin，舊標記會按純文字顯示。
 
 ## 精簡清單（v0.2.1）
 
 ```json
-{"version":1,"base":"https://s3-cdn.zsh.moe/smoji/{pack}/{id}.webp","packs":[{"id":"douyin-current","label":"抖音","items":[{"id":"fehpikklicec","label":"微笑"}]}]}
+{"version":1,"base":"https://stickers.example.com/smoji/{pack}/{id}.webp","packs":[{"id":"douyin-current","label":"抖音","items":[{"id":"fehpikklicec","label":"微笑"}]}]}
 ```
 
 可選的 `base` URL 模板須包含 `{pack}` 與 `{id}`，分別替換為分組與項目 ID。省略 `src` 時使用模板；自選分組或其他副檔名可保留 `src` 覆蓋。解析結果仍是完整 URL，評論儲存格式不變。舊版逐項 `src` 清單仍受支援，未知欄位仍會被拒絕。
 
-圖片展開後仍須與清單同源，禁止憑據、query 與 fragment。正式清單不要包含 localhost 圖片 URL；Smoji 工作台本地匯出使用設定的 CDN `https://s3-cdn.zsh.moe/smoji/`。Content-Type 須為 `application/json` 或 `+json` 類型，容量按 UTF-8 位元組計算，8 秒逾時包含本文讀取。
+圖片展開後仍須與清單同源，禁止憑據、query 與 fragment。正式清單不要包含 localhost 圖片 URL；匯出時將資源 URL 設定為自己的 CDN，例如 `https://stickers.example.com/smoji/`。Content-Type 須為 `application/json` 或 `+json` 類型，容量按 UTF-8 位元組計算，8 秒逾時包含本文讀取。
 
 v0.2.0 不支援 `base`，上限仍為 32 包、每包 300 項、共 2000 項與 256 KiB。舊版請匯出容量內的逐項 `src` 子集，升級後再改用精簡清單。清單與圖片都須發布到 CDN；替換 JSON 不會部署程式或修復歷史評論 URL。

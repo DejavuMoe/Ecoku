@@ -81,18 +81,18 @@ flowchart TD
 
 管理画面のサイト設定で Smoji を有効化し、マニフェスト URL を入力します。マニフェストおよび画像のアドレスにはユーザー名、パスワード、クエリ、ハッシュフラグメントを含めてはなりません。HTTP はローカル開発環境（`localhost`）のみ許可されます。別オリジンでマニフェストを配信する場合は、コメントページのドメインからの CORS 要求を許可してください。
 
-Smoji ワークベンチから出力される「Ecoku レスポンス例」は公開 API の `formConfig.smoji` 構造を示すものであり、管理画面に直接インポートするファイルではありません。管理画面フォームは内部で `smojiEnabled` / `smojiManifestUrl` を使用し、管理 API のリクエストフィールドは `smoji_enabled` / `smoji_manifest_url` です。
+公開 API は `formConfig.smoji` に安全な設定を返し、管理 API は `smoji_enabled` / `smoji_manifest_url` を使用します。管理画面にはマニフェスト URL を入力し、公開レスポンス JSON を直接インポートしないでください。
 
 コメントには画像の完全な絶対 URL が保存されます。アセットを更新する際も、元のドメイン名と過去の画像パスを維持してください。Smoji ワークベンチでビルドする際は、旧パスの互換ファイルを含む `demo/dist` 全体を配置してください。マニフェストファイルのみを差し替えても、過去のコメント内のリンク切れは修復されません。別 Origin に変更した場合、過去のスタンプはテキストとして表示されます。
 
 ## コンパクトなマニフェスト（v0.2.1）
 
 ```json
-{"version":1,"base":"https://s3-cdn.zsh.moe/smoji/{pack}/{id}.webp","packs":[{"id":"douyin-current","label":"抖音","items":[{"id":"fehpikklicec","label":"微笑"}]}]}
+{"version":1,"base":"https://stickers.example.com/smoji/{pack}/{id}.webp","packs":[{"id":"douyin-current","label":"抖音","items":[{"id":"fehpikklicec","label":"微笑"}]}]}
 ```
 
 省略可能な `base` URL テンプレートには `{pack}` と `{id}` が必要です。それぞれパックと項目の ID に置換されます。`src` を省略した項目はテンプレートを使い、カスタムグループや異なる拡張子は `src` で上書きできます。解析後は従来どおり完全な URL になり、コメントの保存形式は変わりません。既存の `src` 形式も対応し、未知のフィールドは拒否します。
 
-展開後の画像はマニフェストと同一オリジンで、認証情報、クエリ、フラグメントは禁止です。本番の画像 URL に localhost を使わないでください。ローカルの Smoji エクスポートは設定済み CDN `https://s3-cdn.zsh.moe/smoji/` を使用します。Content-Type は `application/json` または `+json` 型とし、サイズは UTF-8 バイトで計算します。8 秒のタイムアウトは本文読み取りも含みます。
+展開後の画像はマニフェストと同一オリジンで、認証情報、クエリ、フラグメントは禁止です。本番の画像 URL に localhost を使わないでください。エクスポート時のリソース URL は、自分の CDN（例：`https://stickers.example.com/smoji/`）に設定してください。Content-Type は `application/json` または `+json` 型とし、サイズは UTF-8 バイトで計算します。8 秒のタイムアウトは本文読み取りも含みます。
 
 v0.2.0 は `base` に未対応で、32 パック、各 300 件、合計 2000 件、256 KiB が上限です。旧版には上限内の `src` 形式を使用し、更新後にコンパクト形式へ切り替えてください。マニフェストと画像を CDN に公開する必要があります。JSON の差し替えだけではコードの配備や過去のコメント URL の修復は行われません。

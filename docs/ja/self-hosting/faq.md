@@ -57,15 +57,15 @@ sudo docker compose up -d
 
 ### Q: メール送信テストでタイムアウトやハンドシェイク失敗が発生する
 **A**:
-- Ecoku は暗号化通信を必須としており、ポート `465`（SSL/TLS 直接接続）または `587`（STARTTLS）のみをサポートします。**平文の 25 番ポートは使用できません**。
-- クラウドプロバイダーのセキュリティグループで送信方向の 465 / 587 番ポートが許可されているか確認してください。
+- Ecoku は `tls` または `starttls` のみを受け付けます。ポートはメール事業者の指定に従ってください（一般的には 465 / 587）。平文 SMTP は非対応です。
+- ファイアウォールとクラウドのセキュリティグループで、設定した SMTP ポートへの送信を許可してください。
 - `ecoku.env` の `ECOKU_NOTIFICATION_ENCRYPTION_KEY` が正しく設定されているか確認してください。マスター暗号化鍵が欠落または無効な場合、データベース内のパスワードを復号できません。
 
 ### Q: コメント欄の日時表示が現在の現地時間と一致しない
 **A**:
 - Ecoku の日時は `ecoku.env` の環境変数 `TZ` によって制御されます（例: `TZ=Asia/Tokyo` や `TZ=UTC`）。
 - この値は Docker Compose 経由でコンテナに渡され、指定がない場合は `Asia/Shanghai` にフォールバックします。
-- `ecoku.env` の `TZ` を変更し、`sudo docker compose restart` を実行すると即座に反映されます。
+- `ecoku.env` の `TZ` を変更後、`sudo docker compose up -d --force-recreate ecoku` でコンテナを再作成して新しい環境変数を読み込みます。`restart` では環境変数は更新されません。[Docker Compose restart の説明](https://docs.docker.com/reference/cli/docker/compose/restart/)も参照してください。
 
 ---
 
@@ -75,7 +75,7 @@ sudo docker compose up -d
 
 リポジトリの `.woodpecker/docs-deploy.yml` は `master` への push 時に、ドキュメントサーバーの agent で独立してビルド・公開します。公開コンテナには `/var/www/<DOCS_DOMAIN>:/deploy` のみをマウントします。このパスは実ディレクトリとし、Web サーバーの公開ルートを `/var/www/<DOCS_DOMAIN>/html` に設定してください。
 
-Nginx はリポジトリの `deploy/nginx-docs.conf.example` を参考に、ドメインと TLS snippet のプレースホルダーを置き換えてください。既存設定から移行する場合は `root` パスに `/html` を追加し、`sudo nginx -t && sudo systemctl reload nginx` で反映します。
+Nginx はリポジトリの `deploy/nginx-docs.conf.example` を参考に、ドメインと TLS snippet のプレースホルダーを置き換えてください。旧ディレクトリ構成から移行する場合は `root` パスに `/html` を追加してください。このサイトでは VitePress の `cleanUrls: true` を使用するため、`location /` に `try_files $uri $uri.html $uri/ =404;` を設定し、`/self-hosting/docker` などの拡張子なしのパスを生成済みの `.html` ファイルに対応させます。設定しない場合、直接アクセスや再読み込みで 404 になります。`sudo nginx -t && sudo systemctl reload nginx` で反映します。
 
 ```text
 /var/www/<DOCS_DOMAIN>/

@@ -22,7 +22,7 @@ It eliminates bloated moderation queues, user registration databases, and third-
 flowchart TD
     subgraph Client["🌐 Client Layer (Browser / Web)"]
         direction LR
-        Visitor["📱 Visitor Integration<br/>• 2KB Standalone Loader (ecoku-loader.js)<br/>• Native SDK (ESM / UMD / CJS)<br/>• 7-Day Encrypted Storage (IndexedDB)<br/>• Smoji Plain-Text Stickers on Demand"]
+        Visitor["📱 Visitor Integration<br/>• Standalone Loader (ecoku-loader.js)<br/>• Native SDK (ESM / UMD / CJS)<br/>• 7-Day Encrypted Storage (IndexedDB)<br/>• Smoji Plain-Text Stickers on Demand"]
         Admin["💻 Admin Console (/admin/)<br/>• Vue 3 + Pinia + System Serif<br/>• HttpOnly cookie + SQLite revocable session<br/>• Multi-site & CAPTCHA Security Settings<br/>• Comment Tombstones & Hard Purge"]
     end
 
@@ -77,6 +77,6 @@ Ecoku runs in Docker as an unprivileged user (`10001:10001`), listening internal
 1. **Prepare Environment**: Configure `compose.yaml`, `app/config.yaml`, and `ecoku.env`.
 2. **Reverse Proxy**: Terminate HTTPS and forward traffic via Caddy or Nginx.
 3. **Admin Console**: Access `/admin/` to register sites, configure blogger passphrases, and set up notifications.
-4. **Site Integration**: Embed the ~2KB `ecoku-loader.js` snippet into your blog template.
+4. **Site Integration**: Embed the `ecoku-loader.js` snippet into your blog template.
 
 For complete step-by-step instructions, see [Docker Deployment](/en/self-hosting/docker).

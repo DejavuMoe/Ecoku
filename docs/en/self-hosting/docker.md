@@ -3,7 +3,7 @@
 The container listens on `:12123`; Compose publishes it only on the host loopback `127.0.0.1:12123`. The host reverse proxy terminates HTTPS.
 
 > [!NOTE]
-> Target image `git.via.moe/dejavu/ecoku:v0.2.4` is pending release. Use these deployment commands after image publication. `ecoku.example.com` is a placeholder.
+> These commands use the released image `git.via.moe/dejavu/ecoku:v0.2.4`. `ecoku.example.com` is a placeholder.
 
 ---
 
@@ -189,8 +189,8 @@ sudo docker compose logs --tail=100 -f ecoku
 ### Health Check
 
 ```bash
-curl -fail http://127.0.0.1:12123/api/health
-# Expected output: {"code":200,"message":"success","data":{"status":"healthy","timestamp":...}}
+curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+# Expected output: {"code":200,"message":"Success","data":{"status":"healthy","timestamp":...}}
 ```
 
 Next, configure your [Reverse Proxy](/en/self-hosting/reverse-proxy) to terminate HTTPS, or visit the [Admin Console](/en/self-hosting/admin) to register sites and set up your blogger passphrase.

@@ -30,7 +30,7 @@ Ecoku provides a clean, predictable RESTful HTTP interface divided into public v
   ```json
   {
     "code": 200,
-    "message": "success",
+    "message": "Success",
     "data": {
       "status": "healthy",
       "timestamp": 1756700000
@@ -226,7 +226,7 @@ Admin write request bodies are limited to **16 KiB**.
   ```json
   {
     "code": 200,
-    "message": "Success",
+    "message": "管理员登录成功",
     "data": {
       "expires_at": "2026-08-20T20:00:00Z",
       "expires_in": 28800

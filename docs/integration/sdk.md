@@ -24,7 +24,13 @@ yarn add ecoku
 ```typescript
 import Ecoku, { type EcokuConfig } from 'ecoku'
 
-const ecoku = new Ecoku(options: EcokuConfig)
+const options: EcokuConfig = {
+  container: '#comments',
+  serverURL: 'https://ecoku.example.com',
+  siteId: 'blog',
+  pageKey: '/posts/example/',
+}
+const ecoku = new Ecoku(options)
 ```
 
 ### `EcokuConfig` 完整属性列表

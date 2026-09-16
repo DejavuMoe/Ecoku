@@ -9,7 +9,7 @@ Ecoku pairs minimalist single-container operations with modern user experience, 
 - **16 Reply Levels & Max 3-Level Visual Indent**: Supports deep discussion hierarchies while capping indentation at 3 levels to maintain readability on mobile viewports. Replies at depth $\ge 3$ automatically display clickable `@Author` anchors.
 - **Root-Thread Pagination**: Returns complete root threads within fixed resource budgets; oversized requests fail explicitly. Large threads can be read on demand through the [single-level cursor API](../reference/api.md).
 - **Jitter-Free 3ch Collapse**: Toggle controls `[+]` and `[-]` are fixed at `3ch` tabular width, preventing meta-row layout shifts upon collapsing/expanding.
-- **Context-Preserving Tombstones**: Deleting a comment replaces its content with `[This comment has been deleted]`, preserving the downstream conversation tree.
+- **Context-Preserving Tombstones**: Deleting a comment replaces its content with `[该评论已删除]`, preserving the downstream conversation tree.
 - **Smoji Plaintext Stickers**: Site-level customizable sticker packs using `![smoji:label](https://...)` markdown tokens, loaded on demand under strict same-origin rules.
 
 ---

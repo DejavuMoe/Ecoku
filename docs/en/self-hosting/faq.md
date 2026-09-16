@@ -57,14 +57,14 @@ Once the service restarts, log into the admin console with your username and pas
 
 ### Q: Test email delivery fails or times out with TLS handshake errors?
 **A**:
-- Ecoku enforces encrypted SMTP connections on port `465` (direct SSL/TLS) or `587` (STARTTLS). **Port 25 plaintext is strictly prohibited**.
-- Ensure host firewall and cloud provider security groups allow outbound TCP on ports 465 and 587.
+- Ecoku accepts only `tls` or `starttls` encryption. Use the port required by your mail provider (commonly 465 / 587); plaintext SMTP is unsupported.
+- Allow outbound TCP on the configured SMTP port in your host firewall and cloud security groups.
 - Verify that `ECOKU_NOTIFICATION_ENCRYPTION_KEY` in `ecoku.env` is properly set; without it, encrypted SMTP credentials cannot be decrypted from the database.
 
 ### Q: Comment timestamps do not match local server time?
 **A**:
 - Ecoku formats timestamps according to the `TZ` environment variable in `ecoku.env` (e.g. `TZ=Asia/Shanghai`, `TZ=America/New_York`, or `TZ=UTC`).
-- Update `TZ` in `ecoku.env` and execute `sudo docker compose restart` to apply immediately.
+- After updating `TZ` in `ecoku.env`, run `sudo docker compose up -d --force-recreate ecoku` to recreate the container with the new environment. `restart` does not update environment variables; see the [Docker Compose restart reference](https://docs.docker.com/reference/cli/docker/compose/restart/).
 
 ---
 
@@ -74,7 +74,7 @@ Once the service restarts, log into the admin console with your username and pas
 
 The repository's `.woodpecker/docs-deploy.yml` independently builds and publishes documentation on `master` pushes using the documentation server agent. The publisher mounts only `/var/www/<DOCS_DOMAIN>:/deploy`. This must be a real directory; set the web server document root to `/var/www/<DOCS_DOMAIN>/html`.
 
-For Nginx, use `deploy/nginx-docs.conf.example` from the repository and replace the domain and TLS snippet placeholders. When migrating an existing configuration, append `/html` to its `root` path, then run `sudo nginx -t && sudo systemctl reload nginx`.
+For Nginx, use `deploy/nginx-docs.conf.example` from the repository and replace the domain and TLS snippet placeholders. When migrating from the old directory layout, append `/html` to the `root` path. This site enables VitePress `cleanUrls: true`, so use `try_files $uri $uri.html $uri/ =404;` in `location /` to map extensionless paths such as `/self-hosting/docker` to generated `.html` files; otherwise direct visits and reloads return 404. Then run `sudo nginx -t && sudo systemctl reload nginx`.
 
 ```text
 /var/www/<DOCS_DOMAIN>/

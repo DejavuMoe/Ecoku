@@ -81,18 +81,18 @@ Click the sticker button in a comment or reply form to open the picker. The pane
 
 Enable Smoji in the admin console under Site Settings and enter your manifest URL. Manifest and image URLs must not contain usernames, passwords, query parameters, or hash fragments. HTTP is permitted exclusively on loopback development hosts (`localhost`). If hosting the manifest cross-origin, your resource server must allow CORS requests from your blog domain.
 
-The "Ecoku Response Example" exported by the Smoji workbench illustrates the public endpoint's `formConfig.smoji` structure—it is not an admin import file. The admin form uses `smojiEnabled` / `smojiManifestUrl`, while the management API uses `smoji_enabled` / `smoji_manifest_url`.
+The public API exposes safe configuration in `formConfig.smoji`; the management API uses `smoji_enabled` / `smoji_manifest_url`. Enter the manifest URL in the admin console; do not import the public response JSON.
 
 Comments persist full, absolute image URLs in the database. When updating sticker assets, preserve your domain name and historical image paths. When publishing builds from the Smoji workbench, deploy the full `demo/dist` folder including compatibility copies of old assets. Replacing a manifest alone cannot repair broken URLs in historical comments. Switching to a new Origin will cause existing markers to fall back to plain-text display.
 
 ## Compact manifests (v0.2.1)
 
 ```json
-{"version":1,"base":"https://s3-cdn.zsh.moe/smoji/{pack}/{id}.webp","packs":[{"id":"douyin-current","label":"抖音","items":[{"id":"fehpikklicec","label":"微笑"}]}]}
+{"version":1,"base":"https://stickers.example.com/smoji/{pack}/{id}.webp","packs":[{"id":"douyin-current","label":"抖音","items":[{"id":"fehpikklicec","label":"微笑"}]}]}
 ```
 
 The optional `base` URL template must contain `{pack}` and `{id}`, expanded from the pack and item IDs. Items without `src` use this template; custom groups and other file extensions can override it with `src`. The parser still returns full URLs and comments retain their existing marker format. Legacy per-item `src` manifests remain supported; unknown fields are rejected.
 
-Expanded images must share the manifest origin, without credentials, queries or fragments. Do not publish localhost image URLs. Local Smoji workbench exports use the configured CDN `https://s3-cdn.zsh.moe/smoji/`. Serve JSON with `application/json` or a `+json` media type. The size limit counts UTF-8 bytes; the 8-second timeout covers body reading.
+Expanded images must share the manifest origin, without credentials, queries or fragments. Do not publish localhost image URLs. Configure exported resource URLs for your own CDN, such as `https://stickers.example.com/smoji/`. Serve JSON with `application/json` or a `+json` media type. The size limit counts UTF-8 bytes; the 8-second timeout covers body reading.
 
 v0.2.0 cannot read `base` and allows only 32 packs, 300 items per pack, 2000 total items and 256 KiB. Export a smaller per-item `src` manifest for that version; switch to compact manifests after upgrading. Publish both the manifest and assets to the CDN. Replacing JSON does not deploy application code or repair old comment URLs.

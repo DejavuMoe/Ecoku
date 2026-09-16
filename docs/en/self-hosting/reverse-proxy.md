@@ -1,6 +1,6 @@
 # Reverse Proxy & Rate Limiting
 
-The Ecoku container listens strictly on localhost `127.0.0.1:12123` by default. In production, a front-end web server (such as Caddy or Nginx) must terminate HTTPS and reverse-proxy requests to the container port.
+Ecoku listens on `:12123` inside the container; Compose publishes the port only on the host loopback `127.0.0.1:12123`. In production, a front-end web server (such as Caddy or Nginx) must terminate HTTPS and reverse-proxy requests to the container port.
 
 ---
 
@@ -11,7 +11,7 @@ flowchart TD
     V["Visitor (Client)"]
     CDN["Cloudflare CDN (Optional)"]
     Proxy["Reverse Proxy (Caddy / Nginx)<br/>• Terminates HTTPS / Forwards X-Forwarded-For"]
-    Container["Ecoku Container<br/>• Binds 127.0.0.1:12123"]
+    Container["Ecoku Container<br/>• Container :12123 / Host 127.0.0.1:12123"]
 
     V -->|Scenario 1: Direct HTTPS| Proxy
     V -->|Scenario 2: Via CDN| CDN
