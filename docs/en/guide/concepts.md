@@ -98,7 +98,7 @@ Site owners authenticate without entering private emails on public devices:
 - Configured as a bcrypt hash in `sites.blogger_passphrase_hash`.
 - **Usage**: The blogger simply types their secret passphrase into the **Nickname** input field.
 - **Server Verification**: The server verifies the hash, replaces author fields with the configured blogger profile, sets `is_blogger = 1`, and returns the public badge.
-- **Historical backfill (next release)**: Limited to the original schema v5 migration and the empty-site Twikoo import transaction. Saving settings, first setting a passphrase or rotating it does not grant blogger status retroactively. Existing flags are preserved.
+- **Historical backfill (v0.2.3)**: Limited to the original schema v5 migration and the empty-site Twikoo import transaction. Saving settings, first setting a passphrase or rotating it does not grant blogger status retroactively. Existing flags are preserved.
 
 ---
 

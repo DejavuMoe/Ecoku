@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+暂无。
+
+## [0.2.3] - 2026-09-16
+
+发布准备：等待 master CI 验收与 tag 发布；镜像尚未发布。
+
 ### 修复
 
 - 停止站点设置保存时重授博主身份；口令显式校验 UTF-8 72 字节上限，保留已有 bcrypt 哈希。
@@ -382,4 +388,5 @@
 [0.2.0]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.0
 [0.2.1]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.1
 [0.2.2]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.2
-[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.2.2...master
+[0.2.3]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.3
+[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.2.3...master
