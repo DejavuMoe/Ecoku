@@ -112,7 +112,7 @@
 }
 
 .VPHomeHero .image-src:hover {
-  transform: translateY(-4px) scale(1.02);
+  transform: translate(-50%, calc(-50% - 4px)) scale(1.02);
   filter: drop-shadow(0 26px 36px rgba(15, 118, 110, 0.28));
 }
 

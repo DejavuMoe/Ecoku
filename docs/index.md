@@ -2,7 +2,7 @@
 layout: home
 hero:
   name: Ecoku
-  text: 自托管的纯文本评论系统
+  text: 自托管的<br>纯文本评论系统
   tagline: 为静态博客与个人站点而生。极简单容器架构，数据全在 SQLite，提交后立即公开。
   image:
     src: /ecoku-hero.png
