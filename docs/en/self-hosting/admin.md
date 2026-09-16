@@ -4,10 +4,11 @@ The management interface is located at `/admin/`.
 
 ---
 
-## 1. Authentication & In-Memory Session
-- **Credentials**: `ECOKU_ADMIN_USERNAME` and password from `ecoku.env`.
-- **In-Memory Bearer Token**: Stored strictly in JavaScript memory during runtime. Never written to `localStorage`, `sessionStorage`, or cookies. Refreshing the browser or closing the tab immediately terminates the session.
-- **Session Duration**: Defaults to 8 hours (480 minutes).
+## 1. Revocable administrator sessions
+
+Administrator sessions use an HttpOnly cookie; SQLite stores only the credential digest and expiry. Sessions expire exactly eight hours after login. Reloading or reopening restores a valid session without extending its deadline. Logout revokes the current session on the server; a failed logout keeps the current screen and offers retry. Credentials do not enter JavaScript, localStorage, sessionStorage or URLs.
+
+Production uses HTTPS and a Secure, HttpOnly, SameSite=Strict, host-only cookie scoped to `/api/admin`. Only explicitly allowed loopback HTTP development origins may omit Secure. Rotating the administrator password hash or signing key and restarting invalidates existing sessions.
 
 ---
 
@@ -24,6 +25,8 @@ The management interface is located at `/admin/`.
 - Configure blogger nickname, private email, and an optional public badge (`[Blogger]`).
 - Set a secret 12~80 character passphrase.
 - In the public comment form, entering the passphrase into the Nickname field authenticates the blogger without exposing their email.
+
+Saving, first setting or rotating a passphrase does not backfill historical blogger flags. Backfill remains only in the original schema v5 migration and initial Twikoo import.
 
 ---
 
@@ -51,7 +54,7 @@ graph TD
     end
 
     subgraph Verification["Server-Side Verification"]
-        VerifyToken["Verify Token & IP<br/>(AES-256-GCM encrypted credentials)"]
+        VerifyToken["Verify token (no added client IP)<br/>(AES-256-GCM encrypted credentials)"]
         Pass["Allow Request"]
         Reject["Reject Request (400/403)"]
     end

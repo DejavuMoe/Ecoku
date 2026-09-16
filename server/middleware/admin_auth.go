@@ -4,6 +4,7 @@ import (
 	"ecoku-server/config"
 	"ecoku-server/model"
 	"ecoku-server/utils"
+	"errors"
 	"net/http"
 	"strings"
 
@@ -14,18 +15,33 @@ const (
 	adminPrincipalContextKey = "ecoku.admin.principal"
 	adminSiteIDContextKey    = "ecoku.admin.site_id"
 	maximumAuthorizationSize = 16 * 1024
+	AdminSessionCookie       = "ecoku_admin_session"
 )
 
 type adminPrincipal struct {
 	instanceAdmin bool
 	siteID        string
+	token         string
+	claims        *utils.AdminTokenClaims
 }
 
 // AdminAuthentication accepts either an instance administrator bearer token
 // or an EcokuSite credential reserved for trusted server-side automation.
 func AdminAuthentication() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		scheme, credential, ok := parseAuthorizationHeader(c.GetHeader("Authorization"))
+		header := c.GetHeader("Authorization")
+		scheme, credential, ok := parseAuthorizationHeader(header)
+		if header == "" {
+			value, err := c.Cookie(AdminSessionCookie)
+			if err == nil && value != "" {
+				if c.Request.Method != http.MethodGet && c.Request.Method != http.MethodHead {
+					if !CheckAdminOrigin(c) {
+						return
+					}
+				}
+				scheme, credential, ok = "Bearer", value, true
+			}
+		}
 		if !ok {
 			unauthorizedAdmin(c)
 			return
@@ -34,11 +50,18 @@ func AdminAuthentication() gin.HandlerFunc {
 		var principal adminPrincipal
 		switch {
 		case strings.EqualFold(scheme, "Bearer"):
-			if _, err := utils.ParseAdminToken(credential); err != nil {
+			claims, err := utils.ParseAdminToken(credential)
+			if err != nil {
+				if errors.Is(err, utils.ErrAdminSessionUnavailable) {
+					utils.SendError(c, http.StatusServiceUnavailable, "管理员会话存储不可用")
+					c.Abort()
+					return
+				}
 				unauthorizedAdmin(c)
 				return
 			}
 			principal.instanceAdmin = true
+			principal.token, principal.claims = credential, claims
 		case strings.EqualFold(scheme, "EcokuSite"):
 			siteID, authenticated := authenticateManagementKey(credential)
 			if !authenticated {
@@ -170,4 +193,26 @@ func authenticateManagementKey(candidate string) (string, bool) {
 func unauthorizedAdmin(c *gin.Context) {
 	utils.SendError(c, http.StatusUnauthorized, "管理员认证失败")
 	c.Abort()
+}
+
+// Cookie writes and login require an explicit trusted browser origin. The
+// independent EcokuSite/Bearer automation paths still do not depend on Origin.
+func CheckAdminOrigin(c *gin.Context) bool {
+	origin, err := config.NormalizeOrigin(c.GetHeader("Origin"))
+	if err == nil {
+		for _, allowed := range config.GetAdminAllowedOrigins() {
+			if origin == allowed {
+				return true
+			}
+		}
+	}
+	utils.SendError(c, http.StatusForbidden, "管理员请求来源无效")
+	c.Abort()
+	return false
+}
+
+func CurrentAdminSession(c *gin.Context) (string, *utils.AdminTokenClaims) {
+	value, _ := c.Get(adminPrincipalContextKey)
+	principal, _ := value.(adminPrincipal)
+	return principal.token, principal.claims
 }

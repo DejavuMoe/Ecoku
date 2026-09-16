@@ -37,6 +37,7 @@ admin:
   username_env: "ECOKU_ADMIN_USERNAME"
   password_hash_env: "ECOKU_ADMIN_PASSWORD_HASH"
   token_key_env: "ECOKU_ADMIN_TOKEN_KEY"
+  # 固定 8 小时；兼容键只允许 480，也可省略。
   token_ttl_minutes: 480
   allowed_origins:
     - "https://ecoku.example.com"

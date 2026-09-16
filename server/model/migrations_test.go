@@ -2,6 +2,7 @@ package model
 
 import (
 	"ecoku-server/config"
+	"gorm.io/gorm"
 	"reflect"
 	"strings"
 	"testing"
@@ -112,7 +113,7 @@ func TestV1DatabaseMigratesInPlaceWithoutLosingBusinessData(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7, 8}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 	var turnstileCount int64
@@ -196,7 +197,7 @@ func TestV2DatabaseMigratesBloggerBadgeInPlace(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7, 8}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 	var turnstileCount int64
@@ -260,7 +261,7 @@ func TestV3DatabaseMigratesTurnstileSettingsInPlace(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7, 8}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 }
@@ -270,7 +271,7 @@ func TestFreshSchemaInitializesAndIsRepeatable(t *testing.T) {
 	if err := PrepareDatabaseForStartup(DB); err != nil {
 		t.Fatalf("repeat startup: %v", err)
 	}
-	for _, table := range []string{"sites", "site_origins", "comments", "notification_settings", "notification_outbox", "captcha_settings"} {
+	for _, table := range []string{"sites", "site_origins", "comments", "notification_settings", "notification_outbox", "captcha_settings", "admin_sessions"} {
 		if ok, err := hasTable(DB, table); err != nil || !ok {
 			t.Fatalf("missing %s: %v", table, err)
 		}
@@ -427,7 +428,7 @@ func TestV4DatabaseMigratesBloggerProofOutboxTargetsAndBackfill(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7, 8}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 }
@@ -505,7 +506,7 @@ WHERE id = 1`, fixture.enabled).Error; err != nil {
 			if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7}) {
+			if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7, 8}) {
 				t.Fatalf("migration history mismatch: %v", versions)
 			}
 		})
@@ -551,5 +552,66 @@ func TestAuditUpgradePreservesV7State(t *testing.T) {
 	site, err := GetSite("site-a")
 	if err != nil || !site.MatchesBloggerPassphrase("existing-production-passphrase") {
 		t.Fatal("existing passphrase no longer works")
+	}
+}
+
+func TestV7ToV8PreservesDataAndMigrationHistory(t *testing.T) {
+	if err := config.ApplyConfig(&config.Config{Sites: []config.RegisteredSiteConfig{{ID: "site-a", SiteURL: "https://example.test", AllowedOrigins: []string{"https://example.test"}}}}); err != nil {
+		t.Fatal(err)
+	}
+	database, err := OpenSQLiteDatabase(t.TempDir() + "/v7.sqlite3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, _ := database.DB()
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	// Construct the actual released v7 schema without altering its history.
+	for _, migrate := range []func(*gorm.DB) error{createFreshSchema, migrateSiteBloggerIdentity, migrateSiteBloggerBadge, migrateTurnstileSettings, migrateBloggerProofAndOutboxTargets, migrateCaptchaProvider, migrateSiteSmoji} {
+		if err := migrate(database); err != nil {
+			t.Fatal(err)
+		}
+	}
+	now := time.Now().UTC()
+	if err := database.Exec(`INSERT INTO comments (site_id,mark,username,email,content,created_at,updated_at) VALUES ('site-a','/keep','guest','guest@example.test','keep',?,?)`, now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	var before []schemaMigration
+	if err := database.Table("schema_migrations").Order("version").Find(&before).Error; err != nil {
+		t.Fatal(err)
+	}
+	// Force failure while recording v8: table/index creation must roll back too.
+	if err := database.Exec(`CREATE TRIGGER fail_v8 BEFORE INSERT ON schema_migrations WHEN NEW.version = 8 BEGIN SELECT RAISE(ABORT,'fixture'); END`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := PrepareDatabaseForStartup(database); err == nil {
+		t.Fatal("migration failure ignored")
+	}
+	if exists, err := hasTable(database, "admin_sessions"); err != nil || exists {
+		t.Fatal("failed migration left session table")
+	}
+	if err := database.Exec("DROP TRIGGER fail_v8").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := PrepareDatabaseForStartup(database); err != nil {
+		t.Fatal(err)
+	}
+	if err := PrepareDatabaseForStartup(database); err != nil {
+		t.Fatal(err)
+	}
+	var after []schemaMigration
+	if err := database.Table("schema_migrations").Where("version <= 7").Order("version").Find(&after).Error; err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(before, after) {
+		t.Fatal("released history changed")
+	}
+	var count int64
+	database.Table("comments").Where("content = 'keep' AND email = 'guest@example.test'").Count(&count)
+	if count != 1 {
+		t.Fatal("business data lost")
+	}
+	database.Table("schema_migrations").Where("version = 8").Count(&count)
+	if count != 1 {
+		t.Fatal("v8 record missing or duplicated")
 	}
 }

@@ -4,15 +4,11 @@ Ecoku 的管理后台位于实例的 `/admin/` 路径。
 
 ---
 
-## 1. 登录与会话特性
+## 1. 可撤销管理员会话
 
-- **访问地址**：`https://ecoku.example.com/admin/`
-- **身份凭据**：输入在 `ecoku.env` 中配置的 `ECOKU_ADMIN_USERNAME` 与对应密码。
-- **内存 Bearer Token**：
-  - 登录成功后签发的 Bearer Token 仅保存在浏览器当前运行时的 Vue 内存中。
-  - **绝不写入** `localStorage`、`sessionStorage`、`cookie` 或 URL 参数。
-  - 刷新页面或关闭浏览器标签页后，会话立即注销，保障公共或多设备使用时的绝对安全。
-- **有效时间**：默认会话生命周期为 8 小时（480 分钟），支持倒计时即时退出。
+管理员会话通过 HttpOnly Cookie 保存，服务端在 SQLite 中仅保存凭据摘要与到期时间。登录后固定 8 小时，刷新或关闭重开会恢复有效会话，不延长到期时间。主动退出由服务端撤销当前会话；退出失败会保留当前页面并提示重试。凭据不进入 JavaScript、localStorage、sessionStorage 或 URL。
+
+生产环境使用 HTTPS、Secure、HttpOnly、SameSite=Strict、host-only Cookie，路径为 `/api/admin`。仅明确允许的回环 HTTP 开发来源可不带 Secure。轮换管理员密码哈希或签名密钥并重启会使旧会话失效。
 
 ---
 
@@ -50,7 +46,7 @@ Ecoku 的管理后台位于实例的 `/admin/` 路径。
 - **博主口令**：启用博主身份时，需设置 12～80 字符的博主口令。
   - 口令经 bcrypt 哈希存储，管理端只显示“已设置”，永不回显明文。
   - **公开评论区免密发表**：博主在博客前台发评时，**仅需在昵称框填入口令**，无需输入邮箱或网站，服务端即可自动识别博主身份并点亮博主徽章。
-  - **历史评论自动回填**：保存口令时，服务端在事务内按博主昵称与私有邮箱精确匹配历史所有未删除的评论，自动批量回填 `is_blogger` 标记。
+  - 保存、首次设置或轮换口令不会回填历史博主标记；回填仅存在于原 schema v5 迁移和首次 Twikoo 导入。
 - **博主徽章**：可自定义在博主昵称后显示的文本徽章（默认 `[博主]`）。
 
 ---
@@ -91,7 +87,7 @@ graph TD
     end
 
     subgraph Verification["服务端校验"]
-        VerifyToken["校验 Token & IP<br/>(AES-256-GCM 密文存储密钥)"]
+        VerifyToken["校验 Token（不主动附加客户端 IP）<br/>(AES-256-GCM 密文存储密钥)"]
         Pass["放行通过"]
         Reject["拒绝请求 (400/403)"]
     end

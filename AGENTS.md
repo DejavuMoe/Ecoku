@@ -26,7 +26,7 @@
 - 访客身份仅昵称、私有邮箱和可选网站。SDK 可在 IndexedDB 中加密保存 7 天；不得写入
   localStorage、cookie 或 URL，也不提供多余的主动清除界面。
 - 回复必须在被回复评论处完成；缺少身份时在该回复框内采集，不能跳回根评论表单后误发为根评论。
-- 博主身份由昵称与邮箱共同精确匹配，用于通知去重；该判定不在管理端展示说明表。
+- 博主徽章与通知去重读取已存储的 `comments.is_blogger`；昵称与邮箱匹配仅用于已发布历史迁移及首次导入回填；该判定不在管理端展示说明表。
 - SQLite 迁移原位、顺序、事务化。成功只增加 schema 版本记录，不自动删除数据库、评论、配置、
   WAL 或备份，也无向下迁移。已发布的迁移文件与 `schema_migrations` 记录不得改写或删除。
 
@@ -44,7 +44,7 @@
   镜像 CI 不部署应用生产、不碰生产库。文档站点仅由 `master` push 的 Woodpecker 流程自动构建并原子发布，
   固定调度到 `role=netcup-nano`、`server=netcup-nano` 的 agent；发布 step 通过 trusted volume
   将 `/var/www/ecoku.zsh.moe` 原子切换到 `/var/www/.ecoku.zsh.moe-releases/` 下的新候选，成功后立即尝试删除旧候选。
-- 文档与 Compose 模板中的 Docker 镜像统一使用实际注册地址与精确发布版本号（`git.via.moe/dejavu/ecoku:v` + `VERSION`，禁止占位镜像或浮动 tag，当前为 `v0.2.3`）；真实域名、密码、token、SMTP、Telegram、数据库和日志等敏感信息仍使用占位符，不得进 Git。
+- 文档与 Compose 模板中的 Docker 镜像统一使用实际注册地址与精确发布版本号（`git.via.moe/dejavu/ecoku:v` + `VERSION`，禁止占位镜像或浮动 tag，当前为 `v0.2.4`）；真实域名、密码、token、SMTP、Telegram、数据库和日志等敏感信息仍使用占位符，不得进 Git。
 - 提交、推送、tag、镜像发布、生产部署和真实数据库操作需要当前任务的明确授权。
 - 新 tag 若可能影响平滑升级（schema、Compose 挂载、配置键、日志出口、镜像契约），回复中先写：
   停服冷备份 → 改精确镜像 tag → `sudo docker compose pull && sudo docker compose up -d` →

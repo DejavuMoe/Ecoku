@@ -320,3 +320,23 @@ func TestRequestLoggerDoesNotLogIPQueryOrToken(t *testing.T) {
 		t.Fatalf("missing safe access fields: %s", logged)
 	}
 }
+
+func TestRequestLoggerRecordsOnlyRouteTemplates(t *testing.T) {
+	var output bytes.Buffer
+	previous := log.Writer()
+	log.SetOutput(&output)
+	t.Cleanup(func() { log.SetOutput(previous) })
+	router := gin.New()
+	router.Use(RequestLogger())
+	router.GET("/items/:id", func(c *gin.Context) { c.Status(200) })
+	for _, path := range []string{"/unknown%0Aforged%1B%5B31m", "/items/private-value"} {
+		router.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", path, nil))
+	}
+	logged := output.String()
+	if strings.Count(logged, "\n") != 2 || strings.ContainsAny(logged, "\r\x1b") || strings.Contains(logged, "forged") || strings.Contains(logged, "private-value") {
+		t.Fatalf("unsafe log: %q", logged)
+	}
+	if !strings.Contains(logged, "path=<unmatched>") || !strings.Contains(logged, "path=/items/:id") {
+		t.Fatalf("missing templates: %q", logged)
+	}
+}

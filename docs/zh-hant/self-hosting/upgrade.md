@@ -2,17 +2,17 @@
 
 Ecoku 採用版本化、原位（In-Place）、交易性的 SQLite Schema 遷移體系。
 
-準備升級至 **[v0.2.3](./upgrades/v0.2.3)**：修復身分、通知、匯入與客戶端審計問題，schema 維持 v7。版本待發佈，請於 master CI 驗收及 tag 鏡像建置成功後升級。
+準備升級至 **[v0.2.4](./upgrades/v0.2.4)**：安全修復、可撤銷管理員會話與回覆深度限制，schema v7 → v8。請等待 master CI 驗收與 tag 鏡像發佈後再升級。
 
-升級過程中，只需修改 Compose 檔案中的**精確映像檔標籤**，服務在啟動時會自動偵測並按版本順序執行資料庫升級。
+升級前核對對應版本的設定相容性。修改 Compose 精確鏡像 tag 後，服務啟動時按版本順序執行資料庫遷移。
 
 ---
 
 ## 升級核心契約
 
 1. **單向交易遷移**：Schema 遷移在同一個 SQLite 檔案中順序向上執行，成功後向 `schema_migrations` 表追加版本記錄。Ecoku **不支援自動向下遷移（Down-migration）**。
-2. **嚴禁浮動標籤**：生產環境絕對禁止使用 `latest`，必須使用形如 `v0.2.3` 的精確發布版本。
-3. **不可逆性與回滾原則**：一旦資料庫成功升級至高版本 Schema（例如 v7），**不能僅將映像檔標籤換回舊版本**，否則舊版本服務因無法識別高版本 Schema 會拒絕啟動。回滾必須使用升級前冷備份的資料庫檔案進行復原。
+2. **嚴禁浮動標籤**：生產環境絕對禁止使用 `latest`，必須使用形如 `v0.2.4` 的精確發布版本。
+3. **不可逆性與回滾原則**：一旦資料庫成功升級至高版本 Schema（例如 v8），**不能僅將映像檔標籤換回舊版本**，否則舊版本服務因無法識別高版本 Schema 會拒絕啟動。回滾必須使用升級前冷備份的資料庫檔案進行復原。
 
 ---
 
@@ -33,7 +33,7 @@ for required in data/ecoku.sqlite3 app/config.yaml ecoku.env compose.yaml; do
   printf '%s\n' "$contents" | grep -Fx "$required" > /dev/null
 done
 printf 'Verified backup: %s\n' "$archive"
-vi compose.yaml
+vi app/config.yaml compose.yaml
 sudo docker compose pull && sudo docker compose up -d
 curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 )
@@ -45,6 +45,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | 映像檔版本 | Schema 版本 | 核心資料庫變更與特性 |
 | :--- | :---: | :--- |
+| **`v0.2.4`** | `v8` | `admin_sessions` |
 | **`v0.1.9`** | `v7`（不變） | 不新增遷移；公開評論列表 CWE-400 資源預算防護、單層游標分頁與獨立列表讀取頻控。 |
 | **`v0.1.8`** | `v7` | `sites` 表新增 `smoji_enabled` (布林) 與 `smoji_manifest_url` (TEXT)，支援站點級表情包。 |
 | **`v0.1.7`** | `v6`（不變） | 不改變 Schema；建置工具鏈升級、多語言文件體系落地與 CI 映像檔建置優化。 |
@@ -63,6 +64,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | 版本 | 發布日期 | Schema 變化 | 升級要點與說明 |
 | :--- | :--- | :---: | :--- |
+| [**v0.2.4**](./upgrades/v0.2.4) | 待發佈 | v7 → v8 | HttpOnly Cookie + SQLite 可撤銷會話 |
 | [**v0.2.3**](./upgrades/v0.2.3) | 待發佈 | v7（不變） | 身分、通知、匯入與客戶端審計修復。 |
 | [**v0.2.2**](./upgrades/v0.2.2) | 2026-09-13 | v7（不變） | 修復 Smoji 選擇器在窄螢幕下的版面問題。 |
 | [**v0.2.1**](./upgrades/v0.2.1) | 2026-09-12 | v7（不變） | Smoji 清單容量提升與精簡 `base` 模板支援。 |
@@ -79,8 +81,6 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 | [**v0.1.0**](./upgrades/v0.1.0) | 2026-08-15 | v4 | 首個正式發布版本。 |
 | [**更早候選版**](./upgrades/earlier) | 2026-08-14 | v1 ～ v4 | 早期單容器架構設計、WAL 模式引入與時區規範。 |
 
-## v0.2.3 相容性（待發佈）
+## v0.2.4 相容性（待發佈）
 
-本次修復保持 schema v7、掛載路徑、環境變數與 bcrypt 雜湊格式，可由 v0.2.2 原位升級，不刪除留言、設定、WAL 或備份。儲存站點設定不再回填博主標記，既有標記保留；歷史誤標無法自動與口令驗證記錄區分，需另行核實及授權修正。通知採至少一次投遞：完成狀態寫入失敗時重試寫回，本程序不重送；成功投遞後、持久化前崩潰，重啟可能重送。
-
-兩版均為 schema v7，通常可停服後改回 `git.via.moe/dejavu/ecoku:v0.2.2`，拉取並啟動，保留目前資料庫與新留言，但舊版缺陷也會恢復。只有確需升級前資料才恢復整套冷備份；先保留現場並明確接受備份後寫入遺失，不自動覆蓋資料庫。
+v8 新增 `admin_sessions` 表及到期索引，不改寫留言、設定或既有遷移記錄。舊登入失效，必須重新登入。`admin.token_ttl_minutes` 請省略或設為 480；其他舊值會阻止啟動。掛載、環境變數及密碼雜湊不變。回滾至 v0.2.3 或更早版本，必須停服並保留現場，再恢復升級前完整冷備份與原鏡像；僅換舊 tag 無法開啟 v8 資料庫。恢復備份會失去備份後的寫入，須由操作者明確接受。

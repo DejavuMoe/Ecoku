@@ -95,7 +95,7 @@ admin:
 | `username_env` | 字符串 | 是 | `""` | 管理员用户名对应的环境变量名。 |
 | `password_hash_env` | 字符串 | 是 | `""` | 管理员 bcrypt 密码哈希对应的环境变量名。 |
 | `token_key_env` | 字符串 | 是 | `""` | 管理员 Bearer Token 签名密钥对应的环境变量名。 |
-| `token_ttl_minutes` | 整数 | 否 | `480` | 管理端登录会话生命周期（分钟，默认 8 小时）。 |
+| `token_ttl_minutes` | 整数 | 否 | `480` | 兼容键，只能省略或设为 `480`；固定登录后 8 小时，不滚动续期。 |
 | `allowed_origins` | 字符串列表 | 是 | `[]` | 允许访问管理后台 API 的精确 Origin 列表（需包含协议与域名）。 |
 
 #### 7. `sites` 初始站点种子（可选）

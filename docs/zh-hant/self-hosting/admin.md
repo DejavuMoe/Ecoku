@@ -4,9 +4,11 @@
 
 ---
 
-## 1. 登入與會話特性
-- **記憶體 Bearer Token**：登入成功後簽發的 Token 僅保存在 Vue 記憶體中，絕不寫入 `localStorage`、`sessionStorage` 或 Cookie。重新整理或關閉頁面立即登出。
-- **會話有效時間**：預設為 8 小時（480 分鐘）。
+## 1. 可撤銷管理員會話
+
+管理員會話使用 HttpOnly Cookie；SQLite 僅保存憑證摘要與到期時間。登入後固定 8 小時，重新整理或關閉重開可恢復有效會話，不延長期限。主動登出由服務端撤銷目前會話；登出失敗保留目前畫面並提示重試。憑證不進入 JavaScript、localStorage、sessionStorage 或 URL。
+
+正式環境使用 HTTPS、Secure、HttpOnly、SameSite=Strict、host-only Cookie，路徑為 `/api/admin`。只有明確允許的回環 HTTP 開發來源可省略 Secure。輪換管理員密碼雜湊或簽名金鑰並重啟後，舊會話失效。
 
 ---
 
@@ -22,6 +24,8 @@
 ## 3. 站長身分與口令（Passphrase）
 - 設定站長暱稱、私有信箱與 12～80 字元的站長口令。
 - 前台評論時，站長只需在暱稱框輸入口令，即可免密完成身分認證。
+
+儲存、首次設定或輪換口令不回填歷史博主標記；僅原 schema v5 遷移與首次 Twikoo 匯入保留回填。
 
 ---
 
@@ -49,7 +53,7 @@ graph TD
     end
 
     subgraph Verification["伺服端校驗"]
-        VerifyToken["校驗 Token & IP<br/>(AES-256-GCM 密文儲存金鑰)"]
+        VerifyToken["校驗 Token（不主動附加客戶端 IP）<br/>(AES-256-GCM 密文儲存金鑰)"]
         Pass["放行通過"]
         Reject["拒絕請求 (400/403)"]
     end

@@ -2,12 +2,16 @@ package utils
 
 import (
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
 	"ecoku-server/config"
+	"ecoku-server/model"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"gorm.io/gorm"
 	"strings"
 	"time"
 )
@@ -17,7 +21,10 @@ const (
 	maximumAdminTokenLength = 8192
 )
 
+var ErrAdminSessionUnavailable = errors.New("管理员会话存储不可用")
+
 type adminTokenPayload struct {
+	SessionID         string `json:"sid"`
 	Version           int    `json:"v"`
 	Subject           string `json:"sub"`
 	Audience          string `json:"aud"`
@@ -40,7 +47,24 @@ func GenerateAdminToken() (string, time.Time, error) {
 	if !ok {
 		return "", time.Time{}, fmt.Errorf("管理员认证未安全配置")
 	}
-	return generateAdminTokenAt(credentials, time.Now())
+	now := time.Now()
+	token, expiry, err := generateAdminTokenAt(credentials, now)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	if model.DB == nil {
+		return "", time.Time{}, ErrAdminSessionUnavailable
+	}
+	err = model.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("DELETE FROM admin_sessions WHERE expires_at <= ?", now.Unix()).Error; err != nil {
+			return err
+		}
+		return tx.Exec("INSERT INTO admin_sessions (token_digest, expires_at) VALUES (?, ?)", adminTokenDigest(token), expiry.Unix()).Error
+	})
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("保存管理员会话失败")
+	}
+	return token, expiry, nil
 }
 
 func generateAdminTokenAt(credentials *config.AdminCredentials, now time.Time) (string, time.Time, error) {
@@ -50,7 +74,12 @@ func generateAdminTokenAt(credentials *config.AdminCredentials, now time.Time) (
 
 	issuedAt := time.Unix(now.Unix(), 0).UTC()
 	expiresAt := issuedAt.Add(credentials.TokenTTL)
+	sessionID := make([]byte, 32)
+	if _, err := rand.Read(sessionID); err != nil {
+		return "", time.Time{}, fmt.Errorf("生成管理员会话失败")
+	}
 	payload := adminTokenPayload{
+		SessionID:         base64.RawURLEncoding.EncodeToString(sessionID),
 		Version:           1,
 		Subject:           credentials.Username,
 		Audience:          adminTokenAudience,
@@ -73,7 +102,22 @@ func ParseAdminToken(token string) (*AdminTokenClaims, error) {
 	if !ok {
 		return nil, fmt.Errorf("管理员认证未安全配置")
 	}
-	return parseAdminTokenAt(token, credentials, time.Now())
+	now := time.Now()
+	claims, err := parseAdminTokenAt(token, credentials, now)
+	if err != nil {
+		return nil, err
+	}
+	if model.DB == nil {
+		return nil, ErrAdminSessionUnavailable
+	}
+	var count int64
+	if err := model.DB.Table("admin_sessions").Where("token_digest = ? AND expires_at > ?", adminTokenDigest(token), now.Unix()).Count(&count).Error; err != nil {
+		return nil, ErrAdminSessionUnavailable
+	}
+	if count != 1 {
+		return nil, fmt.Errorf("管理员会话已失效")
+	}
+	return claims, nil
 }
 
 func parseAdminTokenAt(token string, credentials *config.AdminCredentials, now time.Time) (*AdminTokenClaims, error) {
@@ -150,4 +194,16 @@ func ConstantTimeSecretEqual(left, right string) bool {
 	leftDigest := sha256.Sum256([]byte(left))
 	rightDigest := sha256.Sum256([]byte(right))
 	return subtle.ConstantTimeCompare(leftDigest[:], rightDigest[:]) == 1
+}
+
+func adminTokenDigest(token string) string {
+	digest := sha256.Sum256([]byte(strings.TrimSpace(token)))
+	return fmt.Sprintf("%x", digest)
+}
+
+func RevokeAdminToken(token string) error {
+	if model.DB == nil {
+		return ErrAdminSessionUnavailable
+	}
+	return model.DB.Exec("DELETE FROM admin_sessions WHERE token_digest = ?", adminTokenDigest(token)).Error
 }

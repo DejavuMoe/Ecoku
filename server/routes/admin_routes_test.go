@@ -85,15 +85,11 @@ func setupAdminTest(t *testing.T) adminEnvironment {
 	if login.Code != http.StatusOK {
 		t.Fatalf("login=%d %s", login.Code, login.Body.String())
 	}
-	var envelope struct {
-		Data struct {
-			Token string `json:"token"`
-		} `json:"data"`
+	cookies := login.Result().Cookies()
+	if len(cookies) != 1 || cookies[0].Value == "" || strings.Contains(login.Body.String(), `"token"`) {
+		t.Fatalf("invalid session response: %s", login.Body.String())
 	}
-	if err := json.Unmarshal(login.Body.Bytes(), &envelope); err != nil || envelope.Data.Token == "" {
-		t.Fatalf("login response=%s err=%v", login.Body.String(), err)
-	}
-	return adminEnvironment{router: router, token: envelope.Data.Token}
+	return adminEnvironment{router: router, token: cookies[0].Value}
 }
 
 func TestAdminStaticCSPAllowsStyleAttributesAndNonceBootstrapWithoutUnsafeInline(t *testing.T) {

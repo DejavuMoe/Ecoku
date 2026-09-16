@@ -81,7 +81,7 @@ admin:
   username_env: "ECOKU_ADMIN_USERNAME"
   password_hash_env: "ECOKU_ADMIN_PASSWORD_HASH"
   token_key_env: "ECOKU_ADMIN_TOKEN_KEY"
-  # P1 会话默认有效 8 小时，允许范围为 5 到 1440 分钟。
+  # 固定 8 小时；兼容键只允许 480，也可省略。
   token_ttl_minutes: 480
   # 必须与公开评论站点来源分离；无 Origin 的可信 CLI/服务端请求仍需认证。
   allowed_origins:

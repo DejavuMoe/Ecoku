@@ -12,7 +12,7 @@ Ecoku は、訪問者向けの**公開コメント API**と管理者向けの**�
   - `200 OK`：リクエスト成功。
   - `201 Created`：リソース作成成功。
   - `400 Bad Request`：パラメーターの検証不合格または不正。
-  - `401 Unauthorized`：認証情報なし、または Bearer トークンの有効期限切れ。
+  - `401 Unauthorized`：認証情報なし、または 管理者セッションの有効期限切れ。
   - `403 Forbidden`：リクエスト Origin がサイトのホワイトリストに未登録。
   - `404 Not Found`：対象サイト、親コメント、またはリソースが存在しない。
   - `422 Unprocessable Entity`：リソース上限超過（200 ノード、16 階層、集計 10,000 件、1 MiB JSON）。
@@ -198,13 +198,18 @@ GET /api/comment/list?siteId=blog&key=/posts/example/&parentId=101&afterId=120&p
 
 ---
 
+新規返信は最大 16 階層の子孫（ルート = 0）です。17 階層目は 422 となり、上位コメントへの返信を案内します。既存の深いスレッドとインポート済みデータは変更しません。200 ノード、1 MiB JSON、10,000 ノード集計などの読み取り予算は維持します。
+
 ## 2. 管理用エンドポイント（Admin Endpoints）
 
-すべての管理用エンドポイント（ログイン設定取得およびログインを除く）は、リクエストヘッダーに Bearer トークンが必要です：
-```http
-Authorization: Bearer {ADMIN_TOKEN}
-```
-管理系の更新リクエスト（POST / PUT / DELETE）のリクエストボディ上限は厳格に **16 KiB** です。
+管理画面はログイン応答の HttpOnly Cookie と同一オリジンのリクエストを使用します。ログイン JSON に token は含みません。ログインと Cookie 認証の更新操作には `admin.allowed_origins` に一致する `Origin` が必要です。復元 GET は Origin を省略できます。信頼された自動化は Cookie jar を使用できます。`Authorization: Bearer` も新方式で登録済みかつ未失効のセッション認証情報が必要で、旧ステートレストークンは拒否します。`EcokuSite` のサイト内墓標化権限は変更しません。
+
+管理 API の更新リクエスト本文は **16 KiB** までです。
+
+### セッション復元とログアウト
+
+- `GET /api/admin/session`：元の `expires_at` と残りの `expires_in` を返し、期限延長や認証情報の返却は行いません。無効・期限切れは 401、ストレージ障害は 503 です。
+- `POST /api/admin/logout`：現在のセッションを失効させ Cookie を削除します。成功は 200、書き込み失敗は 503 であり、ログアウト完了と扱えません。両方ともインスタンス管理者専用です。
 
 ### 管理者ログイン `POST /api/admin/login`
 - **リクエストボディ**：
@@ -221,8 +226,6 @@ Authorization: Bearer {ADMIN_TOKEN}
     "code": 200,
     "message": "Success",
     "data": {
-      "token": "eyJ2IjoxLCJzdWIiOiJhZG1pbiIs...",
-      "token_type": "Bearer",
       "expires_at": "2026-08-20T20:00:00Z",
       "expires_in": 28800
     }

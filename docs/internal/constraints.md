@@ -10,7 +10,7 @@
 - `designs/plain-thread-comments/index-v16.html` 是评论区当前已批准的设计基线；更早版本仅保留为历史原型。预览里的故障、交互和 Pre-clearance 开关不得进入生产 SDK。身份输入与标签同为 12px、正文色；根评论与回复输入与已发布正文同为 15px、正文色、1.65 行高；`[+]` 与 `[-]` 等宽完整显示（3ch），且其字号/字体不得被宿主 `font: inherit` 覆盖。Turnstile 宿主槽不超过 300px，不覆盖 Cloudflare iframe 内部样式；Cap 保留官方 260×58px、14px 圆角、25px 复选框和状态图标，只映射 Ecoku 的颜色与宿主字体 token。接入外壳不显示「正在加载评论…」，保留加载失败重试与「评论服务尚未配置」。
 - 评论正文永久按纯文本处理；不解释 HTML 或 Markdown。
 - MVP 不提供头像、赞踩、反应或富文本工具。
-- 回复采用多层线程语义。
+- 回复采用多层线程语义。新回复最多 16 层后代（根为 0），服务端在提交事务内有界检查祖先，拒绝第 17 层并返回 422；已有深链和导入数据不自动截断或删除。
 - 删除评论保留墓碑及后代回复，使讨论上下文不被截断。
 - 已发布评论的墓碑继续参与公开线程和分页；公开 DTO 返回 `deleted: true`、
   固定昵称“已删除”和固定正文“[该评论已删除]”。不得向墓碑新增回复。
@@ -54,7 +54,7 @@
   并使用 `nofollow ugc noopener noreferrer`。墓碑不显示网站、原作者或回复入口。
 - 生产文案集中为中文常量；主题支持 `auto`、`light`、`dark` 配置，不提供持久化主题切换器。
 - SDK 不发送或保存 management key、IP、UA、地区或用户 ID，也不请求第三方 IP、头像、分析或遥测服务。当前提供方为 Turnstile 时只加载 Cloudflare 小组件；当前提供方为 Cap 时只从已配置的自托管实例加载 Widget、WASM 和同源兼容回退地址。两者均只提交一次性 `captchaToken`，不得把 Secret key 或 Siteverify 结果带进浏览器；旧 `turnstileToken` 仅由服务端在 Turnstile 模式兼容接收。
-- 实例级验证方式为关闭、Cloudflare Turnstile 或自托管 Cap，启用时二选一并同时保护访客评论提交和管理员登录。Turnstile 小组件模式仍只在 Cloudflare 控制台配置；Cap 使用实例 URL、Site key 和 Secret key。两种提供方均失败关闭，缺少、无效、已消费、超时或不可用的验证不得发布评论或完成登录，也不会自动降级到另一提供方。Siteverify 不主动附加客户端 IP。两套 Secret key 使用与通知相同的主密钥分别加密，管理端只显示「已设置」，永不回显明文；切换或关闭不删除未启用提供方的配置。
+- 实例级验证方式为关闭、Cloudflare Turnstile 或自托管 Cap，启用时二选一并同时保护访客评论提交和管理员登录。Turnstile 小组件模式仍只在 Cloudflare 控制台配置；Cap 使用实例 URL、Site key 和 Secret key。两种提供方均在博主口令比较与身份相关校验之前验证，并失败关闭，缺少、无效、已消费、超时或不可用的验证不得发布评论或完成登录，也不会自动降级到另一提供方。Siteverify 不主动附加客户端 IP。两套 Secret key 使用与通知相同的主密钥分别加密，管理端只显示「已设置」，永不回显明文；切换或关闭不删除未启用提供方的配置。
 - 管理端 CSP 必须随当前验证方式收敛：只有 Cap 当前启用时才允许其精确 HTTPS Origin、WASM、Blob Worker、nonce 和当前 Cap 3.x instrumentation 使用的 JavaScript `'unsafe-eval'`；关闭或 Turnstile 模式即使保留 Cap 配置也不得继续包含 Cap Origin、`'wasm-unsafe-eval'`、`'unsafe-eval'` 或 `worker-src blob:`。该动态求值权限不能用通配符、`unsafe-inline`、自动降级或 Caddy 的第二份宽泛 CSP 替代。
 
 ## 身份与管理
@@ -68,15 +68,14 @@
 
 - P1 只有一个实例级管理员，可管理全部已注册站点；站点运营员和细粒度 RBAC 后置。
 - 管理员能力默认关闭。启用时，用户名、bcrypt 密码哈希和独立 token 签名密钥必须从三个不同的环境变量读取；仓库没有默认密码或明文凭据。
-- 管理员 Bearer token 有效期默认 8 小时，不提供 refresh token、在线会话黑名单或单会话登出。轮换密码哈希或签名密钥并重启服务会使旧 token 失效。
+- 管理员会话有效期固定为登录后 8 小时，不滚动续期，不提供 refresh token。SQLite 仅保存随机化签名凭据的 SHA-256 摘要与绝对到期时间；认证同时检查签名、凭据版本与未过期会话记录。退出撤销当前会话，Cookie 与 Bearer 均不能绕过撤销；旧版未登记 token 升级后失效。兼容配置键 `admin.token_ttl_minutes` 只能省略或为 480。轮换密码哈希或签名密钥并重启服务会使旧 token 失效。
 - 管理端浏览器只使用管理员会话。每站点 management key 只供可信服务端自动化，并且只能管理所属站点；不得进入浏览器、响应或日志。management key 对评论 GET 列表/详情返回 403，只保留所属站点的墓碑删除。
 - 管理端浏览器来源使用独立精确白名单，不能复用公开评论站点来源；无 `Origin` 的 CLI/服务端请求仍必须通过认证。
 - 管理 DTO 可以包含私有邮箱，但不得返回 IP、UA、地区、UserID、密码、验证码、token、管理密钥或完整 User。
 - 管理端包含登录、站点注册与评论表单配置、按 `published/deleted` 筛选的评论列表、详情、
   墓碑删除和无后代墓碑的彻底删除。不提供审核队列、用户管理、RBAC、Count 或站点密钥管理界面。
   另有实例级「安全」页，以三态单选配置关闭、Turnstile 或 Cap；Turnstile 保存 Sitekey/Secret，Cap 保存 HTTPS 实例地址、Site key/Secret。停服恢复命令只写入自托管文档，不在管理界面展示。
-- 管理端以 `designs/admin-moderation/index-v11.html` 为当前已批准站点配置、配色与系统衬线基线，安全与登录验证以 `index-v12.html` 为准，并沿用 v5 的评论管理、通知设置和发送模板设计；对应 v5 通知模板只供服务端投递时渲染，管理端不展示模板预览，也不公开模板静态页面。浏览器中的管理员 token 只保存在当前页面内存，
-  不写入 localStorage、sessionStorage、cookie 或 URL。关闭或刷新页面后必须重新登录。
+- 管理端以 `designs/admin-moderation/index-v11.html` 为当前已批准站点配置、配色与系统衬线基线，安全与登录验证以 `index-v12.html` 为准，并沿用 v5 的评论管理、通知设置和发送模板设计；对应 v5 通知模板只供服务端投递时渲染，管理端不展示模板预览，也不公开模板静态页面。浏览器管理员凭据仅通过 host-only HttpOnly Cookie 保存（Path=/api/admin、SameSite=Strict，生产 Secure，明确允许的回环 HTTP 开发 Origin 除外），不进入登录 JSON、JavaScript、localStorage、sessionStorage 或 URL。刷新及关闭重开恢复有效会话，恢复接口不续期。登录与 Cookie 写操作要求明确的管理端白名单 Origin；安全 GET 可无 Origin。退出只有服务端撤销成功或已失效才清空界面，失败保留会话并提示重试。
 - 管理端配色默认 `auto`，跟随系统 `prefers-color-scheme`；深色纸张、表面与正文 token 与评论区对齐。不提供主题切换器，也不把配色写入本地存储。衬线使用系统栈 `Noto Serif SC`、`Noto Serif CJK SC`、`Songti SC`、`STSong`，不加载网络字体。评论区前端继续 inherit 宿主字体。
 - 管理端是“评论管理”而非审核队列；已发布评论和公开墓碑使用
   `site_url + pageKey + #ecoku-comment-ID` 精确跳转。
@@ -156,16 +155,16 @@
 - P2 起仅支持 SQLite3，不再支持 MySQL；旧普通用户 SMTP 入口已经删除，当前 SMTP 仅用于新的
   实例级通知渠道。配置文件中出现旧 MySQL、普通用户或 `drop_table` 字段会明确失败。
 - schema 带版本、名称和校验和，不使用 `AutoMigrate`。当前迁移链支持在同一个 SQLite 文件中把已完成
-  v1 的数据库事务性升级到 v2、v3、v4、v5、v6，再升级到 v7；v2 只为站点注册表增加博主昵称和博主邮箱，v3 增加评论区
-  博主标志，v4 增加实例级 `turnstile_settings`，v5 增加博主口令哈希、`comments.is_blogger` 并把通知 outbox 按目标拆行，v6 原位把该设置表重命名为 `captcha_settings` 并增加 provider 与 Cap 字段，v7 为站点增加 Smoji 启用状态和清单 URL。成功后追加 `schema_migrations` 版本记录。升级不会生成或自动删除所谓“v1 数据库”，也不会删除数据库、配置、WAL、
-  业务数据或操作者备份。已写入 v7 的库不能只换回旧镜像；回滚必须用停服前的整库备份恢复。
+  v1 的数据库事务性升级到 v2、v3、v4、v5、v6，再升级到 v7、v8；v2 只为站点注册表增加博主昵称和博主邮箱，v3 增加评论区
+  博主标志，v4 增加实例级 `turnstile_settings`，v5 增加博主口令哈希、`comments.is_blogger` 并把通知 outbox 按目标拆行，v6 原位把该设置表重命名为 `captcha_settings` 并增加 provider 与 Cap 字段，v7 为站点增加 Smoji 启用状态和清单 URL，v8 仅增加管理员会话表及过期索引。成功后追加 `schema_migrations` 版本记录。升级不会生成或自动删除所谓“v1 数据库”，也不会删除数据库、配置、WAL、
+  业务数据或操作者备份。已写入 v8 的库不能只换回仅支持 v7 的旧镜像；回滚必须用停服前的整库备份恢复。
 - 空数据库可以按顺序初始化至最新版本；无版本、未知断层、未来版本、名称或校验和不匹配的数据库均失败关闭。
   操作者仍必须先停服并校验卷外备份；任何 DROP、覆盖或备份清理都需要针对目标环境的明确授权。
 - 当前全新 schema 不创建 `users`、`email_verification_codes` 或 `counts` 遗留表。
 - P4 的默认交付拓扑是单个非 root 运行容器：Go 进程同时提供 API 和 `/admin/` 静态管理端，SQLite 数据与配置从容器外持久化；
   管理端静态文件缺失时，启用管理员能力的服务必须启动失败。
 - 应用日志始终写入 stdout，供 `docker compose logs` 跟随；`site.log_path` 指向普通文件时额外由进程内轮转保留副本。
-  空值、`stdout`、`-` 或 `/dev/stdout` 只写标准输出。日志仍不得包含 IP、UA、凭据、token 或评论正文。
+  空值、`stdout`、`-` 或 `/dev/stdout` 只写标准输出。访问日志只记录路由模板，未匹配路由使用固定值；不写入实际路径参数。日志仍不得包含 IP、UA、凭据、token 或评论正文。
 - 浏览器 SDK 的 npm 包名为 `ecoku`，版本为 `0.1.0`，提供 ESM、CommonJS、UMD 和 TypeScript 声明；
   根工作区为 private，自动化只生成发布候选构件，不创建 tag、release 或执行 npm publish。容器版本仍以根 `VERSION` 为准。
 - 旧持久开发验收实例已经退役；其专用域名、IP、同步脚本、部署模板和登录指引不再属于当前

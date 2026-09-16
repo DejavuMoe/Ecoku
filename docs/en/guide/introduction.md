@@ -12,7 +12,7 @@ It eliminates bloated moderation queues, user registration databases, and third-
 - **Pure Text Conversations**: Comment bodies are never parsed as arbitrary HTML or Markdown, preventing XSS attacks by design.
 - **Live on Submit**: No artificial moderation delays. Safety is maintained via in-memory rate limiting, blogger passphrases, and modern CAPTCHA (Turnstile / Cap).
 - **Zero Privacy Leakage**: Public APIs never return email addresses, IP addresses, User-Agents, or internal database IDs. Visitor identity is stored strictly on the client side in IndexedDB with AES-GCM encryption for 7 days.
-- **In-Place Schema Evolution**: Versioned SQLite schema migrations (v1–v7) upgrade sequentially in a single transaction without external migration binaries.
+- **In-Place Schema Evolution**: Versioned SQLite schema migrations (v1–v8) upgrade sequentially in a single transaction without external migration binaries.
 
 ---
 
@@ -23,7 +23,7 @@ flowchart TD
     subgraph Client["🌐 Client Layer (Browser / Web)"]
         direction LR
         Visitor["📱 Visitor Integration<br/>• 2KB Standalone Loader (ecoku-loader.js)<br/>• Native SDK (ESM / UMD / CJS)<br/>• 7-Day Encrypted Storage (IndexedDB)<br/>• Smoji Plain-Text Stickers on Demand"]
-        Admin["💻 Admin Console (/admin/)<br/>• Vue 3 + Pinia + System Serif<br/>• Memory-only Bearer Token (No Storage)<br/>• Multi-site & CAPTCHA Security Settings<br/>• Comment Tombstones & Hard Purge"]
+        Admin["💻 Admin Console (/admin/)<br/>• Vue 3 + Pinia + System Serif<br/>• HttpOnly cookie + SQLite revocable session<br/>• Multi-site & CAPTCHA Security Settings<br/>• Comment Tombstones & Hard Purge"]
     end
 
     subgraph Edge["🛡️ Edge & Reverse Proxy"]
@@ -37,7 +37,7 @@ flowchart TD
             Engine["⚡ Gin HTTP Core Service<br/>• In-Memory IP Rate Limiter<br/>• Dynamic CSP Policies (Turnstile / Cap)<br/>• Remote Captcha Siteverify<br/>• Admin Bcrypt Auth & Credential Versioning"]
             Outbox["📬 Outbox Notification Worker<br/>• Single-instance Polling & Exponential Backoff<br/>• SMTP Email Notifications (TLS / STARTTLS)<br/>• Telegram Bot Message Push<br/>• Blogger Passphrase Zero-Auth Match"]
         end
-        Storage["💾 SQLite3 Storage Engine (WAL Mode)<br/>• /data/ecoku.sqlite3 (Strict Foreign Keys · In-Place Migrations v1~v7)<br/>• AES-256-GCM Sensitive Field Encryption (SMTP / Bot / Captcha Secrets)"]
+        Storage["💾 SQLite3 Storage Engine (WAL Mode)<br/>• /data/ecoku.sqlite3 (Strict Foreign Keys · In-Place Migrations v1~v8)<br/>• AES-256-GCM Sensitive Field Encryption (SMTP / Bot / Captcha Secrets)"]
         Core --> Storage
     end
 

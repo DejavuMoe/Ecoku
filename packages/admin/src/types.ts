@@ -56,8 +56,6 @@ export interface CommentPage {
 }
 
 export interface AdminSession {
-  token: string
-  tokenType: 'Bearer'
   expiresAt: string
   expiresIn: number
 }

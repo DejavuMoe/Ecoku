@@ -102,6 +102,24 @@ func SubmitComment(c *gin.Context) {
 		return
 	}
 
+	if content == "" || textLength(content) > site.CommentLimit {
+		utils.SendError(c, http.StatusBadRequest, "评论内容无效")
+		return
+	}
+	if !validSmojiContent(content, site) {
+		utils.SendError(c, http.StatusBadRequest, "评论内容包含无效表情")
+		return
+	}
+
+	if err := captcha.Verify(c.Request.Context(), captcha.Tokens{Captcha: req.CaptchaToken, Turnstile: req.TurnstileToken}); err != nil {
+		if errors.Is(err, captcha.ErrFailed) {
+			utils.SendError(c, http.StatusBadRequest, "请完成验证后再发布。")
+			return
+		}
+		utils.SendError(c, http.StatusServiceUnavailable, "验证服务暂时不可用")
+		return
+	}
+
 	blogger := site.MatchesBloggerPassphrase(username)
 	if blogger {
 		if !site.BloggerProofConfigured() {
@@ -113,14 +131,6 @@ func SubmitComment(c *gin.Context) {
 		website = strings.TrimSpace(site.SiteURL)
 	}
 
-	if content == "" || textLength(content) > site.CommentLimit {
-		utils.SendError(c, http.StatusBadRequest, "评论内容无效")
-		return
-	}
-	if !validSmojiContent(content, site) {
-		utils.SendError(c, http.StatusBadRequest, "评论内容包含无效表情")
-		return
-	}
 	if username == "" || textLength(username) > maxNicknameLength {
 		utils.SendError(c, http.StatusBadRequest, "昵称无效")
 		return
@@ -131,15 +141,6 @@ func SubmitComment(c *gin.Context) {
 	}
 	if (site.WebsiteRequired && !blogger && website == "") || !validWebsiteURL(website) {
 		utils.SendError(c, http.StatusBadRequest, "网址无效，仅支持 http 或 https")
-		return
-	}
-
-	if err := captcha.Verify(c.Request.Context(), captcha.Tokens{Captcha: req.CaptchaToken, Turnstile: req.TurnstileToken}); err != nil {
-		if errors.Is(err, captcha.ErrFailed) {
-			utils.SendError(c, http.StatusBadRequest, "请完成验证后再发布。")
-			return
-		}
-		utils.SendError(c, http.StatusServiceUnavailable, "验证服务暂时不可用")
 		return
 	}
 
@@ -192,6 +193,21 @@ func SubmitComment(c *gin.Context) {
 			if parent.DeletedAt != nil {
 				return errParentUnavailable
 			}
+			// Count only the bounded ancestor chain, inside the write transaction.
+			ancestor := parent
+			for depth := 1; ; depth++ {
+				if depth > maxPublicListDepth {
+					return errReplyDepth
+				}
+				if ancestor.ParentID == nil {
+					break
+				}
+				nextID := *ancestor.ParentID
+				ancestor = model.Comment{}
+				if err := tx.Where("id = ? AND site_id = ? AND mark = ?", nextID, siteID, mark).First(&ancestor).Error; err != nil {
+					return err
+				}
+			}
 		}
 		if err := tx.Create(&comment).Error; err != nil {
 			return err
@@ -203,6 +219,8 @@ func SubmitComment(c *gin.Context) {
 			utils.SendError(c, http.StatusNotFound, "父评论不存在")
 		case errors.Is(err, errParentConflict):
 			utils.SendError(c, http.StatusConflict, "父评论不属于当前站点和页面")
+		case errors.Is(err, errReplyDepth):
+			utils.SendError(c, http.StatusUnprocessableEntity, "回复层级已达上限，请回复较上层的评论")
 		case errors.Is(err, errParentUnavailable):
 			utils.SendError(c, http.StatusConflict, "不能回复已删除评论")
 		default:
@@ -215,6 +233,7 @@ func SubmitComment(c *gin.Context) {
 }
 
 var (
+	errReplyDepth        = errors.New("reply depth exceeded")
 	errParentNotFound    = errors.New("parent comment not found")
 	errParentConflict    = errors.New("parent comment conflict")
 	errParentUnavailable = errors.New("parent comment unavailable")

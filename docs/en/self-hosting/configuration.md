@@ -95,7 +95,7 @@ All rate limits operate on fixed in-memory windows per process:
 | `username_env` | String | Yes | `""` | Env variable name for the admin username. |
 | `password_hash_env` | String | Yes | `""` | Env variable name for the bcrypt password hash. |
 | `token_key_env` | String | Yes | `""` | Env variable name for the HMAC Bearer token signing key. |
-| `token_ttl_minutes` | Integer | No | `480` | Admin session lifetime in minutes (default 8 hours). |
+| `token_ttl_minutes` | Integer | No | `480` | Compatibility key: omit or set to `480` only. Fixed eight-hour absolute lifetime; no sliding renewal. |
 | `allowed_origins` | List of Strings | Yes | `[]` | Exact origin list allowed to access the admin API (including protocol and port). |
 
 #### 7. `sites` Initial Site Seed (Optional)

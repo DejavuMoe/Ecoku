@@ -2,17 +2,17 @@
 
 自托管的多站点纯文本评论系统，专为静态博客（Hugo / Hexo / Astro / VitePress）与个人站点设计。评论提交后直接发布，无审核队列，极致轻量，数据全量持久化在本地单文件 SQLite3 中。
 
-> **准备发布版本**：`v0.2.3`（等待 master CI 验收与 tag 发布；上一正式版本为 `v0.2.2`）
-> **目标镜像**：`git.via.moe/dejavu/ecoku:v0.2.3`，镜像发布成功后再使用以下部署示例。
+> **准备发布版本**：`v0.2.4`（等待 master CI 验收与 tag 发布）
+> **目标镜像**：`git.via.moe/dejavu/ecoku:v0.2.4`，镜像发布成功后再使用以下部署示例。
 
 ---
 
 ## 核心设计与特性
 
 - **极简单容器拓扑**：单个 Go 二进制同源提供后端 REST API、嵌入式管理控制台（`/admin/`）与浏览器 SDK / 极简加载器（`/client/`）。
-- **提交即发布 · 讨论不中断**：评论无审核队列，提交后立即呈现在被回复评论下方；数据层保持无限嵌套树状语义，视觉端呈现至多 3 级缩进。
+- **提交即发布 · 讨论不中断**：评论无审核队列，提交后立即呈现在被回复评论下方；新回复保留树状语义，最多 16 层后代，视觉端呈现至多 3 级缩进。
 - **严格隐私边界**：公共 DTO 绝不暴露访客邮箱、IP、User-Agent、地理位置或管理字段；访客身份在浏览器本地 IndexedDB 中通过 WebCrypto AES-GCM 加密保存 7 天。
-- **高安全内存会话**：管理后台 Bearer Token 仅保存在 Vue 运行时内存中，绝不持久化至 `localStorage`、`sessionStorage` 或 Cookie，刷新或关闭标签页立即回收注销。
+- **可撤销管理会话**：HttpOnly Cookie 配合 SQLite 会话记录，登录后固定 8 小时；刷新或关闭重开保留登录，主动退出由服务端撤销。升级到 schema v8 前须停服冷备份，见 [v0.2.4 升级指南](docs/self-hosting/upgrades/v0.2.4.md)。
 - **现代化人机验证**：实例级支持三态安全切换（关闭、Cloudflare Turnstile、开源自托管 Cap），全链路动态收敛 CSP 策略。
 - **事务一致性异步通知**：基于 SQLite 事务的 Outbox 队列模式，支持 SMTP（TLS/STARTTLS）与 Telegram 机器人通知，按目标拆行重试。
 - **极轻量接入**：仅 ~2KB 的无依赖异步加载器 `ecoku-loader.js`，支持原生 HTML、Hugo PaperMod 以及 React / Vue 3。
@@ -35,7 +35,7 @@ sudo install -d -o 10001 -g 10001 -m 750 app/logs data
 ```yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.2.3"
+    image: "git.via.moe/dejavu/ecoku:v0.2.4"
     init: true
     restart: unless-stopped
     container_name: ecoku

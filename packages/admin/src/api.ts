@@ -46,12 +46,26 @@ function responseErrorCode(data: unknown): string {
   return typeof value === 'string' && safeErrorCodes.has(value) ? value : ''
 }
 
-async function request<T>(path: string, init: RequestInit = {}, token = '', allowEmpty = false): Promise<T> {
+let sessionGeneration = 0
+const activeRequests = new Set<AbortController>()
+export function cancelAdminRequests() {
+  ++sessionGeneration
+  for (const controller of activeRequests) controller.abort()
+}
+
+function mapSession(raw: Record<string, unknown>): AdminSession {
+  const expiresAt = text(raw.expires_at)
+  if (!expiresAt || !Number.isFinite(Date.parse(expiresAt))) throw new ApiError(500, 'invalid-session')
+  return { expiresAt, expiresIn: number(raw.expires_in) }
+}
+
+async function request<T>(path: string, init: RequestInit = {}, allowEmpty = false): Promise<T> {
   const headers = new Headers(init.headers)
   headers.set('Accept', 'application/json')
   if (init.body !== undefined) headers.set('Content-Type', 'application/json')
-  if (token) headers.set('Authorization', `Bearer ${token}`)
+  const generation = sessionGeneration
   const controller = new AbortController()
+  activeRequests.add(controller)
   const abort = () => controller.abort(init.signal?.reason)
   if (init.signal?.aborted) abort()
   else init.signal?.addEventListener('abort', abort, { once: true })
@@ -65,6 +79,7 @@ async function request<T>(path: string, init: RequestInit = {}, token = '', allo
       if (controller.signal.aborted) throw error
       throw new ApiError(response.ok ? 500 : response.status, 'invalid-response')
     }
+    if (generation !== sessionGeneration) throw new DOMException('Session ended', 'AbortError')
     if (!response.ok) throw new ApiError(response.status, envelope.message || 'request-failed', responseErrorCode(envelope.data))
     if (envelope.data === undefined && !allowEmpty) throw new ApiError(500, 'missing-response-data')
     return envelope.data as T
@@ -75,6 +90,7 @@ async function request<T>(path: string, init: RequestInit = {}, token = '', allo
     if (error instanceof ApiError) throw error
     throw new ApiError(0, 'network')
   } finally {
+    activeRequests.delete(controller)
     clearTimeout(timeout)
     init.signal?.removeEventListener('abort', abort)
   }
@@ -249,34 +265,39 @@ export const adminApi = {
 
   async login(username: string, password: string, captchaToken = '', signal?: AbortSignal): Promise<AdminSession> {
     const raw = await request<Record<string, unknown>>('/api/admin/login', { method: 'POST', body: JSON.stringify({ username, password, captchaToken }), signal })
-    const token = text(raw.token)
-    const expiresAt = text(raw.expires_at)
-    if (!token || !expiresAt || raw.token_type !== 'Bearer') throw new ApiError(500, 'invalid-session')
-    return { token, tokenType: 'Bearer', expiresAt, expiresIn: number(raw.expires_in) }
+    return mapSession(raw)
   },
 
-  async listSites(token: string, signal?: AbortSignal): Promise<SiteSummary[]> {
-    const raw = await request<{ data?: unknown[] }>('/api/admin/sites', { method: 'GET', signal }, token)
+  async getSession(): Promise<AdminSession> {
+    return mapSession(await request<Record<string, unknown>>('/api/admin/session'))
+  },
+
+  async logout(): Promise<void> {
+    await request('/api/admin/logout', { method: 'POST' }, true)
+  },
+
+  async listSites(signal?: AbortSignal): Promise<SiteSummary[]> {
+    const raw = await request<{ data?: unknown[] }>('/api/admin/sites', { method: 'GET', signal })
     return (raw.data ?? []).map(mapSite).filter((site): site is SiteSummary => site !== null)
   },
 
-  async createSite(token: string, site: SiteWrite): Promise<SiteSummary> {
-    const raw = await request<Record<string, unknown>>('/api/admin/sites', { method: 'POST', body: JSON.stringify(sitePayload(site)) }, token)
+  async createSite(site: SiteWrite): Promise<SiteSummary> {
+    const raw = await request<Record<string, unknown>>('/api/admin/sites', { method: 'POST', body: JSON.stringify(sitePayload(site)) })
     const mapped = mapSite(raw.site)
     if (!mapped) throw new ApiError(500, 'invalid-site')
     return mapped
   },
 
-  async updateSite(token: string, site: SiteWrite): Promise<SiteSummary> {
-    const raw = await request<Record<string, unknown>>(`/api/admin/sites/${encodeURIComponent(site.id)}`, { method: 'PUT', body: JSON.stringify(sitePayload(site)) }, token)
+  async updateSite(site: SiteWrite): Promise<SiteSummary> {
+    const raw = await request<Record<string, unknown>>(`/api/admin/sites/${encodeURIComponent(site.id)}`, { method: 'PUT', body: JSON.stringify(sitePayload(site)) })
     const mapped = mapSite(raw.site)
     if (!mapped) throw new ApiError(500, 'invalid-site')
     return mapped
   },
 
-  async listComments(token: string, siteId: string, status: CommentStatus, page: number, pageSize: number, sort: 'oldest' | 'newest', signal?: AbortSignal): Promise<CommentPage> {
+  async listComments(siteId: string, status: CommentStatus, page: number, pageSize: number, sort: 'oldest' | 'newest', signal?: AbortSignal): Promise<CommentPage> {
     const query = new URLSearchParams({ status, page: String(page), pageSize: String(pageSize), sort })
-    const raw = await request<Record<string, unknown>>(`/api/admin/sites/${encodeURIComponent(siteId)}/comments?${query}`, { method: 'GET', signal }, token)
+    const raw = await request<Record<string, unknown>>(`/api/admin/sites/${encodeURIComponent(siteId)}/comments?${query}`, { method: 'GET', signal })
     const rows = Array.isArray(raw.data) ? raw.data : []
     const rawCounts = raw.counts && typeof raw.counts === 'object' ? raw.counts as Record<string, unknown> : {}
     return {
@@ -286,54 +307,54 @@ export const adminApi = {
     }
   },
 
-  async getComment(token: string, siteId: string, commentId: number, signal?: AbortSignal): Promise<CommentReview> {
-    const raw = await request<unknown>(`/api/admin/sites/${encodeURIComponent(siteId)}/comments/${commentId}`, { method: 'GET', signal }, token)
+  async getComment(siteId: string, commentId: number, signal?: AbortSignal): Promise<CommentReview> {
+    const raw = await request<unknown>(`/api/admin/sites/${encodeURIComponent(siteId)}/comments/${commentId}`, { method: 'GET', signal })
     const comment = mapComment(raw)
     if (!comment) throw new ApiError(500, 'invalid-comment')
     return comment
   },
 
-  async tombstone(token: string, siteId: string, commentId: number): Promise<CommentMutation> {
-    const raw = await request<Record<string, unknown>>(`/api/admin/sites/${encodeURIComponent(siteId)}/comments/${commentId}`, { method: 'DELETE' }, token)
+  async tombstone(siteId: string, commentId: number): Promise<CommentMutation> {
+    const raw = await request<Record<string, unknown>>(`/api/admin/sites/${encodeURIComponent(siteId)}/comments/${commentId}`, { method: 'DELETE' })
     const comment = mapComment(raw.comment)
     if (!comment) throw new ApiError(500, 'invalid-comment')
     return { comment, unchanged: raw.unchanged === true }
   },
 
-  async permanentlyDelete(token: string, siteId: string, commentId: number): Promise<void> {
-    await request(`/api/admin/sites/${encodeURIComponent(siteId)}/comments/${commentId}/permanent`, { method: 'DELETE' }, token)
+  async permanentlyDelete(siteId: string, commentId: number): Promise<void> {
+    await request(`/api/admin/sites/${encodeURIComponent(siteId)}/comments/${commentId}/permanent`, { method: 'DELETE' })
   },
 
-  async getNotifications(token: string): Promise<NotificationSettings> {
-    const raw = await request<Record<string, unknown>>('/api/admin/notifications', { method: 'GET' }, token)
+  async getNotifications(): Promise<NotificationSettings> {
+    const raw = await request<Record<string, unknown>>('/api/admin/notifications', { method: 'GET' })
     return { email: mapEmail(raw.email), telegram: mapTelegram(raw.telegram) }
   },
 
-  async saveEmail(token: string, settings: EmailNotificationSettings): Promise<EmailNotificationSettings> {
-    const raw = await request<Record<string, unknown>>('/api/admin/notifications/email', { method: 'PUT', body: JSON.stringify(emailPayload(settings)) }, token)
+  async saveEmail(settings: EmailNotificationSettings): Promise<EmailNotificationSettings> {
+    const raw = await request<Record<string, unknown>>('/api/admin/notifications/email', { method: 'PUT', body: JSON.stringify(emailPayload(settings)) })
     return mapEmail(raw.email)
   },
 
-  async testEmail(token: string, settings: EmailNotificationSettings): Promise<void> {
-    await request('/api/admin/notifications/email/test', { method: 'POST', body: JSON.stringify(emailPayload(settings)) }, token, true)
+  async testEmail(settings: EmailNotificationSettings): Promise<void> {
+    await request('/api/admin/notifications/email/test', { method: 'POST', body: JSON.stringify(emailPayload(settings)) }, true)
   },
 
-  async saveTelegram(token: string, settings: TelegramNotificationSettings): Promise<TelegramNotificationSettings> {
-    const raw = await request<Record<string, unknown>>('/api/admin/notifications/telegram', { method: 'PUT', body: JSON.stringify(telegramPayload(settings)) }, token)
+  async saveTelegram(settings: TelegramNotificationSettings): Promise<TelegramNotificationSettings> {
+    const raw = await request<Record<string, unknown>>('/api/admin/notifications/telegram', { method: 'PUT', body: JSON.stringify(telegramPayload(settings)) })
     return mapTelegram(raw.telegram)
   },
 
-  async testTelegram(token: string, settings: TelegramNotificationSettings): Promise<void> {
-    await request('/api/admin/notifications/telegram/test', { method: 'POST', body: JSON.stringify(telegramPayload(settings)) }, token, true)
+  async testTelegram(settings: TelegramNotificationSettings): Promise<void> {
+    await request('/api/admin/notifications/telegram/test', { method: 'POST', body: JSON.stringify(telegramPayload(settings)) }, true)
   },
 
-  async getCaptcha(token: string): Promise<CaptchaSettings> {
-    const raw = await request<unknown>('/api/admin/captcha', { method: 'GET' }, token)
+  async getCaptcha(): Promise<CaptchaSettings> {
+    const raw = await request<unknown>('/api/admin/captcha', { method: 'GET' })
     return mapCaptcha(raw)
   },
 
-  async saveCaptcha(token: string, settings: CaptchaSettings): Promise<CaptchaSettings> {
-    const raw = await request<unknown>('/api/admin/captcha', { method: 'PUT', body: JSON.stringify(captchaPayload(settings)) }, token)
+  async saveCaptcha(settings: CaptchaSettings): Promise<CaptchaSettings> {
+    const raw = await request<unknown>('/api/admin/captcha', { method: 'PUT', body: JSON.stringify(captchaPayload(settings)) })
     return mapCaptcha(raw)
   },
 }

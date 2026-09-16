@@ -6,6 +6,8 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const html = fs.readFileSync(path.join(here, "index-v12.html"), "utf8");
 
 const checks = [
+  ["会话恢复与退出失败场景", /security-restored[\s\S]*security-logout-failed/],
+  ["固定会话到期与失败提示", /固定 8 小时[\s\S]*退出失败，请重试。/],
   ["批准稿标题", /评论管理 · 验证方式/],
   ["默认跟随系统配色", /<html lang="zh-CN" data-theme="auto">/],
   ["浅色与深色 color-scheme", /name="color-scheme" content="light dark"/],

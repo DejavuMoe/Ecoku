@@ -5,7 +5,28 @@
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-09-16
+
+发布准备：等待 master CI 验收与 tag 发布；镜像尚未发布。
+
 ### 修复
+
+- 验证码先于博主口令比较与身份校验，阻止缺少或无效 CAPTCHA 时探测口令是否命中。
+- 访问日志仅记录路由模板，未知路由使用固定值，阻止路径控制字符注入及动态路径内容写入日志。
+- 新回复最多 16 层后代，拒绝第 17 层并提示回复较上层评论；保留历史数据和既有读取预算。
+
+### 管理会话
+
+- 管理后台改为 HttpOnly Cookie 与 SQLite 可撤销会话，登录后固定 8 小时，刷新和关闭重开可恢复且不续期；退出撤销当前会话，失败保留界面并提示重试。
+- 登录响应不再返回 token；新增会话恢复和退出接口。Cookie 写操作与登录校验管理端 Origin；旧版未登记 Bearer 失效。
+
+### 升级
+
+- schema v7 → v8，仅新增管理员会话表及索引，原位事务迁移，保留业务数据和历史迁移记录。回滚旧镜像必须恢复升级前整库冷备份。
+- `admin.token_ttl_minutes` 固定为 480（可省略）；旧自定义值需调整。同步四语言会话、API、配置及 v0.2.4 升级指南，纠正历史回填与验证码 IP 文档。
+
+### 文档
+
 
 - 文档首页插图悬停时保持居中，修复向右下方偏移的问题；简繁中文标题按语义分行，避免单字落行。
 
@@ -391,4 +412,5 @@
 [0.2.1]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.1
 [0.2.2]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.2
 [0.2.3]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.3
-[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.2.3...master
+[0.2.4]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.4
+[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.2.4...master

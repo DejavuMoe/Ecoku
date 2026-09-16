@@ -6,8 +6,9 @@ A consolidated diagnostic guide and troubleshooting solutions for common deploym
 
 ## 1. Authentication & Permissions
 
-### Q: Why does the admin console log out when I refresh the page or reopen the browser?
-**A**: This is an intentional **high-security in-memory session design**. The administrator's Bearer token exists solely within Vue runtime memory variables and is never persisted into `localStorage`, `sessionStorage`, or cookies. Once the browser tab is refreshed or closed, the token is reclaimed by the browser engine, guaranteeing zero credential leaks even on shared or public workstations.
+### Q: Does login survive a reload or reopening the browser?
+
+Administrator sessions use an HttpOnly cookie; SQLite stores only the credential digest and expiry. Sessions expire exactly eight hours after login. Reloading or reopening restores a valid session without extending its deadline. Logout revokes the current session on the server; a failed logout keeps the current screen and offers retry. Credentials do not enter JavaScript, localStorage, sessionStorage or URLs.
 
 ### Q: Container startup fails with `permission denied` or cannot access SQLite database?
 **A**: The Ecoku container runs as non-root user `10001:10001`. Fix directory and file ownership on the host:

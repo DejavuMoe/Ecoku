@@ -65,7 +65,7 @@ beforeEach(() => { pinia = createPinia(); setActivePinia(pinia) })
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); document.body.innerHTML = '' })
 
 describe('administrator API contract', () => {
-  it('maps only the direct-publish site and comment fields and keeps the bearer token in the header', async () => {
+  it('maps only the direct-publish site and comment fields and uses the HttpOnly session without a bearer header', async () => {
     const fetchMock = vi.fn<typeof fetch>()
       .mockResolvedValueOnce(response(200, { data: [{
         id: 'site-a', site_url: 'https://blog.example.test', name: "Dejavu's Blog",
@@ -82,8 +82,8 @@ describe('administrator API contract', () => {
         email: 'private@example.com', content: '正文', created_at: '2026-08-13T00:00:00Z', updated_at: '2026-08-13T00:00:00Z',
       }], counts: { published: 1, deleted: 0 }, total: 1, page: 1, pageSize: 20, pageCount: 1 }))
     vi.stubGlobal('fetch', fetchMock)
-    const sites = await adminApi.listSites('private-token')
-    const comments = await adminApi.listComments('private-token', 'site-a', 'published', 1, 20, 'newest')
+    const sites = await adminApi.listSites()
+    const comments = await adminApi.listComments('site-a', 'published', 1, 20, 'newest')
     expect(sites[0]).toMatchObject({ name: "Dejavu's Blog", commentLimit: 2048, emptyMessage: '暂无评论', smojiEnabled: true, smojiManifestUrl: 'https://static.example.test/smoji.json', bloggerNickname: 'Dejavu Moe', bloggerEmail: 'admin@example.test', bloggerBadge: '[OP]', bloggerPassphraseSet: true })
     expect(sites[0]).not.toHaveProperty('bloggerPassphrase')
     expect(sites[0]).not.toHaveProperty('blogger_passphrase')
@@ -92,7 +92,8 @@ describe('administrator API contract', () => {
     expect(comments.data[0]).toMatchObject({ pageTitle: '标题', status: 'published', email: 'private@example.com' })
     const [, init] = fetchMock.mock.calls[0]!
     const headers = new Headers(init?.headers)
-    expect(headers.get('Authorization')).toBe('Bearer private-token')
+    expect(headers.has('Authorization')).toBe(false)
+    expect(init?.credentials).toBe('same-origin')
     expect(String(fetchMock.mock.calls[0]?.[0])).not.toContain('private-token')
   })
 
@@ -102,7 +103,7 @@ describe('administrator API contract', () => {
     } }))
     vi.stubGlobal('fetch', fetchMock)
     const { createdAt: _createdAt, updatedAt: _updatedAt, ...write } = site()
-    await adminApi.createSite('token', { ...write, name: '博客', defaultSort: 'oldest', emailRequired: false, websiteRequired: true, placeholder: '评论', commentLimit: 500, emptyMessage: '暂无', bloggerPassphrase: 'correct-horse-battery' })
+    await adminApi.createSite({ ...write, name: '博客', defaultSort: 'oldest', emailRequired: false, websiteRequired: true, placeholder: '评论', commentLimit: 500, emptyMessage: '暂无', bloggerPassphrase: 'correct-horse-battery' })
     const payload = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as Record<string, unknown>
     expect(payload).toMatchObject({ name: '博客', default_sort: 'oldest', comment_limit: 500, empty_message: '暂无', smoji_enabled: false, smoji_manifest_url: '', blogger_nickname: 'Dejavu Moe', blogger_email: 'admin@example.test', blogger_badge: '[博主]', blogger_passphrase: 'correct-horse-battery' })
     expect(payload).not.toHaveProperty('blogger_passphrase_set')
@@ -120,10 +121,10 @@ describe('administrator API contract', () => {
         revision: 4,
       }))
       .mockResolvedValueOnce(response(200, {
-        token: 'admin-token', token_type: 'Bearer', expires_at: '2026-08-18T00:00:00Z', expires_in: 3600,
+        expires_at: '2026-08-18T00:00:00Z', expires_in: 3600,
       }))
     vi.stubGlobal('fetch', fetchMock)
-    const settings = await adminApi.getCaptcha('admin-token')
+    const settings = await adminApi.getCaptcha()
     expect(settings).toEqual({
       provider: 'cap',
       turnstile: { sitekey: 'turnstile-public', secret: '', secretSet: true },
@@ -157,7 +158,7 @@ describe('administrator Smoji rendering', () => {
 describe('administrator state', () => {
   it('suppresses duplicate destructive actions and reloads after the first succeeds', async () => {
     const store = useAdminStore()
-    store.token = 'token'; store.sites = [site()]; store.selectedSiteId = 'site-a'; store.selectedComment = comment(); store.comments = [comment()]
+    store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'; store.selectedComment = comment(); store.comments = [comment()]
     let release: (() => void) | undefined
     const tombstone = vi.spyOn(adminApi, 'tombstone').mockImplementation(() => new Promise((resolve) => { release = () => resolve({ comment: comment({ status: 'deleted', deleted: true }), unchanged: false }) }))
     vi.spyOn(adminApi, 'listComments').mockResolvedValue(page([]))
@@ -170,7 +171,7 @@ describe('administrator state', () => {
   })
 
   it('maps SMTP failure categories to actionable inline feedback', async () => {
-    const store = useAdminStore(); store.token = 'token'
+    const store = useAdminStore(); store.authenticated = true; store.sessionReady = true
     vi.spyOn(adminApi, 'testEmail').mockRejectedValue(new ApiError(502, 'private upstream detail', 'authentication_failed'))
     await store.testEmail(notifications().email)
     expect(store.emailTestMessage).toBe('发送失败：SMTP 认证未通过')
@@ -186,7 +187,7 @@ describe('approved production surface', () => {
 
   it('renders published/deleted management only, escapes comments, and links to the original page', () => {
     const store = useAdminStore()
-    store.token = 'token'; store.sites = [site()]; store.selectedSiteId = 'site-a'; store.comments = [comment()]; store.selectedComment = comment(); store.counts = { published: 1, deleted: 0 }; store.total = 1; store.pageCount = 1
+    store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'; store.comments = [comment()]; store.selectedComment = comment(); store.counts = { published: 1, deleted: 0 }; store.total = 1; store.pageCount = 1
     const wrapper = mount(CommentManagementView, { props: { mobileDetail: false }, global: { plugins: [pinia] } })
     expect(wrapper.text()).toContain('评论管理')
     expect(wrapper.text()).toContain('已发布 1')
@@ -206,7 +207,7 @@ describe('approved production surface', () => {
   })
 
   it('renders the approved off/Turnstile/Cap selector without operational copy or plaintext secrets', () => {
-    const store = useAdminStore(); store.token = 'token'
+    const store = useAdminStore(); store.authenticated = true; store.sessionReady = true
     store.captchaSettings = {
       provider: 'cap',
       turnstile: { sitekey: '0x4AAAAAAA00000000000000', secret: '', secretSet: true },
@@ -238,7 +239,7 @@ describe('approved production surface', () => {
   })
 
   it('submits newly entered Cap credentials without clearing the write-only secret', async () => {
-    const store = useAdminStore(); store.token = 'token'
+    const store = useAdminStore(); store.authenticated = true; store.sessionReady = true
     store.captchaSettings = {
       provider: 'cap',
       turnstile: { sitekey: '', secret: '', secretSet: false },
@@ -265,7 +266,7 @@ describe('approved production surface', () => {
   })
 
   it('shows only approved site fields and explains newline-separated origins', () => {
-    const store = useAdminStore(); store.token = 'token'; store.sites = [site()]; store.selectedSiteId = 'site-a'
+    const store = useAdminStore(); store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
     const wrapper = mount(SiteManagementView, { global: { plugins: [pinia] } })
     expect(wrapper.text()).toContain('站点名称')
     expect(wrapper.text()).toContain('评论排序')
@@ -289,7 +290,7 @@ describe('approved production surface', () => {
   })
 
   it('renders redacted secret placeholders and destination separators without public template previews', () => {
-    const store = useAdminStore(); store.token = 'token'; store.notificationSettings = notifications()
+    const store = useAdminStore(); store.authenticated = true; store.sessionReady = true; store.notificationSettings = notifications()
     const wrapper = mount(NotificationSettingsView, { global: { plugins: [pinia] } })
     expect(wrapper.find<HTMLInputElement>('#email-password').element.placeholder).toBe('已设置，输入新值以更换')
     expect(wrapper.find<HTMLInputElement>('#telegram-token').element.placeholder).toBe('已设置，输入新值以更换')
@@ -317,7 +318,7 @@ describe('approved production surface', () => {
   })
 
   it('contains no ordinary-user, Count, management-key, or review workflow surface', () => {
-    const store = useAdminStore(); store.token = 'token'; store.sites = [site()]; store.selectedSiteId = 'site-a'; store.comments = []; store.counts = { published: 0, deleted: 0 }
+    const store = useAdminStore(); store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'; store.comments = []; store.counts = { published: 0, deleted: 0 }
     const wrapper = mount(App, { global: { plugins: [pinia] } })
     const text = wrapper.text()
     for (const forbidden of ['用户注册', 'Count', 'management key', '站点管理密钥', '待审核', '批准所选', '拒绝所选', '配色预览']) expect(text).not.toContain(forbidden)
@@ -354,14 +355,14 @@ describe('request cancellation isolation', () => {
       init.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true })
     })))
     const controller = new AbortController()
-    const result = adminApi.listSites('token', controller.signal)
+    const result = adminApi.listSites(controller.signal)
     controller.abort()
     await expect(result).rejects.toMatchObject({ name: 'AbortError' })
   })
 
   it('does not let a stale failure overwrite a newer queue', async () => {
     const store = useAdminStore()
-    store.token = 'token'; store.selectedSiteId = 'site-a'
+    store.authenticated = true; store.sessionReady = true; store.selectedSiteId = 'site-a'
     let rejectOld!: (error: unknown) => void
     vi.spyOn(adminApi, 'listComments').mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectOld = reject }))
       .mockResolvedValueOnce(page([comment({ id: 99 })]))
@@ -382,9 +383,55 @@ it('times out while reading an admin response body', async () => {
       ok: true, status: 200,
       json: () => new Promise((_resolve, reject) => init.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true })),
     })))
-    const result = adminApi.listSites('token')
+    const result = adminApi.listSites()
     const assertion = expect(result).rejects.toMatchObject({ status: 0, errorCode: 'timeout' })
     await vi.advanceTimersByTimeAsync(30000)
     await assertion
   } finally { vi.useRealTimers() }
+})
+
+describe('persistent administrator session', () => {
+  it('restores the server expiry without storing a credential and keeps a failed logout active', async () => {
+    vi.useFakeTimers()
+    try {
+      const expiresAt = new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString()
+      vi.spyOn(adminApi, 'getSession').mockResolvedValue({ expiresAt, expiresIn: 28800 })
+      vi.spyOn(adminApi, 'listSites').mockResolvedValue([])
+      const store = useAdminStore()
+      await store.restoreSession()
+      expect(store.authenticated).toBe(true)
+      expect(store.expiresAt).toBe(expiresAt)
+      expect(store).not.toHaveProperty('token')
+      const logout = vi.spyOn(adminApi, 'logout').mockRejectedValueOnce(new ApiError(503, 'unavailable')).mockResolvedValueOnce(undefined)
+      expect(await store.logout()).toBe(false)
+      expect(store.authenticated).toBe(true)
+      expect(store.logoutMessage).toBe('退出失败，请重试。')
+      expect(await store.logout()).toBe(true)
+      expect(store.authenticated).toBe(false)
+      expect(logout).toHaveBeenCalledTimes(2)
+    } finally { vi.useRealTimers() }
+  })
+
+  it('expires at the original deadline and ignores a private response arriving after logout', async () => {
+    vi.useFakeTimers()
+    try {
+      const store = useAdminStore()
+      vi.spyOn(adminApi, 'getSession').mockResolvedValue({ expiresAt: new Date(Date.now() + 1000).toISOString(), expiresIn: 1 })
+      vi.spyOn(adminApi, 'listSites').mockResolvedValue([])
+      await store.restoreSession()
+      vi.advanceTimersByTime(1000)
+      expect(store.authenticated).toBe(false)
+      expect(store.loginMessage).toBe(messages.sessionExpired)
+    } finally { vi.useRealTimers() }
+    let release: ((value: Response) => void) | undefined
+    vi.restoreAllMocks()
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(() => new Promise((resolve) => { release = resolve })))
+    const store = useAdminStore(); store.authenticated = true
+    const pending = store.loadSites()
+    vi.spyOn(adminApi, 'logout').mockResolvedValue(undefined)
+    await store.logout()
+    release?.(response(200, { data: [{ id: 'private-site' }] }))
+    await pending
+    expect(store.sites).toEqual([])
+  })
 })

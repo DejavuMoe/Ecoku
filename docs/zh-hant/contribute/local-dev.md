@@ -35,3 +35,5 @@ pnpm docs:dev
 伺服器預設為 `http://127.0.0.1:12123`，評論區開發頁預設為 `http://localhost:3000`。如需由 Go 提供靜態檔案，請先建置相應套件。
 
 完整驗證由 Woodpecker 執行；本機只執行與目前改動直接相關且 CI 未覆蓋的檢查。
+
+開發後台來源需加入獨立 `admin.allowed_origins`，使用 Vite 同源 `/api` 代理。只有明確允許的 HTTP localhost/回環來源可用非 Secure Cookie，正式環境必須 HTTPS。

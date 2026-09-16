@@ -86,6 +86,8 @@ func NewRouter() (*gin.Engine, error) {
 
 			protected := admin.Group("")
 			protected.Use(middleware.AdminAuthentication())
+			protected.GET("/session", middleware.RequireInstanceAdmin(), adminhandler.Session)
+			protected.POST("/logout", middleware.RequireInstanceAdmin(), adminhandler.Logout)
 			protected.GET("/sites", middleware.RequireInstanceAdmin(), adminhandler.ListSites)
 			protected.POST(
 				"/sites",

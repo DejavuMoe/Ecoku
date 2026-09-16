@@ -35,3 +35,5 @@ pnpm docs:dev
 服务端默认为 `http://127.0.0.1:12123`，评论区开发页默认为 `http://localhost:3000`。若需要由 Go 提供静态文件，先构建相应包。
 
 完整验证由 Woodpecker 执行；本地只运行与当前改动直接相关且 CI 未覆盖的检查。
+
+管理端开发页来源必须加入独立 `admin.allowed_origins`；使用 `/api` 同源 Vite 代理。仅 `http://localhost`、回环 IP 的明确允许来源使用非 Secure Cookie，生产必须 HTTPS。
