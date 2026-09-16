@@ -115,12 +115,16 @@ describe('Ecoku hosted loader', () => {
     })
     ;(window as Window & { Ecoku?: unknown }).Ecoku = Constructor
 
+    // Assert the link insertion without fetching the placeholder host.
+    const append = vi.spyOn(document.head, 'appendChild').mockImplementation((node) => node)
     setupEcokuLoader(document, window, 'https://ecoku.example/client/ecoku-loader.js')
     await vi.waitFor(() => expect(init).toHaveBeenCalledOnce())
     expect(Constructor).toHaveBeenCalledWith(expect.objectContaining({
       cssURL: 'https://cdn.example/ecoku.unstyled.css',
     }))
-    const link = document.querySelector<HTMLLinkElement>('link[data-ecoku-css]')
+    expect(append).toHaveBeenCalledOnce()
+    const link = append.mock.calls[0][0] as HTMLLinkElement
+    expect(link.dataset.ecokuCss).toBe('')
     expect(link?.href).toBe('https://cdn.example/ecoku.unstyled.css')
     expect(link?.rel).toBe('stylesheet')
   })
@@ -136,13 +140,25 @@ describe('loader retry races', () => {
     vi.useFakeTimers(); vi.resetModules(); shell()
     delete (window as Window & { Ecoku?: unknown }).Ecoku
     const { setupEcokuLoader: setup } = await import('./loader-core')
+    const append = document.body.appendChild.bind(document.body)
+    vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
+      // Keep the node attached but inert; this test controls load/error timing.
+      if (node instanceof HTMLScriptElement) node.type = 'application/json'
+      return append(node)
+    })
     setup(document, window)
     const oldScript = document.querySelector('script[data-ecoku-sdk]')!
+    expect(oldScript).not.toBeNull()
+    expect(oldScript.isConnected).toBe(true)
+    expect(document.querySelector('[data-ecoku-status]')?.textContent).toBe('')
     await vi.advanceTimersByTimeAsync(12000)
     expect(oldScript.isConnected).toBe(false)
+    expect(document.querySelector('[data-ecoku-status]')?.textContent).toBe('评论服务响应超时，请稍后重试。')
     ;(document.querySelector('[data-ecoku-retry]') as HTMLElement).click()
     const newScript = document.querySelector('script[data-ecoku-sdk]')!
+    expect(newScript).not.toBeNull()
     expect(newScript).not.toBe(oldScript)
+    expect(newScript.isConnected).toBe(true)
     const init = vi.fn().mockResolvedValue(undefined)
     ;(window as Window & { Ecoku?: unknown }).Ecoku = class { init = init; destroy() {} }
     oldScript.dispatchEvent(new Event('load'))
