@@ -1,0 +1,24 @@
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+
+    server_name <DOCS_DOMAIN>;
+
+    include /etc/nginx/snippets/<ORIGIN_TLS_SNIPPET>;
+
+    root /var/www/<DOCS_DOMAIN>/html;
+    index index.html;
+
+    access_log /var/log/nginx/<DOCS_DOMAIN>.access.log;
+    error_log  /var/log/nginx/<DOCS_DOMAIN>.error.log;
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}

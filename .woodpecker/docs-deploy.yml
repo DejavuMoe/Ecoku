@@ -20,10 +20,8 @@ steps:
 
   - name: publish-docs
     image: alpine:3.24.1
-    environment:
-      DOCS_DEPLOY_SITE: ecoku.zsh.moe
     volumes:
-      - /var/www:/deploy
+      - /var/www/ecoku.zsh.moe:/deploy
     commands:
       - apk add --no-cache coreutils util-linux
       - reruns="$CI_PIPELINE_RERUNS"; test -n "$reruns" || reruns=0; release_id="$CI_COMMIT_SHA-$CI_PIPELINE_NUMBER-$reruns"; sh scripts/publish-docs.sh docs/.vitepress/dist "$release_id"

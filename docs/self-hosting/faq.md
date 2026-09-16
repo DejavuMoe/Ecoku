@@ -66,3 +66,27 @@ sudo docker compose up -d
 - Ecoku 评论时间由 `ecoku.env` 中的环境变量 `TZ` 控制（如 `TZ=Asia/Shanghai` 或 `TZ=Asia/Tokyo`）。
 - 该变量由 Docker Compose 注入给容器运行时，默认回退为 `Asia/Shanghai`。
 - 修改 `ecoku.env` 中的 `TZ` 并执行 `sudo docker compose restart` 即可即时生效。
+
+---
+
+## 5. 文档站点 CI 部署
+
+### Q: 文档站点的发布目录如何配置？
+
+仓库的 `.woodpecker/docs-deploy.yml` 在 `master` push 时独立构建并发布文档，固定使用文档服务器 agent。发布容器仅挂载单个站点目录 `/var/www/<DOCS_DOMAIN>:/deploy`；该目录必须是实体目录，Web 服务根目录设置为 `/var/www/<DOCS_DOMAIN>/html`。
+
+Nginx 可参考仓库的 `deploy/nginx-docs.conf.example`，替换域名与 TLS snippet 占位符；从旧配置迁移仅需在现有 `root` 路径后追加 `/html`，执行 `sudo nginx -t && sudo systemctl reload nginx` 后生效。
+
+```text
+/var/www/<DOCS_DOMAIN>/
+├── .deploy.lock
+├── html -> releases/<commit>-<pipeline>-<rerun>
+└── releases/
+    └── <commit>-<pipeline>-<rerun>/
+```
+
+发布脚本先校验完整产物，再加锁原子替换 `html`，拒绝旧流水线覆盖新版本；切换验证成功后立即尝试删除上一版。该验证检查本地文件与软链接，不包含线上 HTTP 健康检查，也不保留上一版供后续回滚。
+
+从旧布局迁移时，先确保没有文档发布任务正在运行或等待执行，再移除旧 `/var/www/<DOCS_DOMAIN>` 软链接、创建同名实体目录并修改 Web 服务根目录。若选择删除旧 `/var/www/.<DOCS_DOMAIN>-releases`，先确认无需保留其中的静态产物。清空后文档站点会暂时不可用，直到新 CI 发布成功且 Web 配置生效；评论服务和数据库不受影响。完成准备后再推送新版 CI，勿重跑旧版发布任务。
+
+本地隔离验证使用 `sh scripts/test-publish-docs.sh`。`DOCS_DEPLOY_ROOT` 可覆盖脚本默认的 `/deploy`，替代旧的 `DOCS_DEPLOY_PARENT` / `DOCS_DEPLOY_SITE`，它不是 Ecoku 应用环境变量。

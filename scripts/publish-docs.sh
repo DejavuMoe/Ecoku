@@ -4,8 +4,7 @@ set -eu
 
 source_dir="${1:-}"
 release_id="${2:-}"
-deploy_parent="${DOCS_DEPLOY_PARENT:-/deploy}"
-site_name="${DOCS_DEPLOY_SITE:-docs.via.moe}"
+deploy_root="${DOCS_DEPLOY_ROOT:-/deploy}"
 
 if [ -z "$source_dir" ] || [ -z "$release_id" ]; then
   echo "usage: $0 SITE_DIR RELEASE_ID" >&2
@@ -15,30 +14,26 @@ if ! printf '%s' "$release_id" | grep -Eq '^[0-9a-f]{40}-[0-9]+-[0-9]+$'; then
   echo "invalid release id: $release_id" >&2
   exit 64
 fi
-if ! printf '%s' "$site_name" | grep -Eq '^[a-z0-9]+([.-][a-z0-9]+)*$'; then
-  echo "invalid DOCS_DEPLOY_SITE: $site_name" >&2
-  exit 64
-fi
-case "$deploy_parent" in
+case "$deploy_root" in
   /*) ;;
-  *) echo "DOCS_DEPLOY_PARENT must be absolute: $deploy_parent" >&2; exit 64 ;;
+  *) echo "DOCS_DEPLOY_ROOT must be absolute: $deploy_root" >&2; exit 64 ;;
 esac
-if [ "$deploy_parent" = "/" ]; then
-  echo "refusing to use the filesystem root as DOCS_DEPLOY_PARENT" >&2
+if [ "$deploy_root" = "/" ]; then
+  echo "refusing to use the filesystem root as DOCS_DEPLOY_ROOT" >&2
   exit 64
 fi
-if [ ! -d "$deploy_parent" ] || [ -L "$deploy_parent" ]; then
-  echo "deployment parent is not a directory: $deploy_parent" >&2
+if [ ! -d "$deploy_root" ] || [ -L "$deploy_root" ]; then
+  echo "deployment root is not a directory: $deploy_root" >&2
   exit 66
 fi
 
-release_root="$deploy_parent/.$site_name-releases"
-live_path="$deploy_parent/$site_name"
+release_root="$deploy_root/releases"
+live_path="$deploy_root/html"
 build_dir="$release_root/.build-$release_id"
-candidate_dir="$release_root/.site-$release_id"
-next_link="$deploy_parent/.$site_name-next-$release_id"
-rollback_link="$deploy_parent/.$site_name-rollback-$release_id"
-lock_file="$release_root/.deploy.lock"
+candidate_dir="$release_root/$release_id"
+next_link="$deploy_root/.next-$release_id"
+rollback_link="$deploy_root/.rollback-$release_id"
+lock_file="$deploy_root/.deploy.lock"
 
 cleanup_temporary_paths() {
   [ ! -L "$next_link" ] || rm -f -- "$next_link"
@@ -88,12 +83,12 @@ if [ -L "$live_path" ]; then
   old_link_value="$(readlink "$live_path")"
   old_link_target="$(readlink -f "$live_path")"
   case "$old_link_target" in
-    "$release_root_real"/.site-*) ;;
+    "$release_root_real"/*) ;;
     *) echo "current documentation target is outside the release root: $old_link_target" >&2; exit 67 ;;
   esac
 
   current_name="$(basename "$old_link_target")"
-  current_id="${current_name#.site-}"
+  current_id="$current_name"
   if ! printf '%s' "$current_id" | grep -Eq '^[0-9a-f]{40}-[0-9]+-[0-9]+$'; then
     echo "current documentation target has an invalid release id: $current_name" >&2
     exit 67
@@ -120,7 +115,7 @@ if [ ! -d "$candidate_dir" ] || [ -L "$candidate_dir" ] || [ ! -s "$candidate_di
 fi
 
 candidate_name="$(basename "$candidate_dir")"
-candidate_link_value=".$site_name-releases/$candidate_name"
+candidate_link_value="releases/$candidate_name"
 ln -s "$candidate_link_value" "$next_link"
 if [ ! -s "$next_link/index.html" ]; then
   echo "new documentation symlink does not resolve to the candidate" >&2
@@ -151,7 +146,7 @@ fi
 
 if [ -n "$old_link_target" ] && [ "$old_link_target" != "$candidate_real" ]; then
   case "$old_link_target" in
-    "$release_root_real"/.site-*)
+    "$release_root_real"/*)
       if ! rm -rf -- "$old_link_target"; then
         echo "warning: the new documentation release is active, but the old release could not be removed: $old_link_target" >&2
       fi
@@ -164,4 +159,4 @@ fi
 
 trap - EXIT HUP INT TERM
 cleanup_temporary_paths
-echo "documentation activated atomically: $site_name -> $candidate_link_value"
+echo "documentation activated atomically: html -> $candidate_link_value"

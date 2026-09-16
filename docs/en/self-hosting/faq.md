@@ -65,3 +65,27 @@ Once the service restarts, log into the admin console with your username and pas
 **A**:
 - Ecoku formats timestamps according to the `TZ` environment variable in `ecoku.env` (e.g. `TZ=Asia/Shanghai`, `TZ=America/New_York`, or `TZ=UTC`).
 - Update `TZ` in `ecoku.env` and execute `sudo docker compose restart` to apply immediately.
+
+---
+
+## 5. Documentation site CI deployment
+
+### Q: How should the documentation release directory be configured?
+
+The repository's `.woodpecker/docs-deploy.yml` independently builds and publishes documentation on `master` pushes using the documentation server agent. The publisher mounts only `/var/www/<DOCS_DOMAIN>:/deploy`. This must be a real directory; set the web server document root to `/var/www/<DOCS_DOMAIN>/html`.
+
+For Nginx, use `deploy/nginx-docs.conf.example` from the repository and replace the domain and TLS snippet placeholders. When migrating an existing configuration, append `/html` to its `root` path, then run `sudo nginx -t && sudo systemctl reload nginx`.
+
+```text
+/var/www/<DOCS_DOMAIN>/
+├── .deploy.lock
+├── html -> releases/<commit>-<pipeline>-<rerun>
+└── releases/
+    └── <commit>-<pipeline>-<rerun>/
+```
+
+The script validates the output, then locks and atomically replaces `html`, preventing older pipelines from overwriting newer releases. After activation verification, it immediately attempts to delete the previous release. Verification checks local files and symlinks, not live HTTP health; the previous release is not retained for later rollback.
+
+To migrate, first ensure no documentation publication is running or queued. Remove the old `/var/www/<DOCS_DOMAIN>` symlink, create a real directory with the same name, and update the web server document root. Before deleting `/var/www/.<DOCS_DOMAIN>-releases`, confirm its static files are no longer needed. Clearing the old deployment makes documentation unavailable until the new CI deployment succeeds and the web configuration takes effect; the comment service and database are unaffected. Push the new CI only after preparation, and do not rerun old publication jobs.
+
+Run `sh scripts/test-publish-docs.sh` for isolated local verification. `DOCS_DEPLOY_ROOT` overrides the script's default `/deploy` and replaces `DOCS_DEPLOY_PARENT` / `DOCS_DEPLOY_SITE`; it is not an Ecoku application environment variable.
