@@ -25,17 +25,24 @@ publish 1-0
 [ -s "$DOCS_DEPLOY_ROOT/html/en/index.html" ]
 [ -f "$DOCS_DEPLOY_ROOT/.deploy.lock" ]
 publish 2-0
-[ ! -e "$DOCS_DEPLOY_ROOT/releases/$sha-1-0" ]
+[ -s "$DOCS_DEPLOY_ROOT/releases/$sha-1-0/index.html" ]
 publish 1-1
 [ "$(readlink "$DOCS_DEPLOY_ROOT/html")" = "releases/$sha-2-0" ]
 [ ! -e "$DOCS_DEPLOY_ROOT/releases/$sha-1-1" ]
+mkdir "$DOCS_DEPLOY_ROOT/releases/notes"
+ln -s "$test_root" "$DOCS_DEPLOY_ROOT/releases/1111111111111111111111111111111111111111-0-0"
 publish 2-1
+[ -d "$DOCS_DEPLOY_ROOT/releases/notes" ]
+[ -L "$DOCS_DEPLOY_ROOT/releases/1111111111111111111111111111111111111111-0-0" ]
 [ "$(readlink "$DOCS_DEPLOY_ROOT/html")" = "releases/$sha-2-1" ]
-[ ! -e "$DOCS_DEPLOY_ROOT/releases/$sha-2-0" ]
+[ -s "$DOCS_DEPLOY_ROOT/releases/$sha-2-0/index.html" ]
+[ ! -e "$DOCS_DEPLOY_ROOT/releases/$sha-1-0" ]
+[ "$(find "$DOCS_DEPLOY_ROOT/releases" -mindepth 1 -maxdepth 1 -type d -name "$sha-*" | wc -l)" -eq 2 ]
 : > "$source_dir/index.html"
 if publish 3-0; then exit 1; fi
 [ "$(readlink "$DOCS_DEPLOY_ROOT/html")" = "releases/$sha-2-1" ]
 [ -s "$DOCS_DEPLOY_ROOT/html/index.html" ]
+[ -s "$DOCS_DEPLOY_ROOT/releases/$sha-2-0/index.html" ]
 printf 'fixture\n' > "$source_dir/index.html"
 
 # Neither an existing html directory nor the old symlink layout is replaced.

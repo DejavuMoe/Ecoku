@@ -35,7 +35,9 @@ next_link="$deploy_root/.next-$release_id"
 rollback_link="$deploy_root/.rollback-$release_id"
 lock_file="$deploy_root/.deploy.lock"
 
+owns_paths=false
 cleanup_temporary_paths() {
+  [ "$owns_paths" = true ] || return 0
   [ ! -L "$next_link" ] || rm -f -- "$next_link"
   [ ! -L "$rollback_link" ] || rm -f -- "$rollback_link"
   [ ! -d "$build_dir" ] || rm -rf -- "$build_dir"
@@ -49,6 +51,12 @@ if [ ! -d "$release_root" ] || [ -L "$release_root" ]; then
   echo "documentation release root is not a directory: $release_root" >&2
   exit 66
 fi
+exec 9>"$lock_file"
+if ! flock -x -w 900 9; then
+  echo "timed out waiting for the deployment lock: $lock_file" >&2
+  exit 75
+fi
+
 release_root_real="$(readlink -f "$release_root")"
 for reserved_path in "$build_dir" "$candidate_dir" "$next_link" "$rollback_link"; do
   if [ -e "$reserved_path" ] || [ -L "$reserved_path" ]; then
@@ -57,18 +65,13 @@ for reserved_path in "$build_dir" "$candidate_dir" "$next_link" "$rollback_link"
   fi
 done
 
+owns_paths=true
 mkdir "$build_dir"
 cp -a "$source_dir"/. "$build_dir"/
 find "$build_dir" -type d -exec chmod 0755 {} +
 find "$build_dir" -type f -exec chmod 0644 {} +
 sh scripts/verify-docs-output.sh "$build_dir"
 mv -T -- "$build_dir" "$candidate_dir"
-
-exec 9>"$lock_file"
-if ! flock -x -w 900 9; then
-  echo "timed out waiting for the deployment lock: $lock_file" >&2
-  exit 75
-fi
 
 incoming_pipeline="$(printf '%s' "$release_id" | sed -E 's/^[0-9a-f]{40}-([0-9]+)-[0-9]+$/\1/')"
 incoming_rerun="$(printf '%s' "$release_id" | sed -E 's/^[0-9a-f]{40}-[0-9]+-([0-9]+)$/\1/')"
@@ -144,18 +147,16 @@ if [ ! -L "$live_path" ] || [ "$live_real" != "$candidate_real" ] || [ ! -s "$li
   exit 74
 fi
 
-if [ -n "$old_link_target" ] && [ "$old_link_target" != "$candidate_real" ]; then
-  case "$old_link_target" in
-    "$release_root_real"/*)
-      if ! rm -rf -- "$old_link_target"; then
-        echo "warning: the new documentation release is active, but the old release could not be removed: $old_link_target" >&2
-      fi
-      ;;
-    *)
-      echo "warning: leaving an unrecognized former documentation target untouched: $old_link_target" >&2
-      ;;
-  esac
-fi
+# After successful activation, keep the current and immediately previous release.
+for obsolete in "$release_root"/*; do
+  [ -d "$obsolete" ] && [ ! -L "$obsolete" ] || continue
+  printf '%s\n' "$(basename "$obsolete")" | grep -Eq '^[0-9a-f]{40}-[0-9]+-[0-9]+$' || continue
+  obsolete_real="$(readlink -f "$obsolete")"
+  [ "$obsolete_real" != "$candidate_real" ] && [ "$obsolete_real" != "$old_link_target" ] || continue
+  if ! rm -r -- "$obsolete"; then
+    echo "warning: release is active, but could not remove old release: $obsolete" >&2
+  fi
+done
 
 trap - EXIT HUP INT TERM
 cleanup_temporary_paths
