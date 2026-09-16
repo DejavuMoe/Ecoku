@@ -2,17 +2,17 @@
 
 Ecoku employs a versioned, in-place, and strictly transactional SQLite schema migration system.
 
-Prepare for **[v0.2.3](./upgrades/v0.2.3)**: audit fixes for identity, notifications, imports and clients, with schema v7 unchanged. This release is pending; upgrade after master CI acceptance and successful tag image publication.
+Prepare for **[v0.2.4](./upgrades/v0.2.4)**: security fixes, revocable administrator sessions and reply depth limits; schema v7 → v8. Await master CI acceptance and tag image publication before upgrading.
 
-During upgrades, update only the **exact image tag** in your Compose file. Upon boot, the service automatically detects your current schema version and executes pending migrations sequentially within database transactions.
+Review the version-specific configuration changes before upgrading. Set the exact Compose image tag; startup applies database migrations in order.
 
 ---
 
 ## Core Upgrade Contracts
 
 1. **Unidirectional Transactional Migrations**: Schema migrations run forward sequentially on your SQLite file, appending version records to `schema_migrations` upon success. Ecoku **does not support automated down-migrations**.
-2. **Strictly Prohibited Floating Tags**: Never use `latest` in production. Always specify an exact semantic tag like `v0.2.3`.
-3. **Irreversibility & Rollback Principle**: Once the database upgrades to a higher schema version (e.g. v7), **you cannot simply revert the image tag**, as older binaries refuse to boot against newer schemas. Rollbacks strictly require restoring the pre-upgrade cold backup.
+2. **Strictly Prohibited Floating Tags**: Never use `latest` in production. Always specify an exact semantic tag like `v0.2.4`.
+3. **Irreversibility & Rollback Principle**: Once the database upgrades to a higher schema version (e.g. v8), **you cannot simply revert the image tag**, as older binaries refuse to boot against newer schemas. Rollbacks strictly require restoring the pre-upgrade cold backup.
 
 ---
 
@@ -33,7 +33,7 @@ for required in data/ecoku.sqlite3 app/config.yaml ecoku.env compose.yaml; do
   printf '%s\n' "$contents" | grep -Fx "$required" > /dev/null
 done
 printf 'Verified backup: %s\n' "$archive"
-vi compose.yaml
+vi app/config.yaml compose.yaml
 sudo docker compose pull && sudo docker compose up -d
 curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 )
@@ -45,6 +45,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | Image Version | Schema Version | Core Database Changes & Highlights |
 | :--- | :---: | :--- |
+| **`v0.2.4`** | `v8` | `admin_sessions` |
 | **`v0.1.9`** | `v7` (unchanged) | No migration; CWE-400 resource budget protection, single-layer cursor pagination, and dedicated read rate limiting. |
 | **`v0.1.8`** | `v7` | Added `smoji_enabled` (boolean) and `smoji_manifest_url` (TEXT) to `sites` for site-level sticker packs. |
 | **`v0.1.7`** | `v6` (unchanged) | No schema change; toolchain upgrades, multilingual documentation architecture, and CI image optimizations. |
@@ -63,6 +64,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | Version | Release Date | Schema | Upgrade Highlights & Notes |
 | :--- | :--- | :---: | :--- |
+| [**v0.2.4**](./upgrades/v0.2.4) | Pending | v7 → v8 | HttpOnly cookie + SQLite revocable session |
 | [**v0.2.3**](./upgrades/v0.2.3) | Pending | v7 (unchanged) | Audit fixes for identity, notifications, imports and clients. |
 | [**v0.2.2**](./upgrades/v0.2.2) | 2026-09-13 | v7 (unchanged) | Fixed Smoji picker layout on narrow screens. |
 | [**v0.2.1**](./upgrades/v0.2.1) | 2026-09-12 | v7 (unchanged) | Larger Smoji manifests and compact `base` template support. |
@@ -79,8 +81,6 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 | [**v0.1.0**](./upgrades/v0.1.0) | 2026-08-15 | v4 | First official production release. |
 | [**Earlier**](./upgrades/earlier) | 2026-08-14 | v1–v4 | Early single-container design, SQLite WAL mode, and timezone standards. |
 
-## v0.2.3 compatibility (pending release)
+## v0.2.4 compatibility (pending release)
 
-These audit fixes keep schema v7, mount paths, environment variables and bcrypt hashes unchanged; v0.2.2 can upgrade in place. No comments, configuration, WAL or backups are deleted. Saving site settings no longer backfills blogger flags; existing flags remain. Historical false flags cannot be distinguished automatically from verified comments and require separately reviewed, authorized correction. Notifications use at-least-once delivery: a completion-write failure retries the stored result without resending in the same process; a crash after sending but before persistence may cause a duplicate after restart.
-
-Both versions use schema v7. Normally, stop the service, restore image `git.via.moe/dejavu/ecoku:v0.2.2`, pull and start while retaining the current database and newer comments. This also restores the old audit defects. Restore the complete cold archive only when pre-upgrade data is needed: preserve the current state first and explicitly accept losing later writes. Never overwrite the database automatically.
+Schema v8 adds `admin_sessions` and an expiry index without rewriting comments, settings or existing migration history. Previous logins expire and require a new login. Omit `admin.token_ttl_minutes` or set it to 480; other existing values prevent startup. Mounts, environment variables and password hashes remain unchanged. To roll back to v0.2.3 or earlier, stop the service, preserve the current state, then restore the complete pre-upgrade cold backup and original image. An old image alone cannot open a v8 database. Restoring a backup loses later writes and requires an explicit operator decision.

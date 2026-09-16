@@ -12,7 +12,7 @@ Ecoku 是一个专为静态博客与内容驱动型站点设计的**自托管、
 - **纯文本交流**：正文永不解析 HTML 或 Markdown，杜绝 XSS 注入风险，回归评论讨论的本质。
 - **提交即公开**：无前置人工审核队列，依靠 IP 频控限流、博主口令与现代化人机验证（Turnstile / Cap）维护讨论秩序。
 - **强隐私边界**：公共 API 绝不输出邮箱、IP、User-Agent、地区或数据库内部 ID；访客身份仅在本地 IndexedDB 加密保存 7 天。
-- **事务性升级**：Schema 原位版本化演进（v1～v7），单向迁移，杜绝破坏性重构。
+- **事务性升级**：Schema 原位版本化演进（v1～v8），单向迁移，杜绝破坏性重构。
 
 ---
 
@@ -23,7 +23,7 @@ flowchart TD
     subgraph Client["🌐 客户端层 (Browser / Web)"]
         direction LR
         Visitor["📱 博客访客接入<br/>• 2KB 极简加载器 (ecoku-loader.js)<br/>• 原生 SDK (ESM / UMD / CJS)<br/>• 身份凭据本地加密 7 天 (IndexedDB)<br/>• Smoji 轻量纯文本表情包按需加载"]
-        Admin["💻 管理端后台 (/admin/)<br/>• Vue 3 + Pinia + 系统衬线栈<br/>• 纯内存短效 Bearer Token (无存储)<br/>• 多站点配置 / 安全人机验证管理<br/>• 评论软删除墓碑与物理彻底清除"]
+        Admin["💻 管理端后台 (/admin/)<br/>• Vue 3 + Pinia + 系统衬线栈<br/>• HttpOnly Cookie + SQLite 可撤销会话<br/>• 多站点配置 / 安全人机验证管理<br/>• 评论软删除墓碑与物理彻底清除"]
     end
 
     subgraph Edge["🛡️ 边界反代层 (Reverse Proxy)"]
@@ -37,7 +37,7 @@ flowchart TD
             Engine["⚡ Gin HTTP 核心服务<br/>• 进程内 IP 频控限流 (Rate Limiter)<br/>• 动态收敛 CSP 安全策略 (Turnstile / Cap)<br/>• 人机验证 Siteverify 远端校验<br/>• 管理员 Bcrypt 会话鉴权与版本控制"]
             Outbox["📬 Outbox 异步通知工作协程<br/>• 单实例轮询机制与指数退避重试<br/>• SMTP 邮件通知 (TLS / STARTTLS)<br/>• Telegram Bot 机器人消息推送<br/>• 博主口令免密身份识别与通知去重"]
         end
-        Storage["💾 SQLite3 存储引擎 (WAL 模式)<br/>• /data/ecoku.sqlite3 (严格外键约束 · 原位版本迁移 v1~v7)<br/>• AES-256-GCM 敏感字段落盘加密 (SMTP 密码 / Bot Token / 验证码 Secret)"]
+        Storage["💾 SQLite3 存储引擎 (WAL 模式)<br/>• /data/ecoku.sqlite3 (严格外键约束 · 原位版本迁移 v1~v8)<br/>• AES-256-GCM 敏感字段落盘加密 (SMTP 密码 / Bot Token / 验证码 Secret)"]
         Core --> Storage
     end
 

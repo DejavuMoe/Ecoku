@@ -13,10 +13,14 @@ func RequestLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		startedAt := time.Now()
 		c.Next()
+		path := c.FullPath()
+		if path == "" {
+			path = "<unmatched>"
+		}
 		log.Printf(
 			"HTTP method=%s path=%s status=%d duration_ms=%d",
 			c.Request.Method,
-			c.Request.URL.Path,
+			path,
 			c.Writer.Status(),
 			time.Since(startedAt).Milliseconds(),
 		)

@@ -35,3 +35,5 @@ pnpm docs:dev
 サーバーの既定値は `http://127.0.0.1:12123`、コメント画面は `http://localhost:3000` です。Go から静的ファイルを配信する場合は、対象パッケージを先にビルドしてください。
 
 完全な検証は Woodpecker が実行します。ローカルでは、現在の変更に直接関係し、CI がカバーしない検証だけを実行します。
+
+開発用管理画面のオリジンを独立した `admin.allowed_origins` に追加し、Vite の同一オリジン `/api` プロキシを使います。明示的な HTTP localhost/ループバックのみ非 Secure Cookie を使い、本番は HTTPS が必要です。

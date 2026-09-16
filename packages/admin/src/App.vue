@@ -13,7 +13,7 @@ import { messages } from './messages'
 
 const store = useAdminStore()
 const {
-  authenticated, loginBusy, loginMessage, view,
+  authenticated, sessionReady, logoutBusy, logoutMessage, loginBusy, loginMessage, view,
   sites, selectedSiteId, selectedSite, siteBusy, toastMessage,
 } = storeToRefs(store)
 
@@ -64,9 +64,10 @@ function handleDocumentPointerDown(event: PointerEvent) {
   if (siteMenuOpen.value && !sitePicker.value?.contains(event.target as Node)) siteMenuOpen.value = false
 }
 
-onMounted(() => {
+onMounted(async () => {
   document.addEventListener('pointerdown', handleDocumentPointerDown)
-  if (!authenticated.value) void mountLoginChallenge()
+  await store.restoreSession()
+  if (!authenticated.value) await mountLoginChallenge()
 })
 onBeforeUnmount(() => {
   if (toastTimer !== undefined) clearTimeout(toastTimer)
@@ -162,7 +163,7 @@ function handleSiteMenuKeydown(event: KeyboardEvent) {
 <template>
   <a class="skip-link" href="#main-content">跳到主要内容</a>
 
-  <main v-if="!authenticated" id="main-content" class="auth-screen">
+  <main v-if="sessionReady && !authenticated" id="main-content" class="auth-screen">
     <section class="auth-shell" aria-labelledby="login-title">
       <form class="login-form" novalidate @submit.prevent="submitLogin">
         <div class="login-brand" aria-hidden="true">
@@ -179,7 +180,7 @@ function handleSiteMenuKeydown(event: KeyboardEvent) {
     </section>
   </main>
 
-  <div v-else class="app-shell">
+  <div v-else-if="sessionReady" class="app-shell">
     <header class="app-header">
       <div class="header-inner">
         <div class="header-start">
@@ -217,7 +218,8 @@ function handleSiteMenuKeydown(event: KeyboardEvent) {
               ><span>{{ site.name || site.siteUrl }}</span><small>{{ site.id }}</small></button>
             </div>
           </div>
-          <button class="logout-button" type="button" @click="logout">退出登录</button>
+          <button class="logout-button" type="button" :disabled="logoutBusy" @click="logout">退出登录</button>
+          <p v-if="logoutMessage" class="form-error" role="alert">{{ logoutMessage }}</p>
         </div>
       </div>
     </header>

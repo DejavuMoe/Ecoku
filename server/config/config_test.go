@@ -293,6 +293,14 @@ func TestEnabledAdminUsesIndependentEnvironmentCredentials(t *testing.T) {
 	if got := GetAdminAllowedOrigins(); len(got) != 1 || got[0] != "https://admin.example" {
 		t.Fatalf("administrator origins = %#v", got)
 	}
+	loaded.Admin.TokenTTLMinutes = 60
+	if err := ApplyConfig(loaded); err == nil || !strings.Contains(err.Error(), "480") {
+		t.Fatal("custom TTL must explain the fixed lifetime")
+	}
+	loaded.Admin.TokenTTLMinutes = 480
+	if err := ApplyConfig(loaded); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestAdminOriginAndSigningKeyMustBeIndependent(t *testing.T) {

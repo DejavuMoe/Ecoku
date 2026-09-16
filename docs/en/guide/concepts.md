@@ -6,7 +6,7 @@ This document covers Ecoku's internal models, data structures, and architectural
 
 ## Threaded Comment and Pagination Model
 
-Ecoku balances deep tree-structured discussions with mobile readability using an **Infinite Semantics + Max 3-Level Indentation** model.
+Ecoku balances deep tree-structured discussions with mobile readability using an **Up to 16 Reply Levels + Max 3-Level Indentation** model.
 
 ### 1. Visual and Semantic Layers
 
@@ -51,7 +51,7 @@ stateDiagram-v2
     Tombstone --> Purged: Hard purge (only if no child replies exist)
     note right of Purged
       Physically deleted from SQLite
-      Requires Instance Admin Bearer Token
+      Requires Instance Admin Session
     end note
     Purged --> [*]
 ```
@@ -134,10 +134,9 @@ flowchart TD
 
 ## Session & Dynamic CSP Security Model
 
-1. **In-Memory Admin Session**:
-   - The admin Bearer Token is held strictly in browser JavaScript runtime memory and is never written to persistent browser storage.
-   - Refreshing or closing the tab instantly clears the session.
-   - The token contains a credential hash version identifier (`cv`). Changing the administrator password hash immediately invalidates all previously issued active tokens across all sessions.
+1. **Revocable administrator sessions**:
+   - Administrator sessions use an HttpOnly cookie; SQLite stores only the credential digest and expiry. Sessions expire exactly eight hours after login. Reloading or reopening restores a valid session without extending its deadline. Logout revokes the current session on the server; a failed logout keeps the current screen and offers retry. Credentials do not enter JavaScript, localStorage, sessionStorage or URLs.
+   - Production uses HTTPS and a Secure, HttpOnly, SameSite=Strict, host-only cookie scoped to `/api/admin`. Only explicitly allowed loopback HTTP development origins may omit Secure. Rotating the administrator password hash or signing key and restarting invalidates existing sessions.
 2. **Dynamic Content-Security-Policy (CSP) Convergence**:
    - When self-hosted Cap is active, the server dynamically permits Cap's HTTPS instance origin, WASM, Blob Worker, and nonce-scoped `'unsafe-eval'` required by Cap's sandboxed instrumentation.
    - When switching to Turnstile or disabling CAPTCHA, the server immediately strips Cap's origins and evaluation directives, reverting to a strictly locked-down CSP baseline.

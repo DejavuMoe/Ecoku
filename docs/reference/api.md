@@ -192,13 +192,18 @@ GET /api/comment/list?siteId=blog&key=/posts/example/&parentId=101&afterId=120&p
 
 ---
 
+新回复最多 16 层后代（根为 0）。第 17 层返回 422，提示回复较上层评论；历史深链和导入数据不自动修改。此限制不取消 200 节点、1 MiB JSON 或 10,000 节点统计等读取预算。
+
 ## 2. 管理端端点（Admin Endpoints）
 
-所有管理端端点（除获取登录配置与登录接口外）必须在请求头中携带 Bearer Token：
-```http
-Authorization: Bearer {ADMIN_TOKEN}
-```
-管理端所有写操作（POST / PUT / DELETE）请求体上限为 **16 KiB**。
+管理后台使用登录响应中的 HttpOnly Cookie，同源请求自动携带。登录 JSON 不返回 token。登录以及 Cookie 认证的写操作必须携带匹配 `admin.allowed_origins` 的 `Origin`；会话恢复 GET 可省略 Origin。可信自动化可以使用 Cookie jar；若显式使用 `Authorization: Bearer`，也必须是新版已登记且未撤销的会话凭据，旧版无状态 token 不再接受。`EcokuSite` 的原有站点墓碑删除权限不变。
+
+管理端写操作请求体上限为 **16 KiB**。
+
+### 会话恢复与退出
+
+- `GET /api/admin/session`：返回原有 `expires_at` 与剩余 `expires_in`，不续期、不返回凭据；无效或过期返回 401，存储不可用返回 503。
+- `POST /api/admin/logout`：撤销当前会话并清除 Cookie。成功 200；写入失败 503，不能当作已退出。两者均仅限实例管理员。
 
 ### 管理员登录 `POST /api/admin/login`
 - **请求体**：
@@ -215,8 +220,6 @@ Authorization: Bearer {ADMIN_TOKEN}
     "code": 200,
     "message": "Success",
     "data": {
-      "token": "eyJ2IjoxLCJzdWIiOiJhZG1pbiIs...",
-      "token_type": "Bearer",
       "expires_at": "2026-08-20T20:00:00Z",
       "expires_in": 28800
     }

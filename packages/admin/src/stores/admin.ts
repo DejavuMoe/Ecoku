@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { adminApi, ApiError } from '../api'
+import { adminApi, ApiError, cancelAdminRequests } from '../api'
 import { messages } from '../messages'
 import type { CaptchaSettings, CommentReview, CommentStatus, EmailNotificationSettings, MainView, NotificationSettings, SiteSummary, SiteWrite, TelegramNotificationSettings } from '../types'
 
@@ -36,7 +36,10 @@ function testFailureMessage(error: unknown, channel: 'email' | 'telegram'): stri
 const emptyCounts = (): Record<CommentStatus, number> => ({ published: 0, deleted: 0 })
 
 export const useAdminStore = defineStore('admin', () => {
-  const token = ref('')
+  const authenticated = ref(false)
+  const sessionReady = ref(false)
+  const logoutBusy = ref(false)
+  const logoutMessage = ref('')
   const expiresAt = ref('')
   const loginBusy = ref(false)
   const loginMessage = ref('')
@@ -70,7 +73,6 @@ export const useAdminStore = defineStore('admin', () => {
   const captchaSettings = ref<CaptchaSettings | null>(null)
   const captchaBusy = ref(false)
   const captchaMessage = ref('')
-  const authenticated = computed(() => token.value !== '')
   const selectedSite = computed(() => sites.value.find((site) => site.id === selectedSiteId.value) ?? null)
   let expiryTimer: ReturnType<typeof setTimeout> | undefined
   let queueController: AbortController | undefined
@@ -83,8 +85,10 @@ export const useAdminStore = defineStore('admin', () => {
     queueController?.abort(); detailController?.abort()
     ++queueGeneration; ++detailGeneration
     queueBusy.value = false; detailBusy.value = false
-    token.value = ''; expiresAt.value = ''; sites.value = []; selectedSiteId.value = ''
+    cancelAdminRequests()
+    authenticated.value = false; expiresAt.value = ''; sites.value = []; selectedSiteId.value = ''
     comments.value = []; selectedComment.value = null; counts.value = emptyCounts()
+    notificationSettings.value = null; captchaSettings.value = null
     view.value = 'comments'; loginMessage.value = reason
   }
   function armExpiry(value: string) {
@@ -107,12 +111,31 @@ export const useAdminStore = defineStore('admin', () => {
     loginBusy.value = true; loginMessage.value = ''
     try {
       const session = await adminApi.login(username, password, captchaToken)
-      token.value = session.token; expiresAt.value = session.expiresAt; armExpiry(session.expiresAt)
+      authenticated.value = true; expiresAt.value = session.expiresAt; armExpiry(session.expiresAt)
       await loadSites(true); return authenticated.value
     } catch (error) { clearSession(failureMessage(error, true)); return false }
     finally { loginBusy.value = false }
   }
-  function logout() { clearSession() }
+  async function restoreSession() {
+    if (authenticated.value) { sessionReady.value = true; return }
+    try {
+      const session = await adminApi.getSession()
+      authenticated.value = true; expiresAt.value = session.expiresAt; armExpiry(session.expiresAt)
+      sessionReady.value = true
+      if (authenticated.value) await loadSites(true)
+    } catch (error) {
+      clearSession(error instanceof ApiError && error.status === 401 ? '' : messages.loginUnavailable)
+    } finally { sessionReady.value = true }
+  }
+  async function logout() {
+    if (logoutBusy.value) return false
+    logoutBusy.value = true; logoutMessage.value = ''
+    try { await adminApi.logout(); clearSession(); return true }
+    catch (error) {
+      if (error instanceof ApiError && error.status === 401) { clearSession(); return true }
+      logoutMessage.value = messages.logoutFailed; return false
+    } finally { logoutBusy.value = false }
+  }
   async function switchView(next: MainView) {
     view.value = next
     if (next === 'comments') await loadComments()
@@ -121,20 +144,20 @@ export const useAdminStore = defineStore('admin', () => {
     else await loadNotifications()
   }
   async function loadSites(loadCommentsAfter = false) {
-    if (!token.value || siteBusy.value) return
+    if (!authenticated.value || siteBusy.value) return
     siteBusy.value = true; siteMessage.value = ''
     try {
-      sites.value = await adminApi.listSites(token.value)
+      sites.value = await adminApi.listSites()
       if (!sites.value.some((site) => site.id === selectedSiteId.value)) selectedSiteId.value = sites.value[0]?.id ?? ''
       if (loadCommentsAfter && selectedSiteId.value) await loadComments()
     } catch (error) { fail(error, 'site') }
     finally { siteBusy.value = false }
   }
   async function saveSite(input: SiteWrite, creating: boolean) {
-    if (!token.value || siteBusy.value) return null
+    if (!authenticated.value || siteBusy.value) return null
     siteBusy.value = true; siteMessage.value = ''
     try {
-      const saved = creating ? await adminApi.createSite(token.value, input) : await adminApi.updateSite(token.value, input)
+      const saved = creating ? await adminApi.createSite(input) : await adminApi.updateSite(input)
       const index = sites.value.findIndex((site) => site.id === saved.id)
       if (index >= 0) sites.value[index] = saved; else sites.value.push(saved)
       sites.value = [...sites.value].sort((a, b) => (a.name || a.siteUrl).localeCompare(b.name || b.siteUrl, 'zh-CN'))
@@ -144,12 +167,12 @@ export const useAdminStore = defineStore('admin', () => {
     finally { siteBusy.value = false }
   }
   async function loadComments(announce = false) {
-    if (!token.value || !selectedSiteId.value) return
+    if (!authenticated.value || !selectedSiteId.value) return
     detailController?.abort(); ++detailGeneration; detailBusy.value = false
     queueController?.abort(); queueController = new AbortController(); const generation = ++queueGeneration
     queueBusy.value = true; queueMessage.value = ''; actionMessage.value = ''
     try {
-      const result = await adminApi.listComments(token.value, selectedSiteId.value, status.value, page.value, pageSize.value, sort.value, queueController.signal)
+      const result = await adminApi.listComments(selectedSiteId.value, status.value, page.value, pageSize.value, sort.value, queueController.signal)
       if (generation !== queueGeneration) return
       comments.value = result.data; counts.value = result.counts; total.value = result.total
       page.value = result.page; pageSize.value = result.pageSize; pageCount.value = result.pageCount
@@ -162,7 +185,7 @@ export const useAdminStore = defineStore('admin', () => {
   async function loadDetail(id: number) {
     detailController?.abort(); detailController = new AbortController(); const generation = ++detailGeneration; detailBusy.value = true
     try {
-      const comment = await adminApi.getComment(token.value, selectedSiteId.value, id, detailController.signal)
+      const comment = await adminApi.getComment(selectedSiteId.value, id, detailController.signal)
       if (generation === detailGeneration && selectedComment.value?.id === id) selectedComment.value = comment
     } catch (error) { if (generation === detailGeneration && !(error instanceof DOMException && error.name === 'AbortError')) fail(error, 'action') }
     finally { if (generation === detailGeneration) detailBusy.value = false }
@@ -176,8 +199,8 @@ export const useAdminStore = defineStore('admin', () => {
     if (!selectedComment.value || actionBusy.value) return false
     actionBusy.value = true; actionMessage.value = ''
     try {
-      if (kind === 'tombstone') await adminApi.tombstone(token.value, selectedSiteId.value, selectedComment.value.id)
-      else await adminApi.permanentlyDelete(token.value, selectedSiteId.value, selectedComment.value.id)
+      if (kind === 'tombstone') await adminApi.tombstone(selectedSiteId.value, selectedComment.value.id)
+      else await adminApi.permanentlyDelete(selectedSiteId.value, selectedComment.value.id)
       toastMessage.value = kind === 'tombstone' ? messages.tombstoned : messages.permanentlyDeleted
       selectedComment.value = null; await loadComments(); return true
     } catch (error) { fail(error, 'action'); return false }
@@ -186,55 +209,55 @@ export const useAdminStore = defineStore('admin', () => {
   async function loadNotifications() {
     if (notificationBusy.value) return
     notificationBusy.value = true; notificationMessage.value = ''
-    try { notificationSettings.value = await adminApi.getNotifications(token.value) }
+    try { notificationSettings.value = await adminApi.getNotifications() }
     catch (error) { fail(error, 'notification') }
     finally { notificationBusy.value = false }
   }
   async function saveEmail(settings: EmailNotificationSettings) {
     notificationBusy.value = true
-    try { const saved = await adminApi.saveEmail(token.value, settings); if (notificationSettings.value) notificationSettings.value.email = saved; toastMessage.value = messages.emailSaved; return saved }
+    try { const saved = await adminApi.saveEmail(settings); if (notificationSettings.value) notificationSettings.value.email = saved; toastMessage.value = messages.emailSaved; return saved }
     catch (error) { fail(error, 'notification'); return null }
     finally { notificationBusy.value = false }
   }
   async function saveTelegram(settings: TelegramNotificationSettings) {
     notificationBusy.value = true
-    try { const saved = await adminApi.saveTelegram(token.value, settings); if (notificationSettings.value) notificationSettings.value.telegram = saved; toastMessage.value = messages.telegramSaved; return saved }
+    try { const saved = await adminApi.saveTelegram(settings); if (notificationSettings.value) notificationSettings.value.telegram = saved; toastMessage.value = messages.telegramSaved; return saved }
     catch (error) { fail(error, 'notification'); return null }
     finally { notificationBusy.value = false }
   }
   async function testEmail(settings: EmailNotificationSettings) {
     notificationBusy.value = true; emailTestState.value = 'idle'; emailTestMessage.value = ''
-    try { await adminApi.testEmail(token.value, settings); emailTestState.value = 'success'; emailTestMessage.value = '测试邮件已发送' }
+    try { await adminApi.testEmail(settings); emailTestState.value = 'success'; emailTestMessage.value = '测试邮件已发送' }
     catch (error) { emailTestState.value = 'failure'; emailTestMessage.value = testFailureMessage(error, 'email') }
     finally { notificationBusy.value = false }
   }
   async function testTelegram(settings: TelegramNotificationSettings) {
     notificationBusy.value = true; telegramTestState.value = 'idle'; telegramTestMessage.value = ''
-    try { await adminApi.testTelegram(token.value, settings); telegramTestState.value = 'success'; telegramTestMessage.value = '测试消息已发送' }
+    try { await adminApi.testTelegram(settings); telegramTestState.value = 'success'; telegramTestMessage.value = '测试消息已发送' }
     catch (error) { telegramTestState.value = 'failure'; telegramTestMessage.value = testFailureMessage(error, 'telegram') }
     finally { notificationBusy.value = false }
   }
   async function loadCaptcha() {
     if (captchaBusy.value) return
     captchaBusy.value = true; captchaMessage.value = ''
-    try { captchaSettings.value = await adminApi.getCaptcha(token.value) }
+    try { captchaSettings.value = await adminApi.getCaptcha() }
     catch (error) { fail(error, 'security') }
     finally { captchaBusy.value = false }
   }
   async function saveCaptcha(settings: CaptchaSettings) {
     captchaBusy.value = true; captchaMessage.value = ''
     try {
-      const saved = await adminApi.saveCaptcha(token.value, settings)
+      const saved = await adminApi.saveCaptcha(settings)
       captchaSettings.value = saved
       toastMessage.value = messages.captchaSaved
       return saved
     } catch (error) { fail(error, 'security'); return null }
     finally { captchaBusy.value = false }
   }
-  return { token, expiresAt, loginBusy, loginMessage, authenticated, view, sites, selectedSiteId, selectedSite, siteBusy, siteMessage,
+  return { sessionReady, logoutBusy, logoutMessage, expiresAt, loginBusy, loginMessage, authenticated, view, sites, selectedSiteId, selectedSite, siteBusy, siteMessage,
     status, sort, page, pageSize, pageCount, total, counts, comments, selectedComment, queueBusy, detailBusy, actionBusy, queueMessage, actionMessage, toastMessage,
     notificationSettings, notificationBusy, notificationMessage, emailTestState, emailTestMessage, telegramTestState, telegramTestMessage,
     captchaSettings, captchaBusy, captchaMessage,
-    login, logout, switchView, loadSites, saveSite, loadComments, loadDetail, selectSite, selectStatus, toggleSort, selectPage, selectComment, mutateCurrent,
+    login, logout, restoreSession, switchView, loadSites, saveSite, loadComments, loadDetail, selectSite, selectStatus, toggleSort, selectPage, selectComment, mutateCurrent,
     loadNotifications, saveEmail, saveTelegram, testEmail, testTelegram, loadCaptcha, saveCaptcha }
 })

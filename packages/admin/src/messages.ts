@@ -1,6 +1,7 @@
 import type { CommentStatus } from './types'
 
 export const messages = {
+  logoutFailed: '退出失败，请重试。',
   loginFailed: '用户名或密码错误。',
   loginUnavailable: '管理员登录暂时不可用，请稍后重试。',
   networkError: '无法连接到 Ecoku，请检查网络后重试。',

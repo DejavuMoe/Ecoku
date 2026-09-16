@@ -12,7 +12,7 @@ Ecoku provides a clean, predictable RESTful HTTP interface divided into public v
   - `200 OK`: Request succeeded.
   - `201 Created`: Resource successfully created.
   - `400 Bad Request`: Malformed parameters or invalid payload.
-  - `401 Unauthorized`: Missing or expired Bearer token.
+  - `401 Unauthorized`: Missing or expired administrator session.
   - `403 Forbidden`: Request origin not permitted by site CORS whitelist.
   - `404 Not Found`: Target site, parent comment, or resource not found.
   - `422 Unprocessable Entity`: Request exceeds resource budgets (200 nodes, 16 depth levels, 10,000 count probe, 1 MiB JSON).
@@ -200,13 +200,18 @@ Submit a new root comment or reply to an existing discussion. Request body limit
 
 ---
 
+New replies support at most 16 descendant levels (root = 0). Level 17 returns 422 and asks the visitor to reply higher in the thread. Existing deep threads and imported data remain unchanged. The 200-node, 1 MiB JSON and 10,000-node counting budgets still apply.
+
 ## 2. Admin Endpoints
 
-All admin endpoints (except `login-config` and `login`) require an authorization header:
-```http
-Authorization: Bearer {ADMIN_TOKEN}
-```
-All admin mutation requests (POST / PUT / DELETE) have a strict body size limit of **16 KiB**.
+The admin browser uses the HttpOnly cookie set by login and same-origin requests. Login JSON contains no token. Login and cookie-authenticated writes require an `Origin` matching `admin.allowed_origins`; session restoration GET may omit Origin. Trusted automation can use a cookie jar. Explicit `Authorization: Bearer` also requires a registered, unrevoked new session credential; legacy stateless tokens are rejected. Existing site-scoped `EcokuSite` tombstone permissions remain unchanged.
+
+Admin write request bodies are limited to **16 KiB**.
+
+### Session restoration and logout
+
+- `GET /api/admin/session`: returns the original `expires_at` and remaining `expires_in`, without renewal or credentials. Invalid/expired sessions return 401; unavailable storage returns 503.
+- `POST /api/admin/logout`: revokes the current session and clears its cookie. Success returns 200; a failed write returns 503 and must not be treated as logout. Both endpoints require the instance administrator.
 
 ### Admin Login `POST /api/admin/login`
 - **Request Body**:
@@ -223,8 +228,6 @@ All admin mutation requests (POST / PUT / DELETE) have a strict body size limit 
     "code": 200,
     "message": "Success",
     "data": {
-      "token": "eyJ2IjoxLCJzdWIiOiJhZG1pbiIs...",
-      "token_type": "Bearer",
       "expires_at": "2026-08-20T20:00:00Z",
       "expires_in": 28800
     }

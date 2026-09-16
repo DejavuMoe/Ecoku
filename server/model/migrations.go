@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	LatestSchemaVersion               = 7
+	LatestSchemaVersion               = 8
 	freshSchemaVersion                = 1
 	freshSchemaName                   = "fresh_published_comments"
 	freshSchemaDefinition             = "sqlite3:fresh-v1:published-comments:site-display-config:notifications:tombstones"
@@ -243,6 +243,7 @@ func validateKnownSchemaHistory(database *gorm.DB) (int, error) {
 		bloggerProofSchemaVersion:      {name: bloggerProofSchemaName, definition: bloggerProofSchemaDefinition},
 		captchaProviderSchemaVersion:   {name: captchaProviderSchemaName, definition: captchaProviderSchemaDefinition},
 		smojiSiteSchemaVersion:         {name: smojiSiteSchemaName, definition: smojiSiteSchemaDefinition},
+		adminSessionSchemaVersion:      {name: adminSessionSchemaName, definition: adminSessionSchemaDefinition},
 	}
 	for index, row := range rows {
 		version := index + 1
@@ -288,6 +289,10 @@ func migrateSchema(database *gorm.DB, currentVersion int) error {
 			}
 		case smojiSiteSchemaVersion:
 			if err := migrateSiteSmoji(database); err != nil {
+				return err
+			}
+		case adminSessionSchemaVersion:
+			if err := migrateAdminSessions(database); err != nil {
 				return err
 			}
 		default:
@@ -586,7 +591,7 @@ func validateCurrentSchema(database *gorm.DB) error {
 	if currentVersion != LatestSchemaVersion {
 		return fmt.Errorf("数据库 schema 版本 %d 未升级到 %d", currentVersion, LatestSchemaVersion)
 	}
-	for _, table := range []string{"sites", "site_origins", "comments", "notification_settings", "notification_outbox", "captcha_settings"} {
+	for _, table := range []string{"sites", "site_origins", "comments", "notification_settings", "notification_outbox", "captcha_settings", "admin_sessions"} {
 		exists, err := hasTable(database, table)
 		if err != nil || !exists {
 			return fmt.Errorf("数据库缺少当前 schema 表 %s", table)

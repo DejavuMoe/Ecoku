@@ -21,8 +21,6 @@ import (
 const (
 	minimumSecretLength             = 32
 	defaultAdminTokenTTLMinutes     = 8 * 60
-	minimumAdminTokenTTLMinutes     = 5
-	maximumAdminTokenTTLMinutes     = 24 * 60
 	maximumAdminUsernameLength      = 80
 	maximumCommentPlaceholderLength = 80
 	DefaultCommentPlaceholder       = "写下评论（仅支持纯文本）"
@@ -415,8 +413,8 @@ func validateAdminConfig(loaded *Config, managementKeys map[string]string) error
 	if admin.UsernameEnv == admin.PasswordHashEnv || admin.UsernameEnv == admin.TokenKeyEnv || admin.PasswordHashEnv == admin.TokenKeyEnv {
 		return fmt.Errorf("管理员用户名、密码哈希和 token 签名密钥必须使用不同的环境变量")
 	}
-	if admin.TokenTTLMinutes < minimumAdminTokenTTLMinutes || admin.TokenTTLMinutes > maximumAdminTokenTTLMinutes {
-		return fmt.Errorf("admin.token_ttl_minutes 必须在 %d 到 %d 之间", minimumAdminTokenTTLMinutes, maximumAdminTokenTTLMinutes)
+	if admin.TokenTTLMinutes != defaultAdminTokenTTLMinutes {
+		return fmt.Errorf("管理员会话固定为 8 小时；请删除 admin.token_ttl_minutes 或设为 480")
 	}
 	if len(admin.AllowedOrigins) == 0 {
 		return fmt.Errorf("启用管理员认证时至少需要一个 admin.allowed_origins")

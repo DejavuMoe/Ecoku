@@ -95,7 +95,7 @@ admin:
 | `username_env` | 字串 | 是 | `""` | 管理員使用者名稱對應的環境變數名。 |
 | `password_hash_env` | 字串 | 是 | `""` | 管理員 bcrypt 密碼雜湊對應的環境變數名。 |
 | `token_key_env` | 字串 | 是 | `""` | 管理員 Bearer Token 簽名金鑰對應的環境變數名。 |
-| `token_ttl_minutes` | 整數 | 否 | `480` | 管理端登入工作階段生命週期（分鐘，預設 8 小時）。 |
+| `token_ttl_minutes` | 整數 | 否 | `480` | 相容鍵，只能省略或設為 `480`；登入後固定 8 小時，不自動續期。 |
 | `allowed_origins` | 字串列表 | 是 | `[]` | 允許存取管理後台 API 的精確 Origin 列表（需包含協定與網域）。 |
 
 #### 7. `sites` 初始站點種子（可選）

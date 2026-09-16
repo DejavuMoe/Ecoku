@@ -413,6 +413,9 @@
       <option value="login-cap-failed">登录 · Cap 服务故障</option>
       <option value="login-turnstile">登录 · Turnstile</option>
       <option value="login-off">登录 · 未启用验证</option>
+      <option value="login-expired">登录 · 会话已过期</option>
+      <option value="security-restored">会话 · 刷新或重开后恢复</option>
+      <option value="security-logout-failed">会话 · 退出失败</option>
     </select>
     <label for="theme-select">配色预览</label>
     <select id="theme-select">
@@ -421,6 +424,7 @@
       <option value="dark">深色</option>
     </select>
     <p class="theme-note">已批准基线；场景和配色控件不进入生产。</p>
+    <p class="theme-note">已批准会话行为：登录后固定 8 小时；刷新和关闭重开恢复登录，不延长有效期。退出成功后返回登录；退出失败保留当前页面并提示重试。此原型仅模拟状态，不保存真实会话。</p>
   </aside>
 
   <script>
@@ -437,7 +441,7 @@
         "login-cap-solved",
         "login-cap-failed",
         "login-turnstile",
-        "login-off"
+        "login-off", "login-expired", "security-restored", "security-logout-failed"
       ]);
       const securityScreen = document.getElementById("security-screen");
       const loginScreen = document.getElementById("login-screen");
@@ -526,6 +530,16 @@
         securityScreen.hidden = false;
         loginScreen.hidden = true;
         resetCapFields();
+        let sessionError = document.getElementById("session-error");
+        if (!sessionError) {
+          sessionError = document.createElement("p");
+          sessionError.id = "session-error";
+          sessionError.className = "form-error";
+          sessionError.setAttribute("role", "alert");
+          document.querySelector(".logout-button").after(sessionError);
+        }
+        sessionError.hidden = state !== "security-logout-failed";
+        sessionError.textContent = "退出失败，请重试。";
         const provider = state === "security-off" ? "off" : state === "security-turnstile" ? "turnstile" : "cap";
         setProvider(provider);
         if (state === "security-cap-validation") showCapValidation();
@@ -535,7 +549,8 @@
         securityScreen.hidden = true;
         loginScreen.hidden = false;
         loginError.hidden = true;
-        loginError.textContent = "";
+        loginError.textContent = state === "login-expired" ? "管理会话已过期，请重新登录。" : "";
+        loginError.hidden = state !== "login-expired";
         loginTurnstile.hidden = state !== "login-turnstile";
         const capMode = state.startsWith("login-cap-");
         loginCap.hidden = !capMode;
@@ -582,7 +597,13 @@
           loginError.textContent = state === "login-cap-failed" ? "验证服务暂时不可用，请稍后重试。" : "请先完成人机验证。";
           loginError.hidden = false;
           capTrigger.focus();
+          return;
         }
+        window.location.hash = "security-restored";
+      });
+
+      document.querySelector(".logout-button").addEventListener("click", function () {
+        window.location.hash = "login-off";
       });
 
       scenario.addEventListener("change", function () { window.location.hash = scenario.value; });

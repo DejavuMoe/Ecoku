@@ -6,7 +6,7 @@ Ecoku pairs minimalist single-container operations with modern user experience, 
 
 ## Comment Experience
 - **Live on Submit**: Direct publishing without moderation queues.
-- **Infinite Semantics & Max 3-Level Visual Indent**: Supports deep discussion hierarchies while capping indentation at 3 levels to maintain readability on mobile viewports. Replies at depth $\ge 3$ automatically display clickable `@Author` anchors.
+- **16 Reply Levels & Max 3-Level Visual Indent**: Supports deep discussion hierarchies while capping indentation at 3 levels to maintain readability on mobile viewports. Replies at depth $\ge 3$ automatically display clickable `@Author` anchors.
 - **Root-Thread Pagination**: Returns complete root threads within fixed resource budgets; oversized requests fail explicitly. Large threads can be read on demand through the [single-level cursor API](../reference/api.md).
 - **Jitter-Free 3ch Collapse**: Toggle controls `[+]` and `[-]` are fixed at `3ch` tabular width, preventing meta-row layout shifts upon collapsing/expanding.
 - **Context-Preserving Tombstones**: Deleting a comment replaces its content with `[This comment has been deleted]`, preserving the downstream conversation tree.

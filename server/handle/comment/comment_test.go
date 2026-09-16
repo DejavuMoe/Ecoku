@@ -279,9 +279,9 @@ func enableCommentTurnstile(t *testing.T, successToken string) {
 		t.Fatal(err)
 	}
 	if _, err := captcha.Save(captcha.Settings{
-		Provider: captcha.ProviderTurnstile,
+		Provider:  captcha.ProviderTurnstile,
 		Turnstile: captcha.ProviderSettings{Sitekey: "public-sitekey", Secret: "secret-private"},
-		Revision: 1,
+		Revision:  1,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -308,7 +308,7 @@ func enableCommentCap(t *testing.T, successToken string) {
 	}
 	if _, err := captcha.Save(captcha.Settings{
 		Provider: captcha.ProviderCap,
-		Cap: captcha.CapSettings{InstanceURL: "https://cap.example.com", Sitekey: "cap-public", Secret: "cap-private"},
+		Cap:      captcha.CapSettings{InstanceURL: "https://cap.example.com", Sitekey: "cap-public", Secret: "cap-private"},
 		Revision: 1,
 	}); err != nil {
 		t.Fatal(err)
@@ -454,5 +454,83 @@ func TestSubmitBloggerPassphraseRewritesIdentity(t *testing.T) {
 	wrong := map[string]any{"siteId": "site-a", "mark": "/post", "content": "你好", "username": "wrong-passphrase", "parent": 0}
 	if got := postJSON(t, router, wrong).Code; got != http.StatusBadRequest {
 		t.Fatalf("mistyped passphrase without email status=%d", got)
+	}
+}
+
+func TestCaptchaPrecedesEveryBloggerIdentityBranch(t *testing.T) {
+	for _, provider := range []string{"turnstile", "cap"} {
+		t.Run(provider, func(t *testing.T) {
+			router := setupCommentTest(t)
+			if provider == "cap" {
+				enableCommentCap(t, "good")
+			} else {
+				enableCommentTurnstile(t, "good")
+			}
+			hash, err := model.HashBloggerPassphrase("correct-horse-battery")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := model.DB.Exec(`UPDATE sites SET blogger_nickname = '站长', blogger_email = 'owner@example.test', blogger_passphrase_hash = ? WHERE id = 'site-a'`, hash).Error; err != nil {
+				t.Fatal(err)
+			}
+			for _, token := range []string{"", "wrong"} {
+				for _, candidate := range []string{"correct-horse-battery", "wrong-passphrase"} {
+					body := validSubmission("site-a", "/oracle", 0)
+					body["username"], body["email"], body["url"], body["captchaToken"] = candidate, "bad-email", "bad-website", token
+					response := postJSON(t, router, body)
+					if response.Code != 400 || !strings.Contains(response.Body.String(), "请完成验证后再发布") {
+						t.Fatalf("unexpected oracle response: %d %s", response.Code, response.Body.String())
+					}
+				}
+			}
+			var count int64
+			model.DB.Model(&model.Comment{}).Count(&count)
+			if count != 0 {
+				t.Fatal("rejected challenge published a comment")
+			}
+			model.DB.Table("notification_outbox").Count(&count)
+			if count != 0 {
+				t.Fatal("rejected challenge queued a notification")
+			}
+			blogger := validSubmission("site-a", "/oracle", 0)
+			blogger["username"], blogger["email"], blogger["url"], blogger["captchaToken"] = "correct-horse-battery", "", "", "good"
+			if got := postJSON(t, router, blogger).Code; got != 201 {
+				t.Fatalf("blogger control: %d", got)
+			}
+			visitor := validSubmission("site-a", "/oracle", 0)
+			visitor["username"], visitor["captchaToken"] = "wrong-passphrase", "good"
+			if got := postJSON(t, router, visitor).Code; got != 201 {
+				t.Fatalf("visitor control: %d", got)
+			}
+		})
+	}
+}
+
+func TestSubmitRejectsSeventeenthReplyDepth(t *testing.T) {
+	router := setupCommentTest(t)
+	var parent uint
+	for depth := 0; depth <= maxPublicListDepth; depth++ {
+		response := postJSON(t, router, validSubmission("site-a", "/depth", parent))
+		if response.Code != 201 {
+			t.Fatalf("depth %d: %s", depth, response.Body.String())
+		}
+		var envelope struct {
+			Data struct {
+				ID uint `json:"id"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(response.Body.Bytes(), &envelope); err != nil {
+			t.Fatal(err)
+		}
+		parent = envelope.Data.ID
+	}
+	response := postJSON(t, router, validSubmission("site-a", "/depth", parent))
+	if response.Code != 422 {
+		t.Fatalf("depth 17: %d %s", response.Code, response.Body.String())
+	}
+	var count int64
+	model.DB.Model(&model.Comment{}).Where("mark = ?", "/depth").Count(&count)
+	if count != 17 {
+		t.Fatalf("rejected reply was stored: %d", count)
 	}
 }

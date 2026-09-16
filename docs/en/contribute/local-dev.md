@@ -35,3 +35,5 @@ Run the commands you need in separate terminals.
 The server defaults to `http://127.0.0.1:12123`; the comment client defaults to `http://localhost:3000`. Build a package first when Go needs to serve its static files.
 
 Woodpecker runs the full gate. Locally, run only checks directly relevant to the change and not already covered by CI.
+
+Allow the admin development origin in the separate `admin.allowed_origins` list and use the Vite same-origin `/api` proxy. Only explicitly allowed HTTP localhost/loopback origins get a non-Secure cookie; production requires HTTPS.
