@@ -35,32 +35,39 @@ type emailMessage struct {
 
 func deliverSMTP(ctx context.Context, config EmailConfig, recipient string, message emailMessage) error {
 	address := net.JoinHostPort(config.Host, strconv.Itoa(config.Port))
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
 	dialer := &net.Dialer{Timeout: 10 * time.Second}
-	var connection net.Conn
-	var client *smtp.Client
-	var err error
-	if config.Encryption == "tls" {
-		connection, err = tls.DialWithDialer(dialer, "tcp", address, &tls.Config{MinVersion: tls.VersionTLS12, ServerName: config.Host})
-		if err == nil {
-			client, err = smtp.NewClient(connection, config.Host)
-		}
-	} else {
-		connection, err = dialer.DialContext(ctx, "tcp", address)
-		if err == nil {
-			client, err = smtp.NewClient(connection, config.Host)
-		}
-		if err == nil && config.Encryption == "starttls" {
-			err = client.StartTLS(&tls.Config{MinVersion: tls.VersionTLS12, ServerName: config.Host})
-		}
-	}
+	connection, err := dialer.DialContext(ctx, "tcp", address)
 	if err != nil {
-		if connection != nil {
-			_ = connection.Close()
+		return err
+	}
+	defer connection.Close()
+	stop := context.AfterFunc(ctx, func() { _ = connection.Close() })
+	defer stop()
+	deadline, _ := ctx.Deadline()
+	if err := connection.SetDeadline(deadline); err != nil {
+		return err
+	}
+	var smtpConnection net.Conn = connection
+	tlsConfig := &tls.Config{MinVersion: tls.VersionTLS12, ServerName: config.Host}
+	if config.Encryption == "tls" {
+		secure := tls.Client(connection, tlsConfig)
+		if err := secure.HandshakeContext(ctx); err != nil {
+			return err
 		}
+		smtpConnection = secure
+	}
+	client, err := smtp.NewClient(smtpConnection, config.Host)
+	if err != nil {
 		return err
 	}
 	defer client.Close()
-	_ = connection.SetDeadline(time.Now().Add(20 * time.Second))
+	if config.Encryption == "starttls" {
+		if err := client.StartTLS(tlsConfig); err != nil {
+			return err
+		}
+	}
 	if config.Username != "" {
 		if err := client.Auth(smtp.PlainAuth("", config.Username, config.Password, config.Host)); err != nil {
 			return err

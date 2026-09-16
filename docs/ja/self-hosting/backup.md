@@ -1,89 +1,70 @@
-# バックアップとデータ復旧
+# バックアップと復元
 
-Ecoku のすべてのデータ（サイト設定、コメント記録、暗号化認証情報、マイグレーション履歴）は、単一の SQLite3 データベースファイルに永続化されます。
+## 1. 停止して取得するバックアップ
 
----
-
-## 1. コールドバックアップ（最も推奨・安全確実）
-
-システムアップデート、サーバー移転、または大規模な設定変更の前には、**サービスを一時停止して行うコールドバックアップが最も確実です**。
+コードブロック全体を実行します。コマンドが失敗すると処理が止まり、サービスは停止したままです。原因を解決してから再起動してください。ボリューム外のバックアップは作成時からアクセスを制限し、UID 10001 のファイルは sudo で読み取ります。残っている WAL/SHM を含め data 全体を保存します。停止成功だけでは checkpoint 完了を保証できません。検査はアーカイブと必須ファイルの確認であり、復元訓練の代わりにはなりません。
 
 ```bash
-cd ~/Ecoku
-
-# 1. コンテナを停止し、SQLite の WAL チェックポイントを完全に完了させる
+(
+set -eu
+umask 077
+cd "$HOME/Ecoku"
+install -d -m 700 "$HOME/backups"
 sudo docker compose down
-
-# 2. データディレクトリ、設定ファイル、環境変数ファイルをアーカイブ
-BACKUP_NAME="ecoku-backup-$(date +%Y%m%d_%H%M%S).tar.gz"
-tar -czvf "$BACKUP_NAME" data/ app/config.yaml ecoku.env compose.yaml
-
-# 3. 権限を制限し、バックアップアーカイブを安全なオフラインまたは別ストレージへ移動
-chmod 600 "$BACKUP_NAME"
-mkdir -p ~/backups && mv "$BACKUP_NAME" ~/backups/
-
-# 4. サービスを再起動
+archive="$HOME/backups/ecoku-$(date +%Y%m%d_%H%M%S).tar.gz"
+[ ! -e "$archive" ]
+sudo tar -czf - data/ app/config.yaml ecoku.env compose.yaml > "$archive"
+contents=$(tar -tzf "$archive")
+for required in data/ecoku.sqlite3 app/config.yaml ecoku.env compose.yaml; do
+  printf '%s\n' "$contents" | grep -Fx "$required" > /dev/null
+done
+printf 'Verified backup: %s\n' "$archive"
 sudo docker compose up -d
+)
 ```
 
----
+## 2. オンラインスナップショット
 
-## 2. ホスト側オンラインスナップショット（`VACUUM INTO`）
-
-ホスト側に `sqlite3` コマンドラインツールがインストールされており、短時間のサービス停止も避けたい場合は、SQLite ネイティブの不可分スナップショットコマンド `VACUUM INTO` を直接実行することで、テーブルロックを保持せずに整合性のある単一ファイルバックアップをオンライン生成できます：
+ホストに sqlite3 が必要です。スナップショットは root 所有・600、ディレクトリは 700 です。設定アーカイブと復号鍵も必ず保存してください。取得中は設定を変更せず、厳密な整合性が必要なら停止バックアップを使います。このスナップショットは下の復元手順用アーカイブとは異なります。
 
 ```bash
-BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
-
-# ホスト側で VACUUM INTO を実行してスナップショットを生成
-mkdir -p ~/backups
-sqlite3 ~/Ecoku/data/ecoku.sqlite3 "VACUUM INTO '$HOME/backups/backup_${BACKUP_DATE}.sqlite3'"
+(
+set -eu
+umask 077
+cd "$HOME/Ecoku"
+install -d -m 700 "$HOME/backups"
+snapshot=$(mktemp -d "$HOME/backups/ecoku-snapshot-XXXXXXXX")
+sudo sh -c 'umask 077; cd "$1"; sqlite3 "$2" ".backup database.sqlite3"' sh "$snapshot" "$PWD/data/ecoku.sqlite3"
+sudo tar -czf - app/config.yaml ecoku.env compose.yaml > "$snapshot/config.tar.gz"
+printf 'Snapshot: %s\n' "$snapshot"
+)
 ```
 
-> [!NOTE]
-> コンテナ環境は軽量 Alpine をベースにしており、`sqlite3` コマンドは同梱されていません。ホスト側に `sqlite3` がない場合は、前述の「コールドバックアップ」（最も確実・追加依存関係なし）を推奨します。
+## 3. 停止バックアップの復元
 
----
-
-## 3. データ復旧手順（SOP）
-
-データの破損、誤操作、またはサーバー移行が発生した場合は、以下の手順に従って正確に復旧を行ってください：
+信頼できるアーカイブを選び、ファイル名を置き換えます。現在の data と設定を退避して全体を復元し、古い WAL の混入を防ぎます。元のイメージ tag と復号鍵も復元します。その後、管理ログイン、サイト設定、既存コメントと許可された新規投稿を確認してください。health はプロセスの応答のみを示します。
 
 ```bash
-cd ~/Ecoku
-
-# ステップ 1: コンテナの停止
+(
+set -eu
+umask 077
+cd "$HOME/Ecoku"
+archive="$HOME/backups/ecoku-YYYYMMDD_HHMMSS.tar.gz"
+contents=$(tar -tzf "$archive")
+for required in data/ecoku.sqlite3 app/config.yaml ecoku.env compose.yaml; do
+  printf '%s\n' "$contents" | grep -Fx "$required" > /dev/null
+done
 sudo docker compose down
-
-# ステップ 2: 障害現状の保全（既存の破損ディレクトリを別名退避）
-mv data data_corrupted_$(date +%Y%m%d_%H%M%S)
-mkdir -p data
-
-# ステップ 3: バックアップアーカイブの展開
-tar -xzvf ~/backups/ecoku-backup-YYYYMMDD_HHMMSS.tar.gz
-
-# ステップ 4: 所有者と権限の検証・修復（必ず 10001:10001）
+saved="recovery-before-$(date +%Y%m%d_%H%M%S)"
+mkdir -m 700 "$saved"
+sudo mv data app/config.yaml ecoku.env compose.yaml "$saved/"
+sudo tar -xzf "$archive" --no-same-owner
 sudo chown -R 10001:10001 data app/config.yaml
 sudo chmod 750 data
 sudo chmod 640 app/config.yaml
-sudo chmod 600 ecoku.env
-
-# ステップ 5: コンテナの起動
+sudo chown "$(id -u):$(id -g)" ecoku.env compose.yaml
+chmod 600 ecoku.env
 sudo docker compose up -d
-
-# ステップ 6: ログと稼働健全性の確認
-sudo docker compose logs --tail=100 ecoku
-curl -f http://127.0.0.1:12123/api/health
+curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+)
 ```
-
----
-
-## 4. 復旧後検証チェックリスト
-
-復旧作業完了後、以下の項目を確認して正常性を担保してください：
-
-- [ ] `curl -f http://127.0.0.1:12123/api/health` が正常に応答し、`data.status` が `healthy` であること。
-- [ ] 管理コンソール `/admin/` に正常にログインできること。
-- [ ] サイト一覧と各種設定が保持され、ブロガーパスフレーズやバッジが正常に表示されること。
-- [ ] ブログ側のコメント欄で過去のツリー構造コメントが正しく表示されること。
-- [ ] テストコメントを 1 件投稿し、即座に反映されることを確認すること。

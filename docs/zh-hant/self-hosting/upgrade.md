@@ -19,27 +19,24 @@ Ecoku 採用版本化、原位（In-Place）、交易性的 SQLite Schema 遷移
 ## 標準停服升級 SOP
 
 ```bash
-cd ~/Ecoku
-
-# 步驟 1：閱讀目標版本的發布說明與升級指南，確認設定變化
-# （見下方各版本升級索引）
-
-# 步驟 2：執行停服冷備份
+(
+set -eu
+umask 077
+cd "$HOME/Ecoku"
+install -d -m 700 "$HOME/backups"
 sudo docker compose down
-tar -czvf "ecoku-preupgrade-$(date +%Y%m%d_%H%M%S).tar.gz" data/ app/config.yaml ecoku.env compose.yaml
-
-# 步驟 3：修改 compose.yaml 中的 image 為新版本（如 git.via.moe/dejavu/ecoku:v0.2.2）
-# 若新版本有新環境變數要求，一併補充至 ecoku.env
-
-# 步驟 4：拉取新映像檔並啟動
-sudo docker compose pull
-sudo docker compose up -d
-
-# 步驟 5：檢查啟動日誌與 Schema 遷移狀態
-sudo docker compose logs --tail=100 -f ecoku
-
-# 步驟 6：業務與介面驗收
+archive="$HOME/backups/ecoku-$(date +%Y%m%d_%H%M%S).tar.gz"
+[ ! -e "$archive" ]
+sudo tar -czf - data/ app/config.yaml ecoku.env compose.yaml > "$archive"
+contents=$(tar -tzf "$archive")
+for required in data/ecoku.sqlite3 app/config.yaml ecoku.env compose.yaml; do
+  printf '%s\n' "$contents" | grep -Fx "$required" > /dev/null
+done
+printf 'Verified backup: %s\n' "$archive"
+vi compose.yaml
+sudo docker compose pull && sudo docker compose up -d
 curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+)
 ```
 
 ---
@@ -66,7 +63,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | 版本 | 發布日期 | Schema 變化 | 升級要點與說明 |
 | :--- | :--- | :---: | :--- |
-| **v0.2.2** | 2026-09-13 | v7（不變） | 修復 Smoji 選擇器在窄螢幕下的版面問題。 |
+| [**v0.2.2**](./upgrades/v0.2.2) | 2026-09-13 | v7（不變） | 修復 Smoji 選擇器在窄螢幕下的版面問題。 |
 | [**v0.2.1**](./upgrades/v0.2.1) | 2026-09-12 | v7（不變） | Smoji 清單容量提升與精簡 `base` 模板支援。 |
 | [**v0.2.0**](./upgrades/v0.2.0) | 2026-09-12 | v7（不變） | 文件、接入範例與 API 參考事實校正和完善。 |
 | [**v0.1.9**](./upgrades/v0.1.9) | 2026-08-31 | v7（不變） | CWE-400 修復；舊設定可啟動，大討論串讀取和明確新設定鍵的回滾需留意。 |
@@ -80,3 +77,10 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 | [**v0.1.1**](./upgrades/v0.1.1) | 2026-08-15 | v4 | 評論折疊按鈕 `[+]`/`[-]` 固定為 3ch 等寬，消除折疊切換抖動。 |
 | [**v0.1.0**](./upgrades/v0.1.0) | 2026-08-15 | v4 | 首個正式發布版本。 |
 | [**更早候選版**](./upgrades/earlier) | 2026-08-14 | v1 ～ v4 | 早期單容器架構設計、WAL 模式引入與時區規範。 |
+
+
+## 下個版本相容性（未發佈）
+
+本次修復保持 schema v7、掛載路徑、環境變數與 bcrypt 雜湊格式，可由 v0.2.2 原位升級，不刪除留言、設定、WAL 或備份。儲存站點設定不再回填博主標記，既有標記保留；歷史誤標無法自動與口令驗證記錄區分，需另行核實及授權修正。通知採至少一次投遞：完成狀態寫入失敗時重試寫回，本程序不重送；成功投遞後、持久化前崩潰，重啟可能重送。
+
+先停服冷備份並驗證，再改精確鏡像 tag，執行 `sudo docker compose pull && sudo docker compose up -d`，最後檢查健康與業務。回滾需恢復升級前完整冷備份及原鏡像，將捨棄備份後寫入，請先保留目前資料。未發佈修復不代表新鏡像已可取得。

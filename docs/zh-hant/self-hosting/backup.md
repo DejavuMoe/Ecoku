@@ -1,89 +1,70 @@
-# 備份與資料復原
+# 備份與資料恢復
 
-Ecoku 的所有資料（包含站點設定、評論記錄、加密憑證與遷移日誌）均持久化在單個 SQLite3 資料庫檔案中。
+## 1. 停服冷備份
 
----
-
-## 1. 停服冷備份（最推薦、絕對安全）
-
-在執行系統升級、遷移主機或重大設定變更前，**停服冷備份是最安全可靠的方式**。
+請執行完整程式區塊。任何命令失敗都會停止區塊並保持停服，排除原因後再恢復服務。備份位於掛載卷外，從建立時限制存取，透過 sudo 讀取 UID 10001 的檔案。整個 data 目錄（包括仍存在的 WAL/SHM）一起封存；停止成功不代表 checkpoint 已完成。檢查只確認封存可讀與必要檔案存在，不能取代恢復演練。
 
 ```bash
-cd ~/Ecoku
-
-# 1. 停止執行中的容器，確保 SQLite WAL 完整合併
+(
+set -eu
+umask 077
+cd "$HOME/Ecoku"
+install -d -m 700 "$HOME/backups"
 sudo docker compose down
-
-# 2. 對資料目錄、設定與環境變數打包封存
-BACKUP_NAME="ecoku-backup-$(date +%Y%m%d_%H%M%S).tar.gz"
-tar -czvf "$BACKUP_NAME" data/ app/config.yaml ecoku.env compose.yaml
-
-# 3. 將備份檔案移出目前目錄，妥善保存在安全的離線或異地儲存中
-chmod 600 "$BACKUP_NAME"
-mkdir -p ~/backups && mv "$BACKUP_NAME" ~/backups/
-
-# 4. 重新啟動服務
+archive="$HOME/backups/ecoku-$(date +%Y%m%d_%H%M%S).tar.gz"
+[ ! -e "$archive" ]
+sudo tar -czf - data/ app/config.yaml ecoku.env compose.yaml > "$archive"
+contents=$(tar -tzf "$archive")
+for required in data/ecoku.sqlite3 app/config.yaml ecoku.env compose.yaml; do
+  printf '%s\n' "$contents" | grep -Fx "$required" > /dev/null
+done
+printf 'Verified backup: %s\n' "$archive"
 sudo docker compose up -d
+)
 ```
 
----
+## 2. 線上資料庫快照
 
-## 2. 宿主機線上快照（`VACUUM INTO`）
-
-若宿主機已安裝 `sqlite3` 命令列工具且不希望短暫中斷服務，可以在宿主機上對資料檔案直接執行 SQLite 原生原子快照指令 `VACUUM INTO`，線上產生一份無鎖、已重組的高品質單檔案備份：
+需要主機 sqlite3。快照由 root 建立、權限 600，目錄權限 700。設定封存與解密主金鑰必須配套保存；擷取期間勿修改設定，需要嚴格一致時使用冷備份。此快照不是下方恢復區塊使用的冷備份封存。
 
 ```bash
-BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
-
-# 宿主機直接執行 VACUUM INTO 產生快照
-mkdir -p ~/backups
-sqlite3 ~/Ecoku/data/ecoku.sqlite3 "VACUUM INTO '$HOME/backups/backup_${BACKUP_DATE}.sqlite3'"
+(
+set -eu
+umask 077
+cd "$HOME/Ecoku"
+install -d -m 700 "$HOME/backups"
+snapshot=$(mktemp -d "$HOME/backups/ecoku-snapshot-XXXXXXXX")
+sudo sh -c 'umask 077; cd "$1"; sqlite3 "$2" ".backup database.sqlite3"' sh "$snapshot" "$PWD/data/ecoku.sqlite3"
+sudo tar -czf - app/config.yaml ecoku.env compose.yaml > "$snapshot/config.tar.gz"
+printf 'Snapshot: %s\n' "$snapshot"
+)
 ```
 
-> [!NOTE]
-> 容器執行環境採用極簡 Alpine 映像檔，未內建 `sqlite3` 命令列工具。若宿主機未安裝 `sqlite3`，推薦使用上述「停服冷備份」（最可靠、零額外依賴）。
+## 3. 恢復冷備份
 
----
-
-## 3. 資料復原 SOP
-
-當發生資料損壞、誤操作或需要整站遷移時，請按以下步驟執行精確復原：
+僅使用可信封存，先替換檔名。命令保留目前 data、設定與環境檔案後整體恢復，避免混入舊 WAL。原鏡像 tag 和解密金鑰一併恢復。完成後檢查管理登入、站點設定、歷史留言與經授權的新留言；健康介面僅證明程序回應。
 
 ```bash
-cd ~/Ecoku
-
-# 步驟 1：停止容器
+(
+set -eu
+umask 077
+cd "$HOME/Ecoku"
+archive="$HOME/backups/ecoku-YYYYMMDD_HHMMSS.tar.gz"
+contents=$(tar -tzf "$archive")
+for required in data/ecoku.sqlite3 app/config.yaml ecoku.env compose.yaml; do
+  printf '%s\n' "$contents" | grep -Fx "$required" > /dev/null
+done
 sudo docker compose down
-
-# 步驟 2：保留故障現場（將現有損壞目錄重新命名備份）
-mv data data_corrupted_$(date +%Y%m%d_%H%M%S)
-mkdir -p data
-
-# 步驟 3：解壓縮備份封存
-tar -xzvf ~/backups/ecoku-backup-YYYYMMDD_HHMMSS.tar.gz
-
-# 步驟 4：校驗並修復檔案所有者權限（必須為 10001:10001）
+saved="recovery-before-$(date +%Y%m%d_%H%M%S)"
+mkdir -m 700 "$saved"
+sudo mv data app/config.yaml ecoku.env compose.yaml "$saved/"
+sudo tar -xzf "$archive" --no-same-owner
 sudo chown -R 10001:10001 data app/config.yaml
 sudo chmod 750 data
 sudo chmod 640 app/config.yaml
-sudo chmod 600 ecoku.env
-
-# 步驟 5：啟動容器
+sudo chown "$(id -u):$(id -g)" ecoku.env compose.yaml
+chmod 600 ecoku.env
 sudo docker compose up -d
-
-# 步驟 6：檢查日誌與健康狀態
-sudo docker compose logs --tail=100 ecoku
-curl -f http://127.0.0.1:12123/api/health
+curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+)
 ```
-
----
-
-## 4. 備份驗證與災難演練
-
-復原完成後，請按以下清單進行業務功能驗收：
-
-- [ ] `curl -f http://127.0.0.1:12123/api/health` 正常回傳，`data.status` 為 `healthy`。
-- [ ] 管理後台 `/admin/` 可以正常登入。
-- [ ] 站點列表與設定完好，站長通關密語與徽章正常展示。
-- [ ] 部落格前台評論區能夠正常載入歷史樹狀評論。
-- [ ] 嘗試提交一則新評論，確認能夠即時發表。

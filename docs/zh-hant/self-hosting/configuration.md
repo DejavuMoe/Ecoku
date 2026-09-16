@@ -1,5 +1,7 @@
 # 設定字典與環境變數參考
 
+表內預設值為程式備援值。範例 `/app/client`、`/app/admin`、`/data/ecoku.sqlite3` 與 `ECOKU_*` 名稱由部署範本明確填入；升級保留現有值即可。
+
 本篇提供 `app/config.yaml` 設定檔與 `ecoku.env` 環境變數的完整欄位參考與技術規範。
 
 `rate_limit.comment_list` 控制單一 IP 的公開列表讀取次數，預設每個 `window_seconds` 視窗 60 次（視窗預設 60 秒）。兩種列表模式共用同一桶，超限回傳 429 和 `Retry-After`；其他操作使用獨立桶。每個限流器最多保存 10,000 個活躍位址桶，額滿時拒絕新位址，過期後釋放。沿用 `trusted_proxies` 規則，反向代理後未配置受信任代理時訪客會共享代理 IP 的額度。
@@ -61,7 +63,7 @@ admin:
 #### 2. `client` 靜態資源
 | 設定項 | 類型 | 必填 | 預設值 | 說明 |
 | :--- | :--- | :---: | :--- | :--- |
-| `static_dir` | 字串 | 否 | `/app/client` | 瀏覽器 SDK 與載入器靜態檔案所在的目錄路徑。 |
+| `static_dir` | 字串 | 否 | `""` | 瀏覽器 SDK 與載入器靜態檔案所在的目錄路徑。 |
 
 #### 3. `rate_limit` 頻控規則
 所有限流規則基於固定視窗在單程序記憶體中運行：
@@ -77,22 +79,22 @@ admin:
 #### 4. `notifications` 通知服務
 | 設定項 | 類型 | 必填 | 預設值 | 說明 |
 | :--- | :--- | :---: | :--- | :--- |
-| `encryption_key_env` | 字串 | 是 | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 儲存敏感設定的主加密金鑰對應的環境變數名稱。 |
-| `instance_public_url` | 字串 | 否 | `""` | Ecoku 實例對外公開存取的 HTTPS 根位址（用於拼裝郵件中的連結）。 |
+| `encryption_key_env` | 字串 | 是 | `""` | 儲存敏感設定的主加密金鑰對應的環境變數名稱。 |
+| `instance_public_url` | 字串 | 否 | `""` | 啟用通知時必須填寫；目前不用來產生郵件連結，原文連結來自站點 `site_url` 與留言 `mark`。 |
 
 #### 5. `database` 資料庫
 | 設定項 | 類型 | 必填 | 預設值 | 說明 |
 | :--- | :--- | :---: | :--- | :--- |
-| `sqlite.path` | 字串 | 是 | `/data/ecoku.sqlite3` | SQLite3 資料庫檔案的絕對路徑（程式碼內建備援為 `./data/ecoku.bin`，容器部署固定為 `/data/ecoku.sqlite3`）。 |
+| `sqlite.path` | 字串 | 是 | `./data/ecoku.bin` | SQLite3 資料庫檔案的絕對路徑（程式碼內建備援為 `./data/ecoku.bin`，容器部署固定為 `/data/ecoku.sqlite3`）。 |
 
 #### 6. `admin` 管理後台
 | 設定項 | 類型 | 必填 | 預設值 | 說明 |
 | :--- | :--- | :---: | :--- | :--- |
 | `enabled` | 布林 | 否 | `false` | 是否啟用管理端後台。生產環境部署需顯式設定為 `true`。 |
-| `static_dir` | 字串 | 否 | `/app/admin` | 管理端靜態 HTML/JS 資源目錄（程式碼內建備援為 `./admin`，容器部署固定為 `/app/admin`）。 |
-| `username_env` | 字串 | 是 | `ECOKU_ADMIN_USERNAME` | 管理員使用者名稱對應的環境變數名。 |
-| `password_hash_env` | 字串 | 是 | `ECOKU_ADMIN_PASSWORD_HASH` | 管理員 bcrypt 密碼雜湊對應的環境變數名。 |
-| `token_key_env` | 字串 | 是 | `ECOKU_ADMIN_TOKEN_KEY` | 管理員 Bearer Token 簽名金鑰對應的環境變數名。 |
+| `static_dir` | 字串 | 否 | `./admin` | 管理端靜態 HTML/JS 資源目錄（程式碼內建備援為 `./admin`，容器部署固定為 `/app/admin`）。 |
+| `username_env` | 字串 | 是 | `""` | 管理員使用者名稱對應的環境變數名。 |
+| `password_hash_env` | 字串 | 是 | `""` | 管理員 bcrypt 密碼雜湊對應的環境變數名。 |
+| `token_key_env` | 字串 | 是 | `""` | 管理員 Bearer Token 簽名金鑰對應的環境變數名。 |
 | `token_ttl_minutes` | 整數 | 否 | `480` | 管理端登入工作階段生命週期（分鐘，預設 8 小時）。 |
 | `allowed_origins` | 字串列表 | 是 | `[]` | 允許存取管理後台 API 的精確 Origin 列表（需包含協定與網域）。 |
 

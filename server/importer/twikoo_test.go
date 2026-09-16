@@ -2,6 +2,8 @@ package importer
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -109,11 +111,51 @@ func TestImportTwikooKeepsOrphanAsRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Orphaned != 1 {
+	if result.Orphaned != 1 || result.Roots != 1 || result.Replies != 0 {
 		t.Fatalf("expected one orphan, got %+v", result)
 	}
 	var comment model.Comment
 	if err := model.DB.First(&comment).Error; err != nil || comment.ParentID != nil {
 		t.Fatalf("orphan was not retained as a root: %+v err=%v", comment, err)
+	}
+}
+
+func TestImportTwikooUnorderedHierarchy(t *testing.T) {
+	for _, order := range [][]int{{0, 1, 2}, {0, 2, 1}, {1, 0, 2}, {1, 2, 0}, {2, 0, 1}, {2, 1, 0}} {
+		t.Run(fmt.Sprint(order), func(t *testing.T) {
+			twikooTestDatabase(t)
+			rows := []twikooComment{
+				{ObjectID: "root", PageKey: "/", Nickname: "root", Content: "root"},
+				{ObjectID: "child", ParentID: "root", RootID: "root", PageKey: "/", Nickname: "child", Content: "child"},
+				{ObjectID: "grandchild", ParentID: "child", RootID: "root", PageKey: "/", Nickname: "grandchild", Content: "grandchild"},
+			}
+			data, err := json.Marshal([]twikooComment{rows[order[0]], rows[order[1]], rows[order[2]]})
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := ImportTwikoo(context.Background(), model.DB, strings.NewReader(string(data)), TwikooImportOptions{SiteID: "blog"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var child, grandchild model.Comment
+			if err := model.DB.Where("username = ?", "child").First(&child).Error; err != nil {
+				t.Fatal(err)
+			}
+			if err := model.DB.Where("username = ?", "grandchild").First(&grandchild).Error; err != nil {
+				t.Fatal(err)
+			}
+			if grandchild.ParentID == nil || *grandchild.ParentID != child.ID || result.Roots != 1 || result.Replies != 2 {
+				t.Fatalf("hierarchy/counts: %+v", result)
+			}
+		})
+	}
+}
+
+func TestImportTwikooCycleCounts(t *testing.T) {
+	twikooTestDatabase(t)
+	data := `[{"_id":"a","pid":"b","url":"/","comment":"a"},{"_id":"b","pid":"a","url":"/","comment":"b"}]`
+	result, err := ImportTwikoo(context.Background(), model.DB, strings.NewReader(data), TwikooImportOptions{SiteID: "blog"})
+	if err != nil || result.Roots != 2 || result.Replies != 0 || result.Orphaned != 2 {
+		t.Fatalf("result=%+v err=%v", result, err)
 	}
 }

@@ -47,6 +47,7 @@ interface ActiveReply {
   identityGrid: HTMLDivElement
   textarea: HTMLTextAreaElement
   captchaSlot: HTMLDivElement
+  captchaGeneration: number
   widget: ChallengeWidget | null
   error: HTMLParagraphElement
   submit: HTMLButtonElement
@@ -129,8 +130,9 @@ export class CommentSurface {
     await this.loadPage(Math.max(1, this.currentPage), false)
   }
 
-  async setPageKey(value: string): Promise<void> {
+  async setPageKey(value: string, pageTitle = ''): Promise<void> {
     const pageKey = normalizePageKey(value)
+    this.config = { ...this.config, pageTitle: pageTitle.trim() }
     if (pageKey === this.config.pageKey) {
       await this.refreshAfterSubmission()
       return
@@ -139,6 +141,7 @@ export class CommentSurface {
     this.abortRequests()
     this.smojiManifestController?.abort()
     this.smojiManifestController = null
+    this.smojiManifestPromise = null
     this.closeReply(false)
     this.config = { ...this.config, pageKey }
     this.comments = []
@@ -156,6 +159,8 @@ export class CommentSurface {
   destroy(): void {
     if (this.destroyed) return
     this.destroyed = true
+    this.smojiManifestController?.abort()
+    this.smojiManifestPromise = null
     this.pageRevision += 1
     this.abortRequests()
     this.closeReply(false)
@@ -318,7 +323,7 @@ export class CommentSurface {
   private buildRootComposer(): void {
     this.rootForm.noValidate = true
     const identityGrid = createElement('div', 'ecoku-identity-grid')
-    this.configureInput(this.nickname, 'text', 'nickname', 80)
+    this.configureInput(this.nickname, 'text', 'nickname', MAX_NICKNAME_LENGTH * 2)
     this.configureInput(this.email, 'email', 'email', 254)
     this.configureInput(this.website, 'url', 'url', 2048)
     this.nickname.required = true
@@ -331,7 +336,7 @@ export class CommentSurface {
     const messageLabel = createElement('label', 'ecoku-message-field')
     const visuallyHidden = createElement('span', 'ecoku-visually-hidden', '评论内容')
     this.rootContent.name = 'comment'
-    this.rootContent.maxLength = this.formConfig.lengthLimit
+    this.rootContent.maxLength = this.formConfig.lengthLimit * 2
     this.rootContent.rows = COMPOSER_ROWS
     this.rootContent.required = true
     this.rootContent.placeholder = zhCN.commentPlaceholder
@@ -416,13 +421,21 @@ export class CommentSurface {
   private applyFormConfig(next: CommentFormConfig, initializeSort = true): void {
     const previousManifestURL = this.formConfig.smoji.manifestUrl
     this.formConfig = { ...next, captcha: { ...next.captcha }, smoji: { ...next.smoji } }
-    if (previousManifestURL !== next.smoji.manifestUrl) this.smojiManifestPromise = null
+    if (previousManifestURL !== next.smoji.manifestUrl) {
+      this.smojiManifestController?.abort()
+      this.smojiManifestPromise = null
+      for (const control of this.smojiControls) {
+        this.closeSmojiControl(control)
+        const panel = control.querySelector<HTMLElement>('.ecoku-smoji-panel')
+        if (panel) { panel.replaceChildren(); delete panel.dataset.loaded }
+      }
+    }
     for (const control of this.smojiControls) control.hidden = !next.smoji.enabled
     this.email.required = next.emailRequired
     this.website.required = next.websiteRequired
     this.website.removeAttribute('placeholder')
     this.rootContent.placeholder = next.placeholder
-    this.rootContent.maxLength = next.lengthLimit
+    this.rootContent.maxLength = next.lengthLimit * 2
     if (initializeSort && this.sort === undefined) {
       this.sort = next.defaultSort
       this.syncSortUI()
@@ -434,7 +447,7 @@ export class CommentSurface {
     if (this.activeReply) {
       this.activeReply.email.required = next.emailRequired
       this.activeReply.website.required = next.websiteRequired
-      this.activeReply.textarea.maxLength = next.lengthLimit
+      this.activeReply.textarea.maxLength = next.lengthLimit * 2
       this.updateReplyIdentityMode(this.activeReply)
       this.updateReplyFormState(this.activeReply)
     }
@@ -460,14 +473,20 @@ export class CommentSurface {
   }
 
   private async syncReplyCaptcha(reply: ActiveReply): Promise<void> {
+    const generation = ++reply.captchaGeneration
     reply.widget?.remove()
     reply.widget = null
     reply.captchaSlot.replaceChildren()
     if (this.formConfig.captcha.provider === 'off') return
     try {
-      reply.widget = await mountChallenge(reply.captchaSlot, this.formConfig.captcha, this.config.theme)
+      const widget = await mountChallenge(reply.captchaSlot, this.formConfig.captcha, this.config.theme)
+      if (this.destroyed || this.activeReply !== reply || generation !== reply.captchaGeneration) {
+        widget?.remove()
+        return
+      }
+      reply.widget = widget
     } catch {
-      reply.widget = null
+      if (generation === reply.captchaGeneration) reply.widget = null
     }
   }
 
@@ -749,7 +768,7 @@ export class CommentSurface {
     const nickname = createElement('input', 'ecoku-input')
     const email = createElement('input', 'ecoku-input')
     const website = createElement('input', 'ecoku-input')
-    this.configureInput(nickname, 'text', 'nickname', MAX_NICKNAME_LENGTH)
+    this.configureInput(nickname, 'text', 'nickname', MAX_NICKNAME_LENGTH * 2)
     this.configureInput(email, 'email', 'email', 254)
     this.configureInput(website, 'url', 'url', 2048)
     nickname.required = true
@@ -765,7 +784,7 @@ export class CommentSurface {
     const currentIdentity = this.identity()
     this.setIdentityControls(nickname, email, website, currentIdentity)
     const textarea = createElement('textarea', 'ecoku-textarea')
-    textarea.maxLength = this.formConfig.lengthLimit
+    textarea.maxLength = this.formConfig.lengthLimit * 2
     textarea.rows = COMPOSER_ROWS
     textarea.placeholder = zhCN.replyPlaceholder
     const messageLabel = createElement('label', 'ecoku-message-field')
@@ -803,6 +822,7 @@ export class CommentSurface {
       textarea,
       captchaSlot,
       widget: null,
+      captchaGeneration: 0,
       error,
       submit,
       smojiControl,
@@ -848,6 +868,18 @@ export class CommentSurface {
     trigger.type = 'button'
     trigger.setAttribute('aria-haspopup', 'dialog')
     trigger.setAttribute('aria-expanded', 'false')
+    panel.id = `ecoku-smoji-${this.instanceId}-${this.smojiControls.size}`
+    panel.setAttribute('role', 'dialog')
+    panel.setAttribute('aria-label', '表情')
+    panel.tabIndex = -1
+    trigger.setAttribute('aria-controls', panel.id)
+    wrapper.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !panel.hidden) {
+        event.preventDefault()
+        this.closeSmojiControl(wrapper)
+        trigger.focus()
+      }
+    })
     panel.hidden = true
     wrapper.hidden = !this.formConfig.smoji.enabled
     wrapper.append(trigger, panel)
@@ -856,6 +888,10 @@ export class CommentSurface {
     const populate = (manifest: SmojiManifest): void => {
       const tabs = createElement('div', 'ecoku-smoji-tabs')
       const grid = createElement('div', 'ecoku-smoji-grid')
+      tabs.setAttribute('role', 'tablist')
+      tabs.setAttribute('aria-label', '表情包')
+      grid.setAttribute('role', 'tabpanel')
+      grid.id = `${panel.id}-grid`
       const showPack = (index: number): void => {
         grid.replaceChildren()
         manifest.packs[index].items.forEach((item) => {
@@ -880,12 +916,26 @@ export class CommentSurface {
           })
           grid.append(button)
         })
-        Array.from(tabs.children).forEach((tab, tabIndex) => tab.setAttribute('aria-selected', String(tabIndex === index)))
+        grid.setAttribute('aria-labelledby', `${panel.id}-tab-${index}`)
+        Array.from(tabs.children).forEach((tab, tabIndex) => {
+          tab.setAttribute('aria-selected', String(tabIndex === index))
+          ;(tab as HTMLButtonElement).tabIndex = tabIndex === index ? 0 : -1
+        })
       }
       manifest.packs.forEach((pack, index) => {
         const tab = createElement('button', 'ecoku-smoji-tab', pack.label)
         tab.type = 'button'
         tab.setAttribute('role', 'tab')
+        tab.id = `${panel.id}-tab-${index}`
+        tab.setAttribute('aria-controls', grid.id)
+        tab.addEventListener('keydown', (event) => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return
+          event.preventDefault()
+          const next = event.key === 'Home' ? 0 : event.key === 'End' ? manifest.packs.length - 1
+            : (index + (event.key === 'ArrowLeft' ? -1 : 1) + manifest.packs.length) % manifest.packs.length
+          showPack(next)
+          ;(tabs.children[next] as HTMLButtonElement).focus()
+        })
         tab.addEventListener('click', () => showPack(index))
         tabs.append(tab)
       })
@@ -903,8 +953,10 @@ export class CommentSurface {
       }
       panel.hidden = !opening
       trigger.setAttribute('aria-expanded', String(opening))
+      if (opening) panel.focus()
       if (!opening || panel.dataset.loaded === 'true') return
       panel.replaceChildren(createElement('p', 'ecoku-smoji-state', '正在加载表情…'))
+      let pending: Promise<SmojiManifest> | null = null
       try {
         if (!this.smojiManifestPromise) {
           const controller = new AbortController()
@@ -914,10 +966,13 @@ export class CommentSurface {
               if (this.smojiManifestController === controller) this.smojiManifestController = null
             })
         }
-        populate(await this.smojiManifestPromise)
+        pending = this.smojiManifestPromise
+        const manifest = await pending
+        if (!this.destroyed && pending === this.smojiManifestPromise && this.smojiControls.has(wrapper)) populate(manifest)
       } catch {
+        if (pending !== this.smojiManifestPromise) return
         this.smojiManifestPromise = null
-        panel.replaceChildren(createElement('p', 'ecoku-smoji-state', '表情加载失败，请重试。'))
+        if (!this.destroyed && this.smojiControls.has(wrapper)) panel.replaceChildren(createElement('p', 'ecoku-smoji-state', '表情加载失败，请重试。'))
       }
     })
     return wrapper

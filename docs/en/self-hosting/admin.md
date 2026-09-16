@@ -252,3 +252,6 @@ sudo docker compose down
 sudo docker compose run --rm --no-deps ecoku captcha disable
 sudo docker compose up -d
 ```
+
+
+UTF-8 encoding must also fit within 72 bytes. Passphrases are never truncated; existing bcrypt hashes remain valid.

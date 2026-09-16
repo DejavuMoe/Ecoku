@@ -1,6 +1,6 @@
 # Docker 部署
 
-Ecoku 採用單容器 Docker Compose 部署模型，以極小資源開銷提供全套服務。容器在內部監聽 `127.0.0.1:12123`，公網 HTTPS 由宿主機反向代理（Caddy / Nginx）終止。
+容器內監聽 `:12123`，Compose 僅在主機 `127.0.0.1:12123` 發佈連接埠；HTTPS 由主機反向代理終止。
 
 > [!NOTE]
 > 文件中的 `git.via.moe/dejavu/ecoku:v0.2.2` 為目前正式映像檔；`ecoku.example.com` 均為範例預留位置，實際部署時請替換為您的真實網域名稱。

@@ -6,6 +6,8 @@ vi.mock('./identity-store', () => ({
 }))
 
 import Ecoku from './ecoku'
+import * as captcha from './captcha'
+import * as smoji from './smoji'
 import { resolveConfig } from './config'
 import {
   loadVisitorIdentity,
@@ -126,6 +128,7 @@ beforeEach(() => {
 afterEach(() => {
   for (const client of activeClients.splice(0)) client.destroy()
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
 })
 
 describe('approved production comment surface', () => {
@@ -217,7 +220,7 @@ describe('approved production comment surface', () => {
     expect(website.required).toBe(true)
     expect(content.placeholder).toBe(formConfig.placeholder)
     expect(container.querySelector('.ecoku-identity-requirements')).toBeNull()
-    expect(content.maxLength).toBe(321)
+    expect(content.maxLength).toBe(642)
     expect(container.textContent).toContain('暂时没有评论')
 
     setValue(nickname, 'Guest')
@@ -322,6 +325,13 @@ describe('approved production comment surface', () => {
     await vi.waitFor(() => expect(form.querySelectorAll('.ecoku-smoji-item')).toHaveLength(1))
     const panel = form.querySelector<HTMLElement>('.ecoku-smoji-panel')!
     expect(panel.hidden).toBe(false)
+    expect(panel.getAttribute('role')).toBe('dialog')
+    const tab = panel.querySelector<HTMLElement>('[role=tab]')!
+    expect(document.getElementById(tab.getAttribute('aria-controls')!)?.getAttribute('aria-labelledby')).toBe(tab.id)
+    panel.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    expect(panel.hidden).toBe(true)
+    expect(document.activeElement).toBe(form.querySelector('.ecoku-smoji-trigger'))
+    form.querySelector<HTMLButtonElement>('.ecoku-smoji-trigger')!.click()
     form.querySelector<HTMLButtonElement>('.ecoku-smoji-item')!.click()
     expect(panel.hidden).toBe(true)
     expect(textarea.value).toContain(marker)
@@ -892,4 +902,76 @@ describe('approved production comment surface', () => {
     client.destroy()
     expect(container.textContent).toBe('')
   })
+})
+
+it('updates the article title with the page key and clears an omitted title', async () => {
+  const posts: Record<string, unknown>[] = []
+  const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+    if (String(input).includes('/api/comment/submit')) {
+      posts.push(JSON.parse(String(init?.body)))
+      return jsonResponse(201, { id: 41 }, 'submitted')
+    }
+    return listResponse([])
+  })
+  const { client, container } = createClient(fetchMock)
+  await client.init()
+  await client.setPageKey('article-b', '文章 B')
+  await submitForm(fillIdentityAndContent(container))
+  await vi.waitFor(() => expect(posts).toHaveLength(1))
+  expect(posts[0]).toMatchObject({ mark: 'article-b', pageTitle: '文章 B' })
+  await vi.waitFor(() => expect(container.querySelector<HTMLTextAreaElement>('.ecoku-composer textarea')!.disabled).toBe(false))
+  await client.setPageKey('article-c')
+  await submitForm(fillIdentityAndContent(container))
+  await vi.waitFor(() => expect(posts).toHaveLength(2))
+  expect(posts[1]).toMatchObject({ mark: 'article-c', pageTitle: '' })
+})
+
+it('removes a reply challenge that resolves after the reply closes', async () => {
+  let resolveWidget!: (widget: captcha.ChallengeWidget) => void
+  vi.spyOn(captcha, 'mountChallenge').mockResolvedValueOnce(null)
+    .mockImplementationOnce(() => new Promise((resolve) => { resolveWidget = resolve }))
+  const { client, container } = createClient(vi.fn(async () => listResponse([comment(1, 0, 'root')], {
+    formConfig: { emailRequired: false, websiteRequired: false, placeholder: '评论', captcha: { provider: 'turnstile', sitekey: 'test' } },
+  })))
+  await client.init()
+  container.querySelector<HTMLButtonElement>('.ecoku-reply-action')!.click()
+  const cancel = Array.from(container.querySelectorAll<HTMLButtonElement>('.ecoku-reply-composer button')).find(button => button.textContent === zhCN.cancel)!
+  cancel.click()
+  const widget = { remove: vi.fn(), reset: vi.fn(), waitForToken: vi.fn() }
+  resolveWidget(widget)
+  await vi.waitFor(() => expect(widget.remove).toHaveBeenCalledOnce())
+})
+
+it('aborts Smoji on destroy and ignores a late manifest', async () => {
+  let resolveManifest!: (manifest: smoji.SmojiManifest) => void
+  let signal: AbortSignal | undefined
+  vi.spyOn(smoji, 'loadSmojiManifest').mockImplementation((_url, incoming) => {
+    signal = incoming
+    return new Promise(resolve => { resolveManifest = resolve })
+  })
+  const { client, container } = createClient(vi.fn(async () => listResponse([], {
+    formConfig: { emailRequired: false, websiteRequired: false, placeholder: '评论', smoji: { enabled: true, manifestUrl: 'https://static.example.test/smoji.json' } },
+  })))
+  await client.init()
+  container.querySelector<HTMLButtonElement>('.ecoku-smoji-trigger')!.click()
+  const panel = container.querySelector<HTMLElement>('.ecoku-smoji-panel')!
+  client.destroy()
+  expect(signal?.aborted).toBe(true)
+  resolveManifest({ version: 1, packs: [{ id: 'demo', label: '包', items: [{ id: 'one', label: '笑', src: 'https://static.example.test/one.png' }] }] })
+  await Promise.resolve()
+  expect(panel.querySelector('.ecoku-smoji-item')).toBeNull()
+})
+
+it('counts non-BMP comment input by code point while retaining a safe native ceiling', async () => {
+  const { client, container } = createClient(vi.fn(async () => listResponse([], {
+    formConfig: { emailRequired: false, websiteRequired: false, placeholder: '评论', lengthLimit: 2 },
+  })))
+  await client.init()
+  fillIdentityAndContent(container, '😀😀')
+  const input = container.querySelector<HTMLTextAreaElement>('.ecoku-composer textarea')!
+  const submit = container.querySelector<HTMLButtonElement>('.ecoku-composer .ecoku-primary-button')!
+  expect(input.maxLength).toBe(4)
+  expect(submit.disabled).toBe(false)
+  setValue(input, '😀😀😀')
+  expect(submit.disabled).toBe(true)
 })

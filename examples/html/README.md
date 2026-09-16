@@ -24,3 +24,5 @@
 ## 机器人验证与 CSP
 
 验证方式由 Ecoku 管理端统一选择，HTML 接入片段不放 Sitekey 或 Secret。Turnstile 模式需要宿主 CSP 允许 `https://challenges.cloudflare.com`；自托管 Cap 模式需要把实际 Cap HTTPS Origin（文档占位 `https://cap.example.com`）加入 `script-src` 和 `connect-src`，允许 `worker-src blob:`、`frame-src 'self'` 与 WebAssembly。若使用 nonce CSP，在加载器之前用同一 nonce 设置 `window.CAP_CSS_NONCE` 和 `window.CAP_SCRIPT_NONCE`。同时在 Cap Key 的 CORS 中登记本页面实际 Origin。
+
+SPA 使用直接 SDK 时，应在路由与标题更新后调用 `await comments.setPageKey(newPageKey, newPageTitle)`；省略第二参数会清空旧标题。直接 SDK 的非空 `cssURL` 需宿主自行添加样式 `<link>`，HTML loader 会自动加载该外链样式。

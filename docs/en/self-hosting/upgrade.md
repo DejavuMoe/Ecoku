@@ -19,27 +19,24 @@ During upgrades, update only the **exact image tag** in your Compose file. Upon 
 ## Standard Cold Upgrade SOP
 
 ```bash
-cd ~/Ecoku
-
-# Step 1: Review release notes and upgrade guide for the target version
-# (See the Upgrade Guide Index below)
-
-# Step 2: Perform cold backup
+(
+set -eu
+umask 077
+cd "$HOME/Ecoku"
+install -d -m 700 "$HOME/backups"
 sudo docker compose down
-tar -czvf "ecoku-preupgrade-$(date +%Y%m%d_%H%M%S).tar.gz" data/ app/config.yaml ecoku.env compose.yaml
-
-# Step 3: Update image tag in compose.yaml to target version (e.g. git.via.moe/dejavu/ecoku:v0.2.2)
-# Add any newly required environment variables to ecoku.env if applicable
-
-# Step 4: Pull new image and restart
-sudo docker compose pull
-sudo docker compose up -d
-
-# Step 5: Verify boot logs and schema migration status
-sudo docker compose logs --tail=100 -f ecoku
-
-# Step 6: Verify health and API readiness
+archive="$HOME/backups/ecoku-$(date +%Y%m%d_%H%M%S).tar.gz"
+[ ! -e "$archive" ]
+sudo tar -czf - data/ app/config.yaml ecoku.env compose.yaml > "$archive"
+contents=$(tar -tzf "$archive")
+for required in data/ecoku.sqlite3 app/config.yaml ecoku.env compose.yaml; do
+  printf '%s\n' "$contents" | grep -Fx "$required" > /dev/null
+done
+printf 'Verified backup: %s\n' "$archive"
+vi compose.yaml
+sudo docker compose pull && sudo docker compose up -d
 curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+)
 ```
 
 ---
@@ -66,7 +63,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | Version | Release Date | Schema | Upgrade Highlights & Notes |
 | :--- | :--- | :---: | :--- |
-| **v0.2.2** | 2026-09-13 | v7 (unchanged) | Fixed Smoji picker layout on narrow screens. |
+| [**v0.2.2**](./upgrades/v0.2.2) | 2026-09-13 | v7 (unchanged) | Fixed Smoji picker layout on narrow screens. |
 | [**v0.2.1**](./upgrades/v0.2.1) | 2026-09-12 | v7 (unchanged) | Larger Smoji manifests and compact `base` template support. |
 | [**v0.2.0**](./upgrades/v0.2.0) | 2026-09-12 | v7 (unchanged) | Documentation, integration examples, and API reference corrections. |
 | [**v0.1.9**](./upgrades/v0.1.9) | 2026-08-31 | v7 (unchanged) | CWE-400 mitigation; backward-compatible configs, note large thread read budget limits and rollback steps. |
@@ -80,3 +77,10 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 | [**v0.1.1**](./upgrades/v0.1.1) | 2026-08-15 | v4 | Fixed comment collapse buttons (`[+]`/`[-]`) to 3ch monospace width, eliminating layout shifts. |
 | [**v0.1.0**](./upgrades/v0.1.0) | 2026-08-15 | v4 | First official production release. |
 | [**Earlier**](./upgrades/earlier) | 2026-08-14 | v1–v4 | Early single-container design, SQLite WAL mode, and timezone standards. |
+
+
+## Next release compatibility (unreleased)
+
+These audit fixes keep schema v7, mount paths, environment variables and bcrypt hashes unchanged; v0.2.2 can upgrade in place. No comments, configuration, WAL or backups are deleted. Saving site settings no longer backfills blogger flags; existing flags remain. Historical false flags cannot be distinguished automatically from verified comments and require separately reviewed, authorized correction. Notifications use at-least-once delivery: a completion-write failure retries the stored result without resending in the same process; a crash after sending but before persistence may cause a duplicate after restart.
+
+Stop and verify a cold backup, change the exact image tag, run `sudo docker compose pull && sudo docker compose up -d`, then check health and business behavior. Roll back with the complete pre-upgrade archive and original exact image. This discards later writes, so preserve current data first. Unreleased fixes do not imply that a new image is available.

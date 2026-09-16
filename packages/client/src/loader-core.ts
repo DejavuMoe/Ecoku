@@ -1,5 +1,6 @@
 interface EcokuInstance {
   init(): Promise<void>
+  destroy(): void
 }
 
 interface EcokuConstructor {
@@ -36,19 +37,27 @@ function loadSDK(documentRef: Document, windowRef: EcokuWindow, sdkURL: string):
   sdkPromise = new Promise<EcokuConstructor>((resolve, reject) => {
     const existing = documentRef.querySelector<HTMLScriptElement>('script[data-ecoku-sdk]')
     const script = existing ?? documentRef.createElement('script')
-    const onLoad = () => {
-      if (typeof windowRef.Ecoku !== 'function') {
-        sdkPromise = null
-        reject(new Error('Ecoku browser client is unavailable'))
-        return
-      }
-      resolve(windowRef.Ecoku)
+    const cleanup = () => {
+      windowRef.clearTimeout(timeout)
+      script.removeEventListener('load', onLoad)
+      script.removeEventListener('error', onError)
     }
-    const onError = () => {
+    const fail = (message: string) => {
+      cleanup()
       script.remove()
       sdkPromise = null
-      reject(new Error(SCRIPT_FAILURE_MESSAGE))
+      reject(new Error(message))
     }
+    const onLoad = () => {
+      if (typeof windowRef.Ecoku !== 'function') {
+        fail(SCRIPT_FAILURE_MESSAGE)
+        return
+      }
+      cleanup()
+      resolve(windowRef.Ecoku)
+    }
+    const onError = () => fail(SCRIPT_FAILURE_MESSAGE)
+    const timeout = windowRef.setTimeout(() => fail(TIMEOUT_MESSAGE), 12000)
     script.addEventListener('load', onLoad, { once: true })
     script.addEventListener('error', onError, { once: true })
     if (!existing) {
@@ -108,6 +117,8 @@ export function setupEcokuLoader(
     let loading = false
     let initialized = false
     let timeoutID = 0
+    let attempt = 0
+    let comments: EcokuInstance | null = null
 
     const showFailure = (message: string) => {
       windowRef.clearTimeout(timeoutID)
@@ -120,12 +131,13 @@ export function setupEcokuLoader(
 
     const initialize = async () => {
       if (loading || initialized) return
+      const generation = ++attempt
       loading = true
       retry.hidden = true
       status.textContent = ''
       loader.hidden = true
       shell.setAttribute('aria-busy', 'true')
-      timeoutID = windowRef.setTimeout(() => showFailure(TIMEOUT_MESSAGE), 12000)
+
       try {
         const cssURL = parseCssURL(shell.dataset.cssUrl)
         if (cssURL) ensureHostStylesheet(documentRef, cssURL)
@@ -134,7 +146,8 @@ export function setupEcokuLoader(
           windowRef,
           resolveEcokuSDKURL(loaderURL, serverURL),
         )
-        const comments = new Constructor({
+        if (generation !== attempt) return
+        comments = new Constructor({
           container: mount,
           serverURL,
           siteId,
@@ -144,16 +157,26 @@ export function setupEcokuLoader(
           theme: parseTheme(shell.dataset.theme),
           cssURL,
         })
+        timeoutID = windowRef.setTimeout(() => {
+          ++attempt
+          comments?.destroy()
+          comments = null
+          showFailure(TIMEOUT_MESSAGE)
+        }, 12000)
         await comments.init()
+        if (generation !== attempt) return
         windowRef.clearTimeout(timeoutID)
         loading = false
         initialized = true
         shell.setAttribute('aria-busy', 'false')
         loader.hidden = true
       } catch (error) {
+        if (generation !== attempt) return
+        comments?.destroy()
+        comments = null
         showFailure(error instanceof Error && error.message === SCRIPT_FAILURE_MESSAGE
           ? SCRIPT_FAILURE_MESSAGE
-          : FAILURE_MESSAGE)
+          : error instanceof Error && error.message === TIMEOUT_MESSAGE ? TIMEOUT_MESSAGE : FAILURE_MESSAGE)
       }
     }
 

@@ -5,6 +5,7 @@ import (
 	"ecoku-server/model"
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -100,7 +101,10 @@ func StartWorker(ctx context.Context) (*Worker, error) {
 				return
 			}
 			for i := 0; i < 10; i++ {
-				processed, _ := ProcessPendingOnce(ctx)
+				processed, err := ProcessPendingOnce(ctx)
+				if err != nil && ctx.Err() == nil {
+					log.Print("notification worker: processing_failed")
+				}
 				if !processed {
 					break
 				}
@@ -148,27 +152,37 @@ func ProcessPendingOnce(ctx context.Context) (bool, error) {
 
 	deliveryErr := deliverEvent(ctx, event)
 	finish := time.Now().UTC()
-	if errors.Is(deliveryErr, errDeliveryCancelled) {
-		return true, model.DB.Table("notification_outbox").Where("id = ?", event.ID).Updates(map[string]any{
-			"status": "cancelled", "locked_at": nil, "updated_at": finish,
-		}).Error
+	updates := map[string]any{"locked_at": nil, "updated_at": finish}
+	switch {
+	case errors.Is(deliveryErr, errDeliveryCancelled):
+		updates["status"] = "cancelled"
+	case deliveryErr == nil:
+		updates["status"], updates["last_error_code"], updates["sent_at"] = "sent", nil, finish
+	default:
+		code := deliveryErrorCode(deliveryErr)
+		updates["status"], updates["last_error_code"] = "failed", code
+		updates["available_at"] = finish.Add(time.Duration(1<<min(event.Attempts+1, 8)) * time.Minute)
+		log.Printf("notification event=%d code=%s attempts=%d", event.ID, code, event.Attempts+1)
 	}
-	if deliveryErr == nil {
-		return true, model.DB.Table("notification_outbox").Where("id = ?", event.ID).Updates(map[string]any{
-			"status": "sent", "locked_at": nil, "last_error_code": nil,
-			"sent_at": finish, "updated_at": finish,
-		}).Error
+	// Keep the delivery result in this worker until storage recovers. Retrying
+	// only the write avoids sending the same message again after a transient fault.
+	for {
+		err = model.DB.WithContext(ctx).Table("notification_outbox").Where("id = ?", event.ID).Updates(updates).Error
+		if err == nil {
+			return true, nil
+		}
+		if ctx.Err() != nil {
+			return true, ctx.Err()
+		}
+		log.Printf("notification event=%d code=completion_write_failed", event.ID)
+		timer := time.NewTimer(3 * time.Second)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return true, ctx.Err()
+		case <-timer.C:
+		}
 	}
-	code := deliveryErrorCode(deliveryErr)
-	backoff := time.Duration(1<<min(event.Attempts+1, 8)) * time.Minute
-	err = model.DB.Table("notification_outbox").Where("id = ?", event.ID).Updates(map[string]any{
-		"status": "failed", "locked_at": nil, "last_error_code": code,
-		"available_at": finish.Add(backoff), "updated_at": finish,
-	}).Error
-	if err != nil {
-		return true, err
-	}
-	return true, fmt.Errorf("notification delivery failed: %s", code)
 }
 
 func deliverEvent(ctx context.Context, event outboxRow) error {

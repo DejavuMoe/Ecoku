@@ -53,7 +53,7 @@ const ecoku = new Ecoku(options: EcokuConfig)
 ### `reload(): Promise<void>`
 現在の並べ替え順序を維持したまま、表示中のページのコメントを再取得して再描画します。
 
-### `setPageKey(newPageKey: string): Promise<void>`
+### `setPageKey(newPageKey: string, pageTitle?: string): Promise<void>`
 SPA（シングルページアプリケーション）の画面遷移時に、コメント対象ページを動的に切り替えます。
 - `newPageKey` が現在と同じ場合、暗黙的に `reload()` を実行します。
 - 新しいページの場合、以前のページの保留中ネットワークリクエストを `AbortController` で中止し、返信フォームを閉じ、ページネーションとフォームをリセットした上で、新しいページの第 1 ページを読み込みます。
@@ -99,8 +99,8 @@ onMounted(async () => {
 
 // SPA 遷移時にページキーを監視して切り替え
 watch(() => route.path, (newPath) => {
-  ecokuInstance?.setPageKey(newPath)
-})
+  ecokuInstance?.setPageKey(newPath, document.title)
+}, { flush: 'post' })
 
 onUnmounted(() => {
   ecokuInstance?.destroy()
@@ -152,3 +152,6 @@ export const CommentBox: React.FC<CommentProps> = ({ pageKey, pageTitle }) => {
   return <div ref={containerRef} />
 }
 ```
+
+
+第2引数に新しい記事タイトルを渡します。省略時は旧タイトルを消去します。ルートと記事タイトル更新後に呼び出してください。直接 SDK では空でない `cssURL` はインライン CSS 注入を止めるだけなので、ホスト側で `<link rel="stylesheet">` を追加します。自動追加はホスト型 loader のみです。

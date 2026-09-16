@@ -53,7 +53,7 @@ Initializes and mounts the comment system.
 ### `reload(): Promise<void>`
 Refreshes the current page of comments, preserving active sort criteria.
 
-### `setPageKey(newPageKey: string): Promise<void>`
+### `setPageKey(newPageKey: string, pageTitle?: string): Promise<void>`
 Smoothly switches comment discussions during Single-Page Application (SPA) client-side routing.
 - If `newPageKey` matches the active key, triggers a silent `reload()`.
 - For a new page, automatically aborts inflight network requests via `AbortController`, closes open reply boxes, resets pagination and form state, and loads page 1 of the new discussion.
@@ -99,8 +99,8 @@ onMounted(async () => {
 
 // Listen to SPA route changes and switch page discussions dynamically
 watch(() => route.path, (newPath) => {
-  ecokuInstance?.setPageKey(newPath)
-})
+  ecokuInstance?.setPageKey(newPath, document.title)
+}, { flush: 'post' })
 
 onUnmounted(() => {
   ecokuInstance?.destroy()
@@ -152,3 +152,6 @@ export const CommentBox: React.FC<CommentProps> = ({ pageKey, pageTitle }) => {
   return <div ref={containerRef} />
 }
 ```
+
+
+Pass the new article title as the second argument; omitting it clears the old title. Call after the host updates the route and article title. In the direct SDK, a nonempty `cssURL` only disables inline CSS injection: add the matching `<link rel="stylesheet">` yourself. Only the hosted loader inserts that stylesheet link.

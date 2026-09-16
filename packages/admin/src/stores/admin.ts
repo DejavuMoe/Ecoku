@@ -81,6 +81,8 @@ export const useAdminStore = defineStore('admin', () => {
   function clearSession(reason = '') {
     if (expiryTimer) clearTimeout(expiryTimer)
     queueController?.abort(); detailController?.abort()
+    ++queueGeneration; ++detailGeneration
+    queueBusy.value = false; detailBusy.value = false
     token.value = ''; expiresAt.value = ''; sites.value = []; selectedSiteId.value = ''
     comments.value = []; selectedComment.value = null; counts.value = emptyCounts()
     view.value = 'comments'; loginMessage.value = reason
@@ -143,6 +145,7 @@ export const useAdminStore = defineStore('admin', () => {
   }
   async function loadComments(announce = false) {
     if (!token.value || !selectedSiteId.value) return
+    detailController?.abort(); ++detailGeneration; detailBusy.value = false
     queueController?.abort(); queueController = new AbortController(); const generation = ++queueGeneration
     queueBusy.value = true; queueMessage.value = ''; actionMessage.value = ''
     try {
@@ -153,7 +156,7 @@ export const useAdminStore = defineStore('admin', () => {
       const next = comments.value.find((item) => item.id === selectedComment.value?.id) ?? comments.value[0] ?? null
       selectedComment.value = next; if (next) void loadDetail(next.id)
       if (announce) toastMessage.value = messages.refreshed
-    } catch (error) { if (!(error instanceof DOMException && error.name === 'AbortError')) fail(error, 'queue') }
+    } catch (error) { if (generation === queueGeneration && !(error instanceof DOMException && error.name === 'AbortError')) fail(error, 'queue') }
     finally { if (generation === queueGeneration) queueBusy.value = false }
   }
   async function loadDetail(id: number) {
@@ -161,7 +164,7 @@ export const useAdminStore = defineStore('admin', () => {
     try {
       const comment = await adminApi.getComment(token.value, selectedSiteId.value, id, detailController.signal)
       if (generation === detailGeneration && selectedComment.value?.id === id) selectedComment.value = comment
-    } catch (error) { if (!(error instanceof DOMException && error.name === 'AbortError')) fail(error, 'action') }
+    } catch (error) { if (generation === detailGeneration && !(error instanceof DOMException && error.name === 'AbortError')) fail(error, 'action') }
     finally { if (generation === detailGeneration) detailBusy.value = false }
   }
   async function selectSite(id: string) { selectedSiteId.value = id; page.value = 1; selectedComment.value = null; if (view.value === 'comments') await loadComments() }

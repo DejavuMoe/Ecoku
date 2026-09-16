@@ -122,6 +122,7 @@
     const pack = manifest.packs[packIndex];
     tabs.querySelectorAll(".smoji-tab").forEach((tab, index) => {
       tab.setAttribute("aria-selected", String(index === packIndex));
+      grid.setAttribute("aria-labelledby", `${panel.id}-tab-${packIndex}`);
       tab.tabIndex = index === packIndex ? 0 : -1;
     });
     grid.replaceChildren();
@@ -159,6 +160,10 @@
       tab.className = "smoji-tab";
       tab.textContent = pack.label;
       tab.setAttribute("role", "tab");
+      tab.id = `${panel.id}-tab-${index}`;
+      const grid = panel.querySelector(".smoji-grid");
+      grid.id = `${panel.id}-grid`;
+      tab.setAttribute("aria-controls", grid.id);
       tab.setAttribute("aria-selected", String(index === 0));
       tab.tabIndex = index === 0 ? 0 : -1;
       tab.addEventListener("click", () => renderPack(panel, manifest, index, textarea, trigger));
@@ -204,6 +209,8 @@
     trigger.setAttribute("aria-controls", pickerId);
     trigger.setAttribute("aria-expanded", "true");
     slot.replaceChildren(picker);
+    picker.tabIndex = -1;
+    picker.focus();
     openPicker = { picker, trigger };
     picker.querySelector(".smoji-close").addEventListener("click", () => closeCurrentPicker(true));
     picker.querySelector("[data-smoji-retry]").addEventListener("click", () => populatePicker(picker, textarea, trigger));
