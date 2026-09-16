@@ -29,3 +29,22 @@ func TestValidSmojiContent(t *testing.T) {
 		t.Fatal("disabled site accepted a smoji marker")
 	}
 }
+
+func TestSmojiURLRoundTrip(t *testing.T) {
+	site := model.Site{SmojiEnabled: true, SmojiManifestURL: "https://static.example.test:443/smoji.json"}
+	for _, source := range []string{"https://static.example.test/face%281%29.png", "https://static.example.test:443/face.png", "https://static.example.test:0443/face.png"} {
+		if !validSmojiContent("![smoji:笑]("+source+")", site) {
+			t.Fatalf("same origin rejected: %s", source)
+		}
+	}
+	if validSmojiContent("![smoji:笑](https://static.example.test:444/face.png)", site) {
+		t.Fatal("different port accepted")
+	}
+}
+
+func TestSmojiNonDefaultPortCanonicalization(t *testing.T) {
+	site := model.Site{SmojiEnabled: true, SmojiManifestURL: "https://static.example.test:08443/smoji.json"}
+	if !validSmojiContent("![smoji:笑](https://static.example.test:8443/face.png)", site) {
+		t.Fatal("numeric same port rejected")
+	}
+}

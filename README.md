@@ -105,3 +105,5 @@ services:
 - **纯文本评论**：不引入富文本、Markdown 复杂渲染（除 Smoji 表情外）、点赞、排行榜或普通用户账户体系。
 - **隐私优先**：严禁收集访客客户端 IP 服务信息；管理员凭证与加密主密钥永不外泄。
 - **单向迁移**：SQLite schema 迁移原位、顺序、事务化；成功后向 `schema_migrations` 记录版本，不提供自动向下迁移。
+
+SPA 使用 SDK 时调用 `await comments.setPageKey(newPageKey, newPageTitle)` 同步文章标题；省略标题会清空旧值。直接 SDK 的 `cssURL` 需宿主自行加载对应样式，详见 [SDK 接入](docs/integration/sdk.md)。

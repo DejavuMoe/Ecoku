@@ -1,89 +1,70 @@
-# Backup & Disaster Recovery
+# Backup and recovery
 
-All persistent Ecoku state—including site configurations, comments, encrypted credentials, and migration records—is stored in a single SQLite3 database file.
+## 1. Cold backup
 
----
-
-## 1. Cold Snapshot Backup (Recommended & Fail-Safe)
-
-Before performing version upgrades, host migrations, or major configuration changes, **a cold backup with the service stopped is the safest approach**.
+Run the complete block. Any failed command stops the block and leaves the service stopped; resolve the failure before restarting. The off-volume archive is private from creation. sudo reads files owned by UID 10001. Archive the entire data directory, including any WAL/SHM files: a successful stop does not prove checkpoint completion. Archive validation checks readability and required members; it does not replace a recovery drill.
 
 ```bash
-cd ~/Ecoku
-
-# 1. Stop the running container to ensure full SQLite WAL checkpointing
+(
+set -eu
+umask 077
+cd "$HOME/Ecoku"
+install -d -m 700 "$HOME/backups"
 sudo docker compose down
-
-# 2. Archive data directory, configuration, and environment file
-BACKUP_NAME="ecoku-backup-$(date +%Y%m%d_%H%M%S).tar.gz"
-tar -czvf "$BACKUP_NAME" data/ app/config.yaml ecoku.env compose.yaml
-
-# 3. Secure permissions and move archive to safe offline or off-site storage
-chmod 600 "$BACKUP_NAME"
-mkdir -p ~/backups && mv "$BACKUP_NAME" ~/backups/
-
-# 4. Restart service
+archive="$HOME/backups/ecoku-$(date +%Y%m%d_%H%M%S).tar.gz"
+[ ! -e "$archive" ]
+sudo tar -czf - data/ app/config.yaml ecoku.env compose.yaml > "$archive"
+contents=$(tar -tzf "$archive")
+for required in data/ecoku.sqlite3 app/config.yaml ecoku.env compose.yaml; do
+  printf '%s\n' "$contents" | grep -Fx "$required" > /dev/null
+done
+printf 'Verified backup: %s\n' "$archive"
 sudo docker compose up -d
+)
 ```
 
----
+## 2. Online database snapshot
 
-## 2. Host Online Snapshot (`VACUUM INTO`)
-
-If the `sqlite3` CLI is installed on the host and zero downtime is preferred, you can invoke SQLite's native atomic snapshot command `VACUUM INTO` directly against the database file. This produces a consistent, defragmented single-file backup without holding table locks:
+Requires sqlite3 on the host. The database snapshot is root-owned with mode 600 inside a mode 700 directory. Keep the configuration archive and decryption key with it. Do not change configuration during capture; use a cold backup when strict consistency is required. This snapshot is not the cold archive expected by the recovery block below.
 
 ```bash
-BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
-
-# Execute VACUUM INTO on the host to generate an atomic snapshot
-mkdir -p ~/backups
-sqlite3 ~/Ecoku/data/ecoku.sqlite3 "VACUUM INTO '$HOME/backups/backup_${BACKUP_DATE}.sqlite3'"
+(
+set -eu
+umask 077
+cd "$HOME/Ecoku"
+install -d -m 700 "$HOME/backups"
+snapshot=$(mktemp -d "$HOME/backups/ecoku-snapshot-XXXXXXXX")
+sudo sh -c 'umask 077; cd "$1"; sqlite3 "$2" ".backup database.sqlite3"' sh "$snapshot" "$PWD/data/ecoku.sqlite3"
+sudo tar -czf - app/config.yaml ecoku.env compose.yaml > "$snapshot/config.tar.gz"
+printf 'Snapshot: %s\n' "$snapshot"
+)
 ```
 
-> [!NOTE]
-> The container runtime is based on a minimal Alpine image without the `sqlite3` CLI. If your host lacks `sqlite3`, use the cold backup method above (most reliable, zero extra dependencies).
+## 3. Restore a cold backup
 
----
-
-## 3. Restore SOP
-
-Follow this exact sequence if data corruption, operational error, or full-host migration occurs:
+Use a trusted archive and replace its filename. The commands preserve the current data and configuration before restoring the whole archive, avoiding stale WAL files. Restore the original image tag and decryption key together. Then check admin login, site settings, historical comments and an authorized new comment. Health only proves that the process responds.
 
 ```bash
-cd ~/Ecoku
-
-# Step 1: Stop container
+(
+set -eu
+umask 077
+cd "$HOME/Ecoku"
+archive="$HOME/backups/ecoku-YYYYMMDD_HHMMSS.tar.gz"
+contents=$(tar -tzf "$archive")
+for required in data/ecoku.sqlite3 app/config.yaml ecoku.env compose.yaml; do
+  printf '%s\n' "$contents" | grep -Fx "$required" > /dev/null
+done
 sudo docker compose down
-
-# Step 2: Quarantine damaged state (rename existing directory)
-mv data data_corrupted_$(date +%Y%m%d_%H%M%S)
-mkdir -p data
-
-# Step 3: Extract backup archive
-tar -xzvf ~/backups/ecoku-backup-YYYYMMDD_HHMMSS.tar.gz
-
-# Step 4: Verify and repair file ownership and permissions (must be 10001:10001)
+saved="recovery-before-$(date +%Y%m%d_%H%M%S)"
+mkdir -m 700 "$saved"
+sudo mv data app/config.yaml ecoku.env compose.yaml "$saved/"
+sudo tar -xzf "$archive" --no-same-owner
 sudo chown -R 10001:10001 data app/config.yaml
 sudo chmod 750 data
 sudo chmod 640 app/config.yaml
-sudo chmod 600 ecoku.env
-
-# Step 5: Start container
+sudo chown "$(id -u):$(id -g)" ecoku.env compose.yaml
+chmod 600 ecoku.env
 sudo docker compose up -d
-
-# Step 6: Check logs and service health
-sudo docker compose logs --tail=100 ecoku
-curl -f http://127.0.0.1:12123/api/health
+curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+)
 ```
-
----
-
-## 4. Post-Restore Verification Checklist
-
-After restoring data, complete this verification checklist:
-
-- [ ] `curl -f http://127.0.0.1:12123/api/health` returns HTTP 200 with `data.status: "healthy"`.
-- [ ] Admin console at `/admin/` logs in successfully.
-- [ ] Registered sites and settings are intact; blogger passphrase and badge render correctly.
-- [ ] Public comment thread loads historical comments properly.
-- [ ] Submit a test comment to confirm immediate publication.

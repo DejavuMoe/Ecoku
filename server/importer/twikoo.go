@@ -100,6 +100,11 @@ func ImportTwikoo(ctx context.Context, database *gorm.DB, reader io.Reader, opti
 			return fmt.Errorf("destination site %q already contains comments", siteID)
 		}
 
+		known := make(map[string]bool, len(prepared))
+		for _, item := range prepared {
+			known[item.sourceID] = true
+		}
+		result.Roots, result.Replies = 0, 0
 		inserted := make(map[string]model.Comment, len(prepared))
 		remaining := append([]preparedTwikooComment(nil), prepared...)
 		for len(remaining) > 0 {
@@ -109,7 +114,7 @@ func ImportTwikoo(ctx context.Context, database *gorm.DB, reader io.Reader, opti
 				parentKey := item.parentKey
 				if parentKey != "" {
 					parent, found := inserted[parentKey]
-					if !found && item.rootKey != "" {
+					if !found && !known[parentKey] && item.rootKey != "" {
 						parent, found = inserted[item.rootKey]
 					}
 					if !found {
@@ -127,6 +132,11 @@ func ImportTwikoo(ctx context.Context, database *gorm.DB, reader io.Reader, opti
 				}
 				if err := tx.Create(&item.comment).Error; err != nil {
 					return fmt.Errorf("insert Twikoo comment: %w", err)
+				}
+				if item.comment.ParentID == nil {
+					result.Roots++
+				} else {
+					result.Replies++
 				}
 				inserted[item.sourceID] = item.comment
 				progress = true
@@ -147,6 +157,7 @@ func ImportTwikoo(ctx context.Context, database *gorm.DB, reader io.Reader, opti
 				}
 				inserted[item.sourceID] = item.comment
 				result.Orphaned++
+				result.Roots++
 			}
 			break
 		}

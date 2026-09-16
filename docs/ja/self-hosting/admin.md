@@ -248,3 +248,6 @@ sudo docker compose down
 sudo docker compose run --rm --no-deps ecoku captcha disable
 sudo docker compose up -d
 ```
+
+
+UTF-8 で 72 バイト以下にしてください。切り詰めは行わず、既存 bcrypt ハッシュは引き続き有効です。

@@ -19,27 +19,24 @@ Ecoku はバージョン管理されたインプレース（In-Place）かつト
 ## 標準停止アップデート手順（SOP）
 
 ```bash
-cd ~/Ecoku
-
-# ステップ 1: アップグレード対象バージョンのリリースノートを確認し、設定変更を把握
-# （下記のバージョン別移行ガイド一覧を参照）
-
-# ステップ 2: サービスを停止してコールドバックアップを取得
+(
+set -eu
+umask 077
+cd "$HOME/Ecoku"
+install -d -m 700 "$HOME/backups"
 sudo docker compose down
-tar -czvf "ecoku-preupgrade-$(date +%Y%m%d_%H%M%S).tar.gz" data/ app/config.yaml ecoku.env compose.yaml
-
-# ステップ 3: compose.yaml 内の image を新バージョンに変更（例: git.via.moe/dejavu/ecoku:v0.2.2）
-# 新しい環境変数が必要な場合は ecoku.env に追記
-
-# ステップ 4: 新しいイメージを pull して起動
-sudo docker compose pull
-sudo docker compose up -d
-
-# ステップ 5: 起動ログとスキーママイグレーション状態を確認
-sudo docker compose logs --tail=100 -f ecoku
-
-# ステップ 6: ヘルスチェックと動作検証
+archive="$HOME/backups/ecoku-$(date +%Y%m%d_%H%M%S).tar.gz"
+[ ! -e "$archive" ]
+sudo tar -czf - data/ app/config.yaml ecoku.env compose.yaml > "$archive"
+contents=$(tar -tzf "$archive")
+for required in data/ecoku.sqlite3 app/config.yaml ecoku.env compose.yaml; do
+  printf '%s\n' "$contents" | grep -Fx "$required" > /dev/null
+done
+printf 'Verified backup: %s\n' "$archive"
+vi compose.yaml
+sudo docker compose pull && sudo docker compose up -d
 curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+)
 ```
 
 ---
@@ -66,7 +63,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | バージョン | リリース日 | スキーマ | アップグレードの要点と説明 |
 | :--- | :--- | :---: | :--- |
-| **v0.2.2** | 2026-09-13 | v7（変更なし） | 狭い画面での Smoji ピッカーのレイアウトを修正。 |
+| [**v0.2.2**](./upgrades/v0.2.2) | 2026-09-13 | v7（変更なし） | 狭い画面での Smoji ピッカーのレイアウトを修正。 |
 | [**v0.2.1**](./upgrades/v0.2.1) | 2026-09-12 | v7（変更なし） | Smoji マニフェスト容量拡張と `base` テンプレート対応。 |
 | [**v0.2.0**](./upgrades/v0.2.0) | 2026-09-12 | v7（変更なし） | ドキュメント、組み込み例、API リファレンスの事実関係を修正・拡充。 |
 | [**v0.1.9**](./upgrades/v0.1.9) | 2026-08-31 | v7（変更なし） | CWE-400 対策。旧設定でも起動可能。大規模スレッド読み取り予算制限とロールバック手順に注意。
@@ -80,3 +77,10 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 | [**v0.1.1**](./upgrades/v0.1.1) | 2026-08-15 | v4 | コメント折りたたみボタン（`[+]`/`[-]`）を 3ch 等幅化し、レイアウトシフトを解消。 |
 | [**v0.1.0**](./upgrades/v0.1.0) | 2026-08-15 | v4 | 初回正式リリース。 |
 | [**以前のバージョン**](./upgrades/earlier) | 2026-08-14 | v1 〜 v4 | 初期の単一コンテナ設計、WAL モード導入、タイムゾーン標準化。 |
+
+
+## 次期リリースとの互換性（未リリース）
+
+今回の修正は schema v7、マウントパス、環境変数、bcrypt ハッシュを維持し、v0.2.2 から同じデータベースで更新できます。コメント、設定、WAL、バックアップを削除しません。設定保存によるブログ管理者フラグの再付与を停止し、既存フラグは保持します。過去の誤判定は認証済みコメントと自動判別できず、別途確認と修正許可が必要です。通知は少なくとも一度の配信です。完了書き込み失敗時は同じ結果を再保存し、プロセス内では再送しませんが、配信後・保存前のクラッシュでは再起動時に重複することがあります。
+
+停止バックアップを検証し、正確なイメージ tag に変更して `sudo docker compose pull && sudo docker compose up -d` を実行後、health と業務動作を確認します。ロールバックは更新前の完全バックアップと元のイメージを使います。以降の書き込みは失われるため現状も退避してください。未リリースの修正は新イメージの公開を意味しません。

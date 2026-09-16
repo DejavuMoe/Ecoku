@@ -56,14 +56,16 @@ func renderReplyEmail(reply, parent model.Comment, site model.Site, targetPageUR
 }
 
 func renderTelegram(comment model.Comment, site model.Site) (string, error) {
-	name := siteDisplayName(site)
+	// Text budgets leave room for labels even when every rune takes two UTF-16
+	// units. Escape afterwards; HTML markup and href are never truncated.
+	name := truncateRunes(siteDisplayName(site), 100)
 	title := fmt.Sprintf("您在 %s 上有新评论", name)
 	label := "评论人"
 	if comment.ParentID != nil {
 		title = fmt.Sprintf("您在 %s 上有新回复", name)
 		label = "回复人"
 	}
-	pageTitle := notificationPageTitle(comment.PageTitle)
+	pageTitle := truncateRunes(notificationPageTitle(comment.PageTitle), 200)
 	targetURL := fmt.Sprintf("%s#ecoku-comment-%d", strings.TrimSuffix(pageURL(site, comment.Mark), "#"), comment.ID)
 	parentContext := ""
 	if comment.ParentID != nil {
@@ -73,8 +75,8 @@ func renderTelegram(comment model.Comment, site model.Site) (string, error) {
 		}
 	}
 	message := fmt.Sprintf("<b>%s</b>\n\n<b>%s：</b>%s\n<b>文章标题：</b>%s%s\n%s\n\n<a href=\"%s\">查看原文</a>",
-		html.EscapeString(title), label, html.EscapeString(comment.Username), html.EscapeString(pageTitle), parentContext, html.EscapeString(truncateRunes(comment.Content, 2800)), html.EscapeString(targetURL))
-	return truncateRunes(message, 3900), nil
+		html.EscapeString(title), label, html.EscapeString(truncateRunes(comment.Username, 80)), html.EscapeString(pageTitle), parentContext, html.EscapeString(truncateRunes(comment.Content, 1200)), html.EscapeString(targetURL))
+	return message, nil
 }
 
 func siteDisplayName(site model.Site) string {

@@ -248,3 +248,6 @@ sudo docker compose down
 sudo docker compose run --rm --no-deps ecoku captcha disable
 sudo docker compose up -d
 ```
+
+
+UTF-8 編碼同時不得超過 72 位元組，不截斷口令，既有 bcrypt 雜湊仍有效。

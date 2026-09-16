@@ -283,7 +283,7 @@
                     <div class="subsection-heading"><h3 id="blogger-identity-title">博主身份</h3><p>公开评论只显示下方昵称、可选标志，以及指向站点 URL 的链接。邮箱只用于通知去重和历史评论回填。评论区昵称栏填写口令即可发表为博主。</p></div>
                     ${inputRow("博主昵称", "blogger-name", "text", bloggerName, { error: validationMessage, help: "评论区公开显示，并通过站点 URL 链接" })}
                     ${inputRow("博主邮箱", "blogger-email", "email", bloggerEmail, { error: validationMessage, help: "仅用于通知去重与历史评论回填，不会公开邮箱" })}
-                    ${inputRow("博主口令", "blogger-passphrase", "password", "", { error: validation ? "启用博主身份时必须设置口令" : "", help: configured ? "已设置；留空则保持不变。评论区昵称栏填写口令即可发表为博主。" : "12–80 个字符。评论区昵称栏填写此口令即可发表为博主；口令不会回显。" })}
+                    ${inputRow("博主口令", "blogger-passphrase", "password", "", { error: validation ? "启用博主身份时必须设置口令" : "", help: configured ? "已设置；留空则保持不变。评论区昵称栏填写口令即可发表为博主。" : "12–80 个字符，且 UTF-8 编码不超过 72 字节。评论区昵称栏填写此口令即可发表为博主；口令不会回显。" })}
                     ${inputRow("评论区标志", "blogger-badge", "text", configured || validation ? "[博主]" : "", { help: "显示在博主评论昵称之后，例如 [博主] 或 [OP]。留空则不显示。" })}
                   </section>
 

@@ -139,9 +139,9 @@ function normalizeSmojiConfig(value: unknown): CommentFormConfig['smoji'] {
   if (raw.enabled !== true || typeof raw.manifestUrl !== 'string') return { enabled: false, manifestUrl: '' }
   try {
     const manifest = new URL(raw.manifestUrl.trim())
-    const loopback = manifest.hostname === 'localhost' || manifest.hostname === '127.0.0.1' || manifest.hostname === '::1'
+    const loopback = manifest.hostname === 'localhost' || /^127\.\d+\.\d+\.\d+$/.test(manifest.hostname) || manifest.hostname === '[::1]'
     if ((manifest.protocol !== 'https:' && !(manifest.protocol === 'http:' && loopback))
-      || manifest.username || manifest.password || manifest.search || manifest.hash) throw new Error()
+      || manifest.username || manifest.password || manifest.href.includes('?') || manifest.href.includes('#')) throw new Error()
     return { enabled: true, manifestUrl: manifest.toString() }
   } catch {
     return { enabled: false, manifestUrl: '' }

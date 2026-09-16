@@ -67,7 +67,7 @@ required for every site.
 For a single-page application:
 
 ```ts
-await comments.setPageKey('guides/another-article')
+await comments.setPageKey('guides/another-article', 'Another article')
 await comments.reload()
 comments.destroy()
 ```
@@ -110,3 +110,5 @@ pnpm run validate
 ```
 
 The package currently has no lint script.
+
+The optional second `setPageKey` argument updates the article title; omission clears the old title. Call after the host has updated its route and title. Direct SDK `cssURL` disables inline CSS only; add the corresponding stylesheet with a host `<link rel="stylesheet">`. The hosted loader inserts that link automatically.

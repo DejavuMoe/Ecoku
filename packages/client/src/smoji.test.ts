@@ -87,3 +87,25 @@ describe('Smoji loading budgets', () => {
     await expect(loadSmojiManifest('https://static.example.test/smoji.json')).rejects.toThrow('manifest-too-large')
   })
 })
+
+it('round trips parentheses with default ports for explicit and compact images', async () => {
+  for (const entry of [{ src: './face(1).png' }, {}]) {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ version: 1, base: './{pack}/{id}(1).png', packs: [{ id: 'demo', label: '包', items: [{ id: 'face', label: '笑', ...entry }] }] }), { headers: { 'content-type': 'application/json' } })))
+    const manifest = await loadSmojiManifest('https://static.example.test:443/smoji.json')
+    const marker = smojiMarker(manifest.packs[0].items[0])
+    expect(marker).toContain('%281%29.png)')
+    const target = document.createElement('div')
+    renderSmojiContent(target, marker, true, 'https://static.example.test/smoji.json')
+    expect(target.querySelectorAll('img')).toHaveLength(1)
+  }
+})
+
+it('rejects empty query and fragment delimiters in both manifest formats', async () => {
+  for (const suffix of ['?', '#']) {
+    for (const compact of [false, true]) {
+      const value = { version: 1, ...(compact ? { base: `./{pack}/{id}.png${suffix}` } : {}), packs: [{ id: 'demo', label: '包', items: [{ id: 'face', label: '笑', ...(!compact ? { src: `./face.png${suffix}` } : {}) }] }] }
+      vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(value), { headers: { 'content-type': 'application/json' } })))
+      await expect(loadSmojiManifest('https://static.example.test/smoji.json')).rejects.toThrow('invalid-manifest')
+    }
+  }
+})

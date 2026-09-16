@@ -627,7 +627,7 @@ func NormalizeSmojiManifestURL(raw string) (string, error) {
 		return "", nil
 	}
 	parsed, err := url.Parse(trimmed)
-	if err != nil || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+	if err != nil || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.ForceQuery || strings.Contains(trimmed, "#") {
 		return "", fmt.Errorf("表情包清单网址格式无效")
 	}
 	hostname := parsed.Hostname()
@@ -640,6 +640,19 @@ func NormalizeSmojiManifestURL(raw string) (string, error) {
 	}
 	parsed.Scheme = strings.ToLower(parsed.Scheme)
 	parsed.Host = strings.ToLower(parsed.Host)
+	if port := parsed.Port(); port != "" {
+		value, err := strconv.Atoi(port)
+		if err != nil || value < 1 || value > 65535 {
+			return "", fmt.Errorf("表情包清单网址端口无效")
+		}
+		parsed.Host = net.JoinHostPort(strings.ToLower(parsed.Hostname()), strconv.Itoa(value))
+		if (parsed.Scheme == "https" && value == 443) || (parsed.Scheme == "http" && value == 80) {
+			parsed.Host = strings.ToLower(parsed.Hostname())
+			if strings.Contains(parsed.Host, ":") {
+				parsed.Host = "[" + parsed.Host + "]"
+			}
+		}
+	}
 	return parsed.String(), nil
 }
 

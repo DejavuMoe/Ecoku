@@ -1,5 +1,7 @@
 # 配置字典与环境变量参考
 
+表中的默认值是程序兜底值。示例中的 `/app/client`、`/app/admin`、`/data/ecoku.sqlite3` 和 `ECOKU_*` 环境变量名由部署模板显式填写；升级继续保留现有值即可。
+
 本篇提供 `app/config.yaml` 配置文件与 `ecoku.env` 环境变量的完整字段参考与技术规范。
 
 `rate_limit.comment_list` 控制单 IP 的公开列表读取次数，默认每个 `window_seconds` 窗口 60 次（窗口默认 60 秒）。两种列表模式共用同一桶，超限返回 429 和 `Retry-After`；其他操作使用独立桶。每个限流器最多保存 10,000 个活跃地址桶，满时拒绝新地址，过期后释放。沿用 `trusted_proxies` 规则，反代后未配置可信代理时访客会共享代理 IP 的额度。
@@ -61,7 +63,7 @@ admin:
 #### 2. `client` 静态资源
 | 配置项 | 类型 | 必填 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
-| `static_dir` | 字符串 | 否 | `/app/client` | 浏览器 SDK 与加载器静态文件所在的目录路径。 |
+| `static_dir` | 字符串 | 否 | `""` | 浏览器 SDK 与加载器静态文件所在的目录路径。 |
 
 #### 3. `rate_limit` 频控规则
 所有限流规则基于固定窗口在单进程内存中运行：
@@ -77,22 +79,22 @@ admin:
 #### 4. `notifications` 通知服务
 | 配置项 | 类型 | 必填 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
-| `encryption_key_env` | 字符串 | 是 | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 存储敏感配置的主加密密钥对应的环境变量名称。 |
-| `instance_public_url` | 字符串 | 否 | `""` | Ecoku 实例对外公开访问的 HTTPS 根地址（用于拼装邮件中的链接）。 |
+| `encryption_key_env` | 字符串 | 是 | `""` | 存储敏感配置的主加密密钥对应的环境变量名称。 |
+| `instance_public_url` | 字符串 | 否 | `""` | 启用通知时需填写的实例公开地址；当前不用于生成邮件链接，邮件原文链接来自站点 `site_url` 与评论 `mark`。 |
 
 #### 5. `database` 数据库
 | 配置项 | 类型 | 必填 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
-| `sqlite.path` | 字符串 | 是 | `/data/ecoku.sqlite3` | SQLite3 数据库文件的绝对路径（代码内置兜底为 `./data/ecoku.bin`，容器部署固定为 `/data/ecoku.sqlite3`）。 |
+| `sqlite.path` | 字符串 | 是 | `./data/ecoku.bin` | SQLite3 数据库文件的绝对路径（代码内置兜底为 `./data/ecoku.bin`，容器部署固定为 `/data/ecoku.sqlite3`）。 |
 
 #### 6. `admin` 管理后台
 | 配置项 | 类型 | 必填 | 默认值 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
 | `enabled` | 布尔 | 否 | `false` | 是否启用管理端后台。生产环境部署需显式配置为 `true`。 |
-| `static_dir` | 字符串 | 否 | `/app/admin` | 管理端静态 HTML/JS 资源目录（代码内置兜底为 `./admin`，容器部署固定为 `/app/admin`）。 |
-| `username_env` | 字符串 | 是 | `ECOKU_ADMIN_USERNAME` | 管理员用户名对应的环境变量名。 |
-| `password_hash_env` | 字符串 | 是 | `ECOKU_ADMIN_PASSWORD_HASH` | 管理员 bcrypt 密码哈希对应的环境变量名。 |
-| `token_key_env` | 字符串 | 是 | `ECOKU_ADMIN_TOKEN_KEY` | 管理员 Bearer Token 签名密钥对应的环境变量名。 |
+| `static_dir` | 字符串 | 否 | `./admin` | 管理端静态 HTML/JS 资源目录（代码内置兜底为 `./admin`，容器部署固定为 `/app/admin`）。 |
+| `username_env` | 字符串 | 是 | `""` | 管理员用户名对应的环境变量名。 |
+| `password_hash_env` | 字符串 | 是 | `""` | 管理员 bcrypt 密码哈希对应的环境变量名。 |
+| `token_key_env` | 字符串 | 是 | `""` | 管理员 Bearer Token 签名密钥对应的环境变量名。 |
 | `token_ttl_minutes` | 整数 | 否 | `480` | 管理端登录会话生命周期（分钟，默认 8 小时）。 |
 | `allowed_origins` | 字符串列表 | 是 | `[]` | 允许访问管理后台 API 的精确 Origin 列表（需包含协议与域名）。 |
 

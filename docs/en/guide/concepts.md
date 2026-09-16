@@ -98,7 +98,7 @@ Site owners authenticate without entering private emails on public devices:
 - Configured as a bcrypt hash in `sites.blogger_passphrase_hash`.
 - **Usage**: The blogger simply types their secret passphrase into the **Nickname** input field.
 - **Server Verification**: The server verifies the hash, replaces author fields with the configured blogger profile, sets `is_blogger = 1`, and returns the public badge.
-- **Retroactive Backfill**: Saving a new passphrase triggers an atomic update backfilling `is_blogger` across all historical comments matching the blogger's nickname and email.
+- **Historical backfill (next release)**: Limited to the original schema v5 migration and the empty-site Twikoo import transaction. Saving settings, first setting a passphrase or rotating it does not grant blogger status retroactively. Existing flags are preserved.
 
 ---
 
@@ -141,3 +141,6 @@ flowchart TD
 2. **Dynamic Content-Security-Policy (CSP) Convergence**:
    - When self-hosted Cap is active, the server dynamically permits Cap's HTTPS instance origin, WASM, Blob Worker, and nonce-scoped `'unsafe-eval'` required by Cap's sandboxed instrumentation.
    - When switching to Turnstile or disabling CAPTCHA, the server immediately strips Cap's origins and evaluation directives, reverting to a strictly locked-down CSP baseline.
+
+
+UTF-8 encoding must also fit within 72 bytes. Passphrases are never truncated; existing bcrypt hashes remain valid.

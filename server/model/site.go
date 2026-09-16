@@ -97,9 +97,6 @@ func getSite(database *gorm.DB, siteID string) (Site, error) {
 		}
 		return Site{}, err
 	}
-	if err := attachSiteOrigins(database, []Site{site}); err != nil {
-		return Site{}, err
-	}
 	var origins []string
 	if err := database.Table("site_origins").Where("site_id = ?", site.ID).Order("origin ASC").Pluck("origin", &origins).Error; err != nil {
 		return Site{}, err
@@ -190,13 +187,7 @@ func UpdateSite(siteID string, input SiteWrite, now time.Time) (Site, error) {
 		if err := replaceSiteOrigins(tx, siteID, input.AllowedOrigins); err != nil {
 			return err
 		}
-		var hash string
-		if err := tx.Raw("SELECT blogger_passphrase_hash FROM sites WHERE id = ?", siteID).Scan(&hash).Error; err != nil {
-			return err
-		}
-		if strings.TrimSpace(input.BloggerNickname) != "" && strings.TrimSpace(hash) != "" {
-			return BackfillHistoricalBloggerComments(tx, siteID)
-		}
+
 		return nil
 	})
 	if err != nil {

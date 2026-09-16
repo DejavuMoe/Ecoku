@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { resolveEcokuSDKURL, setupEcokuLoader } from './loader-core'
 
 describe('Ecoku hosted loader', () => {
@@ -123,5 +123,51 @@ describe('Ecoku hosted loader', () => {
     const link = document.querySelector<HTMLLinkElement>('link[data-ecoku-css]')
     expect(link?.href).toBe('https://cdn.example/ecoku.unstyled.css')
     expect(link?.rel).toBe('stylesheet')
+  })
+})
+
+describe('loader retry races', () => {
+  afterEach(() => { vi.useRealTimers(); delete (window as Window & { Ecoku?: unknown }).Ecoku })
+  const shell = () => {
+    document.body.innerHTML = `<section data-ecoku-comments data-server-url="https://ecoku.example" data-site-id="blog" data-page-key="/">
+      <div data-ecoku-loader><span data-ecoku-status></span><button data-ecoku-retry hidden></button></div><div data-ecoku-mount></div></section>`
+  }
+  it('removes a stalled script and ignores its late load after retry', async () => {
+    vi.useFakeTimers(); vi.resetModules(); shell()
+    delete (window as Window & { Ecoku?: unknown }).Ecoku
+    const { setupEcokuLoader: setup } = await import('./loader-core')
+    setup(document, window)
+    const oldScript = document.querySelector('script[data-ecoku-sdk]')!
+    await vi.advanceTimersByTimeAsync(12000)
+    expect(oldScript.isConnected).toBe(false)
+    ;(document.querySelector('[data-ecoku-retry]') as HTMLElement).click()
+    const newScript = document.querySelector('script[data-ecoku-sdk]')!
+    expect(newScript).not.toBe(oldScript)
+    const init = vi.fn().mockResolvedValue(undefined)
+    ;(window as Window & { Ecoku?: unknown }).Ecoku = class { init = init; destroy() {} }
+    oldScript.dispatchEvent(new Event('load'))
+    newScript.dispatchEvent(new Event('load'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(init).toHaveBeenCalledOnce()
+    expect(document.querySelector('[data-ecoku-comments]')?.getAttribute('aria-busy')).toBe('false')
+  })
+  it('destroys a timed out instance and ignores its late rejection', async () => {
+    vi.useFakeTimers(); shell()
+    let rejectOld!: (error: Error) => void
+    const destroy = vi.fn()
+    let calls = 0
+    ;(window as Window & { Ecoku?: unknown }).Ecoku = class {
+      destroy = destroy
+      init() { return ++calls === 1 ? new Promise<void>((_resolve, reject) => { rejectOld = reject }) : Promise.resolve() }
+    }
+    setupEcokuLoader(document, window)
+    await vi.advanceTimersByTimeAsync(12000)
+    expect(destroy).toHaveBeenCalledOnce()
+    ;(document.querySelector('[data-ecoku-retry]') as HTMLElement).click()
+    await vi.advanceTimersByTimeAsync(0)
+    rejectOld(new Error('late'))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(calls).toBe(2)
+    expect((document.querySelector('[data-ecoku-loader]') as HTMLElement).hidden).toBe(true)
   })
 })

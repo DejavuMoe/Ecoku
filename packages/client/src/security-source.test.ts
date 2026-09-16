@@ -12,6 +12,12 @@ describe('browser runtime privacy boundary', () => {
       'messages.ts',
       'style.css',
       'util.ts',
+      'identity-store.ts',
+      'loader-core.ts',
+      'smoji.ts',
+      'captcha.ts',
+      'cap.ts',
+      'turnstile.ts',
     ]
     const runtimeSource = runtimeFiles
       .map((name) => readFileSync(fileURLToPath(new URL(name, import.meta.url)), 'utf8'))

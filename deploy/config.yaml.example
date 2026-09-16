@@ -23,7 +23,7 @@ rate_limit:
 notifications:
   # SMTP 密码与 Telegram Bot Token 使用此主密钥加密后保存到 SQLite。
   encryption_key_env: "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
-  # 通知中的原文链接只从站点 URL 与页面 key 拼接，不信任请求 Host。
+  # 启用通知时需填写实例地址；当前原文链接仍从站点 URL 与页面 key 拼接。
   instance_public_url: "https://ecoku.example.com"
 
 database:

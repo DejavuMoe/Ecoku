@@ -53,7 +53,7 @@ const ecoku = new Ecoku(options: EcokuConfig)
 ### `reload(): Promise<void>`
 重新拉取当前页码的最新评论数据并重新渲染，保持现有排序不变。
 
-### `setPageKey(newPageKey: string): Promise<void>`
+### `setPageKey(newPageKey: string, pageTitle?: string): Promise<void>`
 在单页应用（SPA）无刷新路由切换时，无缝切换评论区绑定的页面。
 - 若传入的 `newPageKey` 与当前相同，静默触发 `reload()`。
 - 若为全新页面，自动中止前一页面所有在途网络请求、关闭活动回复框、重置分页与表单，并重新载入新页面的第 1 页评论。
@@ -99,8 +99,8 @@ onMounted(async () => {
 
 // 监听 SPA 路由变化无刷新切换
 watch(() => route.path, (newPath) => {
-  ecokuInstance?.setPageKey(newPath)
-})
+  ecokuInstance?.setPageKey(newPath, document.title)
+}, { flush: 'post' })
 
 onUnmounted(() => {
   ecokuInstance?.destroy()
@@ -152,3 +152,6 @@ export const CommentBox: React.FC<CommentProps> = ({ pageKey, pageTitle }) => {
   return <div ref={containerRef} />
 }
 ```
+
+
+第二个参数显式传入新页面标题；省略时清空旧标题，避免把前一文章标题写入新评论。请在宿主路由与文章标题更新完成后调用。直接 SDK 使用非空 `cssURL` 只会停止内联 CSS 注入，宿主需自行添加对应 `<link rel="stylesheet">`；托管 loader 才会自动添加外链样式。

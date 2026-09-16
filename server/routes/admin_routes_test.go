@@ -417,7 +417,7 @@ func TestSiteWritePersistsBloggerBadge(t *testing.T) {
 	}
 }
 
-func TestSiteUpdateBackfillsHistoricalBloggerComments(t *testing.T) {
+func TestSiteUpdateDoesNotGrantUnprovenBloggerIdentity(t *testing.T) {
 	env := setupAdminTest(t)
 	ownerEmail := "OWNER@example.test"
 	if err := model.DB.Exec(`UPDATE sites SET blogger_nickname = '站长', blogger_email = 'owner@example.test' WHERE id = 'site-a'`).Error; err != nil {
@@ -454,7 +454,7 @@ func TestSiteUpdateBackfillsHistoricalBloggerComments(t *testing.T) {
 		t.Fatalf("update=%d %s", updated.Code, updated.Body.String())
 	}
 	var flagged, plain int64
-	if err := model.DB.Model(&model.Comment{}).Where("id = ? AND is_blogger = 1", historical.ID).Count(&flagged).Error; err != nil {
+	if err := model.DB.Model(&model.Comment{}).Where("id = ? AND is_blogger = 0", historical.ID).Count(&flagged).Error; err != nil {
 		t.Fatal(err)
 	}
 	if err := model.DB.Model(&model.Comment{}).Where("id = ? AND is_blogger = 0", guest.ID).Count(&plain).Error; err != nil {
@@ -463,6 +463,32 @@ func TestSiteUpdateBackfillsHistoricalBloggerComments(t *testing.T) {
 	if flagged != 1 || plain != 1 {
 		t.Fatalf("backfill mismatch flagged=%d plain=%d", flagged, plain)
 	}
+	for _, passphrase := range []string{"", "another-correct-passphrase"} {
+		current, err := model.GetSite("site-a")
+		if err != nil {
+			t.Fatal(err)
+		}
+		payload := map[string]any{
+			"site_url": "https://a.example", "allowed_origins": []string{"https://a.example"},
+			"blogger_nickname": "站长", "blogger_email": "owner@example.test",
+			"revision": current.Revision, "placeholder": "新提示",
+		}
+		if passphrase != "" {
+			payload["blogger_passphrase"] = passphrase
+		}
+		response := requestJSON(t, env.router, http.MethodPut, "/api/admin/sites/site-a", adminTestOrigin, "Bearer "+env.token, payload)
+		if response.Code != http.StatusOK {
+			t.Fatalf("update=%d", response.Code)
+		}
+		var saved model.Comment
+		if err := model.DB.First(&saved, historical.ID).Error; err != nil {
+			t.Fatal(err)
+		}
+		if saved.IsBlogger {
+			t.Fatal("unproven comment became blogger after save/rotation")
+		}
+	}
+
 }
 
 func TestSiteCreateDoesNotBackfillOtherSiteComments(t *testing.T) {

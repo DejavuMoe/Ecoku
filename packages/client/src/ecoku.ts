@@ -43,12 +43,12 @@ class Ecoku {
     await this.surface.reload()
   }
 
-  async setPageKey(pageKey: string): Promise<void> {
+  async setPageKey(pageKey: string, pageTitle = ''): Promise<void> {
     if (!this.surface || !this.config) {
       throw new Error('Ecoku: init() must be called before setPageKey().')
     }
-    await this.surface.setPageKey(pageKey)
-    this.config = { ...this.config, pageKey: pageKey.trim() }
+    this.config = { ...this.config, pageKey: pageKey.trim(), pageTitle: pageTitle.trim() }
+    await this.surface.setPageKey(pageKey, pageTitle)
   }
 
   destroy(): void {

@@ -1,88 +1,70 @@
 # 备份与数据恢复
 
-Ecoku 的所有数据（包含站点配置、评论记录、加密凭据与迁移日志）均持久化在单个 SQLite3 数据库文件中。
+## 1. 停服冷备份
 
----
-
-## 1. 停服冷备份（最推荐、绝对安全）
-
-在执行系统升级、迁移主机或重大配置变更前，**停服冷备份是最安全可靠的方式**。
+复制整个代码块执行。任何命令失败都会终止代码块并保持停服；排查失败原因后再恢复服务。备份在卷外从创建时即限制访问，使用 sudo 读取 UID 10001 的文件。整个 data 目录（包括仍存在的 WAL/SHM）一起归档；停止成功不保证 WAL 已全部合并。归档检查只验证压缩包可读及必需文件存在，不等于完整恢复演练。
 
 ```bash
-cd ~/Ecoku
-
-# 1. 停止运行中的容器，确保 SQLite WAL 完整合并
+(
+set -eu
+umask 077
+cd "$HOME/Ecoku"
+install -d -m 700 "$HOME/backups"
 sudo docker compose down
-
-# 2. 对数据目录、配置与环境变量打包归档
-BACKUP_NAME="ecoku-backup-$(date +%Y%m%d_%H%M%S).tar.gz"
-tar -czvf "$BACKUP_NAME" data/ app/config.yaml ecoku.env compose.yaml
-
-# 3. 将备份文件移出当前目录，妥善保存在安全的离线或异地存储中
-chmod 600 "$BACKUP_NAME"
-mv "$BACKUP_NAME" ~/backups/
-
-# 4. 重新启动服务
+archive="$HOME/backups/ecoku-$(date +%Y%m%d_%H%M%S).tar.gz"
+[ ! -e "$archive" ]
+sudo tar -czf - data/ app/config.yaml ecoku.env compose.yaml > "$archive"
+contents=$(tar -tzf "$archive")
+for required in data/ecoku.sqlite3 app/config.yaml ecoku.env compose.yaml; do
+  printf '%s\n' "$contents" | grep -Fx "$required" > /dev/null
+done
+printf 'Verified backup: %s\n' "$archive"
 sudo docker compose up -d
+)
 ```
 
----
+## 2. 在线数据库快照
 
-## 2. 宿主机在线快照（`VACUUM INTO`）
-
-若宿主机已安装 `sqlite3` 命令行工具且不希望短暂停服，可以在宿主机上对数据文件直接执行 SQLite 原生原子快照命令 `VACUUM INTO`，在线生成一份无锁、已整理的高质量单文件备份：
+需要宿主机 sqlite3。快照文件由 root 创建、权限 600；目录权限 700。配置归档须与数据库一起保存，特别是解密主密钥。在线复制期间请勿修改配置；需要配置与数据库严格一致时使用冷备份。该快照不是可直接套用下方恢复步骤的冷备份归档。
 
 ```bash
-BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
-
-# 宿主机直接执行 VACUUM INTO 生成快照
-sqlite3 ~/Ecoku/data/ecoku.sqlite3 "VACUUM INTO '$HOME/backups/backup_${BACKUP_DATE}.sqlite3'"
+(
+set -eu
+umask 077
+cd "$HOME/Ecoku"
+install -d -m 700 "$HOME/backups"
+snapshot=$(mktemp -d "$HOME/backups/ecoku-snapshot-XXXXXXXX")
+sudo sh -c 'umask 077; cd "$1"; sqlite3 "$2" ".backup database.sqlite3"' sh "$snapshot" "$PWD/data/ecoku.sqlite3"
+sudo tar -czf - app/config.yaml ecoku.env compose.yaml > "$snapshot/config.tar.gz"
+printf 'Snapshot: %s\n' "$snapshot"
+)
 ```
 
-> [!NOTE]
-> 容器运行环境采用极简 Alpine 镜像，未内置 `sqlite3` 命令行工具。若宿主机未安装 `sqlite3`，推荐使用上述「停服冷备份」（最可靠、零额外依赖）。
+## 3. 恢复冷备份
 
----
-
-## 3. 数据恢复 SOP
-
-当发生数据损坏、误操作或需要整站迁移时，请按以下步骤执行精确恢复：
+仅使用可信归档。把文件名改为已验证备份；命令先保留当前 data、配置和环境文件，再整体恢复，避免旧 WAL 混入。恢复配置包含原镜像 tag 和解密密钥。恢复后检查后台登录、站点设置、历史评论和经授权的新评论；健康接口仅证明进程响应。
 
 ```bash
-cd ~/Ecoku
-
-# 步骤 1：停止容器
+(
+set -eu
+umask 077
+cd "$HOME/Ecoku"
+archive="$HOME/backups/ecoku-YYYYMMDD_HHMMSS.tar.gz"
+contents=$(tar -tzf "$archive")
+for required in data/ecoku.sqlite3 app/config.yaml ecoku.env compose.yaml; do
+  printf '%s\n' "$contents" | grep -Fx "$required" > /dev/null
+done
 sudo docker compose down
-
-# 步骤 2：保留故障现场（将现有损坏目录重命名备份）
-mv data data_corrupted_$(date +%Y%m%d_%H%M%S)
-mkdir -p data
-
-# 步骤 3：解压备份归档
-tar -xzvf ~/backups/ecoku-backup-YYYYMMDD_HHMMSS.tar.gz
-
-# 步骤 4：校验并修复文件所有者权限（必须为 10001:10001）
+saved="recovery-before-$(date +%Y%m%d_%H%M%S)"
+mkdir -m 700 "$saved"
+sudo mv data app/config.yaml ecoku.env compose.yaml "$saved/"
+sudo tar -xzf "$archive" --no-same-owner
 sudo chown -R 10001:10001 data app/config.yaml
 sudo chmod 750 data
 sudo chmod 640 app/config.yaml
-sudo chmod 600 ecoku.env
-
-# 步骤 5：启动容器
+sudo chown "$(id -u):$(id -g)" ecoku.env compose.yaml
+chmod 600 ecoku.env
 sudo docker compose up -d
-
-# 步骤 6：检查日志与健康状态
-sudo docker compose logs --tail=100 ecoku
-curl -f http://127.0.0.1:12123/api/health
+curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+)
 ```
-
----
-
-## 4. 备份验证与灾难演练
-
-恢复完成后，请按以下清单进行业务功能验收：
-
-- [ ] `curl -f http://127.0.0.1:12123/api/health` 正常返回，`data.status` 为 `healthy`。
-- [ ] 管理后台 `/admin/` 可以正常登录。
-- [ ] 站点列表与配置完好，博主口令与徽章正常展示。
-- [ ] 博客前台评论区能够正常加载历史树状评论。
-- [ ] 尝试提交一条新评论，确认能够即时发表。

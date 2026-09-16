@@ -1,6 +1,6 @@
 # Docker Deployment
 
-Ecoku runs as a hardened single container listening on `127.0.0.1:12123`. A host-level reverse proxy (Caddy / Nginx) terminates HTTPS.
+The container listens on `:12123`; Compose publishes it only on the host loopback `127.0.0.1:12123`. The host reverse proxy terminates HTTPS.
 
 > [!NOTE]
 > `git.via.moe/dejavu/ecoku:v0.2.2` is the official release image. `ecoku.example.com` is a placeholder—replace it with your real domain.

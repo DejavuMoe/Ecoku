@@ -511,3 +511,45 @@ WHERE id = 1`, fixture.enabled).Error; err != nil {
 		})
 	}
 }
+
+func TestAuditUpgradePreservesV7State(t *testing.T) {
+	freshTestDatabase(t)
+	hash, err := HashBloggerPassphrase("existing-production-passphrase")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := DB.Exec("UPDATE sites SET blogger_nickname = ?, blogger_email = ?, blogger_passphrase_hash = ?, smoji_enabled = 1, smoji_manifest_url = ? WHERE id = ?", "owner", "owner@example.test", hash, "https://static.example.test:443/smoji.json", "site-a").Error; err != nil {
+		t.Fatal(err)
+	}
+	for _, blogger := range []bool{false, true} {
+		email := "owner@example.test"
+		if err := DB.Create(&Comment{SiteID: "site-a", Mark: "/", Username: "owner", Email: &email, Content: "preserved", IsBlogger: blogger}).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	tables := []string{"schema_migrations", "sites", "comments", "notification_settings", "captcha_settings"}
+	before := make(map[string][]map[string]interface{})
+	for _, table := range tables {
+		var rows []map[string]interface{}
+		if err := DB.Table(table).Find(&rows).Error; err != nil {
+			t.Fatal(err)
+		}
+		before[table] = rows
+	}
+	if err := PrepareDatabaseForStartup(DB); err != nil {
+		t.Fatal(err)
+	}
+	for _, table := range tables {
+		var after []map[string]interface{}
+		if err := DB.Table(table).Find(&after).Error; err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(before[table], after) {
+			t.Fatalf("startup changed %s", table)
+		}
+	}
+	site, err := GetSite("site-a")
+	if err != nil || !site.MatchesBloggerPassphrase("existing-production-passphrase") {
+		t.Fatal("existing passphrase no longer works")
+	}
+}

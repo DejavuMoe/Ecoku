@@ -31,6 +31,9 @@ func ValidateBloggerPassphrase(passphrase string) error {
 	if length < MinimumBloggerPassphraseLength || length > MaximumBloggerPassphraseLength {
 		return fmt.Errorf("博主口令长度必须为 %d 到 %d 个字符", MinimumBloggerPassphraseLength, MaximumBloggerPassphraseLength)
 	}
+	if len(passphrase) > 72 {
+		return fmt.Errorf("博主口令 UTF-8 编码不能超过 72 字节")
+	}
 	if strings.ContainsAny(passphrase, "\r\n") {
 		return fmt.Errorf("博主口令不能包含换行")
 	}
@@ -48,7 +51,11 @@ func (site Site) MatchesBloggerPassphrase(candidate string) bool {
 	if hash == "" {
 		return false
 	}
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(strings.TrimSpace(candidate)))
+	candidate = strings.TrimSpace(candidate)
+	if len(candidate) > 72 {
+		return false
+	}
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(candidate))
 	return err == nil
 }
 

@@ -19,27 +19,24 @@ Ecoku 采用版本化、原位（In-Place）、事务性的 SQLite Schema 迁移
 ## 标准停服升级 SOP
 
 ```bash
-cd ~/Ecoku
-
-# 步骤 1：阅读目标版本的发布说明与升级指南，确认配置变化
-# （见下方各版本升级索引）
-
-# 步骤 2：执行停服冷备份
+(
+set -eu
+umask 077
+cd "$HOME/Ecoku"
+install -d -m 700 "$HOME/backups"
 sudo docker compose down
-tar -czvf "ecoku-preupgrade-$(date +%Y%m%d_%H%M%S).tar.gz" data/ app/config.yaml ecoku.env compose.yaml
-
-# 步骤 3：修改 compose.yaml 中的 image 为新版本（如 git.via.moe/dejavu/ecoku:v0.2.2）
-# 若新版本有新环境变量要求，一并补充至 ecoku.env
-
-# 步骤 4：拉取新镜像并启动
-sudo docker compose pull
-sudo docker compose up -d
-
-# 步骤 5：检查启动日志与 Schema 迁移状态
-sudo docker compose logs --tail=100 -f ecoku
-
-# 步骤 6：业务与接口验收
+archive="$HOME/backups/ecoku-$(date +%Y%m%d_%H%M%S).tar.gz"
+[ ! -e "$archive" ]
+sudo tar -czf - data/ app/config.yaml ecoku.env compose.yaml > "$archive"
+contents=$(tar -tzf "$archive")
+for required in data/ecoku.sqlite3 app/config.yaml ecoku.env compose.yaml; do
+  printf '%s\n' "$contents" | grep -Fx "$required" > /dev/null
+done
+printf 'Verified backup: %s\n' "$archive"
+vi compose.yaml
+sudo docker compose pull && sudo docker compose up -d
 curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+)
 ```
 
 ---
@@ -66,7 +63,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | 版本 | 发布日期 | Schema 变化 | 升级要点与说明 |
 | :--- | :--- | :---: | :--- |
-| **v0.2.2** | 2026-09-13 | v7（不变） | 修复 Smoji 选择器在窄屏下的布局问题。 |
+| [**v0.2.2**](./upgrades/v0.2.2) | 2026-09-13 | v7（不变） | 修复 Smoji 选择器在窄屏下的布局问题。 |
 | [**v0.2.1**](./upgrades/v0.2.1) | 2026-09-12 | v7（不变） | Smoji 清单容量提升与精简 `base` 模板支持。 |
 | [**v0.2.0**](./upgrades/v0.2.0) | 2026-09-12 | v7（不变） | 文档、接入示例与 API 参考事实校正和完善。 |
 | [**v0.1.9**](./upgrades/v0.1.9) | 2026-08-31 | v7（不变） | CWE-400 修复；旧配置可启动，大线程读取和显式新配置键的回滚需留意。 |
@@ -80,3 +77,10 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 | [**v0.1.1**](./upgrades/v0.1.1) | 2026-08-15 | v4 | 评论折叠按钮 `[+]`/`[-]` 固定为 3ch 等宽，消除折叠切换抖动。 |
 | [**v0.1.0**](./upgrades/v0.1.0) | 2026-08-15 | v4 | 首个正式发布版本。 |
 | [**更早候选版**](./upgrades/earlier) | 2026-08-14 | v1 ～ v4 | 早期单容器架构设计、WAL 模式引入与时区规范。 |
+
+
+## 下个版本的兼容性（未发布）
+
+本次审计修复保持 schema v7、挂载路径、环境变量及 bcrypt 哈希格式不变；v0.2.2 可原位升级。不会清理评论、配置、WAL 或备份。配置保存不再回填博主标记，已有标记保留；过去误标无法与口令认证记录自动区分，不批量重写。若发现历史误标，需独立核实并授权数据纠正。通知采用至少一次投递：写回失败时保留本次结果重试写回；若在成功发送后、持久化前崩溃，重启可能重复发送。
+
+先停服冷备份并验证，再修改精确镜像 tag，执行 `sudo docker compose pull && sudo docker compose up -d`，最后检查健康与业务。回滚恢复升级前整套冷备份及原精确镜像；这会舍弃备份之后的写入，须先保留当前数据。未发布修复不意味着新镜像已可用。

@@ -77,7 +77,7 @@ function normalizeManifest(value: unknown, manifestUrl: string): SmojiManifest {
     if (typeof raw.base !== 'string' || !raw.base.includes('{pack}') || !raw.base.includes('{id}')) throw new Error('invalid-manifest')
     const sample = raw.base.split('{pack}').join('pack').split('{id}').join('item')
     const base = new URL(sample, manifestUrl)
-    if (/[{}]/.test(sample) || base.origin !== manifestOrigin || !['http:', 'https:'].includes(base.protocol) || base.username || base.password || base.search || base.hash) throw new Error('invalid-manifest')
+    if (/[{}]/.test(sample) || base.origin !== manifestOrigin || !['http:', 'https:'].includes(base.protocol) || base.username || base.password || base.href.includes('?') || base.href.includes('#')) throw new Error('invalid-manifest')
   }
   let itemCount = 0
   const packIDs = new Set<string>()
@@ -100,7 +100,7 @@ function normalizeManifest(value: unknown, manifestUrl: string): SmojiManifest {
       itemIDs.add(entry.id)
       const path = typeof entry.src === 'string' ? entry.src : (raw.base as string).split('{pack}').join(source.id as string).split('{id}').join(entry.id)
       const src = new URL(path, manifestUrl)
-      if (src.origin !== manifestOrigin || !['http:', 'https:'].includes(src.protocol) || src.username || src.password || src.search || src.hash) throw new Error('invalid-manifest')
+      if (src.origin !== manifestOrigin || !['http:', 'https:'].includes(src.protocol) || src.username || src.password || src.href.includes('?') || src.href.includes('#')) throw new Error('invalid-manifest')
       itemCount += 1
       if (itemCount > 6000) throw new Error('invalid-manifest')
       return { id: entry.id, label: entry.label.trim(), src: src.toString() }
@@ -120,7 +120,7 @@ function validLabel(value: unknown): value is string {
 }
 
 export function smojiMarker(item: SmojiItem): string {
-  return `![smoji:${item.label}](${item.src})`
+  return `![smoji:${item.label}](${item.src.replace(/\(/g, '%28').replace(/\)/g, '%29')})`
 }
 
 export function renderSmojiContent(target: HTMLElement, content: string, enabled: boolean, manifestUrl: string): void {
@@ -135,7 +135,7 @@ export function renderSmojiContent(target: HTMLElement, content: string, enabled
     target.append(document.createTextNode(content.slice(cursor, match.index)))
     try {
       const source = new URL(match[2])
-      if (source.origin !== origin || source.username || source.password || source.search || source.hash) throw new Error()
+      if (source.origin !== origin || source.username || source.password || source.href.includes('?') || source.href.includes('#')) throw new Error()
       const image = document.createElement('img')
       image.className = 'ecoku-smoji-inline'
       image.src = source.toString()

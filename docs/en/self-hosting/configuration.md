@@ -1,5 +1,7 @@
 # Configuration Reference
 
+Defaults below are code defaults. The sample paths `/app/client`, `/app/admin`, `/data/ecoku.sqlite3` and `ECOKU_*` variable names are explicit deployment-template values; keep your existing values when upgrading.
+
 This guide provides a comprehensive dictionary and technical specification for `app/config.yaml` and the `ecoku.env` environment file.
 
 `rate_limit.comment_list` controls public comment list reads per IP, defaulting to 60 requests per `window_seconds` window (60 seconds default). Both list modes (flat and nested) share the same rate-limit bucket; other operations use isolated buckets. Exceeding the quota returns HTTP 429 with a `Retry-After` header. Each rate limiter tracks up to 10,000 active IP buckets in memory, rejecting new addresses when saturated until existing entries expire. Following `trusted_proxies` rules, visitors behind an untrusted reverse proxy will share the proxy IP's single quota.
@@ -61,7 +63,7 @@ admin:
 #### 2. `client` Static Assets
 | Field | Type | Required | Default | Description |
 | :--- | :--- | :---: | :--- | :--- |
-| `static_dir` | String | No | `/app/client` | Directory path containing client SDK and loader files. |
+| `static_dir` | String | No | `""` | Directory path containing client SDK and loader files. |
 
 #### 3. `rate_limit` Fixed-Window Limiting
 All rate limits operate on fixed in-memory windows per process:
@@ -77,22 +79,22 @@ All rate limits operate on fixed in-memory windows per process:
 #### 4. `notifications` Outbox & Encryption
 | Field | Type | Required | Default | Description |
 | :--- | :--- | :---: | :--- | :--- |
-| `encryption_key_env` | String | Yes | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | Environment variable name holding the master encryption key. |
-| `instance_public_url` | String | No | `""` | Canonical HTTPS public root URL of the instance (used for notification links). |
+| `encryption_key_env` | String | Yes | `""` | Environment variable name holding the master encryption key. |
+| `instance_public_url` | String | No | `""` | Required when enabling notifications; currently not used to build links. Article links use the site `site_url` and comment `mark`. |
 
 #### 5. `database` Storage
 | Field | Type | Required | Default | Description |
 | :--- | :--- | :---: | :--- | :--- |
-| `sqlite.path` | String | Yes | `/data/ecoku.sqlite3` | Absolute path to the SQLite3 database file (hardcoded fallback `./data/ecoku.bin`, container standard `/data/ecoku.sqlite3`). |
+| `sqlite.path` | String | Yes | `./data/ecoku.bin` | Absolute path to the SQLite3 database file (hardcoded fallback `./data/ecoku.bin`, container standard `/data/ecoku.sqlite3`). |
 
 #### 6. `admin` Management Console
 | Field | Type | Required | Default | Description |
 | :--- | :--- | :---: | :--- | :--- |
 | `enabled` | Boolean | No | `false` | Enable the admin console. Must be set to `true` in production. |
-| `static_dir` | String | No | `/app/admin` | Directory path containing admin UI files. |
-| `username_env` | String | Yes | `ECOKU_ADMIN_USERNAME` | Env variable name for the admin username. |
-| `password_hash_env` | String | Yes | `ECOKU_ADMIN_PASSWORD_HASH` | Env variable name for the bcrypt password hash. |
-| `token_key_env` | String | Yes | `ECOKU_ADMIN_TOKEN_KEY` | Env variable name for the HMAC Bearer token signing key. |
+| `static_dir` | String | No | `./admin` | Directory path containing admin UI files. |
+| `username_env` | String | Yes | `""` | Env variable name for the admin username. |
+| `password_hash_env` | String | Yes | `""` | Env variable name for the bcrypt password hash. |
+| `token_key_env` | String | Yes | `""` | Env variable name for the HMAC Bearer token signing key. |
 | `token_ttl_minutes` | Integer | No | `480` | Admin session lifetime in minutes (default 8 hours). |
 | `allowed_origins` | List of Strings | Yes | `[]` | Exact origin list allowed to access the admin API (including protocol and port). |
 

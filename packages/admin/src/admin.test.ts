@@ -347,3 +347,44 @@ describe('approved production surface', () => {
     expect(css).not.toMatch(/localStorage|sessionStorage/)
   })
 })
+
+describe('request cancellation isolation', () => {
+  it('preserves caller abort instead of wrapping a network failure', async () => {
+    vi.stubGlobal('fetch', vi.fn((_url: unknown, init: RequestInit) => new Promise((_resolve, reject) => {
+      init.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true })
+    })))
+    const controller = new AbortController()
+    const result = adminApi.listSites('token', controller.signal)
+    controller.abort()
+    await expect(result).rejects.toMatchObject({ name: 'AbortError' })
+  })
+
+  it('does not let a stale failure overwrite a newer queue', async () => {
+    const store = useAdminStore()
+    store.token = 'token'; store.selectedSiteId = 'site-a'
+    let rejectOld!: (error: unknown) => void
+    vi.spyOn(adminApi, 'listComments').mockImplementationOnce(() => new Promise((_resolve, reject) => { rejectOld = reject }))
+      .mockResolvedValueOnce(page([comment({ id: 99 })]))
+    vi.spyOn(adminApi, 'getComment').mockResolvedValue(comment({ id: 99 }))
+    const old = store.loadComments()
+    await store.loadComments()
+    rejectOld(new ApiError(500, 'late'))
+    await old
+    expect(store.comments[0]?.id).toBe(99)
+    expect(store.queueMessage).toBe('')
+  })
+})
+
+it('times out while reading an admin response body', async () => {
+  vi.useFakeTimers()
+  try {
+    vi.stubGlobal('fetch', vi.fn(async (_url: unknown, init: RequestInit) => ({
+      ok: true, status: 200,
+      json: () => new Promise((_resolve, reject) => init.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true })),
+    })))
+    const result = adminApi.listSites('token')
+    const assertion = expect(result).rejects.toMatchObject({ status: 0, errorCode: 'timeout' })
+    await vi.advanceTimersByTimeAsync(30000)
+    await assertion
+  } finally { vi.useRealTimers() }
+})

@@ -51,21 +51,33 @@ async function request<T>(path: string, init: RequestInit = {}, token = '', allo
   headers.set('Accept', 'application/json')
   if (init.body !== undefined) headers.set('Content-Type', 'application/json')
   if (token) headers.set('Authorization', `Bearer ${token}`)
-  let response: Response
+  const controller = new AbortController()
+  const abort = () => controller.abort(init.signal?.reason)
+  if (init.signal?.aborted) abort()
+  else init.signal?.addEventListener('abort', abort, { once: true })
+  const timeout = setTimeout(() => controller.abort(new DOMException('Request timed out', 'TimeoutError')), 30000)
   try {
-    response = await fetch(path, { ...init, headers, credentials: 'same-origin' })
-  } catch {
+    const response = await fetch(path, { ...init, headers, signal: controller.signal, credentials: 'same-origin' })
+    let envelope: ResponseEnvelope<T>
+    try {
+      envelope = (await response.json()) as ResponseEnvelope<T>
+    } catch (error) {
+      if (controller.signal.aborted) throw error
+      throw new ApiError(response.ok ? 500 : response.status, 'invalid-response')
+    }
+    if (!response.ok) throw new ApiError(response.status, envelope.message || 'request-failed', responseErrorCode(envelope.data))
+    if (envelope.data === undefined && !allowEmpty) throw new ApiError(500, 'missing-response-data')
+    return envelope.data as T
+  } catch (error) {
+    if (init.signal?.aborted) throw new DOMException('Request cancelled', 'AbortError')
+    if (controller.signal.aborted) throw new ApiError(0, 'timeout', 'timeout')
+    if (error instanceof DOMException && error.name === 'AbortError') throw error
+    if (error instanceof ApiError) throw error
     throw new ApiError(0, 'network')
+  } finally {
+    clearTimeout(timeout)
+    init.signal?.removeEventListener('abort', abort)
   }
-  let envelope: ResponseEnvelope<T>
-  try {
-    envelope = (await response.json()) as ResponseEnvelope<T>
-  } catch {
-    throw new ApiError(response.ok ? 500 : response.status, 'invalid-response')
-  }
-  if (!response.ok) throw new ApiError(response.status, envelope.message || 'request-failed', responseErrorCode(envelope.data))
-  if (envelope.data === undefined && !allowEmpty) throw new ApiError(500, 'missing-response-data')
-  return envelope.data as T
 }
 
 const text = (value: unknown) => typeof value === 'string' ? value : ''
