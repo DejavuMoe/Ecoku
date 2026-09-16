@@ -3,7 +3,7 @@
 The container listens on `:12123`; Compose publishes it only on the host loopback `127.0.0.1:12123`. The host reverse proxy terminates HTTPS.
 
 > [!NOTE]
-> `git.via.moe/dejavu/ecoku:v0.2.2` is the official release image. `ecoku.example.com` is a placeholder—replace it with your real domain.
+> Target image `git.via.moe/dejavu/ecoku:v0.2.3` is pending release. Use these deployment commands after image publication. `ecoku.example.com` is a placeholder.
 
 ---
 
@@ -31,7 +31,7 @@ cd ~/Ecoku
 cat <<'EOF' > compose.yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.2.2"
+    image: "git.via.moe/dejavu/ecoku:v0.2.3"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -71,7 +71,7 @@ EOF
 ```
 
 > [!IMPORTANT]
-> - Never use floating tags like `latest` in production. Always specify an exact semantic version tag (e.g. `v0.2.2`).
+> - Never use floating tags like `latest` in production. Always specify an exact semantic version tag (e.g. `v0.2.3`).
 > - Always bind the port to `127.0.0.1:12123` so requests must pass through your reverse proxy.
 
 ---
@@ -151,7 +151,7 @@ grep -q "^ECOKU_ADMIN_USERNAME=" ecoku.env || echo "ECOKU_ADMIN_USERNAME='admin'
 # 3. Interactively enter admin password and generate bcrypt hash (silent input, skipped if already set)
 if ! grep -q "^ECOKU_ADMIN_PASSWORD_HASH=" ecoku.env; then
   read -rsp 'Enter admin password: ' ADMIN_PASS; echo
-  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i --entrypoint /app/ecoku-server "git.via.moe/dejavu/ecoku:v0.2.2" hash-password)
+  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i --entrypoint /app/ecoku-server "git.via.moe/dejavu/ecoku:v0.2.3" hash-password)
   unset ADMIN_PASS
   echo "ECOKU_ADMIN_PASSWORD_HASH='$HASH'" >> ecoku.env
 fi

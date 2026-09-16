@@ -2,7 +2,7 @@
 
 Ecoku employs a versioned, in-place, and strictly transactional SQLite schema migration system.
 
-When preparing to upgrade to **v0.2.2**, consult the release notes first. This release remains on schema v7 with no schema migrations; its main change is fixing the Smoji picker layout on narrow screens. For full constraints, client behavior, and rollback steps, see the version notes.
+Prepare for **[v0.2.3](./upgrades/v0.2.3)**: audit fixes for identity, notifications, imports and clients, with schema v7 unchanged. This release is pending; upgrade after master CI acceptance and successful tag image publication.
 
 During upgrades, update only the **exact image tag** in your Compose file. Upon boot, the service automatically detects your current schema version and executes pending migrations sequentially within database transactions.
 
@@ -11,7 +11,7 @@ During upgrades, update only the **exact image tag** in your Compose file. Upon 
 ## Core Upgrade Contracts
 
 1. **Unidirectional Transactional Migrations**: Schema migrations run forward sequentially on your SQLite file, appending version records to `schema_migrations` upon success. Ecoku **does not support automated down-migrations**.
-2. **Strictly Prohibited Floating Tags**: Never use `latest` in production. Always specify an exact semantic tag like `v0.2.2`.
+2. **Strictly Prohibited Floating Tags**: Never use `latest` in production. Always specify an exact semantic tag like `v0.2.3`.
 3. **Irreversibility & Rollback Principle**: Once the database upgrades to a higher schema version (e.g. v7), **you cannot simply revert the image tag**, as older binaries refuse to boot against newer schemas. Rollbacks strictly require restoring the pre-upgrade cold backup.
 
 ---
@@ -63,6 +63,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | Version | Release Date | Schema | Upgrade Highlights & Notes |
 | :--- | :--- | :---: | :--- |
+| [**v0.2.3**](./upgrades/v0.2.3) | Pending | v7 (unchanged) | Audit fixes for identity, notifications, imports and clients. |
 | [**v0.2.2**](./upgrades/v0.2.2) | 2026-09-13 | v7 (unchanged) | Fixed Smoji picker layout on narrow screens. |
 | [**v0.2.1**](./upgrades/v0.2.1) | 2026-09-12 | v7 (unchanged) | Larger Smoji manifests and compact `base` template support. |
 | [**v0.2.0**](./upgrades/v0.2.0) | 2026-09-12 | v7 (unchanged) | Documentation, integration examples, and API reference corrections. |
@@ -78,9 +79,8 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 | [**v0.1.0**](./upgrades/v0.1.0) | 2026-08-15 | v4 | First official production release. |
 | [**Earlier**](./upgrades/earlier) | 2026-08-14 | v1–v4 | Early single-container design, SQLite WAL mode, and timezone standards. |
 
-
-## Next release compatibility (unreleased)
+## v0.2.3 compatibility (pending release)
 
 These audit fixes keep schema v7, mount paths, environment variables and bcrypt hashes unchanged; v0.2.2 can upgrade in place. No comments, configuration, WAL or backups are deleted. Saving site settings no longer backfills blogger flags; existing flags remain. Historical false flags cannot be distinguished automatically from verified comments and require separately reviewed, authorized correction. Notifications use at-least-once delivery: a completion-write failure retries the stored result without resending in the same process; a crash after sending but before persistence may cause a duplicate after restart.
 
-Stop and verify a cold backup, change the exact image tag, run `sudo docker compose pull && sudo docker compose up -d`, then check health and business behavior. Roll back with the complete pre-upgrade archive and original exact image. This discards later writes, so preserve current data first. Unreleased fixes do not imply that a new image is available.
+Both versions use schema v7. Normally, stop the service, restore image `git.via.moe/dejavu/ecoku:v0.2.2`, pull and start while retaining the current database and newer comments. This also restores the old audit defects. Restore the complete cold archive only when pre-upgrade data is needed: preserve the current state first and explicitly accept losing later writes. Never overwrite the database automatically.
