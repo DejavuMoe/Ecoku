@@ -66,3 +66,27 @@ sudo docker compose up -d
 - Ecoku の日時は `ecoku.env` の環境変数 `TZ` によって制御されます（例: `TZ=Asia/Tokyo` や `TZ=UTC`）。
 - この値は Docker Compose 経由でコンテナに渡され、指定がない場合は `Asia/Shanghai` にフォールバックします。
 - `ecoku.env` の `TZ` を変更し、`sudo docker compose restart` を実行すると即座に反映されます。
+
+---
+
+## 5. ドキュメントサイトの CI デプロイ
+
+### Q: ドキュメントの公開ディレクトリはどう設定しますか？
+
+リポジトリの `.woodpecker/docs-deploy.yml` は `master` への push 時に、ドキュメントサーバーの agent で独立してビルド・公開します。公開コンテナには `/var/www/<DOCS_DOMAIN>:/deploy` のみをマウントします。このパスは実ディレクトリとし、Web サーバーの公開ルートを `/var/www/<DOCS_DOMAIN>/html` に設定してください。
+
+Nginx はリポジトリの `deploy/nginx-docs.conf.example` を参考に、ドメインと TLS snippet のプレースホルダーを置き換えてください。既存設定から移行する場合は `root` パスに `/html` を追加し、`sudo nginx -t && sudo systemctl reload nginx` で反映します。
+
+```text
+/var/www/<DOCS_DOMAIN>/
+├── .deploy.lock
+├── html -> releases/<commit>-<pipeline>-<rerun>
+└── releases/
+    └── <commit>-<pipeline>-<rerun>/
+```
+
+スクリプトは成果物を検証し、ロック取得後に `html` をアトミックに置換します。古いパイプラインによる新しいバージョンの上書きを防ぎ、切り替えの検証後に直前のバージョンの削除を試みます。検証対象はローカルファイルとシンボリックリンクで、公開 HTTP のヘルスチェックは含みません。後日のロールバック用に旧バージョンを保持することもありません。
+
+旧構成から移行する際は、実行中または待機中の公開ジョブがないことを確認し、旧 `/var/www/<DOCS_DOMAIN>` シンボリックリンクを削除して同名の実ディレクトリを作成し、Web サーバーの公開ルートを変更します。旧 `/var/www/.<DOCS_DOMAIN>-releases` を削除する場合は、静的ファイルを残す必要がないことを確認してください。旧公開物を削除すると、新 CI の公開成功と Web 設定の反映までドキュメントサイトは利用できません。コメントサービスとデータベースには影響しません。準備後に新版 CI を push し、旧版の公開ジョブは再実行しないでください。
+
+ローカルの隔離検証には `sh scripts/test-publish-docs.sh` を使用します。`DOCS_DEPLOY_ROOT` はスクリプトの既定値 `/deploy` を変更し、旧 `DOCS_DEPLOY_PARENT` / `DOCS_DEPLOY_SITE` を置き換えます。Ecoku アプリケーションの環境変数ではありません。
