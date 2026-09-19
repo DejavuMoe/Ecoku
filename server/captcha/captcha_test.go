@@ -205,6 +205,31 @@ func TestTurnstileVerificationAcceptsGenericAndLegacyTokensWithoutRemoteIP(t *te
 	}
 }
 
+func TestTurnstileVerificationRejectsRedirects(t *testing.T) {
+	for _, status := range []int{200, 301, 302, 303, 307, 308} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			calls := 0
+			client := *turnstileClient
+			client.Transport = roundTripFunc(func(request *http.Request) (*http.Response, error) {
+				calls++
+				code := status
+				if calls > 1 {
+					code = http.StatusOK
+				}
+				return &http.Response{
+					StatusCode: code, Header: http.Header{"Location": {"https://redirect.example/siteverify"}},
+					Body: io.NopCloser(strings.NewReader(`{"success":true}`)), Request: request,
+				}, nil
+			})
+			t.Cleanup(ConfigureTurnstileSiteverify("", &client))
+			err := verifyTurnstile(context.Background(), "test-token", "test-secret")
+			if calls != 1 || (status == http.StatusOK && err != nil) || (status != http.StatusOK && !errors.Is(err, ErrUnavailable)) {
+				t.Fatalf("status=%d calls=%d err=%v", status, calls, err)
+			}
+		})
+	}
+}
+
 func TestCapVerificationUsesJSONAndRejectsLegacyToken(t *testing.T) {
 	setupCaptchaTest(t)
 	if _, err := Save(Settings{

@@ -107,6 +107,8 @@ graph TD
 
 ### 1. Cloudflare Turnstile
 
+服务端验证请求不跟随 HTTP 重定向；收到重定向时按验证服务不可用处理，评论提交或管理员登录不会放行。
+
 [Cloudflare Turnstile 官方文档](https://developers.cloudflare.com/turnstile/)
 
 - 前往 Cloudflare 仪表盘创建 Turnstile Widget（推荐托管模式 Managed 或非交互式 Non-interactive）。
