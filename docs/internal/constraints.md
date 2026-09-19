@@ -54,7 +54,7 @@
   并使用 `nofollow ugc noopener noreferrer`。墓碑不显示网站、原作者或回复入口。
 - 生产文案集中为中文常量；主题支持 `auto`、`light`、`dark` 配置，不提供持久化主题切换器。
 - SDK 不发送或保存 management key、IP、UA、地区或用户 ID，也不请求第三方 IP、头像、分析或遥测服务。当前提供方为 Turnstile 时只加载 Cloudflare 小组件；当前提供方为 Cap 时只从已配置的自托管实例加载 Widget、WASM 和同源兼容回退地址。两者均只提交一次性 `captchaToken`，不得把 Secret key 或 Siteverify 结果带进浏览器；旧 `turnstileToken` 仅由服务端在 Turnstile 模式兼容接收。
-- 实例级验证方式为关闭、Cloudflare Turnstile 或自托管 Cap，启用时二选一并同时保护访客评论提交和管理员登录。Turnstile 小组件模式仍只在 Cloudflare 控制台配置；Cap 使用实例 URL、Site key 和 Secret key。两种提供方均在博主口令比较与身份相关校验之前验证，并失败关闭，缺少、无效、已消费、超时或不可用的验证不得发布评论或完成登录，也不会自动降级到另一提供方。Siteverify 不主动附加客户端 IP。两套 Secret key 使用与通知相同的主密钥分别加密，管理端只显示「已设置」，永不回显明文；切换或关闭不删除未启用提供方的配置。
+- 实例级验证方式为关闭、Cloudflare Turnstile 或自托管 Cap，启用时二选一并同时保护访客评论提交和管理员登录。Turnstile 小组件模式仍只在 Cloudflare 控制台配置；Cap 使用实例 URL、Site key 和 Secret key。两种提供方均在博主口令比较与身份相关校验之前验证，并失败关闭，缺少、无效、已消费、超时或不可用的验证不得发布评论或完成登录，也不会自动降级到另一提供方。Siteverify 不主动附加客户端 IP。Turnstile 服务端 Siteverify 请求禁止跟随 HTTP 重定向，重定向响应按验证服务不可用处理。两套 Secret key 使用与通知相同的主密钥分别加密，管理端只显示「已设置」，永不回显明文；切换或关闭不删除未启用提供方的配置。
 - 管理端 CSP 必须随当前验证方式收敛：只有 Cap 当前启用时才允许其精确 HTTPS Origin、WASM、Blob Worker、nonce 和当前 Cap 3.x instrumentation 使用的 JavaScript `'unsafe-eval'`；关闭或 Turnstile 模式即使保留 Cap 配置也不得继续包含 Cap Origin、`'wasm-unsafe-eval'`、`'unsafe-eval'` 或 `worker-src blob:`。该动态求值权限不能用通配符、`unsafe-inline`、自动降级或 Caddy 的第二份宽泛 CSP 替代。
 
 ## 身份与管理

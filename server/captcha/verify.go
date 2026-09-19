@@ -19,9 +19,14 @@ var (
 	ErrFailed       = errors.New("CAPTCHA verification failed")
 	ErrUnavailable  = errors.New("CAPTCHA verification unavailable")
 	turnstileURL    = DefaultTurnstileSiteverifyURL
-	turnstileClient = &http.Client{Timeout: 10 * time.Second}
-	capClient        = newCapHTTPClient()
-	maxVerifyBytes   = int64(1 << 20)
+	turnstileClient = &http.Client{
+		Timeout: 10 * time.Second,
+		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	capClient      = newCapHTTPClient()
+	maxVerifyBytes = int64(1 << 20)
 )
 
 type Tokens struct {

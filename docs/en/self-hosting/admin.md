@@ -74,6 +74,8 @@ graph TD
 
 ### 1. Cloudflare Turnstile
 
+Server-side verification requests do not follow HTTP redirects. A redirect is treated as an unavailable verification service, so comment submission or administrator login is denied.
+
 [Cloudflare Turnstile Documentation](https://developers.cloudflare.com/turnstile/)
 
 - Navigate to Cloudflare Dashboard and create a Turnstile Widget (Managed or Non-interactive mode recommended).

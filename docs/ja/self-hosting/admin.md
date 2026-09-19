@@ -73,6 +73,8 @@ graph TD
 
 ### 1. Cloudflare Turnstile
 
+サーバー側の検証リクエストは HTTP リダイレクトを追跡しません。リダイレクトを受信した場合は検証サービスが利用できないものとして扱い、コメント投稿や管理者ログインを拒否します。
+
 [Cloudflare Turnstile 公式ドキュメント](https://developers.cloudflare.com/turnstile/)
 
 - Cloudflare ダッシュボードで Turnstile Widget を作成します（Managed または Non-interactive モード推奨）。

@@ -73,6 +73,8 @@ graph TD
 
 ### 1. Cloudflare Turnstile
 
+伺服器端驗證請求不跟隨 HTTP 重新導向；收到重新導向時視為驗證服務無法使用，評論送出或管理員登入不會放行。
+
 [Cloudflare Turnstile 官方文件](https://developers.cloudflare.com/turnstile/)
 
 - 前往 Cloudflare 儀表板建立 Turnstile Widget（推薦託管模式 Managed 或非互動式 Non-interactive）。
