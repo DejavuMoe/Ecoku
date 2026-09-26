@@ -3,7 +3,7 @@
 容器內監聽 `:12123`，Compose 僅在主機 `127.0.0.1:12123` 發佈連接埠；HTTPS 由主機反向代理終止。
 
 > [!NOTE]
-> 以下命令使用已發佈鏡像 `git.via.moe/dejavu/ecoku:v0.2.4`。`ecoku.example.com` 為預留網域。
+> 以下命令使用已發佈鏡像 `git.via.moe/dejavu/ecoku:v0.2.5`。`ecoku.example.com` 為預留網域。
 
 ---
 
@@ -31,7 +31,7 @@ cd ~/Ecoku
 cat <<'EOF' > compose.yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.2.4"
+    image: "git.via.moe/dejavu/ecoku:v0.2.5"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -71,7 +71,7 @@ EOF
 ```
 
 > [!IMPORTANT]
-> - 生產環境**嚴禁**使用 `latest` 等浮動標籤，必須明確指定具體的語意化版本號（如 `v0.2.4`）。
+> - 生產環境**嚴禁**使用 `latest` 等浮動標籤，必須明確指定具體的語意化版本號（如 `v0.2.5`）。
 > - 容器埠口請務必綁定到 `127.0.0.1:12123`，防止繞過反向代理直接存取裸埠口。
 
 ---
@@ -153,7 +153,7 @@ grep -q "^ECOKU_ADMIN_USERNAME=" ecoku.env || echo "ECOKU_ADMIN_USERNAME='admin'
 # 3. 互動式輸入管理員密碼，產生 Bcrypt 雜湊並寫入（密碼輸入不回顯，已存在則自動跳過）
 if ! grep -q "^ECOKU_ADMIN_PASSWORD_HASH=" ecoku.env; then
   read -rsp '輸入管理員密碼: ' ADMIN_PASS; echo
-  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i --entrypoint /app/ecoku-server "git.via.moe/dejavu/ecoku:v0.2.4" hash-password)
+  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i --entrypoint /app/ecoku-server "git.via.moe/dejavu/ecoku:v0.2.5" hash-password)
   unset ADMIN_PASS
   echo "ECOKU_ADMIN_PASSWORD_HASH='$HASH'" >> ecoku.env
 fi

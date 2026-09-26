@@ -3,7 +3,7 @@
 コンテナは `:12123` で待ち受け、Compose はホストの `127.0.0.1:12123` にのみ公開します。HTTPS はホストのリバースプロキシで終端します。
 
 > [!NOTE]
-> 以下のコマンドは公開済みイメージ `git.via.moe/dejavu/ecoku:v0.2.4` を使用します。`ecoku.example.com` はプレースホルダーです。
+> 以下のコマンドは公開済みイメージ `git.via.moe/dejavu/ecoku:v0.2.5` を使用します。`ecoku.example.com` はプレースホルダーです。
 
 ---
 
@@ -31,7 +31,7 @@ cd ~/Ecoku
 cat <<'EOF' > compose.yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.2.4"
+    image: "git.via.moe/dejavu/ecoku:v0.2.5"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -71,7 +71,7 @@ EOF
 ```
 
 > [!IMPORTANT]
-> - 本番環境では `latest` などの変動タグを**絶対に使用しないでください**。必ず具体的なセマンティックバージョニングタグ（例：`v0.2.4`）を指定してください。
+> - 本番環境では `latest` などの変動タグを**絶対に使用しないでください**。必ず具体的なセマンティックバージョニングタグ（例：`v0.2.5`）を指定してください。
 > - リバースプロキシを経由させるため、コンテナポートは必ず `127.0.0.1:12123` にバインドしてください。
 
 ---
@@ -153,7 +153,7 @@ grep -q "^ECOKU_ADMIN_USERNAME=" ecoku.env || echo "ECOKU_ADMIN_USERNAME='admin'
 # 3. 管理者パスワードを対話型で入力し、Bcrypt ハッシュを生成して書き込み（入力非表示、既に存在する場合はスキップ）
 if ! grep -q "^ECOKU_ADMIN_PASSWORD_HASH=" ecoku.env; then
   read -rsp '管理者パスワードを入力: ' ADMIN_PASS; echo
-  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i --entrypoint /app/ecoku-server "git.via.moe/dejavu/ecoku:v0.2.4" hash-password)
+  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i --entrypoint /app/ecoku-server "git.via.moe/dejavu/ecoku:v0.2.5" hash-password)
   unset ADMIN_PASS
   echo "ECOKU_ADMIN_PASSWORD_HASH='$HASH'" >> ecoku.env
 fi

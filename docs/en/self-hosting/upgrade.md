@@ -2,7 +2,7 @@
 
 Ecoku employs a versioned, in-place, and strictly transactional SQLite schema migration system.
 
-**[v0.2.4](./upgrades/v0.2.4)** was released on 2026-09-16: security fixes, revocable administrator sessions and reply depth limits; schema v7 → v8.
+**[v0.2.5](./upgrades/v0.2.5)** was released on 2026-09-26: paper-and-ink default comment styles, host-overridable variables, and `auto` following the host light/dark mode; schema stays at v8.
 
 Review the version-specific configuration changes before upgrading. Set the exact Compose image tag; startup applies database migrations in order.
 
@@ -11,7 +11,7 @@ Review the version-specific configuration changes before upgrading. Set the exac
 ## Core Upgrade Contracts
 
 1. **Unidirectional Transactional Migrations**: Schema migrations run forward sequentially on your SQLite file, appending version records to `schema_migrations` upon success. Ecoku **does not support automated down-migrations**.
-2. **Strictly Prohibited Floating Tags**: Never use `latest` in production. Always specify an exact semantic tag like `v0.2.4`.
+2. **Strictly Prohibited Floating Tags**: Never use `latest` in production. Always specify an exact semantic tag like `v0.2.5`.
 3. **Irreversibility & Rollback Principle**: Once the database upgrades to a higher schema version (e.g. v8), **you cannot simply revert the image tag**, as older binaries refuse to boot against newer schemas. Rollbacks strictly require restoring the pre-upgrade cold backup.
 
 ---
@@ -45,6 +45,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | Image Version | Schema Version | Core Database Changes & Highlights |
 | :--- | :---: | :--- |
+| **`v0.2.5`** | `v8` (unchanged) | No migration; default comment styles with overridable variables, and Turnstile Siteverify rejects redirects. |
 | **`v0.2.4`** | `v8` | `admin_sessions` |
 | **`v0.1.9`** | `v7` (unchanged) | No migration; CWE-400 resource budget protection, single-layer cursor pagination, and dedicated read rate limiting. |
 | **`v0.1.8`** | `v7` | Added `smoji_enabled` (boolean) and `smoji_manifest_url` (TEXT) to `sites` for site-level sticker packs. |
@@ -64,6 +65,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | Version | Release Date | Schema | Upgrade Highlights & Notes |
 | :--- | :--- | :---: | :--- |
+| [**v0.2.5**](./upgrades/v0.2.5) | 2026-09-26 | v8 (unchanged) | Paper-and-ink default comment styles; overridable variables; `auto` follows the host. |
 | [**v0.2.4**](./upgrades/v0.2.4) | 2026-09-16 | v7 → v8 | HttpOnly cookie + SQLite revocable session |
 | [**v0.2.3**](./upgrades/v0.2.3) | 2026-09-16 (tag) | v7 (unchanged) | Audit fixes for identity, notifications, imports and clients. |
 | [**v0.2.2**](./upgrades/v0.2.2) | 2026-09-13 | v7 (unchanged) | Fixed Smoji picker layout on narrow screens. |
@@ -81,6 +83,6 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 | [**v0.1.0**](./upgrades/v0.1.0) | 2026-08-15 | v4 | First official production release. |
 | [**Earlier**](./upgrades/earlier) | 2026-08-14 | v1–v4 | Early single-container design, SQLite WAL mode, and timezone standards. |
 
-## v0.2.4 compatibility
+## v0.2.5 compatibility
 
-Schema v8 adds `admin_sessions` and an expiry index without rewriting comments, settings or existing migration history. Previous logins expire and require a new login. Omit `admin.token_ttl_minutes` or set it to 480; existing values other than `0` and `480` prevent startup. Mounts, environment variables and password hashes remain unchanged. To roll back to v0.2.3 or earlier, stop the service, preserve the current state, then restore the complete pre-upgrade cold backup and original image. An old image alone cannot open a v8 database. Restoring a backup loses later writes and requires an explicit operator decision.
+Schema stays at v8 with no new migration. Configuration keys, environment variables, Compose mounts and password hashes are unchanged, so v0.2.4 upgrades in place and rolling back to v0.2.4 normally only needs the old image tag. The default comment styles change with the image and existing override CSS may stack on the new defaults; check each embedding site in light and dark mode after upgrading. See [Upgrading to v0.2.5](./upgrades/v0.2.5).

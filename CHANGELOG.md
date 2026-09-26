@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-09-26
+
 ### 变更
 
 - 评论区默认样式改为已批准的 v17「纸与墨」：身份字段为横线填写栏，正文直接写在发表卡片上；唯一的实心墨色主按钮，表情、预览、取消与排序为文字按钮；悬停只改变文字颜色；6px / 3px 圆角，时间、折叠、字数与页码使用等宽字体；博主标志、链接悬停与表单错误使用朱砂强调色；Cap 保留官方 260×58px 几何，外框圆角改为跟随 Ecoku token。评论行为、文案与 DOM 类名不变。
@@ -431,4 +433,5 @@
 [0.2.2]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.2
 [0.2.3]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.3
 [0.2.4]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.4
-[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.2.4...master
+[0.2.5]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.5
+[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.2.5...master
