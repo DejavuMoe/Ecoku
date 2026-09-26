@@ -1,12 +1,12 @@
 # CAPTCHA provider v12 review notes
 
-Status: **approved implementation baseline**. The v12/v16 prototypes define the production security settings, login, and public comment CAPTCHA surfaces.
+Status: **approved implementation baseline**. The v12/v16 prototypes define the production security settings, login, and public comment CAPTCHA surfaces; comment revision 17 later restyled the public Cap frame to follow the Ecoku radius and colour tokens while keeping its official 260 × 58px geometry.
 
 The current approved baselines remain:
 
 - admin site configuration: `index-v11.html`;
 - admin security and login: `index-v12.html`;
-- public comments: `../plain-thread-comments/index-v16.html`.
+- public comments: `../plain-thread-comments/index-v17.html`.
 
 ## Product model
 

@@ -25,66 +25,65 @@ Set `cssURL` to `'none'` and define all visual styles for `.ecoku-*` selectors i
 
 ---
 
-## Complete Design Tokens / CSS Variables
+## Design Tokens / CSS Variables
 
-All visual properties in Ecoku are driven by standard CSS custom properties.
+Colours, the accent, corner radii, shadows, the monospace font and the type scale of the default stylesheet are controlled by `--ecoku-*` custom properties.
 
-> [!TIP]
-> **Scoping Recommendations**:
-> - If using themes like Hugo PaperMod, declaring generic variables like `--theme`, `--primary`, or `--border` on `:root` will automatically be inherited by Ecoku.
-> - For scoped overrides targeting the comment widget specifically, apply `--ecoku-*` variables under the `.ecoku-comments` container selector.
+### How overrides work
+
+- Ecoku declares its defaults at zero specificity. Set the same variable on the comment root `.ecoku-comments` to override it; you do not need a stronger selector, and stylesheet order does not matter.
+- Colour variables first read the host's PaperMod names (`--theme`, `--entry`, `--primary`, `--secondary`, `--content`, `--border`, `--border-soft`, `--code-bg`, `--surface-muted`). A PaperMod theme usually needs no extra setup.
+- With `data-theme="auto"` the comment area inherits the host page's `color-scheme`, so host variables written with `light-dark()` follow the site's own light/dark toggle rather than only the operating system. When the host provides no colour variables, Ecoku uses its built-in light or dark palette based on the system preference.
+- `data-theme="light"` or `"dark"` fixes the comment palette and stops reading host colour variables.
 
 ```css
-/* Customizing comment container variables */
+/* Override comment variables in your site stylesheet */
 .ecoku-comments {
-  /* Background Color System */
-  --ecoku-theme: rgb(250, 249, 245);          /* Deepest container background / Identity field fill */
-  --ecoku-entry: rgb(252, 251, 247);          /* Submission card background / Button default fill */
-  --ecoku-code-bg: rgb(243, 239, 231);        /* Button hover fill / Secondary badge background */
-  --ecoku-surface-muted: rgba(243, 239, 231, 0.72); /* Preview area fill / Menu hover fill */
-
-  /* Typography Color System */
-  --ecoku-primary: rgb(20, 20, 19);           /* Primary text / Header title / Accent border */
-  --ecoku-secondary: rgb(96, 91, 82);         /* Muted metadata (timestamps, character counter, collapse hint) */
-  --ecoku-content: rgb(58, 54, 44);           /* Comment body text / Active input text */
-
-  /* Border System */
-  --ecoku-border: rgb(150, 143, 132);         /* Solid borders / Button hover outline */
-  --ecoku-border-soft: rgba(20, 20, 19, 0.14);/* Subtle dividers / Card border / Input box outline */
-
-  /* Focus Indicator (dynamically blends with primary by default) */
-  --ecoku-focus: #2f73ff;                     /* Focus ring color for inputs and buttons */
-}
-
-/* Dark mode overrides */
-@media (prefers-color-scheme: dark) {
-  .ecoku-comments {
-    --ecoku-theme: rgb(26, 29, 32);
-    --ecoku-entry: rgb(34, 38, 42);
-    --ecoku-code-bg: rgb(44, 48, 53);
-    --ecoku-surface-muted: rgba(48, 53, 58, 0.88);
-
-    --ecoku-primary: rgb(242, 236, 226);
-    --ecoku-secondary: rgb(188, 181, 169);
-    --ecoku-content: rgb(216, 209, 197);
-
-    --ecoku-border: rgb(109, 114, 120);
-    --ecoku-border-soft: rgba(242, 236, 226, 0.14);
-    --ecoku-focus: #3b82f6;
-  }
+  --ecoku-accent: #a8412c;        /* Blogger badge, link hover, form errors */
+  --ecoku-radius: 6px;            /* Composer card, menus, sticker panel, Cap frame */
+  --ecoku-radius-sm: 3px;         /* Menu items, sticker cells, Cap checkbox */
+  --ecoku-font-size: 15px;        /* Comment body and inputs */
+  --ecoku-font-size-small: 13px;  /* Metadata, labels, buttons */
+  --ecoku-font-size-title: 22px;  /* "N 条评论" heading */
 }
 ```
+
+### Variable reference
+
+| Variable | Default | Used for |
+| --- | --- | --- |
+| `--ecoku-theme` | `var(--theme, #f7f4ee)` | Paper background; primary button text; Cap checkbox fill |
+| `--ecoku-entry` | `var(--entry, #fbf9f5)` | Composer card, service error notice, sort menu, sticker panel |
+| `--ecoku-primary` | `var(--primary, #1e1c19)` | Heading, nicknames, input text, solid primary button, focused rule |
+| `--ecoku-secondary` | `var(--secondary, #6b655b)` | Timestamps, character count, field labels, text buttons |
+| `--ecoku-content` | `var(--content, #35312b)` | Comment body and body input |
+| `--ecoku-border` | `var(--border, #cbc3b5)` | Identity field rules, secondary button border, "回复" underline |
+| `--ecoku-border-soft` | `var(--border-soft, rgb(30 28 25 / 0.12))` | Card outline, thread dividers, reply guides |
+| `--ecoku-surface-muted` | `var(--surface-muted, #efebe3)` | Sticker cell hover fill |
+| `--ecoku-code-bg` | `var(--code-bg, #ece7de)` | Reserved for custom styles; unused by the default sheet |
+| `--ecoku-accent` | Cinnabar mixed with `--ecoku-primary` | Blogger badge, link hover; darker on light pages, lighter on dark pages |
+| `--ecoku-danger` | `var(--ecoku-accent)` | Form errors and invalid fields |
+| `--ecoku-focus` | 40% of `--ecoku-primary` | 1px keyboard focus ring; set `transparent` to hide it |
+| `--ecoku-radius` | `6px` | Cards, menus, panels and buttons |
+| `--ecoku-radius-sm` | `3px` | Menu items, sticker cells and checkboxes |
+| `--ecoku-shadow` | Light two-layer shadow | Sort menu and sticker panel |
+| `--ecoku-font-mono` | Maple Mono, then system monospace | Timestamps, `[+]`/`[-]`, character count, page status |
+| `--ecoku-font-size` | `15px` | Body text and inputs |
+| `--ecoku-font-size-small` | `13px` | Metadata, labels, buttons |
+| `--ecoku-font-size-title` | `22px` (`20px` on narrow screens) | Comment count heading |
+
+The comment area inherits the host font. On touch devices inputs stay at 16px or larger so iOS does not zoom the page on focus.
 
 ---
 
 ## Typography Guidelines & Baseline Alignment
 
-To ensure harmonious visual rendering across arbitrary host fonts, Ecoku adheres to strict typographic rules:
+To render well with arbitrary host fonts, Ecoku follows these typographic rules:
 
 1. **Monospace Collapse Controls (3ch Fixed Width)**:
    - The collapse button `.ecoku-collapse-button` is fixed to `3ch` width with `font-variant-numeric: tabular-nums`.
-   - Toggling between expanded `[-]` and collapsed `[+]` states guarantees **zero horizontal jitter** for author nicknames, timestamps, and reply actions.
+   - Toggling between expanded `[-]` and collapsed `[+]` never shifts the nickname, timestamp, or reply action horizontally.
 2. **Baseline Alignment**:
-   - The comment meta row `.ecoku-comment-meta` uses `display: flex; align-items: baseline;`, ensuring the 14px author nickname, 12px timestamp, and underlined "Reply" action align on the identical typographic baseline.
-3. **Monospace Timestamp Font Stack**:
-   - Timestamps prioritize monospace fonts (host-provided Maple Mono, falling back to system monospace `ui-monospace, SFMono-Regular, Menlo, monospace`).
+   - The comment meta row `.ecoku-comment-meta` uses `display: flex; align-items: baseline;`, so the 15px nickname, 12px timestamp, and 13px underlined "回复" action share one baseline.
+3. **Monospace Font Stack**:
+   - Timestamps, collapse controls, the character count and page status use `--ecoku-font-mono` (host-provided Maple Mono, falling back to system monospace `ui-monospace, SFMono-Regular, Menlo, monospace`).

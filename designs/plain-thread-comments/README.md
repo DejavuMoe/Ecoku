@@ -1,10 +1,10 @@
 # Plain thread comments prototype
 
 Approved design history for Ecoku's no-avatar, plain-text comment surface.
-`index-v16.html` is the current approved production baseline: it retains v15's
-composer/loading behavior and adds the instance-level off / Turnstile / self-hosted
-Cap choice. Cap keeps the official 260 × 58px geometry, SVG states, and credit while
-mapping only Ecoku color and inherited-font tokens. `index-v15.html` remains the
+`index-v17.html` is the current approved production baseline: it keeps v16's
+behavior (including the off / Turnstile / self-hosted Cap choice) and restyles the
+default surface in the paper-and-ink language of the Hugo blog, with overridable
+tokens and a colour scheme inherited from the host. `index-v16.html` remains the
 previous approved baseline.
 
 ## Direction
@@ -219,6 +219,38 @@ Run its checks with:
 node designs/plain-thread-comments/prototype-v16.test.mjs
 ```
 
+Revision 17 is the approved production baseline. It restyles the default surface in the
+paper-and-ink language of the Hugo blog. Behavior, copy, thread density and the
+approved interaction model are unchanged:
+
+- `styles-v17.css` is standalone and mirrors the production sheet section by section;
+  it no longer layers overrides on the v3–v16 chain;
+- default tokens are declared at zero specificity (`:where()`), so a host rule on the
+  comment root always wins; colours still fall back from the PaperMod names;
+- `auto` no longer declares `color-scheme`, so host `light-dark()` tokens follow the
+  host's manual toggle instead of the operating system; only forced `light` / `dark`
+  declare a scheme;
+- new tokens: accent, danger, radius (6px / 3px), shadow, mono font and a three-step
+  type scale (13 / 15 / 22px, title 20px on narrow screens); the default cinnabar accent
+  is mixed with the ink colour so it darkens on paper and lightens in dark mode;
+- the composer is one sheet: identity fields become ruled lines that darken to ink on
+  focus, and the seven-line textarea sits directly on the sheet with no inner box;
+- one solid ink action (发布 / 回复); 表情, 预览 and 取消 are quiet text buttons; the
+  sort control is a text trigger with a hairline menu; hover only changes text colour;
+- the blogger badge, link hovers and form errors use the accent; timestamps, fold
+  toggles, the character count and page status use the mono font;
+- descendant guides become solid hairlines, the deleted tombstone drops synthesized
+  italics, and the preview reads as a quoted block;
+- Cap keeps its official 260 × 58px geometry and follows only the radius and colour
+  tokens; touch devices type at 16px or larger to avoid iOS focus zoom;
+- the prototype adds the production 表情 and 预览 tools using local fixtures only.
+
+Run its checks with:
+
+```text
+node designs/plain-thread-comments/prototype-v17.test.mjs
+```
+
 ## Review states
 
 - Light and dark themes.
@@ -230,6 +262,7 @@ node designs/plain-thread-comments/prototype-v16.test.mjs
 - Service unavailable and retry recovery.
 - Desktop at 1280x900 and mobile at 390x844.
 
-Status: `index-v16.html` is the approved production comment baseline. Preview-only
+Status: `index-v17.html` is the approved production comment baseline and is bound
+to `packages/client/src/style.css`. Preview-only
 provider/failure toggles must not enter the SDK; production reads the provider from
 the server's public form configuration.

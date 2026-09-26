@@ -58,7 +58,7 @@ params:
 
 - **`data-page-key`**: Uses Hugo's `.RelPermalink` to output a canonical site-relative path (e.g. `/posts/my-first-post/`), ensuring stability and immutability across protocol or domain migrations.
 - **`data-page-title`**: Uses `.Title` to output the article title for clear attribution in notification emails and Telegram alerts.
-- **`data-theme="auto"`**: Automatically tracks PaperMod's built-in light/dark theme toggle.
+- **`data-theme="auto"`**: The comment area reads PaperMod colour variables such as `--theme`, `--primary` and `--border`, and inherits the page's `color-scheme`, so it follows the theme's light/dark toggle, including themes that define colours with `light-dark()`.
 
 ---
 
@@ -73,3 +73,20 @@ date: 2026-08-20
 comments: true
 ---
 ```
+
+---
+
+## 4. Matching Theme Styles (Optional)
+
+The default stylesheet already reads PaperMod colour variables. If your theme also defines accent, radius or type-size variables, map them to Ecoku in your site CSS (for example `assets/css/extended/comments.css`) so the comment area follows the theme:
+
+```css
+.ecoku-comments {
+  --ecoku-accent: var(--accent);
+  --ecoku-radius: var(--radius);
+  --ecoku-font-size: 15px;
+  --ecoku-font-size-small: 13px;
+}
+```
+
+Use the variable names your theme actually defines. See [Custom CSS](./custom-css.md) for the full list.

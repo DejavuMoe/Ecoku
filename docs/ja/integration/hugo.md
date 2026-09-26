@@ -58,7 +58,7 @@ params:
 
 - **`data-page-key`**：Hugo の `.RelPermalink` を使用してサイト内相対パス（例: `/posts/my-first-post/`）を出力し、ドメインやプロトコルの変更に影響されない高い安定性を確保します。
 - **`data-page-title`**：`.Title` を使用して記事タイトルを出力し、メールや Telegram 通知で発信元を正確に明示します。
-- **`data-theme="auto"`**：PaperMod のライト/ダークテーマ切り替えに自動追従します。
+- **`data-theme="auto"`**：コメント欄は PaperMod の `--theme`、`--primary`、`--border` などの色変数を読み取り、ページの `color-scheme` を継承します。そのため `light-dark()` で色を定義したテーマも含め、テーマのライト/ダーク切り替えに追従します。
 
 ---
 
@@ -73,3 +73,20 @@ date: 2026-08-20
 comments: true
 ---
 ```
+
+---
+
+## 4. テーマのスタイルに合わせる（任意）
+
+既定スタイルはすでに PaperMod の色変数を読み取ります。テーマがアクセントカラー、角丸、文字サイズの変数も定義している場合は、サイトの CSS（例：`assets/css/extended/comments.css`）で Ecoku の変数に対応付けると、コメント欄がテーマと一緒に変わります：
+
+```css
+.ecoku-comments {
+  --ecoku-accent: var(--accent);
+  --ecoku-radius: var(--radius);
+  --ecoku-font-size: 15px;
+  --ecoku-font-size-small: 13px;
+}
+```
+
+変数名はテーマで実際に定義されているものに合わせてください。一覧は[カスタム CSS](./custom-css.md)を参照してください。

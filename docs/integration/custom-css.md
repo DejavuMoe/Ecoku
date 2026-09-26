@@ -25,66 +25,65 @@ flowchart LR
 
 ---
 
-## 核心 Design Tokens / CSS 变量全清单
+## Design Tokens / CSS 变量
 
-Ecoku 所有的视觉属性均通过标准 CSS 自定义属性驱动。
+默认样式的颜色、强调色、圆角、阴影、等宽字体和字号都由 `--ecoku-*` 变量控制。
 
-> [!TIP]
-> **覆盖作用域建议**：
-> - 若使用 Hugo PaperMod 等主题，可在 `:root` 直接声明 `--theme`、`--primary`、`--border` 等主题通用变量，Ecoku 会自动继承回退。
-> - 若需针对评论区单独定制，建议在 `.ecoku-comments` 作用域上覆盖专属的 `--ecoku-*` 变量。
+### 覆盖方式
+
+- Ecoku 的默认值以零优先级声明。在评论区根节点 `.ecoku-comments` 上写同名变量即可覆盖，不需要提高选择器优先级，也不受样式表加载顺序影响。
+- 颜色变量会先读取宿主同名的 PaperMod 变量（`--theme`、`--entry`、`--primary`、`--secondary`、`--content`、`--border`、`--border-soft`、`--code-bg`、`--surface-muted`）。PaperMod 主题通常无需额外配置。
+- `data-theme="auto"` 时评论区继承宿主页面的 `color-scheme`，因此宿主用 `light-dark()` 定义的变量会跟随站点自己的明暗切换，而不是只跟随系统设置。宿主没有提供颜色变量时，Ecoku 按系统偏好使用内置的浅色或深色配色。
+- `data-theme="light"` 或 `"dark"` 会固定评论区配色，不再读取宿主颜色变量。
 
 ```css
-/* 精确针对评论区容器进行视觉定制 */
+/* 在博客样式中覆盖评论区变量 */
 .ecoku-comments {
-  /* 基础背景色体系 */
-  --ecoku-theme: rgb(250, 249, 245);          /* 评论区最底层背景色 / 身份输入框底色 */
-  --ecoku-entry: rgb(252, 251, 247);          /* 发表卡片背景色 / 按钮默认背景色 */
-  --ecoku-code-bg: rgb(243, 239, 231);        /* 按钮 hover 激活底色 / 次级标签背景 */
-  --ecoku-surface-muted: rgba(243, 239, 231, 0.72); /* 预览区背景 / 菜单 hover 底色 */
-
-  /* 文字颜色体系 */
-  --ecoku-primary: rgb(20, 20, 19);           /* 主文字色 / 标题 / 重点边框 */
-  --ecoku-secondary: rgb(96, 91, 82);         /* 次要文字色（时间、字数、折叠提示） */
-  --ecoku-content: rgb(58, 54, 44);           /* 评论正文颜色 / 输入框输入文本色 */
-
-  /* 边框体系 */
-  --ecoku-border: rgb(150, 143, 132);         /* 强实体边框 / 按钮 hover 边框 */
-  --ecoku-border-soft: rgba(20, 20, 19, 0.14);/* 浅色分割线 / 卡片描边 / 输入框边框 */
-
-  /* 交互焦点（默认基于 primary 动态混合: color-mix(in srgb, var(--ecoku-primary) 72%, #2f73ff)） */
-  --ecoku-focus: #2f73ff;                     /* 输入框与按钮 focus 轮廓高亮色 */
-}
-
-/* 暗色模式自适应覆盖 */
-@media (prefers-color-scheme: dark) {
-  .ecoku-comments {
-    --ecoku-theme: rgb(26, 29, 32);
-    --ecoku-entry: rgb(34, 38, 42);
-    --ecoku-code-bg: rgb(44, 48, 53);
-    --ecoku-surface-muted: rgba(48, 53, 58, 0.88);
-
-    --ecoku-primary: rgb(242, 236, 226);
-    --ecoku-secondary: rgb(188, 181, 169);
-    --ecoku-content: rgb(216, 209, 197);
-
-    --ecoku-border: rgb(109, 114, 120);
-    --ecoku-border-soft: rgba(242, 236, 226, 0.14);
-    --ecoku-focus: #3b82f6;
-  }
+  --ecoku-accent: #a8412c;        /* 博主标志、链接悬停、表单错误 */
+  --ecoku-radius: 6px;            /* 发表卡片、菜单、表情面板、Cap 外框 */
+  --ecoku-radius-sm: 3px;         /* 菜单项、表情格、Cap 复选框 */
+  --ecoku-font-size: 15px;        /* 评论正文与输入 */
+  --ecoku-font-size-small: 13px;  /* 元信息、标签、按钮 */
+  --ecoku-font-size-title: 22px;  /* “N 条评论”标题 */
 }
 ```
+
+### 变量一览
+
+| 变量 | 默认值 | 用途 |
+| --- | --- | --- |
+| `--ecoku-theme` | `var(--theme, #f7f4ee)` | 纸面底色；主按钮文字色；Cap 复选框底色 |
+| `--ecoku-entry` | `var(--entry, #fbf9f5)` | 发表卡片、服务故障提示、排序菜单、表情面板 |
+| `--ecoku-primary` | `var(--primary, #1e1c19)` | 标题、昵称、输入文字、实心主按钮、聚焦底线 |
+| `--ecoku-secondary` | `var(--secondary, #6b655b)` | 时间、字数、字段标签、文字按钮 |
+| `--ecoku-content` | `var(--content, #35312b)` | 评论正文与正文输入 |
+| `--ecoku-border` | `var(--border, #cbc3b5)` | 身份字段底线、次要按钮边框、“回复”下划线 |
+| `--ecoku-border-soft` | `var(--border-soft, rgb(30 28 25 / 0.12))` | 卡片描边、线程分隔线、子评论引导线 |
+| `--ecoku-surface-muted` | `var(--surface-muted, #efebe3)` | 表情格悬停底色 |
+| `--ecoku-code-bg` | `var(--code-bg, #ece7de)` | 保留给自定义样式，默认样式不再使用 |
+| `--ecoku-accent` | 朱砂色与 `--ecoku-primary` 混合 | 博主标志、链接悬停；浅色下偏深、深色下偏浅 |
+| `--ecoku-danger` | `var(--ecoku-accent)` | 表单错误与无效字段 |
+| `--ecoku-focus` | `--ecoku-primary` 的 40% | 键盘焦点框（1px）；设为 `transparent` 可隐藏 |
+| `--ecoku-radius` | `6px` | 卡片、菜单、面板和按钮圆角 |
+| `--ecoku-radius-sm` | `3px` | 菜单项、表情格和复选框圆角 |
+| `--ecoku-shadow` | 浅色双层阴影 | 排序菜单与表情面板 |
+| `--ecoku-font-mono` | Maple Mono 与系统等宽字体 | 时间、`[+]`/`[-]`、字数、分页页码 |
+| `--ecoku-font-size` | `15px` | 正文与输入 |
+| `--ecoku-font-size-small` | `13px` | 元信息、标签、按钮 |
+| `--ecoku-font-size-title` | `22px`（窄屏 `20px`） | 评论数标题 |
+
+评论区字体继承宿主页面；触屏设备上的输入框不小于 16px，避免 iOS 聚焦时放大页面。
 
 ---
 
 ## 视觉排版规范与基线对齐（Baseline）
 
-为保障评论区在任何博客宿主字体环境下均能优雅呈现，Ecoku 严格遵循以下排版基线：
+为保障评论区在任何博客宿主字体环境下均能优雅呈现，Ecoku 遵循以下排版基线：
 
 1. **等宽折叠控件（3ch 等宽保障）**：
-   - 评论折叠按钮 `.ecoku-collapse-button` 严格固定为 `3ch` 宽度，使用 `font-variant-numeric: tabular-nums`。
-   - 切换展开 `[-]` 与折叠 `[+]` 时，元信息行的作者昵称、发布时间与回复动作**绝对不发生水平抖动**。
+   - 评论折叠按钮 `.ecoku-collapse-button` 固定为 `3ch` 宽度，使用 `font-variant-numeric: tabular-nums`。
+   - 切换展开 `[-]` 与折叠 `[+]` 时，元信息行的作者昵称、发布时间与回复动作不发生水平抖动。
 2. **基线对齐（Baseline Alignment）**：
-   - 元信息行 `.ecoku-comment-meta` 采用 `display: flex; align-items: baseline;`，确保 14px 的作者昵称、12px 的时间戳与下划线“回复”文本动作在同一基准水平线上对齐。
-3. **等宽时间字体栈**：
-   - 时间展示优先采用等宽字体（宿主加载的 Maple Mono，否则回退系统等宽 `ui-monospace, SFMono-Regular, Menlo, monospace`）。
+   - 元信息行 `.ecoku-comment-meta` 采用 `display: flex; align-items: baseline;`，15px 的作者昵称、12px 的时间戳与 13px 的下划线“回复”在同一基线上对齐。
+3. **等宽字体栈**：
+   - 时间、折叠控件、字数和分页页码使用 `--ecoku-font-mono`（宿主已加载的 Maple Mono，否则回退系统等宽 `ui-monospace, SFMono-Regular, Menlo, monospace`）。
