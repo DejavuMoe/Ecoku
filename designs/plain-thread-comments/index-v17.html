@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="light" data-design-status="approved">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>纯文本嵌套评论系统原型 · 纸与墨</title>
+  <link rel="stylesheet" href="styles-v17.css">
+</head>
+<body>
+  <aside class="preview-controls" aria-label="原型预览控制" data-prototype-only="true" data-settings-open="false">
+    <div class="preview-actions">
+      <button class="preview-button" id="theme-toggle" type="button" aria-pressed="false">切换深色</button>
+      <button class="preview-button" id="service-toggle" type="button" aria-pressed="false">模拟故障</button>
+      <button class="preview-button" id="empty-toggle" type="button" aria-pressed="false">空评论页</button>
+      <button class="preview-button" id="loader-fail-toggle" type="button" aria-pressed="false">加载失败</button>
+      <button class="preview-button" id="unconfigured-toggle" type="button" aria-pressed="false">尚未配置</button>
+      <button class="preview-button" id="form-config-toggle" type="button" aria-expanded="false" aria-controls="form-config-panel">表单配置</button>
+    </div>
+    <section class="form-config-panel" id="form-config-panel" aria-label="站点表单配置预览" hidden>
+      <div class="config-heading"><strong>站点表单配置</strong><span>原型预览</span></div>
+      <label class="config-check"><input id="config-email-required" type="checkbox" checked><span>邮箱必填</span></label>
+      <label class="config-check"><input id="config-website-required" type="checkbox"><span>网址必填</span></label>
+      <label class="config-text" for="config-placeholder"><span>评论框提示文字</span><input id="config-placeholder" type="text" value="写下评论（仅支持纯文本）" maxlength="80"></label>
+      <label class="config-text" for="config-comment-limit"><span>评论长度上限</span><input id="config-comment-limit" type="number" value="1000" min="1" max="10000" inputmode="numeric"></label>
+      <label class="config-text" for="config-empty-message"><span>无评论文案</span><textarea id="config-empty-message" rows="2" maxlength="160">还没有评论&#10;成为第一个留下评论的人。</textarea></label>
+      <label class="config-text" for="config-timezone"><span>显示时区 IANA</span><input id="config-timezone" type="text" value="Asia/Singapore" maxlength="64" spellcheck="false"></label>
+      <label class="config-text" for="config-blogger-nickname"><span>博主昵称（精确匹配）</span><input id="config-blogger-nickname" type="text" value="Dejavu Moe" maxlength="32"></label>
+      <label class="config-text" for="config-blogger-badge"><span>评论区博主标志</span><input id="config-blogger-badge" type="text" value="[博主]" maxlength="16" placeholder="[博主]"></label>
+      <label class="config-text" for="config-captcha-provider"><span>机器人验证方式</span><select id="config-captcha-provider"><option value="off">关闭</option><option value="turnstile">Cloudflare Turnstile</option><option value="cap" selected>Cap（自托管）</option></select></label>
+      <label class="config-check" hidden><input id="config-turnstile-enabled" type="checkbox"><span>兼容旧原型控制</span></label>
+      <label class="config-check" data-turnstile-preview hidden><input id="config-turnstile-interact" type="checkbox" checked><span>Turnstile：模拟需要勾选</span></label>
+      <label class="config-check" data-turnstile-preview hidden><input id="config-turnstile-cleared" type="checkbox"><span>Turnstile：已有 Pre-clearance</span></label>
+      <label class="config-check" data-cap-preview><input id="config-cap-fail" type="checkbox"><span>Cap：模拟服务故障</span></label>
+    </section>
+  </aside>
+
+  <main class="page" data-screen-label="纯文本嵌套评论系统">
+    <header class="context">
+      <p class="context-kicker">文章评论区</p>
+      <h1 class="context-title">Windows 11 IoT LTSC 养老指南</h1>
+    </header>
+
+    <section class="ecoku-shell" id="embed-shell" data-embed-state="ready" aria-busy="false">
+      <div class="ecoku-loader" id="embed-loader" hidden>
+        <p class="ecoku-loader-status" id="embed-status"></p>
+        <button class="ecoku-loader-retry" id="embed-retry" type="button" hidden>重新加载评论</button>
+      </div>
+      <p class="ecoku-unconfigured" id="embed-unconfigured" hidden>评论服务尚未配置。</p>
+      <div id="embed-mount">
+        <section class="comment-section" id="comment-section" data-theme="auto" aria-label="评论区">
+          <section class="service-error" id="service-error" aria-live="polite" hidden>
+            <h3>评论暂时不可用</h3><p>文章内容不受影响，请稍后重试。</p>
+            <button class="secondary-button" id="retry-button" type="button">重新加载</button>
+          </section>
+
+          <div id="comment-core">
+            <form class="composer" id="comment-form" novalidate>
+              <div class="identity-grid">
+                <label class="field"><span class="field-label">昵称</span><input id="nickname" name="nickname" type="text" maxlength="64" autocomplete="nickname" required aria-label="昵称" value="访客甲"></label>
+                <label class="field"><span class="field-label">邮箱</span><input id="email" name="email" type="email" maxlength="254" autocomplete="email" required aria-label="邮箱" value="visitor@example.test"></label>
+                <label class="field"><span class="field-label">网址</span><input id="website" name="website" type="url" maxlength="2048" autocomplete="url" aria-label="网址" value="https://example.test"></label>
+              </div>
+              <label class="message-field"><textarea id="comment-input" class="composer-textarea" name="comment" rows="7" placeholder="写下评论（仅支持纯文本）" required aria-label="评论内容">这篇指南把安装、激活和后续维护拆开以后，查阅起来轻松很多。</textarea></label>
+              <div class="composer-preview" aria-label="评论预览" hidden></div>
+              <div class="turnstile-slot captcha-slot" id="root-turnstile" data-state="idle"></div>
+              <p class="form-error" id="form-error" role="alert" hidden></p>
+              <div class="composer-footer">
+                <span class="character-count" id="character-count">0/1000</span>
+                <div class="composer-end">
+                  <div class="smoji-control"><button class="smoji-trigger" type="button" aria-haspopup="dialog" aria-expanded="false">表情</button><div class="smoji-panel" role="dialog" aria-label="表情" tabindex="-1" hidden></div></div>
+                  <button class="secondary-button preview-trigger" type="button" aria-pressed="false">预览</button>
+                  <button class="primary-button" id="submit-button" type="submit" disabled>发布</button>
+                </div>
+              </div>
+            </form>
+
+            <div class="section-heading">
+              <h2 class="section-title" id="comment-count" aria-live="polite">0 条评论</h2>
+              <div class="sort-picker" id="sort-picker">
+                <button class="sort-trigger" id="sort-trigger" type="button" aria-label="评论排序：最新评论" aria-haspopup="listbox" aria-expanded="false">
+                  <span id="sort-trigger-label">最新评论</span><span class="sort-chevron" aria-hidden="true"></span>
+                </button>
+                <div class="sort-menu" id="sort-menu" role="listbox" aria-label="评论排序" hidden>
+                  <button class="sort-option" type="button" role="option" data-sort="newest" aria-selected="true">最新评论</button>
+                  <button class="sort-option" type="button" role="option" data-sort="oldest" aria-selected="false">最早评论</button>
+                </div>
+              </div>
+            </div>
+
+            <p class="status-line" id="status-line" role="status" aria-live="polite"></p>
+            <p class="empty-comments-text" id="empty-comments-text" hidden></p>
+            <div class="thread-list" id="thread-list" role="feed" aria-busy="false"></div>
+            <nav class="pager comment-pagination" id="comment-pagination" aria-label="评论分页" hidden>
+              <button class="pager-button" id="previous-page" type="button">‹ 上一页</button><span class="pager-separator" aria-hidden="true">｜</span><span class="pager-status" id="pagination-status" aria-live="polite">1/1</span><span class="pager-separator" aria-hidden="true">｜</span><button class="pager-button" id="next-page" type="button">下一页 ›</button>
+            </nav>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <template id="reply-template">
+    <form class="reply-composer legacy-reply-composer" novalidate>
+      <textarea class="composer-textarea" placeholder="写下回复（仅支持纯文本）" rows="7" required aria-label="回复内容"></textarea>
+      <div class="reply-footer"><button class="secondary-button cancel-reply" type="button">取消</button><button class="primary-button submit-reply" type="submit">回复</button></div>
+    </form>
+  </template>
+
+  <template id="reply-template-v8">
+    <form class="composer reply-composer reply-composer-v8" novalidate>
+      <input class="reply-parent-id" type="hidden" name="parentId">
+      <div class="identity-grid reply-identity-grid">
+        <label class="field"><span class="field-label">昵称</span><input name="nickname" type="text" maxlength="64" autocomplete="nickname" required aria-label="回复者昵称"></label>
+        <label class="field"><span class="field-label">邮箱</span><input name="email" type="email" maxlength="254" autocomplete="email" required aria-label="回复者邮箱"></label>
+        <label class="field"><span class="field-label">网址</span><input name="website" type="url" maxlength="2048" autocomplete="url" aria-label="回复者网址"></label>
+      </div>
+      <label class="message-field"><textarea class="composer-textarea" name="comment" rows="7" placeholder="写下回复（仅支持纯文本）" required aria-label="回复内容"></textarea></label>
+      <div class="composer-preview" aria-label="回复预览" hidden></div>
+      <div class="turnstile-slot captcha-slot" data-state="idle"></div>
+      <p class="form-error reply-error" role="alert" hidden></p>
+      <div class="composer-footer reply-toolbar">
+        <span class="character-count reply-count">0/1000</span>
+        <div class="composer-end reply-end">
+          <div class="smoji-control"><button class="smoji-trigger" type="button" aria-haspopup="dialog" aria-expanded="false">表情</button><div class="smoji-panel" role="dialog" aria-label="表情" tabindex="-1" hidden></div></div>
+          <button class="secondary-button preview-trigger" type="button" aria-pressed="false">预览</button>
+          <button class="secondary-button cancel-reply" type="button">取消</button><button class="primary-button submit-reply" type="submit">回复</button>
+        </div>
+      </div>
+    </form>
+  </template>
+
+  <script src="fixtures-v3.js"></script>
+  <script src="prototype-v13.js"></script>
+  <script src="prototype-v14-reply.js"></script>
+  <script src="prototype-v15-embed.js"></script>
+  <script src="prototype-v16-captcha.js"></script>
+  <script src="prototype-v17-paper.js"></script>
+</body>
+</html>

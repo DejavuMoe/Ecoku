@@ -25,66 +25,65 @@ flowchart LR
 
 ---
 
-## Design Tokens / CSS 変数一覧
+## Design Tokens / CSS 変数
 
-Ecoku のすべての視覚要素は標準の CSS カスタムプロパティによって制御されます。
+既定スタイルの色、アクセントカラー、角丸、影、等幅フォント、文字サイズは `--ecoku-*` 変数で制御します。
 
-> [!TIP]
-> **スコープの推奨事項**：
-> - Hugo PaperMod などのテーマをご利用の場合、`:root` に `--theme`、`--primary`、`--border` などのテーマ変数を宣言すると、Ecoku が自動的に継承します。
-> - コメント欄専用に上書きを行う場合は、`.ecoku-comments` コンテナセレクター配下で `--ecoku-*` 変数を上書きすることを推奨します。
+### 上書きの仕組み
+
+- Ecoku の既定値は詳細度ゼロで宣言されています。コメント欄のルート `.ecoku-comments` に同名の変数を書くだけで上書きでき、セレクタの詳細度を上げる必要も、スタイルシートの読み込み順を気にする必要もありません。
+- 色の変数はまずホスト側の PaperMod 同名変数（`--theme`、`--entry`、`--primary`、`--secondary`、`--content`、`--border`、`--border-soft`、`--code-bg`、`--surface-muted`）を読み取ります。PaperMod テーマでは通常、追加設定は不要です。
+- `data-theme="auto"` ではコメント欄がホストページの `color-scheme` を継承するため、ホストが `light-dark()` で定義した変数は OS の設定だけでなくサイト独自のライト／ダーク切り替えにも追従します。ホストが色の変数を提供しない場合、Ecoku はシステム設定に応じて内蔵のライトまたはダーク配色を使います。
+- `data-theme="light"` または `"dark"` はコメント欄の配色を固定し、ホストの色変数を読み取りません。
 
 ```css
-/* コメント欄コンテナに限定したスタイルカスタマイズ */
+/* サイトのスタイルシートでコメント欄の変数を上書き */
 .ecoku-comments {
-  /* 背景色体系 */
-  --ecoku-theme: rgb(250, 249, 245);          /* コメント欄最背面背景 / 投稿者情報入力欄背景 */
-  --ecoku-entry: rgb(252, 251, 247);          /* 投稿カード背景 / ボタン標準背景 */
-  --ecoku-code-bg: rgb(243, 239, 231);        /* ボタン hover 背景 / サブバッジ背景 */
-  --ecoku-surface-muted: rgba(243, 239, 231, 0.72); /* プレビュー背景 / メニュー hover 背景 */
-
-  /* 文字色体系 */
-  --ecoku-primary: rgb(20, 20, 19);           /* メイン文字色 / タイトル / 強調ボーダー */
-  --ecoku-secondary: rgb(96, 91, 82);         /* 補助文字色（日時、文字数カウント、折りたたみヒント） */
-  --ecoku-content: rgb(58, 54, 44);           /* コメント本文色 / 入力フィールド文字色 */
-
-  /* ボーダー体系 */
-  --ecoku-border: rgb(150, 143, 132);         /* ソリッドボーダー / ボタン hover 外枠 */
-  --ecoku-border-soft: rgba(20, 20, 19, 0.14);/* 薄い区切り線 / カード境界線 / 入力欄枠線 */
-
-  /* フォーカスリング（既定では primary と動的ブレンド: color-mix(in srgb, var(--ecoku-primary) 72%, #2f73ff)） */
-  --ecoku-focus: #2f73ff;                     /* 入力欄およびボタンのフォーカスリング色 */
-}
-
-/* ダークモード自動追従上書き */
-@media (prefers-color-scheme: dark) {
-  .ecoku-comments {
-    --ecoku-theme: rgb(26, 29, 32);
-    --ecoku-entry: rgb(34, 38, 42);
-    --ecoku-code-bg: rgb(44, 48, 53);
-    --ecoku-surface-muted: rgba(48, 53, 58, 0.88);
-
-    --ecoku-primary: rgb(242, 236, 226);
-    --ecoku-secondary: rgb(188, 181, 169);
-    --ecoku-content: rgb(216, 209, 197);
-
-    --ecoku-border: rgb(109, 114, 120);
-    --ecoku-border-soft: rgba(242, 236, 226, 0.14);
-    --ecoku-focus: #3b82f6;
-  }
+  --ecoku-accent: #a8412c;        /* ブロガーバッジ、リンクホバー、フォームエラー */
+  --ecoku-radius: 6px;            /* 投稿カード、メニュー、スタンプパネル、Cap の枠 */
+  --ecoku-radius-sm: 3px;         /* メニュー項目、スタンプのセル、Cap のチェックボックス */
+  --ecoku-font-size: 15px;        /* コメント本文と入力欄 */
+  --ecoku-font-size-small: 13px;  /* メタ情報、ラベル、ボタン */
+  --ecoku-font-size-title: 22px;  /* 「N 条评论」見出し */
 }
 ```
+
+### 変数一覧
+
+| 変数 | 既定値 | 用途 |
+| --- | --- | --- |
+| `--ecoku-theme` | `var(--theme, #f7f4ee)` | 紙面の地色、主ボタンの文字色、Cap チェックボックスの地色 |
+| `--ecoku-entry` | `var(--entry, #fbf9f5)` | 投稿カード、サービス障害の表示、並べ替えメニュー、スタンプパネル |
+| `--ecoku-primary` | `var(--primary, #1e1c19)` | 見出し、ニックネーム、入力文字、塗りの主ボタン、フォーカス時の下線 |
+| `--ecoku-secondary` | `var(--secondary, #6b655b)` | 日時、文字数、フィールドラベル、テキストボタン |
+| `--ecoku-content` | `var(--content, #35312b)` | コメント本文と本文入力 |
+| `--ecoku-border` | `var(--border, #cbc3b5)` | 身元フィールドの下線、副ボタンの枠線、「回复」の下線 |
+| `--ecoku-border-soft` | `var(--border-soft, rgb(30 28 25 / 0.12))` | カードの枠線、スレッドの区切り線、返信のガイド線 |
+| `--ecoku-surface-muted` | `var(--surface-muted, #efebe3)` | スタンプのセルのホバー時の地色 |
+| `--ecoku-code-bg` | `var(--code-bg, #ece7de)` | カスタムスタイル用に予約（既定スタイルでは未使用） |
+| `--ecoku-accent` | 朱色と `--ecoku-primary` の混色 | ブロガーバッジ、リンクホバー。ライトでは濃く、ダークでは明るく |
+| `--ecoku-danger` | `var(--ecoku-accent)` | フォームエラーと無効なフィールド |
+| `--ecoku-focus` | `--ecoku-primary` の 40% | 1px のキーボードフォーカス枠。`transparent` で非表示 |
+| `--ecoku-radius` | `6px` | カード、メニュー、パネル、ボタンの角丸 |
+| `--ecoku-radius-sm` | `3px` | メニュー項目、スタンプのセル、チェックボックスの角丸 |
+| `--ecoku-shadow` | 淡い 2 層の影 | 並べ替えメニューとスタンプパネル |
+| `--ecoku-font-mono` | Maple Mono とシステム等幅フォント | 日時、`[+]`/`[-]`、文字数、ページ番号 |
+| `--ecoku-font-size` | `15px` | 本文と入力欄 |
+| `--ecoku-font-size-small` | `13px` | メタ情報、ラベル、ボタン |
+| `--ecoku-font-size-title` | `22px`（狭い画面では `20px`） | コメント数の見出し |
+
+コメント欄のフォントはホストページを継承します。タッチ端末では入力欄を 16px 以上に保ち、iOS がフォーカス時にページを拡大しないようにしています。
 
 ---
 
 ## タイポグラフィ規範とベースライン配置
 
-あらゆるブログのフォント環境下でも美しく整列するよう、Ecoku は厳格なタイポグラフィ基準に従っています：
+あらゆるブログのフォント環境下でも整って見えるよう、Ecoku は次のタイポグラフィ基準に従っています：
 
 1. **等幅折りたたみボタン（3ch 等幅保証）**：
-   - 折りたたみボタン `.ecoku-collapse-button` は幅 `3ch` かつ `font-variant-numeric: tabular-nums` に厳格固定。
-   - 展開 `[-]` と折りたたみ `[+]` を切り替えても、メタ情報行のニックネームや投稿日時の**横揺れ（レイアウトシフト）が一切発生しません**。
+   - 折りたたみボタン `.ecoku-collapse-button` は幅 `3ch` かつ `font-variant-numeric: tabular-nums` に固定。
+   - 展開 `[-]` と折りたたみ `[+]` を切り替えても、メタ情報行のニックネーム、投稿日時、返信操作が横にずれません。
 2. **ベースライン揃え（Baseline Alignment）**：
-   - メタ情報行 `.ecoku-comment-meta` は `display: flex; align-items: baseline;` を採用し、14px のニックネーム、12px の日時、下線付きの「返信」リンクが同一の基準ベースライン上に美しく揃います。
-3. **等幅時刻フォントスタック**：
-   - 日時表示には等幅フォントを優先適用（ホスト側の Maple Mono、またはシステム等幅 `ui-monospace, SFMono-Regular, Menlo, monospace`）。
+   - メタ情報行 `.ecoku-comment-meta` は `display: flex; align-items: baseline;` を採用し、15px のニックネーム、12px の日時、13px の下線付き「回复」が同じベースラインに揃います。
+3. **等幅フォントスタック**：
+   - 日時、折りたたみボタン、文字数、ページ番号には `--ecoku-font-mono`（ホスト側の Maple Mono、なければシステム等幅 `ui-monospace, SFMono-Regular, Menlo, monospace`）を使います。

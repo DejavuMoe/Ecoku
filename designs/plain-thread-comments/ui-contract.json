@@ -9,7 +9,7 @@
     {
       "id": "article-plain-thread-comments",
       "prototype": {
-        "entry": "index-v16.html",
+        "entry": "index-v17.html",
         "states": [
           "light",
           "dark",
@@ -66,7 +66,21 @@
           "captcha-provider-turnstile",
           "captcha-provider-cap",
           "cap-official-widget",
-          "cap-failed"
+          "cap-failed",
+          "paper-ink-default-tokens",
+          "overridable-host-tokens",
+          "inherited-color-scheme",
+          "ruled-identity-fields",
+          "sheet-textarea",
+          "solid-ink-primary-action",
+          "quiet-text-tools",
+          "text-sort-trigger",
+          "accent-blogger-badge",
+          "mono-meta",
+          "hairline-thread-guides",
+          "quoted-preview",
+          "smoji-picker",
+          "touch-16px-inputs"
         ]
       },
       "production": {
@@ -86,7 +100,7 @@
     {
       "id": "article-comment-form-configuration",
       "prototype": {
-        "entry": "index-v16.html",
+        "entry": "index-v17.html",
         "states": [
           "email-required",
           "email-optional",
@@ -107,7 +121,9 @@
           "blogger-badge",
           "adaptive-turnstile",
           "turnstile-composer-slot",
-          "compact-identity-input-type"
+          "compact-identity-input-type",
+          "ruled-identity-fields",
+          "touch-16px-inputs"
         ]
       },
       "production": {
@@ -132,7 +148,7 @@
     {
       "id": "article-comment-captcha",
       "prototype": {
-        "entry": "index-v16.html",
+        "entry": "index-v17.html",
         "states": [
           "turnstile-auto",
           "turnstile-interact",
@@ -148,7 +164,8 @@
           "reply-cap",
           "official-cap-geometry",
           "light",
-          "dark"
+          "dark",
+          "cap-token-radius"
         ]
       },
       "production": {

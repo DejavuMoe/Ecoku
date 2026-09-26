@@ -1,0 +1,1372 @@
+/* Revision 17 · 纸与墨 (paper and ink).
+   Standalone review stylesheet: it does not import the v3–v16 chain, so every rule
+   below is the complete proposal. Section 2 mirrors the production SDK sheet one to
+   one (prototype class names drop the `ecoku-` prefix). */
+
+/* ── 1. Prototype host ─────────────────────────────────────────────────────
+   Mirrors the Hugo PaperMod host: one set of light-dark() tokens whose scheme is
+   chosen by :root[data-theme]. The comment root inherits that scheme. */
+
+:root {
+  color-scheme: light;
+
+  --main-width: 720px;
+  --gap: 28px;
+  --radius: 6px;
+  --radius-sm: 3px;
+  --font-serif: "OPPO Serif SC", "Noto Serif SC", "Source Han Serif SC", "Songti SC", serif;
+  --font-mono: "Maple Mono Normal", "Maple Mono NF CN", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  --theme: light-dark(#f7f4ee, #1a1816);
+  --entry: light-dark(#fbf9f5, #211f1c);
+  --primary: light-dark(#1e1c19, #eee8dd);
+  --content: light-dark(#35312b, #d3ccbf);
+  --secondary: light-dark(#6b655b, #a29a8c);
+  --tertiary: light-dark(#e3ddd1, #36322c);
+  --border: light-dark(#cbc3b5, #4b453d);
+  --border-soft: light-dark(rgb(30 28 25 / 0.12), rgb(238 232 221 / 0.12));
+  --code-bg: light-dark(#ece7de, #2a2723);
+  --surface-muted: light-dark(#efebe3, #26231f);
+  --accent: light-dark(#a8412c, #e08a6d);
+  --shadow-float: 0 1px 2px light-dark(rgb(30 28 25 / 0.06), rgb(0 0 0 / 0.3)),
+                  0 8px 24px -8px light-dark(rgb(30 28 25 / 0.2), rgb(0 0 0 / 0.55));
+  --weight-body: 400;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --weight-body: 360;
+}
+
+/* The host's comments.css: map the few tokens Ecoku cannot inherit by name. */
+.comment-section {
+  --ecoku-accent: var(--accent);
+  --ecoku-radius: var(--radius);
+  --ecoku-radius-sm: var(--radius-sm);
+  --ecoku-shadow: var(--shadow-float);
+  --ecoku-font-mono: var(--font-mono);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  overflow-y: scroll;
+  background: var(--theme);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--primary);
+  background: var(--theme);
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: var(--weight-body);
+  line-height: 1.8;
+  overflow-wrap: break-word;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* PaperMod-like resets, so the component is reviewed against the same host pressure. */
+h1, h2, h3, p {
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  background: none;
+  border: 0;
+}
+
+button {
+  cursor: pointer;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.page {
+  width: min(100% - calc(var(--gap) * 2), var(--main-width));
+  margin: 0 auto;
+  padding: 88px 0 96px;
+}
+
+.context {
+  margin-bottom: 44px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.context-kicker {
+  margin: 0 0 6px;
+  color: var(--secondary);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+
+.context-title {
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+/* Prototype-only review controls. */
+.preview-controls {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 30;
+  display: grid;
+  padding: 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  background: var(--entry);
+  box-shadow: var(--shadow-float);
+  font-size: 13px;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.preview-button {
+  min-height: 32px;
+  padding: 0 10px;
+  color: var(--secondary);
+  letter-spacing: 0.04em;
+  transition: color 0.15s ease;
+}
+
+.preview-button:hover,
+.preview-button[aria-pressed="true"],
+.preview-button[aria-expanded="true"] {
+  color: var(--primary);
+}
+
+.form-config-panel {
+  width: 300px;
+  margin-top: 4px;
+  padding: 12px 10px 10px;
+  color: var(--content);
+  border-top: 1px solid var(--border-soft);
+}
+
+.config-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.config-heading strong {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.config-heading span {
+  color: var(--secondary);
+}
+
+.config-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+}
+
+.config-check input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--primary);
+  appearance: auto;
+}
+
+.config-text {
+  display: grid;
+  gap: 2px;
+  margin-top: 8px;
+  color: var(--secondary);
+}
+
+.config-text input,
+.config-text textarea,
+.config-text select {
+  width: 100%;
+  min-height: 30px;
+  color: var(--primary);
+  border-bottom: 1px solid var(--border);
+  outline: 0;
+}
+
+.config-text textarea {
+  min-height: 52px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.config-text :is(input, textarea, select):focus {
+  border-bottom-color: var(--primary);
+}
+
+.preview-controls[data-settings-open="true"] .preview-actions {
+  flex-wrap: wrap;
+  width: 300px;
+}
+
+/* Host deferred-load shell (examples/hugo-papermod). */
+.ecoku-shell {
+  min-height: 8rem;
+}
+
+.ecoku-loader,
+.ecoku-unconfigured {
+  padding: 4px 0 24px;
+}
+
+.ecoku-loader-status,
+.ecoku-unconfigured {
+  margin: 0;
+  color: var(--secondary);
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.ecoku-loader-retry {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin-top: 12px;
+  padding: 0 14px;
+  color: var(--primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  transition: border-color 0.15s ease;
+}
+
+.ecoku-loader-retry:hover {
+  border-color: var(--primary);
+}
+
+.ecoku-loader[hidden],
+.ecoku-unconfigured[hidden],
+#embed-mount[hidden] {
+  display: none !important;
+}
+
+/* ── 2. Ecoku comment surface (mirrors packages/client/src/style.css) ─────── */
+
+/* Default tokens sit at zero specificity so a host rule on the root always wins.
+   Colour tokens fall back from the PaperMod names; the scheme is inherited in auto. */
+:where(.comment-section) {
+  --ecoku-theme: var(--theme, #f7f4ee);
+  --ecoku-entry: var(--entry, #fbf9f5);
+  --ecoku-primary: var(--primary, #1e1c19);
+  --ecoku-secondary: var(--secondary, #6b655b);
+  --ecoku-content: var(--content, #35312b);
+  --ecoku-border: var(--border, #cbc3b5);
+  --ecoku-border-soft: var(--border-soft, rgb(30 28 25 / 0.12));
+  --ecoku-code-bg: var(--code-bg, #ece7de);
+  --ecoku-surface-muted: var(--surface-muted, #efebe3);
+  /* Cinnabar mixed with the ink, so it darkens on paper and lightens on dark. */
+  --ecoku-accent: color-mix(in oklab, #c8553a 75%, var(--ecoku-primary));
+  --ecoku-danger: var(--ecoku-accent);
+  --ecoku-focus: color-mix(in srgb, var(--ecoku-primary) 40%, transparent);
+  --ecoku-radius: 6px;
+  --ecoku-radius-sm: 3px;
+  --ecoku-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px -8px rgb(0 0 0 / 0.2);
+  --ecoku-font-mono: "Maple Mono Normal", "Maple Mono NF CN", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --ecoku-font-size: 15px;
+  --ecoku-font-size-small: 13px;
+  --ecoku-font-size-title: 22px;
+}
+
+:where(.comment-section[data-theme="light"]) {
+  color-scheme: light;
+  --ecoku-theme: #f7f4ee;
+  --ecoku-entry: #fbf9f5;
+  --ecoku-primary: #1e1c19;
+  --ecoku-secondary: #6b655b;
+  --ecoku-content: #35312b;
+  --ecoku-border: #cbc3b5;
+  --ecoku-border-soft: rgb(30 28 25 / 0.12);
+  --ecoku-code-bg: #ece7de;
+  --ecoku-surface-muted: #efebe3;
+}
+
+:where(.comment-section[data-theme="dark"]) {
+  color-scheme: dark;
+  --ecoku-theme: #1a1816;
+  --ecoku-entry: #211f1c;
+  --ecoku-primary: #eee8dd;
+  --ecoku-secondary: #a29a8c;
+  --ecoku-content: #d3ccbf;
+  --ecoku-border: #4b453d;
+  --ecoku-border-soft: rgb(238 232 221 / 0.12);
+  --ecoku-code-bg: #2a2723;
+  --ecoku-surface-muted: #26231f;
+  --ecoku-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -8px rgb(0 0 0 / 0.55);
+}
+
+@media (prefers-color-scheme: dark) {
+  :where(.comment-section[data-theme="auto"]) {
+    --ecoku-theme: var(--theme, #1a1816);
+    --ecoku-entry: var(--entry, #211f1c);
+    --ecoku-primary: var(--primary, #eee8dd);
+    --ecoku-secondary: var(--secondary, #a29a8c);
+    --ecoku-content: var(--content, #d3ccbf);
+    --ecoku-border: var(--border, #4b453d);
+    --ecoku-border-soft: var(--border-soft, rgb(238 232 221 / 0.12));
+    --ecoku-code-bg: var(--code-bg, #2a2723);
+    --ecoku-surface-muted: var(--surface-muted, #26231f);
+  }
+}
+
+@media (max-width: 620px) {
+  :where(.comment-section) {
+    --ecoku-font-size-title: 20px;
+  }
+}
+
+.comment-section {
+  width: 100%;
+  max-width: 720px;
+  margin-inline: auto;
+  color: var(--ecoku-primary);
+  font-family: inherit;
+  font-size: var(--ecoku-font-size);
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+  text-rendering: optimizeLegibility;
+}
+
+/* Element resets stay at element specificity so every component class can win. */
+:where(.comment-section) :is(button, input, textarea) {
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  border: 0;
+  background: none;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+:where(.comment-section) button {
+  cursor: pointer;
+}
+
+:where(.comment-section) button:disabled {
+  cursor: default;
+}
+
+:where(.comment-section[aria-busy="true"]) button:disabled {
+  cursor: progress;
+}
+
+/* Keyboard focus only; text fields show focus through their ruled line or the sheet border. */
+.comment-section :not(input, textarea):focus-visible {
+  outline: 1px solid var(--ecoku-focus);
+  outline-offset: 2px;
+}
+
+/* Composer: one sheet of paper. Identity fields are ruled lines; the textarea is the page. */
+.composer {
+  margin: 0;
+  padding: 6px 18px 14px;
+  border: 1px solid var(--ecoku-border-soft);
+  border-radius: var(--ecoku-radius);
+  background: var(--ecoku-entry);
+  transition: border-color 0.15s ease;
+}
+
+.composer:focus-within {
+  border-color: var(--ecoku-border);
+}
+
+.composer:has(> .message-field textarea[aria-invalid="true"]) {
+  border-color: color-mix(in srgb, var(--ecoku-danger) 45%, transparent);
+}
+
+.identity-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 20px;
+  margin: 0;
+}
+
+.field {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: baseline;
+  column-gap: 10px;
+  min-width: 0;
+  border-bottom: 1px solid var(--ecoku-border);
+  transition: border-color 0.15s ease;
+}
+
+.field:focus-within {
+  border-bottom-color: var(--ecoku-primary);
+}
+
+.field-label {
+  color: var(--ecoku-secondary);
+  font-size: var(--ecoku-font-size-small);
+  letter-spacing: 0.04em;
+  line-height: 38px;
+  white-space: nowrap;
+}
+
+.field input {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 0;
+  color: var(--ecoku-primary);
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  font-size: var(--ecoku-font-size);
+}
+
+.message-field {
+  display: block;
+  min-width: 0;
+}
+
+.message-field textarea {
+  display: block;
+  width: 100%;
+  min-height: calc(16px + 1.75em * 7);
+  height: calc(16px + 1.75em * 7);
+  padding: 12px 0 4px;
+  color: var(--ecoku-content);
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--ecoku-font-size);
+  font-weight: inherit;
+  line-height: 1.75;
+  resize: vertical;
+}
+
+.comment-section textarea::placeholder {
+  color: var(--ecoku-secondary);
+  font-size: var(--ecoku-font-size-small);
+  letter-spacing: 0.04em;
+  opacity: 0.8;
+}
+
+.field:has(input[aria-invalid="true"]) {
+  border-bottom-color: var(--ecoku-danger);
+}
+
+.composer-preview {
+  margin: 12px 0 0;
+  padding: 0 0 0 14px;
+  color: var(--ecoku-content);
+  border-inline-start: 2px solid var(--ecoku-border);
+  font-size: var(--ecoku-font-size);
+  line-height: 1.75;
+  white-space: pre-wrap;
+}
+
+.turnstile-slot {
+  width: min(100%, 300px);
+  margin: 12px 0 0;
+}
+
+.turnstile-slot:empty {
+  display: none;
+}
+
+.form-error {
+  margin: 10px 0 0;
+  color: var(--ecoku-danger);
+  font-size: var(--ecoku-font-size-small);
+  line-height: 1.6;
+}
+
+.composer-footer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.character-count {
+  flex: 0 0 auto;
+  color: var(--ecoku-secondary);
+  font-family: var(--ecoku-font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.composer-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-inline-start: auto;
+}
+
+/* Buttons: one solid ink action; tools are quiet text; outline only for recovery. */
+.primary-button,
+.secondary-button,
+.smoji-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  min-height: 32px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: var(--ecoku-radius);
+  background: transparent;
+  font-size: var(--ecoku-font-size-small);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  white-space: nowrap;
+  transition: color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.primary-button {
+  margin-inline-start: 6px;
+  padding: 0 16px;
+  color: var(--ecoku-theme);
+  border-color: var(--ecoku-primary);
+  background: var(--ecoku-primary);
+}
+
+.primary-button:not(:disabled):hover {
+  opacity: 0.86;
+}
+
+.primary-button:disabled {
+  opacity: 0.38;
+}
+
+.secondary-button {
+  color: var(--ecoku-primary);
+  border-color: var(--ecoku-border);
+}
+
+.secondary-button:not(:disabled):hover {
+  border-color: var(--ecoku-primary);
+}
+
+.secondary-button:disabled {
+  opacity: 0.5;
+}
+
+.composer-end .secondary-button,
+.smoji-trigger {
+  padding: 0 8px;
+  color: var(--ecoku-secondary);
+  border-color: transparent;
+}
+
+.composer-end .secondary-button:not(:disabled):hover,
+.smoji-trigger:not(:disabled):hover,
+.smoji-trigger[aria-expanded="true"],
+.preview-trigger[aria-pressed="true"] {
+  color: var(--ecoku-primary);
+  border-color: transparent;
+}
+
+/* Sticker picker. */
+.smoji-control {
+  display: contents;
+}
+
+.smoji-panel {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  bottom: calc(100% + 6px);
+  width: min(276px, 100%);
+  max-height: 224px;
+  padding: 6px 8px 8px;
+  overflow: auto;
+  border: 1px solid var(--ecoku-border-soft);
+  border-radius: var(--ecoku-radius);
+  background: var(--ecoku-entry);
+  box-shadow: var(--ecoku-shadow);
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--ecoku-secondary) 40%, transparent) transparent;
+}
+
+.smoji-tabs {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 6px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--ecoku-border-soft);
+  scrollbar-width: none;
+}
+
+.smoji-tab {
+  flex: 0 0 auto;
+  margin-bottom: -1px;
+  padding: 4px 0 5px;
+  color: var(--ecoku-secondary);
+  border-bottom: 1px solid transparent;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+  transition: color 0.15s ease;
+}
+
+.smoji-tab:hover,
+.smoji-tab[aria-selected="true"] {
+  color: var(--ecoku-primary);
+}
+
+.smoji-tab[aria-selected="true"] {
+  border-bottom-color: var(--ecoku-primary);
+}
+
+.smoji-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.smoji-item {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 4px;
+  border-radius: var(--ecoku-radius-sm);
+  transition: background-color 0.15s ease;
+}
+
+.smoji-item:hover {
+  background: var(--ecoku-surface-muted);
+}
+
+.smoji-item img {
+  display: inline-block;
+  width: auto;
+  max-width: 100%;
+  height: 30px;
+  object-fit: contain;
+}
+
+.smoji-inline {
+  display: inline-block;
+  width: auto;
+  max-width: 4.75em;
+  height: 1.9em;
+  margin: 0 0.16em;
+  object-fit: contain;
+  vertical-align: -0.52em;
+}
+
+/* Heading: count on the left, a quiet text sort menu on the right. */
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 32px;
+  margin: 44px 0 10px;
+}
+
+.section-title {
+  color: var(--ecoku-primary);
+  font-size: var(--ecoku-font-size-title);
+  font-weight: 600;
+  line-height: 32px;
+}
+
+.sort-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.sort-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 2px;
+  color: var(--ecoku-secondary);
+  font-size: var(--ecoku-font-size-small);
+  letter-spacing: 0.04em;
+  transition: color 0.15s ease;
+}
+
+.sort-trigger:hover,
+.sort-trigger[aria-expanded="true"] {
+  color: var(--ecoku-primary);
+}
+
+.sort-chevron {
+  width: 6px;
+  height: 6px;
+  border-right: 1.25px solid currentColor;
+  border-bottom: 1.25px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.sort-trigger[aria-expanded="true"] .sort-chevron {
+  transform: translateY(1px) rotate(225deg);
+}
+
+.sort-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 112px;
+  padding: 4px;
+  border: 1px solid var(--ecoku-border-soft);
+  border-radius: var(--ecoku-radius);
+  background: var(--ecoku-entry);
+  box-shadow: var(--ecoku-shadow);
+}
+
+.sort-option {
+  height: 32px;
+  padding: 0 12px;
+  color: var(--ecoku-secondary);
+  border-radius: var(--ecoku-radius-sm);
+  font-size: var(--ecoku-font-size-small);
+  letter-spacing: 0.04em;
+  text-align: left;
+  transition: color 0.15s ease;
+}
+
+.sort-option:hover {
+  color: var(--ecoku-primary);
+}
+
+.sort-option[aria-selected="true"] {
+  color: var(--ecoku-primary);
+  font-weight: 600;
+}
+
+.status-line {
+  margin: 0 0 8px;
+  color: var(--ecoku-secondary);
+  font-size: var(--ecoku-font-size-small);
+}
+
+.status-line:empty {
+  display: none;
+}
+
+.empty-comments-text {
+  margin: 20px 0 24px;
+  color: var(--ecoku-secondary);
+  font-size: var(--ecoku-font-size);
+  line-height: 1.75;
+  white-space: pre-line;
+}
+
+.service-error {
+  margin: 0 0 16px;
+  padding: 18px 20px;
+  color: var(--ecoku-content);
+  border: 1px solid var(--ecoku-border-soft);
+  border-radius: var(--ecoku-radius);
+  background: var(--ecoku-entry);
+}
+
+.service-error h3 {
+  margin: 0 0 4px;
+  color: var(--ecoku-primary);
+  font-size: var(--ecoku-font-size);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.service-error p {
+  margin: 0 0 14px;
+  color: var(--ecoku-secondary);
+  font-size: var(--ecoku-font-size-small);
+  line-height: 1.6;
+}
+
+/* Threads: hairlines between root discussions, whitespace and a margin rule inside. */
+.thread-list {
+  border-top: 1px solid var(--ecoku-border-soft);
+}
+
+.root-thread {
+  border-bottom: 1px solid var(--ecoku-border-soft);
+}
+
+.comment-node {
+  min-width: 0;
+  padding: 0;
+}
+
+.comment-row {
+  position: relative;
+  min-width: 0;
+  padding: 12px 0;
+}
+
+.comment-node[data-depth="2"] .comment-row { padding-inline-start: 22px; }
+.comment-node[data-depth="3"] .comment-row { padding-inline-start: 44px; }
+.comment-node:not([data-depth="1"], [data-depth="2"], [data-depth="3"]) .comment-row { padding-inline-start: 66px; }
+
+.comment-node:not([data-depth="1"]) > .comment-row::before {
+  position: absolute;
+  top: 12px;
+  bottom: 12px;
+  left: var(--guide-offset);
+  border-inline-start: 1px solid var(--ecoku-border-soft);
+  content: "";
+  pointer-events: none;
+}
+
+.comment-node[data-depth="2"] > .comment-row { --guide-offset: 8px; }
+.comment-node[data-depth="3"] > .comment-row { --guide-offset: 30px; }
+.comment-node:not([data-depth="1"], [data-depth="2"], [data-depth="3"]) > .comment-row { --guide-offset: 52px; }
+
+.comment-meta {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  min-height: 22px;
+  color: var(--ecoku-secondary);
+  font-size: var(--ecoku-font-size-small);
+  line-height: 22px;
+}
+
+.comment-meta-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  min-width: 0;
+  gap: 0 10px;
+}
+
+.comment-author-wrap {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: min-content;
+  max-width: 100%;
+}
+
+.comment-author {
+  color: var(--ecoku-primary);
+  font-size: var(--ecoku-font-size);
+  font-weight: 600;
+  line-height: 22px;
+  transition: color 0.15s ease;
+}
+
+a.comment-author:hover {
+  color: var(--ecoku-accent);
+}
+
+.blogger-badge {
+  flex: 0 0 auto;
+  color: var(--ecoku-accent);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  line-height: 22px;
+}
+
+.comment-time,
+.collapse-button {
+  color: var(--ecoku-secondary);
+  font-family: var(--ecoku-font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  line-height: 22px;
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+
+.comment-time:hover,
+.collapse-button:hover {
+  color: var(--ecoku-accent);
+}
+
+.collapse-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: content-box;
+  width: 3ch;
+  min-width: 3ch;
+  height: 22px;
+  flex: 0 0 3ch;
+  padding: 0;
+  overflow: visible;
+}
+
+.reply-context,
+.folded-summary {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reply-context {
+  max-width: min(260px, 55vw);
+  transition: color 0.15s ease;
+}
+
+a.reply-context:hover {
+  color: var(--ecoku-accent);
+}
+
+.comment-meta .reply-action {
+  flex: 0 0 auto;
+  height: auto;
+  min-height: 0;
+  padding: 0;
+  color: var(--ecoku-secondary);
+  font-size: var(--ecoku-font-size-small);
+  letter-spacing: 0.04em;
+  line-height: 22px;
+  text-decoration: underline;
+  text-decoration-color: var(--ecoku-border);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.3em;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.comment-meta .reply-action:hover {
+  color: var(--ecoku-accent);
+  text-decoration-color: currentColor;
+}
+
+.comment-copy {
+  margin-top: 2px;
+  color: var(--ecoku-content);
+  font-size: var(--ecoku-font-size);
+  line-height: 1.75;
+}
+
+.comment-copy p {
+  margin: 0;
+  white-space: pre-wrap;
+  text-wrap: pretty;
+}
+
+.deleted .comment-author,
+.deleted .comment-copy {
+  color: var(--ecoku-secondary);
+  font-style: normal;
+}
+
+.reply-composer {
+  margin: 10px 0 4px;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 48px;
+  margin-top: 16px;
+  color: var(--ecoku-secondary);
+  font-size: var(--ecoku-font-size-small);
+}
+
+.comment-pagination[hidden] {
+  display: none;
+}
+
+.pager-button {
+  min-height: 34px;
+  padding: 0 4px;
+  color: inherit;
+  letter-spacing: 0.04em;
+  transition: color 0.15s ease;
+}
+
+.pager-button:not(:disabled):hover {
+  color: var(--ecoku-accent);
+}
+
+.pager-button:disabled {
+  opacity: 0.4;
+}
+
+.pager-status {
+  min-width: 32px;
+  color: var(--ecoku-primary);
+  font-family: var(--ecoku-font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.pager-separator {
+  color: var(--ecoku-border);
+}
+
+/* Touch keyboards zoom into fields under 16px; keep typing size at 16px there. */
+@media (pointer: coarse) {
+  .field input,
+  .message-field textarea {
+    font-size: max(16px, var(--ecoku-font-size));
+  }
+}
+
+@media (max-width: 620px) {
+  .composer {
+    padding: 2px 14px 12px;
+  }
+
+  .identity-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .comment-node[data-depth="2"] .comment-row { padding-inline-start: 14px; }
+  .comment-node[data-depth="3"] .comment-row { padding-inline-start: 28px; }
+  .comment-node:not([data-depth="1"], [data-depth="2"], [data-depth="3"]) .comment-row { padding-inline-start: 42px; }
+  .comment-node[data-depth="2"] > .comment-row { --guide-offset: 5px; }
+  .comment-node[data-depth="3"] > .comment-row { --guide-offset: 19px; }
+  .comment-node:not([data-depth="1"], [data-depth="2"], [data-depth="3"]) > .comment-row { --guide-offset: 33px; }
+}
+
+@media (max-width: 460px) {
+  .comment-meta-main {
+    gap: 0 8px;
+  }
+
+  .pager-button {
+    min-height: 44px;
+  }
+}
+
+/* ── 3. Vendor widget mocks (prototype only) ────────────────────────────── */
+
+.turnstile-slot[data-mode="invisible"],
+.turnstile-slot[data-cleared="true"],
+.turnstile-slot[hidden] {
+  display: none;
+}
+
+.turnstile-widget {
+  display: flex;
+  width: 100%;
+  height: 65px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  border: 1px solid var(--ecoku-border-soft);
+  border-radius: 3px;
+  background: var(--ecoku-theme);
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.turnstile-check {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--ecoku-theme);
+  border: 2px solid var(--ecoku-border);
+  border-radius: 4px;
+  background: var(--ecoku-entry);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.turnstile-check[aria-pressed="true"] {
+  color: #faf9f5;
+  border-color: #2a6648;
+  background: #2a6648;
+}
+
+.turnstile-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--ecoku-border-soft);
+  border-top-color: var(--ecoku-primary);
+  border-radius: 50%;
+  animation: ecoku-turnstile-spin 700ms linear infinite;
+}
+
+.turnstile-label {
+  flex: 1 1 auto;
+  color: var(--ecoku-content);
+}
+
+.turnstile-brand {
+  color: var(--ecoku-secondary);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+@keyframes ecoku-turnstile-spin {
+  to { transform: rotate(360deg); }
+}
+
+.captcha-slot[data-captcha-provider="cap"] {
+  display: block;
+  width: min(100%, 260px);
+}
+
+/* Cap keeps its official 260 × 58 geometry; only colour, radius and font follow Ecoku. */
+cap-widget.ecoku-cap-prototype {
+  display: block;
+  width: min(100%, var(--cap-widget-width));
+  max-width: 100%;
+  --cap-background: transparent;
+  --cap-border-color: var(--ecoku-border-soft);
+  --cap-border-radius: var(--ecoku-radius);
+  --cap-widget-height: 58px;
+  --cap-widget-width: 260px;
+  --cap-widget-padding: 14px;
+  --cap-gap: 15px;
+  --cap-color: var(--ecoku-content);
+  --cap-font: inherit;
+  --cap-checkbox-size: 25px;
+  --cap-checkbox-border: 1px solid var(--ecoku-border);
+  --cap-checkbox-border-radius: var(--ecoku-radius-sm);
+  --cap-checkbox-background: var(--ecoku-theme);
+  --cap-checkbox-margin: 2px;
+  --cap-spinner-color: var(--ecoku-primary);
+  --cap-spinner-background-color: var(--ecoku-border-soft);
+  --cap-spinner-thickness: 3;
+  --cap-focus-ring: var(--ecoku-focus);
+  --cap-success-color: color-mix(in srgb, #2a6648 72%, var(--ecoku-primary));
+  --cap-error-color: var(--ecoku-danger);
+}
+
+.cap-prototype-captcha {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  height: var(--cap-widget-height);
+  overflow: hidden;
+  color: var(--cap-color);
+  border: 1px solid var(--cap-border-color);
+  border-radius: var(--cap-border-radius);
+  background: var(--cap-background);
+  font-family: var(--cap-font);
+  user-select: none;
+}
+
+.cap-prototype-trigger {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--cap-gap);
+  padding: var(--cap-widget-padding);
+  color: inherit;
+  border-radius: inherit;
+  text-align: left;
+}
+
+.cap-prototype-trigger:focus-visible {
+  outline: 1px solid var(--cap-focus-ring);
+  outline-offset: -3px;
+}
+
+.cap-prototype-checkbox {
+  display: grid;
+  width: var(--cap-checkbox-size);
+  height: var(--cap-checkbox-size);
+  flex: 0 0 auto;
+  place-items: center;
+  margin-block: var(--cap-checkbox-margin);
+  border: var(--cap-checkbox-border);
+  border-radius: var(--cap-checkbox-border-radius);
+  background: var(--cap-checkbox-background);
+}
+
+.cap-prototype-label-wrapper {
+  position: relative;
+  display: flex;
+  height: 2em;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  overflow: hidden;
+}
+
+.cap-prototype-label {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.cap-prototype-progress-ring,
+.cap-prototype-state-icon {
+  display: none;
+  width: 100%;
+  height: 100%;
+}
+
+.cap-prototype-progress-ring {
+  transform: rotate(-90deg);
+}
+
+.cap-prototype-progress-ring-bg {
+  fill: none;
+  stroke: var(--cap-spinner-background-color);
+  stroke-width: var(--cap-spinner-thickness);
+}
+
+.cap-prototype-progress-ring-circle {
+  fill: none;
+  stroke: var(--cap-spinner-color);
+  stroke-width: var(--cap-spinner-thickness);
+  stroke-linecap: round;
+  stroke-dasharray: 87.96;
+  animation: ecoku-cap-progress 900ms ease-in-out infinite alternate;
+}
+
+.cap-prototype-checkmark { color: var(--cap-success-color); }
+.cap-prototype-error-icon { color: var(--cap-error-color); }
+
+.cap-prototype-captcha[data-state="verifying"] .cap-prototype-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  transform: scale(1.1);
+}
+
+.cap-prototype-captcha[data-state="verifying"] .cap-prototype-progress-ring,
+.cap-prototype-captcha[data-state="done"] .cap-prototype-checkmark,
+.cap-prototype-captcha[data-state="error"] .cap-prototype-error-icon {
+  display: block;
+}
+
+.cap-prototype-captcha[data-state="done"] .cap-prototype-checkbox,
+.cap-prototype-captcha[data-state="error"] .cap-prototype-checkbox {
+  border-color: transparent;
+  background: transparent;
+}
+
+.cap-prototype-captcha[data-state="verifying"] .cap-prototype-trigger {
+  cursor: progress;
+}
+
+.cap-prototype-captcha[data-state="done"] .cap-prototype-trigger {
+  cursor: default;
+}
+
+.cap-prototype-credits {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  z-index: 2;
+  display: inline-flex;
+  min-width: 24px;
+  min-height: 24px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 4px 6px;
+  color: var(--cap-color);
+  font-family: var(--cap-font);
+  font-size: 12px;
+  line-height: 1;
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+@keyframes ecoku-cap-progress {
+  from { stroke-dashoffset: 76; }
+  to { stroke-dashoffset: 18; }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --gap: 20px;
+  }
+
+  .page {
+    padding-top: 144px;
+  }
+
+  .context-title {
+    font-size: 28px;
+  }
+
+  .preview-controls {
+    right: 12px;
+    left: 12px;
+  }
+
+  .preview-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .preview-controls[data-settings-open="true"] .preview-actions,
+  .form-config-panel {
+    width: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comment-section *,
+  .comment-section *::before,
+  .comment-section *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+
+  .turnstile-spinner,
+  .cap-prototype-progress-ring-circle {
+    animation: none;
+  }
+}

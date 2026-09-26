@@ -58,7 +58,7 @@ params:
 
 - **`data-page-key`**：頁面 key 使用 Hugo 的 `.RelPermalink` 輸出站內相對路徑（例如 `/posts/my-first-post/`），具備極高的唯一性與穩定性。
 - **`data-page-title`**：頁面標題使用 `.Title` 輸出目前文章標題，供郵件和 Telegram 通知精準標識討論來源。
-- **`data-theme="auto"`**：自動跟隨 PaperMod 的日間/夜間模式切換。
+- **`data-theme="auto"`**：評論區讀取 PaperMod 的 `--theme`、`--primary`、`--border` 等顏色變數，並繼承頁面的 `color-scheme`，因此會跟隨主題的日間/夜間切換，包括用 `light-dark()` 定義顏色的主題。
 
 ---
 
@@ -73,3 +73,20 @@ date: 2026-08-20
 comments: true
 ---
 ```
+
+---
+
+## 4. 對齊主題樣式（選用）
+
+預設樣式已經讀取 PaperMod 的顏色變數。如果主題還定義了強調色、圓角或字級變數，可以在站點 CSS（例如 `assets/css/extended/comments.css`）中對應到 Ecoku，評論區會隨主題一起變化：
+
+```css
+.ecoku-comments {
+  --ecoku-accent: var(--accent);
+  --ecoku-radius: var(--radius);
+  --ecoku-font-size: 15px;
+  --ecoku-font-size-small: 13px;
+}
+```
+
+變數名稱以主題實際定義為準，完整清單見[自訂 CSS](./custom-css.md)。

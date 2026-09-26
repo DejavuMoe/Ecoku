@@ -5,7 +5,7 @@
 - 实现以当前源码为准；产品/安全/隐私以 `docs/internal/constraints.md` 为准；面向操作者的部署与接入以
   VitePress 源文为准（默认简体中文：`docs/guide/`、`docs/self-hosting/`、`docs/integration/`）。
   `docs/progress/` 只是历史验收，不约束当前实现，也不进入文档站点。
-- 评论区基线 `designs/plain-thread-comments/index-v16.html`；管理端站点配置以
+- 评论区基线 `designs/plain-thread-comments/index-v17.html`；管理端站点配置以
   `designs/admin-moderation/index-v11.html` 为准（系统衬线栈），安全与登录验证以 `index-v12.html` 为准，
   评论管理/通知设置仍沿用 v5。生产管理端不得展示通知判定预览或通知模板预览。
 - 边界不清时先查源码和上述文档，再集中向用户确认。不要把原型 mock、测试文案或设计标注带进生产。

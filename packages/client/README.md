@@ -54,9 +54,11 @@ await comments.init()
 
 The caller must provide the canonical `pageKey`; `pageTitle` should be the
 human-readable article title used by notifications. The SDK never derives either
-value from the browser URL. Styles are bundled into the component; CSS custom properties
-inherit from the host page. Pass `cssURL` to skip injection and use a host stylesheet
-instead (`none` skips without loading a file).
+value from the browser URL. Styles are bundled into the component; colour tokens
+inherit from the host page and the `auto` theme inherits its `color-scheme`. Default
+`--ecoku-*` tokens have zero specificity, so a host rule on `.ecoku-comments` overrides
+them. Pass `cssURL` to skip injection and use a host stylesheet instead (`none` skips
+without loading a file).
 
 The server-authoritative site registry controls whether email and website are
 required and supplies the comment textarea placeholder. The SDK reads this

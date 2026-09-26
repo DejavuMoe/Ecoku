@@ -145,10 +145,19 @@
           "viewport": {
             "width": 720
           }
+        },
+        {
+          "path": "index-v17.html",
+          "createdAt": "2026-09-26T00:00:00.000Z",
+          "status": "approved",
+          "subtitle": "Approved: paper-and-ink defaults, ruled identity fields, inherited colour scheme, overridable tokens",
+          "viewport": {
+            "width": 720
+          }
         }
       ]
     }
   },
   "createdAt": "2026-08-12T08:14:10.430Z",
-  "updatedAt": "2026-08-17T00:00:00.000Z"
+  "updatedAt": "2026-09-26T00:00:00.000Z"
 }

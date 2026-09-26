@@ -50,4 +50,23 @@ describe('browser runtime privacy boundary', () => {
     expect(styles).toContain('white-space: nowrap')
     expect(styles).not.toContain('max-width: 16px')
   })
+
+  it('keeps default tokens overridable and lets auto inherit the host colour scheme', () => {
+    const styles = readFileSync(fileURLToPath(new URL('style.css', import.meta.url)), 'utf8')
+    const block = (selector: string): string => {
+      const start = styles.indexOf(`${selector} {`)
+      return start < 0 ? '' : styles.slice(start, styles.indexOf('}', start) + 1)
+    }
+    const defaults = block(':where(.ecoku-comments)')
+    expect(defaults).toContain('--ecoku-theme: var(--theme,')
+    for (const token of ['--ecoku-accent', '--ecoku-danger', '--ecoku-focus', '--ecoku-radius', '--ecoku-radius-sm', '--ecoku-shadow', '--ecoku-font-mono', '--ecoku-font-size', '--ecoku-font-size-small', '--ecoku-font-size-title']) {
+      expect(defaults).toContain(`${token}:`)
+    }
+    expect(defaults).not.toContain('color-scheme')
+    expect(block(':where(.ecoku-comments[data-theme="light"])')).toContain('color-scheme: light')
+    expect(block(':where(.ecoku-comments[data-theme="dark"])')).toContain('color-scheme: dark')
+    expect(styles).not.toMatch(/^\.ecoku-comments(\[data-theme[^\]]*\])?\s*\{[^}]*--ecoku-[a-z-]+\s*:/m)
+    expect(styles).toMatch(/:where\(\.ecoku-comments\) :is\(button, input, textarea\)/)
+    expect(block('.ecoku-blogger-badge')).toContain('var(--ecoku-accent)')
+  })
 })
