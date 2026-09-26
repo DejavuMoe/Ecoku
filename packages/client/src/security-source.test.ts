@@ -52,7 +52,9 @@ describe('browser runtime privacy boundary', () => {
   })
 
   it('keeps default tokens overridable and lets auto inherit the host colour scheme', () => {
-    const styles = readFileSync(fileURLToPath(new URL('style.css', import.meta.url)), 'utf8')
+    // A literal `new URL('…', import.meta.url)` is rewritten by Vite into an asset URL.
+    const styleName = 'style.css'
+    const styles = readFileSync(fileURLToPath(new URL(styleName, import.meta.url)), 'utf8')
     const block = (selector: string): string => {
       const start = styles.indexOf(`${selector} {`)
       return start < 0 ? '' : styles.slice(start, styles.indexOf('}', start) + 1)
