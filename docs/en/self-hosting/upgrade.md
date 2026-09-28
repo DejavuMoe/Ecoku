@@ -1,88 +1,80 @@
-# Upgrades & Schema Migrations
+# Upgrade
 
-Ecoku employs a versioned, in-place, and strictly transactional SQLite schema migration system.
+The current release is **v0.2.5** (released 2026-09-26, schema v8).
 
-**[v0.2.5](./upgrades/v0.2.5)** was released on 2026-09-26: paper-and-ink default comment styles, host-overridable variables, and `auto` following the host light/dark mode; schema stays at v8.
+## What happens during an upgrade
 
-Review the version-specific configuration changes before upgrading. Set the exact Compose image tag; startup applies database migrations in order.
+Upgrading means changing the image in `compose.yaml` to the new version and starting it. When the new version starts, it checks the database's schema version. If it is lower than the version it supports, it runs the migrations in order:
 
----
+- Each migration step runs in one transaction. If a step fails, the whole step is rolled back, the database stays as it was, and the service does not start;
+- Migrations run on the existing database file. They do not delete or recreate the database, comments, config, WAL files, or your backups;
+- Each completed step appends a record to the `schema_migrations` table;
+- **Migrations only go forward.** An older version of the program cannot open a database with a newer schema and refuses to start.
 
-## Core Upgrade Contracts
+That makes a backup taken before the upgrade the only way to roll back to an older schema.
 
-1. **Unidirectional Transactional Migrations**: Schema migrations run forward sequentially on your SQLite file, appending version records to `schema_migrations` upon success. Ecoku **does not support automated down-migrations**.
-2. **Strictly Prohibited Floating Tags**: Never use `latest` in production. Always specify an exact semantic tag like `v0.2.5`.
-3. **Irreversibility & Rollback Principle**: Once the database upgrades to a higher schema version (e.g. v8), **you cannot simply revert the image tag**, as older binaries refuse to boot against newer schemas. Rollbacks strictly require restoring the pre-upgrade cold backup.
+You can skip versions and upgrade directly, for example from v0.1.8 straight to v0.2.5. The intermediate migrations run one after another. But read the upgrade notes for every version you skip, because some versions require config changes (for example, [v0.2.4](./upgrades/v0.2.4) requires `admin.token_ttl_minutes` to be 480 or omitted).
 
----
+## Upgrade steps {#steps}
 
-## Standard Cold Upgrade SOP
+**1. Read the upgrade notes.** Find the target version in the [version list](#versions) below, and check whether it has config changes or a schema migration.
 
-```bash
-(
-set -eu
-umask 077
-cd "$HOME/Ecoku"
-install -d -m 700 "$HOME/backups"
-sudo docker compose down
-archive="$HOME/backups/ecoku-$(date +%Y%m%d_%H%M%S).tar.gz"
-[ ! -e "$archive" ]
-sudo tar -czf - data/ app/config.yaml ecoku.env compose.yaml > "$archive"
-contents=$(tar -tzf "$archive")
-for required in data/ecoku.sqlite3 app/config.yaml ecoku.env compose.yaml; do
-  printf '%s\n' "$contents" | grep -Fx "$required" > /dev/null
-done
-printf 'Verified backup: %s\n' "$archive"
-vi app/config.yaml compose.yaml
-sudo docker compose pull && sudo docker compose up -d
-curl --fail --silent --show-error http://127.0.0.1:12123/api/health
-)
+**2. Take a cold backup with the service stopped.** Follow [Backup and restore](./backup#cold-backup) and confirm that the output includes `Verified backup`.
+
+**3. Change the image version.** Edit `~/Ecoku/compose.yaml` and change `image` to the target version, for example:
+
+```yaml
+    image: "git.via.moe/dejavu/ecoku:v0.2.5"
 ```
 
----
+Use an exact version number, not `latest`. If the upgrade notes ask you to change `app/config.yaml` or `ecoku.env`, change them at the same time.
 
-## Schema Evolution History
+**4. Pull and start.**
 
-| Image Version | Schema Version | Core Database Changes & Highlights |
-| :--- | :---: | :--- |
-| **`v0.2.5`** | `v8` (unchanged) | No migration; default comment styles with overridable variables, and Turnstile Siteverify rejects redirects. |
-| **`v0.2.4`** | `v8` | `admin_sessions` |
-| **`v0.1.9`** | `v7` (unchanged) | No migration; CWE-400 resource budget protection, single-layer cursor pagination, and dedicated read rate limiting. |
-| **`v0.1.8`** | `v7` | Added `smoji_enabled` (boolean) and `smoji_manifest_url` (TEXT) to `sites` for site-level sticker packs. |
-| **`v0.1.7`** | `v6` (unchanged) | No schema change; toolchain upgrades, multilingual documentation architecture, and CI image optimizations. |
-| **`v0.1.6`** | `v6` (unchanged) | No schema change; dynamic CSP adjustments for Cap client instrumentation scripts. |
-| **`v0.1.5`** | `v6` | Renamed `turnstile_settings` to `captcha_settings`, added `provider` and self-hosted Cap configuration fields. |
-| **`v0.1.4`** | `v5` (unchanged) | No schema change; blogger passphrase save automatically backfills `is_blogger` flag on historical comments. |
-| **`v0.1.3`** | `v5` | Added `sites.blogger_passphrase_hash`, `comments.is_blogger`, and split outbox queue by target recipient. |
-| **`v0.1.2`** | `v4` (unchanged) | No schema change; comment header metadata typography baseline alignment and 14px type scale. |
-| **`v0.1.1`** | `v4` (unchanged) | No schema change; 3ch fixed-width comment collapse toggles (`[+]`/`[-]`) to eliminate jitter. |
-| **`v0.1.0`** | `v4` | Initial release; multi-site comment model, tombstones, notifications, and Cloudflare Turnstile. |
-| **Earlier** | `v1`–`v4` | Pre-release candidates: single-container architecture, SQLite WAL mode, and timezone normalization. |
+```bash
+cd ~/Ecoku
+sudo docker compose config --quiet
+sudo docker compose pull
+sudo docker compose up -d
+```
 
----
+**5. Check.**
 
-## Historical Upgrade Guide Index
+```bash
+sudo docker compose ps
+sudo docker compose logs --tail=100 ecoku
+curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+```
 
-| Version | Release Date | Schema | Upgrade Highlights & Notes |
-| :--- | :--- | :---: | :--- |
-| [**v0.2.5**](./upgrades/v0.2.5) | 2026-09-26 | v8 (unchanged) | Paper-and-ink default comment styles; overridable variables; `auto` follows the host. |
-| [**v0.2.4**](./upgrades/v0.2.4) | 2026-09-16 | v7 → v8 | HttpOnly cookie + SQLite revocable session |
-| [**v0.2.3**](./upgrades/v0.2.3) | 2026-09-16 (tag) | v7 (unchanged) | Audit fixes for identity, notifications, imports and clients. |
-| [**v0.2.2**](./upgrades/v0.2.2) | 2026-09-13 | v7 (unchanged) | Fixed Smoji picker layout on narrow screens. |
-| [**v0.2.1**](./upgrades/v0.2.1) | 2026-09-12 | v7 (unchanged) | Larger Smoji manifests and compact `base` template support. |
-| [**v0.2.0**](./upgrades/v0.2.0) | 2026-09-12 | v7 (unchanged) | Documentation, integration examples, and API reference corrections. |
-| [**v0.1.9**](./upgrades/v0.1.9) | 2026-08-31 | v7 (unchanged) | CWE-400 mitigation; backward-compatible configs, note large thread read budget limits and rollback steps. |
-| [**v0.1.8**](./upgrades/v0.1.8) | 2026-08-27 | v6 → v7 | Smoji plaintext sticker packs; site-level sticker toggle and manifest URL. |
-| [**v0.1.7**](./upgrades/v0.1.7) | 2026-08-26 | v6 | Build toolchain upgrades and multilingual documentation site; runtime contracts unchanged. |
-| [**v0.1.6**](./upgrades/v0.1.6) | 2026-08-18 | v6 | Optimized dynamic CSP evaluation policies for Cap client in the admin console. |
-| [**v0.1.5**](./upgrades/v0.1.5) | 2026-08-17 | v5 → v6 | Introduced self-hosted Cap CAPTCHA; upgraded security settings to tri-state selector. |
-| [**v0.1.4**](./upgrades/v0.1.4) | 2026-08-15 | v5 | Admin console automatically backfills `is_blogger` flag on existing comments when saving passphrase. |
-| [**v0.1.3**](./upgrades/v0.1.3) | 2026-08-15 | v4 → v5 | Added blogger passphrase authentication; outbox notification queue split per recipient. |
-| [**v0.1.2**](./upgrades/v0.1.2) | 2026-08-15 | v4 | Refined comment metadata typography baseline alignment and size hierarchy. |
-| [**v0.1.1**](./upgrades/v0.1.1) | 2026-08-15 | v4 | Fixed comment collapse buttons (`[+]`/`[-]`) to 3ch monospace width, eliminating layout shifts. |
-| [**v0.1.0**](./upgrades/v0.1.0) | 2026-08-15 | v4 | First official production release. |
-| [**Earlier**](./upgrades/earlier) | 2026-08-14 | v1–v4 | Early single-container design, SQLite WAL mode, and timezone standards. |
+Once the container status is `healthy` and the log shows no errors, open a blog post and the admin console, and confirm that comments load and can be posted and that you can sign in to the admin console.
 
-## v0.2.5 compatibility
+## Roll back
 
-Schema stays at v8 with no new migration. Configuration keys, environment variables, Compose mounts and password hashes are unchanged, so v0.2.4 upgrades in place and rolling back to v0.2.4 normally only needs the old image tag. The default comment styles change with the image and existing override CSS may stack on the new defaults; check each embedding site in light and dark mode after upgrading. See [Upgrading to v0.2.5](./upgrades/v0.2.5).
+First check whether the old and new versions have the same schema (see the table below):
+
+- **Same schema**: stop the service, change the image in `compose.yaml` back to the old version, then pull and start. You do not need to touch the database, and comments posted after the upgrade are kept. If the new version required a new config key that the old version does not recognize, remove it first. Otherwise the old version refuses to start because of the unknown field.
+- **Different schema**: changing the image version back is not enough, because the old version cannot open the migrated database. You need to [restore](./backup#restore) from the cold backup taken before the upgrade. Comments and settings changes made after the backup are lost.
+
+## Version list {#versions}
+
+| Version | Release date | Schema | Highlights |
+| --- | --- | --- | --- |
+| [v0.2.5](./upgrades/v0.2.5) | 2026-09-26 | v8 | Default comment styles changed to "paper and ink" and can be overridden directly with CSS variables; Turnstile verification rejects redirects. |
+| [v0.2.4](./upgrades/v0.2.4) | 2026-09-16 | v7 → v8 | Admin sessions changed to revocable cookie sessions; `token_ttl_minutes` can only be 480; new replies go at most 16 levels deep. |
+| [v0.2.3](./upgrades/v0.2.3) | 2026-09-16 | v7 | Saving a site no longer rewrites past blogger marks; several fixes to notifications, import, and the SDK. |
+| [v0.2.2](./upgrades/v0.2.2) | 2026-09-13 | v7 | Fixed the sticker picker overflowing the page on narrow screens. |
+| [v0.2.1](./upgrades/v0.2.1) | 2026-09-12 | v7 | Higher Smoji manifest capacity; support for `base` templates. |
+| [v0.2.0](./upgrades/v0.2.0) | 2026-09-12 | v7 | Documentation and API reference revisions; no runtime changes. |
+| [v0.1.9](./upgrades/v0.1.9) | 2026-08-31 | v7 | Comment list gets a read budget, a level-by-level read API, and a separate read rate limit. |
+| [v0.1.8](./upgrades/v0.1.8) | 2026-08-27 | v6 → v7 | Added Smoji sticker packs. |
+| [v0.1.7](./upgrades/v0.1.7) | 2026-08-26 | v6 | Build toolchain and docs site updates; no runtime changes. |
+| [v0.1.6](./upgrades/v0.1.6) | 2026-08-18 | v6 | Fixed the admin console CSP required by Cap. |
+| [v0.1.5](./upgrades/v0.1.5) | 2026-08-17 | v5 → v6 | CAPTCHA changed to a choice of off / Turnstile / Cap. |
+| [v0.1.4](./upgrades/v0.1.4) | 2026-08-15 | v5 | Saving the blogger passphrase backfilled past blogger marks (removed in v0.2.3). |
+| [v0.1.3](./upgrades/v0.1.3) | 2026-08-15 | v4 → v5 | Blogger switched to passphrase authentication; notifications split per recipient. |
+| [v0.1.2](./upgrades/v0.1.2) | 2026-08-15 | v4 | Comment metadata layout adjustments. |
+| [v0.1.1](./upgrades/v0.1.1) | 2026-08-15 | v4 | Collapse button uses a fixed width and no longer shifts when toggled. |
+| [v0.1.0](./upgrades/v0.1.0) | 2026-08-15 | v4 | First stable release. |
+| [Earlier release candidates](./upgrades/earlier) | 2026-08-14 | v1 – v4 | The `v0.1.0-rc.*` series. |
+
+A single version number in the Schema column means that release has no database migration.

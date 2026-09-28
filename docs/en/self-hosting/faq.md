@@ -1,91 +1,111 @@
-# FAQ & Troubleshooting
+# FAQ
 
-A consolidated diagnostic guide and troubleshooting solutions for common deployment, operation, and administration scenarios in Ecoku.
+When something goes wrong, check the container logs first. Most startup errors explain their cause there:
 
----
-
-## 1. Authentication & Permissions
-
-### Q: Does login survive a reload or reopening the browser?
-
-Administrator sessions use an HttpOnly cookie; SQLite stores only the credential digest and expiry. Sessions expire exactly eight hours after login. Reloading or reopening restores a valid session without extending its deadline. Logout revokes the current session on the server; a failed logout keeps the current screen and offers retry. Credentials do not enter JavaScript, localStorage, sessionStorage or URLs.
-
-### Q: Container startup fails with `permission denied` or cannot access SQLite database?
-**A**: The Ecoku container runs as non-root user `10001:10001`. Fix directory and file ownership on the host:
 ```bash
-sudo chown -R 10001:10001 ~/Ecoku/data ~/Ecoku/app/logs ~/Ecoku/app/config.yaml
-sudo chmod 750 ~/Ecoku/data ~/Ecoku/app/logs
-sudo chmod 640 ~/Ecoku/app/config.yaml
+cd ~/Ecoku
+sudo docker compose ps
+sudo docker compose logs --tail=100 ecoku
 ```
 
----
+## Deployment and startup
 
-## 2. Bot Protection (CAPTCHA) & Emergency Recovery
+### The container keeps restarting and the log says permission denied
 
-### Q: Locked out of the admin console due to misconfigured Turnstile or Cap?
-**A**: Use the built-in CLI recovery tool to disable bot verification offline:
+The container runs as UID/GID `10001:10001`. It must be able to read `app/config.yaml` and write to `data/` and `app/logs/`. Fix the ownership and permissions, then restart:
+
 ```bash
-sudo docker compose down
-sudo docker compose run --rm --no-deps ecoku captcha disable
+cd ~/Ecoku
+sudo chown -R 10001:10001 data app/logs app/config.yaml
+sudo chmod 750 data app/logs
+sudo chmod 640 app/config.yaml
 sudo docker compose up -d
 ```
-Once the service restarts, log into the admin console with your username and password, correct the credentials, and save.
 
-### Q: Console shows Content Security Policy (CSP) errors when using self-hosted Cap?
-**A**: Ecoku generates an exact CSP dynamically based on the active provider. If using Cap, ensure:
-1. In admin security settings, the Cap **instance address must begin with `https://`** (local HTTP allowed only on `localhost`).
-2. The Cap verify endpoint (`/<sitekey>/siteverify`) must be served under the same HTTPS origin.
-3. If the Cap client enables client-side instrumentation, Ecoku's CSP automatically allows the required `'unsafe-eval'` and WebAssembly evaluation.
+### The log says "管理员来源 … 不能复用公开站点来源" (admin origin cannot reuse a public site origin)
 
----
+An address in `admin.allowed_origins` is also in some site's allowed origins. The admin console must use a separate origin, usually Ecoku's own domain, such as `https://ecoku.example.com`.
 
-## 3. Reverse Proxy & Rate Limiting
+### The log says "管理员会话固定为 8 小时" (admin sessions are fixed at 8 hours)
 
-### Q: Visitors frequently encounter `429 Too Many Requests` when submitting comments?
-**A**: This typically happens when `trusted_proxies` is not configured, causing all incoming requests to be seen as originating from the single reverse proxy gateway IP (e.g. Docker bridge `172.18.0.1`), sharing a single rate-limit bucket.
-**Resolution**:
-1. Query the Docker container gateway:
-   ```bash
-   sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
-   ```
-2. Add the gateway IP to `site.trusted_proxies` in `app/config.yaml` (e.g. `172.18.0.1/32`).
-3. Ensure Caddy or Nginx **overwrites** `X-Forwarded-For` with `{remote_host}` or `$remote_addr`.
+`admin.token_ttl_minutes` in `app/config.yaml` is not 480. Delete the line or set it to `480`, then recreate the container.
 
----
+### The log says "无法解密 … 凭据" (cannot decrypt … credentials)
 
-## 4. Notifications & Timezone
+SMTP, Telegram, or CAPTCHA credentials were saved in the database, but `ECOKU_NOTIFICATION_ENCRYPTION_KEY` is missing or differs from the key used when they were saved. Get the original `ecoku.env` from a backup and restore this key. If the key cannot be recovered, the only option is to restore the whole instance from an earlier backup.
 
-### Q: Test email delivery fails or times out with TLS handshake errors?
-**A**:
-- Ecoku accepts only `tls` or `starttls` encryption. Use the port required by your mail provider (commonly 465 / 587); plaintext SMTP is unsupported.
-- Allow outbound TCP on the configured SMTP port in your host firewall and cloud security groups.
-- Verify that `ECOKU_NOTIFICATION_ENCRYPTION_KEY` in `ecoku.env` is properly set; without it, encrypted SMTP credentials cannot be decrypted from the database.
+### Changes to ecoku.env do not take effect
 
-### Q: Comment timestamps do not match local server time?
-**A**:
-- Ecoku formats timestamps according to the `TZ` environment variable in `ecoku.env` (e.g. `TZ=Asia/Shanghai`, `TZ=America/New_York`, or `TZ=UTC`).
-- After updating `TZ` in `ecoku.env`, run `sudo docker compose up -d --force-recreate ecoku` to recreate the container with the new environment. `restart` does not update environment variables; see the [Docker Compose restart reference](https://docs.docker.com/reference/cli/docker/compose/restart/).
+`docker compose restart` does not re-read `env_file`. After changing `ecoku.env` or `app/config.yaml`, recreate the container with:
 
----
-
-## 5. Documentation site CI deployment
-
-### Q: How should the documentation release directory be configured?
-
-The repository's `.woodpecker/docs-deploy.yml` independently builds and publishes documentation on `master` pushes using the documentation server agent. The publisher mounts only `/var/www/<DOCS_DOMAIN>:/deploy`. This must be a real directory; set the web server document root to `/var/www/<DOCS_DOMAIN>/html`.
-
-For Nginx, use `deploy/nginx-docs.conf.example` from the repository and replace the domain and TLS snippet placeholders. When migrating from the old directory layout, append `/html` to the `root` path. This site enables VitePress `cleanUrls: true`, so use `try_files $uri $uri.html $uri/ =404;` in `location /` to map extensionless paths such as `/self-hosting/docker` to generated `.html` files; otherwise direct visits and reloads return 404. Then run `sudo nginx -t && sudo systemctl reload nginx`.
-
-```text
-/var/www/<DOCS_DOMAIN>/
-├── .deploy.lock
-├── html -> releases/<commit>-<pipeline>-<rerun>
-└── releases/
-    └── <commit>-<pipeline>-<rerun>/
+```bash
+cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 ```
 
-The script validates the output, then locks and atomically replaces `html`, preventing older pipelines from overwriting newer releases. After activation verification, it keeps the current and immediately previous release and removes older release directories. Failed or stale publications do not prune releases. The first deployment has one version; subsequent deployments normally keep two, allowing a manual rollback. Cleanup failures produce warnings. Verification checks local files and symlinks, not live HTTP health.
+## Comment section
 
-To migrate, first ensure no documentation publication is running or queued. Remove the old `/var/www/<DOCS_DOMAIN>` symlink, create a real directory with the same name, and update the web server document root. Before deleting `/var/www/.<DOCS_DOMAIN>-releases`, confirm its static files are no longer needed. Clearing the old deployment makes documentation unavailable until the new CI deployment succeeds and the web configuration takes effect; the comment service and database are unaffected. Push the new CI only after preparation, and do not rerun old publication jobs.
+### No comment section appears on the page
 
-Run `sh scripts/test-publish-docs.sh` for isolated local verification. `DOCS_DEPLOY_ROOT` overrides the script's default `/deploy` and replaces `DOCS_DEPLOY_PARENT` / `DOCS_DEPLOY_SITE`; it is not an Ecoku application environment variable.
+When the loader cannot find a required attribute, it skips silently without showing any message. Check that:
+
+- The wrapper element has `data-ecoku-comments`, and inside it are the four elements `data-ecoku-mount`, `data-ecoku-loader`, `data-ecoku-status`, and `data-ecoku-retry`, with the same structure as the [embed example](../integration/html);
+- The three attributes `data-server-url`, `data-site-id`, and `data-page-key` all have values;
+- In the Network panel of the browser's developer tools, `ecoku-loader.js` and `ecoku.umd.js` load successfully.
+
+### The comment section shows "评论暂时不可用" (comments are temporarily unavailable) or reports no permission
+
+Usually the post page's origin is not registered. On **Sites** (站点管理) in the admin console, add the `scheme://domain[:port]` shown in the browser's address bar to the site's allowed origins. With and without `www` are two different origins.
+
+### Visitors often see "提交过于频繁" (submitting too frequently)
+
+Ecoku is behind a reverse proxy but `trusted_proxies` is not configured, so all visitors count as the same IP and share a quota of 5 submissions per minute. Fill in the Docker gateway address as described in [Reverse proxy](./reverse-proxy#trusted-proxies), and make sure the reverse proxy overwrites `X-Forwarded-For` rather than appending to it.
+
+### Comments fail to load on one post but work on others
+
+The discussion on this post may exceed the limits of a single read (200 comments, 16 levels, or 1 MiB). You can lower `data-page-size` in the embed code. If a single thread is itself too large, lowering it does not help, and you need to delete some comments in the admin console. See [Threads and pagination](../guide/concepts#threads).
+
+### Old comments disappeared after changing the blog's link format
+
+Comments are stored by page key. When the link format changes, the page keys generated by the embed code change too. The data is still in the database. Change `data-page-key` back to the original way of generating it, and the comments show up again.
+
+### Comment times are in the wrong time zone
+
+The time zone comes from `TZ` in `ecoku.env`, such as `TZ='Asia/Tokyo'`. After changing it, recreate the container (see above).
+
+## Admin console
+
+### Cannot sign in
+
+Check these in order:
+
+1. You are opening the admin console over HTTPS. Only `localhost` and `127.0.0.1` may use HTTP.
+2. The origin in the address bar is in `admin.allowed_origins` and matches the address you are visiting exactly (including the port).
+3. The username and password are correct. After 5 failed attempts in a row, you have to wait one minute.
+4. The CAPTCHA widget completes normally. If the verification service has problems, turn it off temporarily with `captcha disable`. See [CAPTCHA](./captcha#disable).
+
+### Forgot the admin password
+
+Generate a new password hash, replace the value of `ECOKU_ADMIN_PASSWORD_HASH` in `ecoku.env`, and recreate the container:
+
+```bash
+cd ~/Ecoku
+read -rsp 'New password: ' P; echo
+printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.5 hash-password
+unset P
+```
+
+After the change, all signed-in sessions stop working.
+
+## Notifications and CAPTCHA
+
+### Test email fails to send
+
+See [Notifications](./notifications#troubleshooting).
+
+### Saving Cap settings says the URL is invalid
+
+The Cap instance URL must be a publicly reachable HTTPS URL with no trailing `/`. `localhost`, `127.0.0.1`, and private-network IPs are all rejected.
+
+### After enabling Cap, the browser console shows CSP errors
+
+If the error appears on your blog pages, your blog's own CSP does not allow Cap. Add the Cap instance origin, `worker-src blob:`, and WebAssembly permissions. See [CAPTCHA · Content Security Policy](./captcha#csp). Ecoku adjusts the admin console's CSP automatically, so you do not need to handle it yourself.

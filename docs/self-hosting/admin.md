@@ -1,320 +1,97 @@
-# 管理后台配置
+# 管理后台
 
-Ecoku 的管理后台位于实例的 `/admin/` 路径。
+管理后台位于 `https://ecoku.example.com/admin/`，用来注册站点、处理评论、配置通知和人机验证。一个实例只有一个管理员账号，可以管理所有站点。
 
----
+## 登录
 
-## 1. 可撤销管理员会话
+用户名和密码来自 `ecoku.env` 中的 `ECOKU_ADMIN_USERNAME` 与生成密码哈希时输入的密码。如果启用了人机验证，登录页也会显示验证组件。
 
-管理员会话通过 HttpOnly Cookie 保存，服务端在 SQLite 中仅保存凭据摘要与到期时间。登录后固定 8 小时，刷新或关闭重开会恢复有效会话，不延长到期时间。主动退出由服务端撤销当前会话；退出失败会保留当前页面并提示重试。凭据不进入 JavaScript、localStorage、sessionStorage 或 URL。
+登录需要满足两个条件，否则会被拒绝：
 
-生产环境使用 HTTPS、Secure、HttpOnly、SameSite=Strict、host-only Cookie，路径为 `/api/admin`。仅明确允许的回环 HTTP 开发来源可不带 Secure。轮换管理员密码哈希或签名密钥并重启会使旧会话失效。
+- 通过 HTTPS 访问。只有 `localhost`、`127.0.0.1` 这类回环地址可以用 HTTP，供本地开发使用。
+- 浏览器地址栏的来源已写在 `app/config.yaml` 的 `admin.allowed_origins` 中。
 
----
+登录后会话固定保持 8 小时：刷新页面、关闭再打开浏览器都不需要重新登录，但操作也不会延长这 8 小时。到期后页面提示重新登录。点击「退出登录」会在服务端注销当前会话；如果退出请求失败，页面会保留并提示重试，不会假装已经退出。
 
-## 2. 站点管理（Site Management）
+会话凭据保存在只发往 `/api/admin` 的 HttpOnly Cookie 中，页面脚本读不到它。更换管理员密码或 `ECOKU_ADMIN_TOKEN_KEY` 并重建容器后，所有旧会话立即失效。
 
-在「站点」视图中，您可以创建和管理多个站点的独立配置：
+如果人机验证配置出错导致无法登录，参见[人机验证](./captcha#disable)。
 
-| 配置项 | 说明与规范 |
-| :--- | :--- |
-| **站点 ID** | 客户端接入所用的唯一标识符（如 `blog`、`docs`）。创建后**永久只读不可修改**。 |
-| **规范站点 URL** | 站点的公共主域名规范地址（如 `https://blog.example.com`），用于生成评论原文链接。 |
-| **站点名称** | 站点的可读名称（如 `我的个人博客`），留空时自动回退为站点域名。 |
-| **允许来源 (Allowed Origins)** | 允许调用评论 API 的精确 Origin 白名单（例如 `https://blog.example.com`）。严格禁止通配符或子路径。 |
-| **默认评论排序** | `最新评论`（newest）或 `最早评论`（oldest）。 |
-| **必填字段控制** | 独立控制访客的 `邮箱`（默认必填）与 `网站`（默认可选）是否必须填写。 |
-| **评论框占位符** | 评论输入框内的提示文案（最多 80 字符，默认：`写下评论（仅支持纯文本）`）。 |
-| **正文长度上限** | 根评论与回复允许的最大字符数（1～10,000，按 Unicode 字符计数，默认：`1000`）。 |
-| **空评论区文案** | 暂无评论时的展示文本（最多 240 字符，支持保留换行，默认：`还没有评论\n成为第一个留下评论的人。`）。 |
+## 界面
 
-### 表情包 Smoji 配置
+顶部有四个页面：
 
-站点可勾选启用 Smoji 表情包，并填入一个远程 `smoji.json` 清单地址：
+- **评论管理**：查看、删除当前站点的评论。
+- **站点管理**：新增和编辑站点。
+- **通知设置**：邮件与 Telegram 通知，对整个实例生效。
+- **安全**：人机验证，对整个实例生效。
 
-- **清单地址**：生产环境必须为 HTTPS 规范 URL。
-- **同源约束**：清单内定义的所有表情图片，其 Origin 必须与清单 URL 完全同源。
-- **隐私警示**：表情包由外部清单站点直接向访客浏览器分发，加载表情图片时可能向该清单服务器暴露访客 IP。
+顶部的站点选择器决定「评论管理」显示哪个站点的评论。
 
----
+## 注册站点 {#sites}
 
-## 3. 博主身份与口令（Passphrase）
+一个“站点”对应一个接入评论区的网站。在「站点管理」点击「新增站点」，填写：
 
-每个站点可配置专属的博主身份认证：
+| 字段 | 说明 |
+| --- | --- |
+| 站点 ID | 接入代码里的 `data-site-id`。字母或数字开头，可包含字母、数字、`.`、`_`、`-`，最多 100 个字符。**创建后不能修改。** |
+| 站点 URL | 网站的规范地址，如 `https://blog.example.com`。通知邮件和后台“查看原评论”按它加上页面路径拼出文章链接。 |
+| 站点名称 | 显示在后台和通知邮件里，最多 120 个字符。留空时使用站点 URL 的域名。 |
+| 允许来源 | 可以加载这个站点评论区的来源，每行一个，最多 32 个。见下文说明。 |
+| 评论排序 | 访客打开评论区时的默认排序：最新评论或最早评论。访客可以临时切换。 |
+| 字段要求 | 邮箱是否必填（默认必填），网站是否必填（默认选填）。昵称始终必填。 |
+| 评论占位文案 | 评论框里的提示文字，1～80 个字符，默认“写下评论（仅支持纯文本）”。 |
+| 评论长度上限 | 评论正文最多多少个字符，1～10000，默认 1000。按 Unicode 字符计数，一个汉字或假名算一个。 |
+| 无评论文案 | 还没有评论时显示的文字，1～240 个字符，可以换行。 |
 
-- **博主昵称与邮箱**：必须同时填写或同时留空。
-- **博主口令**：启用博主身份时，需设置 12～80 字符的博主口令。
-  - 口令经 bcrypt 哈希存储，管理端只显示“已设置”，永不回显明文。
-  - **公开评论区免密发表**：博主在博客前台发评时，**仅需在昵称框填入口令**，无需输入邮箱或网站，服务端即可自动识别博主身份并点亮博主徽章。
-  - 保存、首次设置或轮换口令不会回填历史博主标记；回填仅存在于原 schema v5 迁移和首次 Twikoo 导入。
-- **博主徽章**：可自定义在博主昵称后显示的文本徽章（默认 `[博主]`）。
+### 允许来源
 
----
+“来源”是 `协议://域名[:端口]`，不带路径。评论区所在页面的来源必须出现在这里，否则浏览器读取和提交评论都会被拒绝。
 
-## 4. 评论管理与治理
+- `https://blog.example.com` 与 `https://www.blog.example.com` 是两个不同的来源，两个域名都能访问博客时要都写上。
+- 本地预览博客时，把 `http://localhost:1313` 这样的地址也加进来，上线后可以删掉。
+- 不能写管理后台自己的来源（`admin.allowed_origins` 中的地址），两者必须分开。
 
-在「评论」视图中，支持对所有站点的评论进行检索与治理：
+保存站点时，如果有人在另一个浏览器标签里同时改过这个站点，会提示“站点配置已被其他会话更新”，刷新后重新编辑即可。
 
-### 状态筛选与原文跳转
-- 支持按 `已发布`（Published）与 `已删除`（Deleted/墓碑）双态筛选。
-- 点击详情抽屉中的“查看原评论”按钮，将通过 `site_url + pageKey + #ecoku-comment-{id}` 精确定位并高亮前台页面的对应评论。
+### 表情包
 
-### 墓碑软删除（Soft-Delete）
-- 对违规或需删除的评论执行软删除。
-- 软删除将立即清空该评论的昵称、私有邮箱、网址与原始正文，`is_blogger` 置为 0，设置 `deleted_at` 时间戳。
-- 前台保留该评论节点，正文显示为 `[该评论已删除]`，防止其下的子回复出现上下文断裂。墓碑禁止再被回复。
+勾选「启用表情包」并填写一个 Smoji 清单 URL 后，评论框会出现「表情」按钮。清单地址必须是 HTTPS（回环地址除外）。表情图片由清单所在的服务器直接提供给访客浏览器，这台服务器能看到访客的 IP。清单格式和托管方法见 [Smoji 表情包](../integration/smoji)。
 
-### 彻底物理清除（Hard Purge）
-- 仅当且仅当一个墓碑评论**没有任何子评论**时，实例管理员才可执行“彻底删除”将其从数据库彻底移除。若该墓碑下仍存在讨论子树，系统将禁止物理删除。
+### 博主身份 {#blogger}
 
----
+填写博主昵称、博主邮箱和博主口令后，你可以在自己的博客评论区以博主身份发言：在**昵称栏**里输入口令，邮箱和网址留空，直接发布。服务端识别口令后，把这条评论的昵称换成博主昵称，网址换成站点 URL，并在昵称后显示评论区标志（默认 `[博主]`）。
 
-## 5. 安全与人机验证（Captcha） {#人机验证}
+| 字段 | 说明 |
+| --- | --- |
+| 博主昵称 | 公开显示的名字，最多 80 个字符。 |
+| 博主邮箱 | 不公开。作为博主评论的私有邮箱保存；Twikoo 导入时与昵称一起用来识别历史博主评论。博主通知发往「通知设置」中的收件人，不是这个邮箱。 |
+| 博主口令 | 12～80 个字符，UTF-8 编码不超过 72 字节，不能换行。只保存 bcrypt 哈希，保存后不会再显示；已设置时留空表示不修改。 |
+| 评论区标志 | 显示在博主昵称后的文字，最多 16 个字符，留空则不显示。 |
 
-在「安全」视图中，可为整个实例配置统一生效的机器人验证（三态单选切换），同时保护**访客评论提交**与**管理后台登录**：
+昵称与邮箱要么都填，要么都留空。两者都填时必须设置口令；把昵称和邮箱清空即关闭博主身份，口令也会一并清除。
 
-```mermaid
-graph TD
-    subgraph Provider["安全验证提供方（三态单选）"]
-        P1["关闭 (Off)"]
-        P2["Cloudflare Turnstile"]
-        P3["开源自托管 Cap"]
-    end
-
-    subgraph Protection["双向拦截保护"]
-        Visitor["访客评论提交 (/api/comment/submit)"]
-        Admin["管理后台登录 (/api/admin/login)"]
-    end
-
-    subgraph Verification["服务端校验"]
-        VerifyToken["校验 Token（不主动附加客户端 IP）<br/>(AES-256-GCM 密文存储密钥)"]
-        Pass["放行通过"]
-        Reject["拒绝请求 (400/403)"]
-    end
-
-    P2 -->|启用| Visitor
-    P2 -->|启用| Admin
-    P3 -->|启用| Visitor
-    P3 -->|启用| Admin
-    Visitor --> VerifyToken
-    Admin --> VerifyToken
-    VerifyToken -->|有效| Pass
-    VerifyToken -->|无效| Reject
-```
-
-> [!NOTE]
-> Turnstile 与 Cap 的 Secret Key 均使用实例主密钥以 AES-256-GCM 密文存储，管理端界面永不回显明文。切换或关闭提供方时，已保存的密钥配置不会丢失。
-
-### 1. Cloudflare Turnstile
-
-服务端验证请求不跟随 HTTP 重定向；收到重定向时按验证服务不可用处理，评论提交或管理员登录不会放行。
-
-[Cloudflare Turnstile 官方文档](https://developers.cloudflare.com/turnstile/)
-
-- 前往 Cloudflare 仪表盘创建 Turnstile Widget（推荐托管模式 Managed 或非交互式 Non-interactive）。
-- 在 **Domains** 域名允许列表中，添加博客前端域名（如 `blog.example.com`）与 Ecoku 服务端域名（如 `ecoku.example.com`）。
-- 复制生成的 `Site Key` 与 `Secret Key`，在 Ecoku 管理后台「安全」页面中选择 Turnstile 并填入保存。
-- 评论区与后台登录页将自动渲染 300px 紧凑无感验证槽位。
-
-### 2. 开源自托管 Cap (Capjs)
-
-[Cap (Capjs) 官方网站](https://capjs.org/) · [GitHub 仓库](https://github.com/tiago2/cap)
-
-Cap 是一款现代、轻量、注重隐私且完全开源的自托管验证码服务。Ecoku 深度支持 Cap，并根据安全模式动态收敛管理端 CSP 策略（精确放行 Cap Origin、WASM、Blob Worker 与必要的 eval 权限）。
-
-#### Cap 自托管部署参考
-
-假设部署在宿主机 `~/capjs` 目录下，使用 Valkey 作为高速缓存后端：
-
-```bash
-# 1. 创建 Cap 与 Valkey 数据目录
-mkdir -p ~/capjs/data/cap ~/capjs/data/valkey && cd ~/capjs
-
-# 2. 配置 Valkey 运行权限（UID/GID 999:1000）
-sudo chown -R 999:1000 data/valkey
-chmod 750 data/cap data/valkey
-```
-
-使用 `cat <<'EOF'` 写入 `~/capjs/compose.yml`（固定安全稳定版本）：
-
-```bash
-cd ~/capjs
-
-cat <<'EOF' > compose.yml
-services:
-  cap:
-    image: tiago2/cap:3.1.8
-    restart: unless-stopped
-    init: true
-    stop_grace_period: 30s
-    depends_on:
-      valkey:
-        condition: service_healthy
-    ports:
-      - "127.0.0.1:3000:3000"
-    environment:
-      ADMIN_KEY: ${ADMIN_KEY:?ADMIN_KEY is required}
-      REDIS_URL: redis://valkey:6379
-      SERVER_PORT: "3000"
-      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required}
-      ENABLE_ASSETS_SERVER: "true"
-      WIDGET_VERSION: ${WIDGET_VERSION:?WIDGET_VERSION is required}
-      WASM_VERSION: ${WASM_VERSION:?WASM_VERSION is required}
-    volumes:
-      - ./data/cap:/usr/src/app/data
-    networks:
-      - public
-      - data
-    read_only: true
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    tmpfs:
-      - /tmp:rw,noexec,nosuid,nodev,size=64m
-    healthcheck:
-      test:
-        - CMD
-        - bun
-        - -e
-        - "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-
-  valkey:
-    image: valkey/valkey:9.1.1-alpine
-    restart: unless-stopped
-    stop_grace_period: 30s
-    user: "${VALKEY_UID:?VALKEY_UID is required}:${VALKEY_GID:?VALKEY_GID is required}"
-    command:
-      - valkey-server
-      - --save
-      - "60"
-      - "1"
-      - --appendonly
-      - "yes"
-      - --appendfsync
-      - everysec
-      - --loglevel
-      - warning
-      - --maxmemory-policy
-      - noeviction
-    volumes:
-      - ./data/valkey:/data
-    networks:
-      - data
-    read_only: true
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    tmpfs:
-      - /tmp:rw,noexec,nosuid,nodev,size=32m
-    healthcheck:
-      test:
-        - CMD
-        - valkey-cli
-        - ping
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 5s
-
-networks:
-  public:
-  data:
-    internal: true
-EOF
-```
-
-使用 `cat <<'EOF'` 写入 `~/capjs/.env` 环境变量：
-
-```bash
-cd ~/capjs
-
-cat <<'EOF' > .env
-CAP_IMAGE=tiago2/cap:3.1.8
-VALKEY_IMAGE=valkey/valkey:9.1.1-alpine
-
-# Cap 管理控制台访问密钥（建议使用 openssl rand -hex 32 生成）
-ADMIN_KEY=your_secure_admin_key_here
-
-# 允许跨域调用的 Origin（包含博客前台与 Ecoku 评论服务域名）
-CORS_ORIGIN=https://blog.example.com,https://ecoku.example.com
-
-# 静态 Widget 与 WASM 资源版本锁定
-WIDGET_VERSION=0.1.56
-WASM_VERSION=0.0.7
-
-# Valkey 容器用户权限
-VALKEY_UID=999
-VALKEY_GID=1000
-EOF
-
-chmod 600 .env
-```
-
-#### Cap 反向代理示例 (Caddy)
-
-Cap 容器监听在本地 `127.0.0.1:3000`，通过 Caddy 暴露 HTTPS（例如域名 `cap.example.com`）：
-
-```caddyfile
-cap.example.com {
-    reverse_proxy 127.0.0.1:3000
-}
-```
-
-#### 对接到 Ecoku 后台
-
-1. 启动 Cap 服务：`cd ~/capjs && sudo docker compose pull && sudo docker compose up -d`。
-2. 浏览器打开 `https://cap.example.com`，输入 `.env` 中的 `ADMIN_KEY` 登录 Cap 控制台。
-3. 创建新 Key，将前台博客域名（如 `blog.example.com`）与 Ecoku 域名（如 `ecoku.example.com`）加入允许 Host 列表。
-4. 获取该 Key 的 `Site Key` 与 `Secret Key`。
-5. 打开 Ecoku 管理后台 `/admin/` ->「安全」：
-   - 选择 **开源自托管 Cap**
-   - **实例地址**：`https://cap.example.com`（必须为 HTTPS 规范 URL，末尾不带斜杠）
-   - **Site Key**：填入 Cap 生成的 Site Key
-   - **Secret Key**：填入 Cap 生成的 Secret Key
-6. 点击「保存设置」，系统即可无缝切换为 Cap 验证码防护。
-
----
-
-## 6. 通知设置（Notifications）
-
-通知配置为实例级全局设置：
-
-### 邮件（SMTP）通知
-- 支持 `tls` 或 `starttls` 加密连接，端口按邮件服务商要求填写（常见为 465 / 587）；不支持明文 SMTP。
-- 支持配置博主通知收件邮箱列表（支持批量输入多个收件人）。
-- 提供“发送测试邮件”按钮，通过独立限流器安全探测邮件连通性。
-
-### Telegram 机器人通知
-- 填入 Telegram Bot Token 与接收消息的 Chat ID（支持个人 ID、群组 ID 或频道 ID）。
-- 提供“发送测试消息”按钮验证推送功能。
-
----
-
-## 7. 应急故障恢复（CLI 救砖）
-
-若因人机验证提供方配置错误或网络故障导致管理员无法通过后台登录，可通过服务器命令行直接重置人机验证状态：
-
-```bash
-# 1. 停止运行中的服务
-sudo docker compose down
-
-# 2. 查询当前验证码配置状态
-sudo docker compose run --rm --no-deps ecoku captcha status
-
-# 3. 强制关闭人机验证
-sudo docker compose run --rm --no-deps ecoku captcha disable
-
-# 4. 重新启动服务
-sudo docker compose up -d
-```
-
-恢复登录后，即可在管理后台修正验证码参数并重新启用。
-
-
-UTF-8 编码同时不得超过 72 字节；不截断口令，已有 bcrypt 哈希继续有效。
+::: warning 口令输错时
+口令不匹配时，昵称栏里的文字就是一个普通昵称。如果站点把邮箱设为选填，这条评论会以口令文字作为昵称公开发布。发现后请在「评论管理」中删除，并更换口令。
+:::
+
+设置或更换口令不会改变已有评论的博主标记，回填规则见[工作方式](../guide/concepts#blogger)。
+
+## 管理评论
+
+「评论管理」按状态分为「已发布」和「已删除」两个列表，每页 20 条，可以切换最新或最早提交优先。点击一条评论查看详情：私有邮箱、访客网站、文章标题、页面 key、提交时间和父评论。
+
+「查看原评论」在新标签中打开文章，并定位到这条评论（`站点 URL + 页面 key + #ecoku-comment-评论ID`）。
+
+### 墓碑删除
+
+「墓碑删除」会清空这条评论的昵称、邮箱、网址和正文，但保留它在讨论中的位置。公开页面上显示为“已删除”和“[该评论已删除]”，它下面的回复原样保留，也不能再回复它。这一步不可撤销。
+
+### 彻底删除
+
+在「已删除」列表中，如果一条墓碑下面**没有任何回复**，可以「彻底删除」，把它从数据库中移除。还有回复的墓碑不能彻底删除，以免回复失去上下文。
+
+## 通知与人机验证
+
+- [通知](./notifications)：配置 SMTP 邮件与 Telegram 机器人，新评论时通知博主，访客被回复时发邮件告诉对方。
+- [人机验证](./captcha)：在关闭、Cloudflare Turnstile 和自托管 Cap 三者之间选择，同时保护评论提交和后台登录。

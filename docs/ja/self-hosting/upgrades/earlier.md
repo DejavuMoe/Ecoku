@@ -1,29 +1,34 @@
-# より早い候補版
+# それ以前の候補版
 
-次の tag は古いインスタンスの Compose に残っていることがあります。アップグレード手順は常に [アップグレード](../upgrade)。スキーマをまたぐロールバックはバックアップ復元が必須です。
+次の `v0.1.0-rc.*` バージョンは、初期のインスタンスの `compose.yaml` にまだ残っている可能性があります。アップグレード方法は[アップグレード](../upgrade)を参照してください。スキーマをまたぐロールバックには、いずれもコールドバックアップからの復元が必要です。
 
-## v0.1.0-rc.10 / rc.9 / rc.8
+## v0.1.0-rc.8 ～ rc.10
 
-Schema は rc.8 までで **v3 + v4**（ブロガー印、`turnstile_settings`）を書き込み。rc.9 は Turnstile `api.js` と `turnstile.ready()` の衝突を修正。rc.10 はコメント文言とレイアウト調整。
+- rc.8 は schema v3 と v4 を書き込みます。コメントのブロガーバッジと `turnstile_settings` テーブルです。
+- rc.9 は Turnstile の `api.js` と `turnstile.ready()` の競合を修正しました。
+- rc.10 はコメント欄の文言とレイアウトを調整しました。
 
-`ecoku.env` に `TZ='<IANA>'` を足したあと、現行 Compose の `env_file` でコンテナを作り直せばよく、`config.yaml` の変更は不要。rc.7 から rc.8 へはバックアップ必須。すでに v3/v4 の DB は rc.7 へタグだけ戻しても動きません。
+タイムゾーンは `ecoku.env` の `TZ='<IANA 时区>'`（IANA タイムゾーン名）を読むように変わりました。追加してコンテナを作り直すだけでよく、`config.yaml` を変更する必要はありません。
+
+rc.7 から rc.8 にアップグレードする前には、必ずバックアップを取ってください。v3/v4 が書き込まれたデータベースは、そのまま rc.7 に戻せません。
 
 ## v0.1.0-rc.7
 
-組み込みは `data-ecoku-*` に変更。シェル id は `ecoku-comments` / `ecoku-mount`。ローダーは当面旧 `#tcomment` も認識。Schema は引き続き v2。
+埋め込みコードが `data-ecoku-*` 属性を使うようになり、外側の ID は `ecoku-comments` / `ecoku-mount` に変わりました。ローダーは当面、古い `#tcomment` も認識します。スキーマは v2 のままです。
 
 ## v0.1.0-rc.6
 
-ログは常に stdout。`log_path` がファイルを指すときはプロセス内コピーも残す。Schema は引き続き v2。
+ログは常に stdout に出力されます。`log_path` がファイルを指している場合は、そこにも 1 部保存します。スキーマは v2 のままです。
 
 ## v0.1.0-rc.5
 
-Schema **v1 → v2**：サイトにブロガーのニックネームとメールを追加。SDK は IndexedDB に身元を 7 日暗号化保存。管理画面に通知判定プレビューは出さない。
+schema v1 → v2：サイトにブロガーのニックネームとメールアドレスを追加しました。SDK は訪問者情報を IndexedDB に暗号化して 7 日間保存します。
 
 ## v0.1.0-rc.3
 
-ホスト配置は `app/config.yaml`、`app/logs/`、`data/` に収束。SQLite で WAL を有効化。rc.2 からのアップグレードでは `config.yaml` を `app/config.yaml` へ、旧 `data/ecoku.log` を `app/logs/ecoku.log` へ移す。
+ホストのディレクトリを `app/config.yaml`、`app/logs/`、`data/` に整理し、SQLite で WAL を有効にしました。rc.2 からアップグレードする場合は、`config.yaml` を `app/config.yaml` に、古い `data/ecoku.log` を `app/logs/ecoku.log` に移動してください。
 
-## v0.1.0-rc.2 / rc.1
+## v0.1.0-rc.1 / rc.2
 
-rc.2 からコンテナに `/client/ecoku-loader.js` と `hash-password` を同梱。rc.1 はマルチサイト純テキストコメント、管理者、通知、Twikoo 取り込みを提供。
+- rc.1 は、マルチサイトの純テキストコメント、管理画面、通知、Twikoo のインポートを提供しました。
+- rc.2 から、コンテナに `/client/ecoku-loader.js` と `hash-password` コマンドが内蔵されています。

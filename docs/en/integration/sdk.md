@@ -1,163 +1,182 @@
-# JavaScript SDK Reference
+# JavaScript SDK
 
-The `ecoku` package provides an official TypeScript / JavaScript SDK suitable for modern frontend tooling (Vite / Webpack / Next.js / Nuxt / Astro / SvelteKit / React / Vue 3).
+[HTML integration](./html) suits static websites where every post is a separate page. In single-page apps built with Vue, React, and similar frameworks, the page does not reload when the reader switches posts, so the comment section has to switch along with it. In that case, use the SDK directly.
 
----
+## Get the SDK
 
-## 1. Installation
+Every Ecoku instance serves the SDK at `/client/ecoku.umd.js`. Once loaded, it registers the global variable `Ecoku`.
 
-```bash
-# Using npm
-npm install ecoku
+::: info The npm package is not published yet
+The SDK's package name is `ecoku`, but it has not been published to npm yet, so `npm install ecoku` does not work. If you need ES modules or TypeScript types, build it yourself from the `packages/client` directory of the source repository (`pnpm build`). The output is in `dist/`.
+:::
 
-# Using pnpm
-pnpm add ecoku
+In a single-page app, you can use a function that loads the UMD file on demand and makes sure it is loaded only once:
 
-# Using yarn
-yarn add ecoku
+```js
+const ECOKU_URL = 'https://ecoku.example.com'
+let ecokuPromise
+
+export function loadEcoku() {
+  if (window.Ecoku) return Promise.resolve(window.Ecoku)
+  ecokuPromise ??= new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = `${ECOKU_URL}/client/ecoku.umd.js`
+    script.async = true
+    script.onload = () => (window.Ecoku ? resolve(window.Ecoku) : reject(new Error('Ecoku did not load')))
+    script.onerror = () => {
+      ecokuPromise = undefined
+      script.remove()
+      reject(new Error('Failed to load Ecoku'))
+    }
+    document.head.append(script)
+  })
+  return ecokuPromise
+}
 ```
 
----
+## Create a comment section
 
-## 2. Constructor & Configuration Options
-
-```typescript
-import Ecoku, { type EcokuConfig } from 'ecoku'
-
-const options: EcokuConfig = {
+```js
+const Ecoku = await loadEcoku()
+const comments = new Ecoku({
   container: '#comments',
   serverURL: 'https://ecoku.example.com',
   siteId: 'blog',
-  pageKey: '/posts/example/',
-}
-const ecoku = new Ecoku(options)
+  pageKey: '/posts/hello-world/',
+  pageTitle: 'Hello, world',
+})
+await comments.init()
 ```
 
-### Complete `EcokuConfig` Options
+### Options
 
-| Property | Type | Required | Default | Description & Constraints |
-| :--- | :--- | :---: | :---: | :--- |
-| `container` | `string \| HTMLElement` | **Yes** | — | Target container CSS selector (e.g. `#comments`) or DOM Element reference. |
-| `serverURL` | `string` | **Yes** | — | Absolute HTTPS URL of the Ecoku backend (e.g. `https://ecoku.example.com`). |
-| `siteId` | `string` | **Yes** | — | Unique site identifier (matches regex `/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/`). |
-| `pageKey` | `string` | **Yes** | — | Site-relative path identifier (1–512 chars, e.g. `/posts/my-first-post/`). |
-| `pageTitle` | `string` | No | `""` | Article title (up to 200 chars), displayed in email and Telegram notifications. |
-| `pageSize` | `number` | No | `10` | Root comments per page (integer between 1 and 100). |
-| `theme` | `'auto' \| 'light' \| 'dark'` | No | `'auto'` | Theme mode. `'auto'` dynamically follows `prefers-color-scheme`. |
-| `cssURL` | `string` | No | `""` | Custom stylesheet URL. Passing `'none'` disables built-in inline style injection. |
+| Option | Type | Required | Default | Description |
+| --- | --- | :---: | --- | --- |
+| `container` | `string \| HTMLElement` | Yes | — | Where to mount: a CSS selector or a DOM element. The container's existing content is replaced. |
+| `serverURL` | `string` | Yes | — | The Ecoku address, starting with `http://` or `https://`, without a query string or `#`. |
+| `siteId` | `string` | Yes | — | The site ID registered in the admin console. |
+| `pageKey` | `string` | Yes | — | The current post's page key, 1 to 512 characters. The SDK does not infer it from the URL; you must pass it explicitly. |
+| `pageTitle` | `string` | No | `''` | The post title, shown in notifications, at most 200 characters. |
+| `pageSize` | `number` | No | `10` | Root comments per page, an integer from 1 to 100. |
+| `theme` | `'auto' \| 'light' \| 'dark'` | No | `'auto'` | Color scheme. `auto` follows the page's light/dark setting. |
+| `cssURL` | `string` | No | `''` | When empty, the default styles are injected. Any value (a stylesheet URL or `'none'`) stops the injection. See below. |
 
----
+Invalid options make the constructor or `init()` throw a `TypeError`.
 
-## 3. Instance Methods
+The old option `apiBaseUrl` is an alias of `serverURL`. It still works but is deprecated.
 
-### `init(options?: EcokuConfig): Promise<void>`
-Initializes and mounts the comment system.
-- Validates configuration options and uses an internal `WeakMap` to enforce that a DOM container cannot be attached to multiple Ecoku instances simultaneously.
-- Decrypts and restores saved 7-day visitor credentials from browser IndexedDB.
-- Fetches initial comments and server site configuration to render the interface.
+### Styles {#styles}
 
-### `reload(): Promise<void>`
-Refreshes the current page of comments, preserving active sort criteria.
+- `cssURL` empty: the SDK injects the default styles into the comment section. You do not need to include any CSS.
+- `cssURL` set to a stylesheet URL: the SDK stops injecting styles and **does not** load that URL for you. Add a `<link rel="stylesheet">` to the page yourself. (The HTML loader adds it automatically; the SDK does not.)
+- `cssURL` set to `'none'`: no styles are injected, and your CSS alone decides the appearance.
 
-### `setPageKey(newPageKey: string, pageTitle?: string): Promise<void>`
-Smoothly switches comment discussions during Single-Page Application (SPA) client-side routing.
-- If `newPageKey` matches the active key, triggers a silent `reload()`.
-- For a new page, automatically aborts inflight network requests via `AbortController`, closes open reply boxes, resets pagination and form state, and loads page 1 of the new discussion.
+You can use the instance's `/client/ecoku.css` (the same as the default styles) or `/client/ecoku.unstyled.css` (layout only). See [Custom styles](./custom-css).
 
-### `destroy(): void`
-Completely cleans up the instance.
-- Detaches the instance from the DOM container.
-- Aborts all pending Fetch network requests.
-- Unmounts CAPTCHA widgets and removes global event listeners.
-- Clears the generated comment DOM tree.
+## Instance methods
 
-### `isInitialized(): boolean`
-Returns a boolean indicating whether the instance is currently initialized and mounted.
+### `init(options?)`
 
----
+Mounts the comment section, restores the visitor identity saved in the browser, and loads the first page of comments. Returns a Promise.
 
-## 4. Framework Integration Examples
+- If you pass `options`, they replace the options given to the constructor.
+- Calling it again on an instance that is already initialized does not mount it twice.
+- A container can be used by only one instance at a time; otherwise it throws. Call `destroy()` on the old instance first.
 
-### Vue 3 Composition API
+### `setPageKey(pageKey, pageTitle?)`
+
+Switches to another post's comment section. Call it after a route change in a single-page app.
+
+- If the page key is the same as the current one, only the comments are reloaded.
+- If it differs, in-flight requests are canceled, open reply boxes are closed, the comment box is cleared, and the first page of the new page is loaded.
+- **Pass the new post's title as the second argument.** If you omit it, the title is cleared rather than kept from the previous post; otherwise notifications for new comments would show the wrong post name. Call it after both the route and the title have been updated.
+
+### `reload()`
+
+Reloads the comments on the current page, keeping the sort order.
+
+### `destroy()`
+
+Unmounts the comment section: cancels all requests, removes the verification widget and event listeners, and empties the container. Call it when your component unmounts.
+
+### `isInitialized()`
+
+Returns whether the instance is currently initialized.
+
+## Vue 3
 
 ```vue
-<script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+<script setup>
+import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import Ecoku from 'ecoku'
+import { loadEcoku } from './load-ecoku'
 
 const route = useRoute()
-const mountEl = ref<HTMLElement | null>(null)
-let ecokuInstance: Ecoku | null = null
+const el = ref(null)
+let comments = null
 
 onMounted(async () => {
-  if (!mountEl.value) return
-  ecokuInstance = new Ecoku({
-    container: mountEl.value,
+  const Ecoku = await loadEcoku()
+  comments = new Ecoku({
+    container: el.value,
     serverURL: 'https://ecoku.example.com',
     siteId: 'blog',
     pageKey: route.path,
     pageTitle: document.title,
-    theme: 'auto',
   })
-  await ecokuInstance.init()
+  await comments.init()
 })
 
-// Listen to SPA route changes and switch page discussions dynamically
-watch(() => route.path, (newPath) => {
-  ecokuInstance?.setPageKey(newPath, document.title)
-}, { flush: 'post' })
+watch(
+  () => route.path,
+  (path) => comments?.setPageKey(path, document.title),
+  { flush: 'post' },
+)
 
-onUnmounted(() => {
-  ecokuInstance?.destroy()
-  ecokuInstance = null
+onBeforeUnmount(() => {
+  comments?.destroy()
+  comments = null
 })
 </script>
 
 <template>
-  <div ref="mountEl" class="comments-wrapper"></div>
+  <div ref="el"></div>
 </template>
 ```
 
-### React Hooks
+`document.title` must already be updated to the new post's title after the route changes. If the title is set asynchronously by other code, pass the title from your post data instead.
 
-```tsx
-import React, { useEffect, useRef } from 'react'
-import Ecoku from 'ecoku'
+## React
 
-interface CommentProps {
-  pageKey: string
-  pageTitle?: string
-}
+```jsx
+import { useEffect, useRef } from 'react'
+import { loadEcoku } from './load-ecoku'
 
-export const CommentBox: React.FC<CommentProps> = ({ pageKey, pageTitle }) => {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const instanceRef = useRef<Ecoku | null>(null)
+export function Comments({ pageKey, pageTitle }) {
+  const el = useRef(null)
 
   useEffect(() => {
-    if (!containerRef.current) return
-
-    const ecoku = new Ecoku({
-      container: containerRef.current,
-      serverURL: 'https://ecoku.example.com',
-      siteId: 'blog',
-      pageKey,
-      pageTitle,
-      theme: 'auto',
+    let comments
+    let cancelled = false
+    loadEcoku().then((Ecoku) => {
+      if (cancelled) return
+      comments = new Ecoku({
+        container: el.current,
+        serverURL: 'https://ecoku.example.com',
+        siteId: 'blog',
+        pageKey,
+        pageTitle,
+      })
+      comments.init().catch(console.error)
     })
-
-    ecoku.init().catch(console.error)
-    instanceRef.current = ecoku
-
     return () => {
-      ecoku.destroy()
-      instanceRef.current = null
+      cancelled = true
+      comments?.destroy()
     }
-  }, [pageKey])
+  }, [pageKey, pageTitle])
 
-  return <div ref={containerRef} />
+  return <div ref={el} />
 }
 ```
 
-
-Pass the new article title as the second argument; omitting it clears the old title. Call after the host updates the route and article title. In the direct SDK, a nonempty `cssURL` only disables inline CSS injection: add the matching `<link rel="stylesheet">` yourself. Only the hosted loader inserts that stylesheet link.
+This component destroys the old instance and creates a new one whenever the post changes, which is the simplest approach. You can also create the instance only once and call `setPageKey(pageKey, pageTitle)` when `pageKey` changes, which avoids remounting.

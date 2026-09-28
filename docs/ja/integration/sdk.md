@@ -1,163 +1,182 @@
-# JavaScript SDK リファレンス
+# JavaScript SDK
 
-`ecoku` パッケージは、モダンなフロントエンド開発環境（Vite / Webpack / Next.js / Nuxt / Astro / SvelteKit / React / Vue 3）向けの公式 TypeScript / JavaScript SDK を提供します。
+[HTML で埋め込む](./html)方法は、記事ごとに独立したページがある静的サイトに向いています。Vue や React のようなシングルページアプリでは、記事を切り替えてもページが再読み込みされないため、コメント欄も合わせて切り替える必要があります。その場合は SDK を直接使います。
 
----
+## SDK を入手する
 
-## 1. インストール
+どの Ecoku インスタンスも `/client/ecoku.umd.js` で SDK を提供しており、読み込むとグローバル変数 `Ecoku` が登録されます。
 
-```bash
-# npm を使用
-npm install ecoku
+::: info npm パッケージは未公開です
+SDK のパッケージ名は `ecoku` ですが、まだ npm に公開されていないため、`npm install ecoku` は使えません。ES モジュールや TypeScript の型定義が必要な場合は、ソースリポジトリの `packages/client` ディレクトリで自分でビルド（`pnpm build`）でき、成果物は `dist/` に出力されます。
+:::
 
-# pnpm を使用
-pnpm add ecoku
+シングルページアプリでは、UMD ファイルを必要なときに一度だけ読み込む関数を用意できます。
 
-# yarn を使用
-yarn add ecoku
+```js
+const ECOKU_URL = 'https://ecoku.example.com'
+let ecokuPromise
+
+export function loadEcoku() {
+  if (window.Ecoku) return Promise.resolve(window.Ecoku)
+  ecokuPromise ??= new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = `${ECOKU_URL}/client/ecoku.umd.js`
+    script.async = true
+    script.onload = () => (window.Ecoku ? resolve(window.Ecoku) : reject(new Error('Ecoku が読み込まれていません')))
+    script.onerror = () => {
+      ecokuPromise = undefined
+      script.remove()
+      reject(new Error('Ecoku を読み込めません'))
+    }
+    document.head.append(script)
+  })
+  return ecokuPromise
+}
 ```
 
----
+## コメント欄を作成する
 
-## 2. コンストラクターと設定オプション
-
-```typescript
-import Ecoku, { type EcokuConfig } from 'ecoku'
-
-const options: EcokuConfig = {
+```js
+const Ecoku = await loadEcoku()
+const comments = new Ecoku({
   container: '#comments',
   serverURL: 'https://ecoku.example.com',
   siteId: 'blog',
-  pageKey: '/posts/example/',
-}
-const ecoku = new Ecoku(options)
+  pageKey: '/posts/hello-world/',
+  pageTitle: 'こんにちは、世界',
+})
+await comments.init()
 ```
 
-### `EcokuConfig` 設定プロパティ一覧
+### 設定項目
 
-| プロパティ名 | 型 | 必須 | 既定値 | 制約および説明 |
-| :--- | :--- | :---: | :---: | :--- |
-| `container` | `string \| HTMLElement` | **はい** | — | マウント対象コンテナのセレクター文字列（例: `#comments`）または DOM 要素の参照。 |
-| `serverURL` | `string` | **はい** | — | Ecoku サーバーの絶対 HTTPS アドレス（例: `https://ecoku.example.com`）。 |
-| `siteId` | `string` | **はい** | — | サイトの一意な識別子（正規表現 `/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/` に一致）。 |
-| `pageKey` | `string` | **はい** | — | サイト内相対パス識別子（1〜512文字、例: `/posts/my-first-post/`）。 |
-| `pageTitle` | `string` | いいえ | `""` | 記事タイトル（最大200文字）。メール通知等で表示されます。 |
-| `pageSize` | `number` | いいえ | `10` | ルートコメントの 1 ページあたり表示件数（1〜100 の整数）。 |
-| `theme` | `'auto' \| 'light' \| 'dark'` | いいえ | `'auto'` | テーマモード。`'auto'` は `prefers-color-scheme` に自動連動します。 |
-| `cssURL` | `string` | いいえ | `""` | カスタム CSS URL。`'none'` を指定すると内蔵インラインスタイルの注入を停止します。 |
+| 設定項目 | 型 | 必須 | デフォルト値 | 説明 |
+| --- | --- | :---: | --- | --- |
+| `container` | `string \| HTMLElement` | はい | — | マウントする位置。CSS セレクターまたは DOM 要素です。コンテナの既存の内容は置き換えられます。 |
+| `serverURL` | `string` | はい | — | Ecoku のアドレス。`http://` または `https://` で始まり、クエリーパラメーターや `#` は含められません。 |
+| `siteId` | `string` | はい | — | 管理画面で登録したサイト ID。 |
+| `pageKey` | `string` | はい | — | 現在の記事のページキー。1～512 文字。SDK は URL から自動で推測しないので、必ず明示的に渡してください。 |
+| `pageTitle` | `string` | いいえ | `''` | 記事のタイトル。通知に表示されます。最大 200 文字。 |
+| `pageSize` | `number` | いいえ | `10` | 1 ページあたりのルートコメント数。1～100 の整数。 |
+| `theme` | `'auto' \| 'light' \| 'dark'` | いいえ | `'auto'` | 配色。`auto` はページのライト / ダーク設定に従います。 |
+| `cssURL` | `string` | いいえ | `''` | 空の場合はデフォルトのスタイルを注入します。何らかの値（スタイルシートのアドレスまたは `'none'`）を指定すると注入を停止します。後述を参照してください。 |
 
----
+引数が不正な場合、コンストラクターまたは `init()` が `TypeError` を投げます。
 
-## 3. インスタンスメソッド一覧
+古い設定項目 `apiBaseUrl` は `serverURL` の別名で、引き続き使えますが非推奨です。
 
-### `init(options?: EcokuConfig): Promise<void>`
-コメントシステムを初期化してマウントします。
-- 設定の妥当性を検証し、内部の `WeakMap` により単一の DOM コンテナが複数の Ecoku インスタンスに同時にマウントされるのを防ぎます。
-- ブラウザの IndexedDB に保存された 7 日間有効な訪問者認証情報を自動復号・復元します。
-- 最初のページのコメントとサーバー設定を取得して描画します。
+### スタイル {#styles}
 
-### `reload(): Promise<void>`
-現在の並べ替え順序を維持したまま、表示中のページのコメントを再取得して再描画します。
+- `cssURL` が空：SDK がコメント欄の中にデフォルトのスタイルを注入します。CSS を別途読み込む必要はありません。
+- `cssURL` にスタイルシートのアドレスを指定：SDK は注入しなくなり、そのアドレスを代わりに読み込むことも**しません**。ページに自分で `<link rel="stylesheet">` を追加する必要があります（HTML のローダーは自動で追加しますが、SDK はしません）。
+- `cssURL` が `'none'`：スタイルを一切注入せず、見た目は完全に自分の CSS で決まります。
 
-### `setPageKey(newPageKey: string, pageTitle?: string): Promise<void>`
-SPA（シングルページアプリケーション）の画面遷移時に、コメント対象ページを動的に切り替えます。
-- `newPageKey` が現在と同じ場合、暗黙的に `reload()` を実行します。
-- 新しいページの場合、以前のページの保留中ネットワークリクエストを `AbortController` で中止し、返信フォームを閉じ、ページネーションとフォームをリセットした上で、新しいページの第 1 ページを読み込みます。
+インスタンスが提供する `/client/ecoku.css`（デフォルトのスタイルと同じ）または `/client/ecoku.unstyled.css`（レイアウトのみ）を使えます。詳しくは[カスタムスタイル](./custom-css)を参照してください。
 
-### `destroy(): void`
-インスタンスを完全に破棄します。
-- DOM コンテナとインスタンスのバインドを解除します。
-- 進行中のすべての Fetch リクエストを中止します。
-- CAPTCHA ウィジェットおよびグローバルイベントリスナーを解除します。
-- コメント欄によって生成された DOM ツリーを消去します。
+## インスタンスメソッド
 
-### `isInitialized(): boolean`
-インスタンスが正常にマウントされ、かつ破棄されていない状態かどうかを示す真偽値を返します。
+### `init(options?)`
 
----
+コメント欄をマウントし、ブラウザに保存された訪問者情報を復元して、最初のページのコメントを読み込みます。Promise を返します。
 
-## 4. フレームワーク別実装例
+- `options` を渡すと、コンストラクターで指定した設定を置き換えます。
+- 初期化済みのインスタンスで再度呼び出しても、重複してマウントされることはありません。
+- 1 つのコンテナを同時に使えるインスタンスは 1 つだけで、そうでない場合はエラーを投げます。先に古いインスタンスで `destroy()` を呼んでください。
 
-### Vue 3 Composition API
+### `setPageKey(pageKey, pageTitle?)`
+
+別の記事のコメント欄に切り替えます。シングルページアプリでルートが変わった後に呼ぶのに向いています。
+
+- ページキーが現在と同じ場合は、コメントを読み込み直すだけです。
+- 異なる場合は、進行中のリクエストをキャンセルし、開いている返信欄を閉じ、コメント欄を空にして、新しいページの最初のページを読み込みます。
+- **2 つ目の引数には新しい記事のタイトルを渡してください**。省略するとタイトルは前の記事のものを引き継がずに空になります。そうしないと、新しいコメントの通知に誤った記事名が表示されてしまいます。ルートとタイトルの両方が更新されてから呼び出してください。
+
+### `reload()`
+
+現在のページのコメントを読み込み直します。並び順は変わりません。
+
+### `destroy()`
+
+コメント欄をアンマウントします。すべてのリクエストをキャンセルし、検証ウィジェットとイベントリスナーを取り除いて、コンテナを空にします。コンポーネントのアンマウント時に呼び出します。
+
+### `isInitialized()`
+
+インスタンスが現在初期化されているかどうかを返します。
+
+## Vue 3
 
 ```vue
-<script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+<script setup>
+import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import Ecoku from 'ecoku'
+import { loadEcoku } from './load-ecoku'
 
 const route = useRoute()
-const mountEl = ref<HTMLElement | null>(null)
-let ecokuInstance: Ecoku | null = null
+const el = ref(null)
+let comments = null
 
 onMounted(async () => {
-  if (!mountEl.value) return
-  ecokuInstance = new Ecoku({
-    container: mountEl.value,
+  const Ecoku = await loadEcoku()
+  comments = new Ecoku({
+    container: el.value,
     serverURL: 'https://ecoku.example.com',
     siteId: 'blog',
     pageKey: route.path,
     pageTitle: document.title,
-    theme: 'auto',
   })
-  await ecokuInstance.init()
+  await comments.init()
 })
 
-// SPA 遷移時にページキーを監視して切り替え
-watch(() => route.path, (newPath) => {
-  ecokuInstance?.setPageKey(newPath, document.title)
-}, { flush: 'post' })
+watch(
+  () => route.path,
+  (path) => comments?.setPageKey(path, document.title),
+  { flush: 'post' },
+)
 
-onUnmounted(() => {
-  ecokuInstance?.destroy()
-  ecokuInstance = null
+onBeforeUnmount(() => {
+  comments?.destroy()
+  comments = null
 })
 </script>
 
 <template>
-  <div ref="mountEl" class="comments-wrapper"></div>
+  <div ref="el"></div>
 </template>
 ```
 
-### React Hooks
+`document.title` は、ルートが切り替わった後に新しい記事のタイトルに更新されている必要があります。タイトルがほかの処理で非同期に設定される場合は、記事データのタイトルを渡すように変更してください。
 
-```tsx
-import React, { useEffect, useRef } from 'react'
-import Ecoku from 'ecoku'
+## React
 
-interface CommentProps {
-  pageKey: string
-  pageTitle?: string
-}
+```jsx
+import { useEffect, useRef } from 'react'
+import { loadEcoku } from './load-ecoku'
 
-export const CommentBox: React.FC<CommentProps> = ({ pageKey, pageTitle }) => {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const instanceRef = useRef<Ecoku | null>(null)
+export function Comments({ pageKey, pageTitle }) {
+  const el = useRef(null)
 
   useEffect(() => {
-    if (!containerRef.current) return
-
-    const ecoku = new Ecoku({
-      container: containerRef.current,
-      serverURL: 'https://ecoku.example.com',
-      siteId: 'blog',
-      pageKey,
-      pageTitle,
-      theme: 'auto',
+    let comments
+    let cancelled = false
+    loadEcoku().then((Ecoku) => {
+      if (cancelled) return
+      comments = new Ecoku({
+        container: el.current,
+        serverURL: 'https://ecoku.example.com',
+        siteId: 'blog',
+        pageKey,
+        pageTitle,
+      })
+      comments.init().catch(console.error)
     })
-
-    ecoku.init().catch(console.error)
-    instanceRef.current = ecoku
-
     return () => {
-      ecoku.destroy()
-      instanceRef.current = null
+      cancelled = true
+      comments?.destroy()
     }
-  }, [pageKey])
+  }, [pageKey, pageTitle])
 
-  return <div ref={containerRef} />
+  return <div ref={el} />
 }
 ```
 
-
-第2引数に新しい記事タイトルを渡します。省略時は旧タイトルを消去します。ルートと記事タイトル更新後に呼び出してください。直接 SDK では空でない `cssURL` はインライン CSS 注入を止めるだけなので、ホスト側で `<link rel="stylesheet">` を追加します。自動追加はホスト型 loader のみです。
+このコンポーネントは記事が変わるたびに古いインスタンスを破棄して新しいインスタンスを作るので、最も簡単な書き方です。インスタンスを一度だけ作り、`pageKey` が変わったときに `setPageKey(pageKey, pageTitle)` を呼んで、マウントし直す手間を省くこともできます。

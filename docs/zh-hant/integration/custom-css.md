@@ -1,89 +1,89 @@
-# 自訂 CSS 與 Design Tokens
+# 自訂樣式
 
-Ecoku 提供了細緻的樣式覆蓋方案。您可以透過 CSS 變數微調配色，也可以使用純淨骨架樣式表打造完全自訂的評論區視覺。
+評論區的樣式有三種用法，依改動程度由小到大排列：
 
----
+| 方式 | 做法 | 適合 |
+| --- | --- | --- |
+| 預設樣式 + 變數 | 不設定 `data-css-url`，在部落格 CSS 中覆寫 `--ecoku-*` 變數 | 大多數部落格，只想調整顏色、圓角、字級 |
+| 結構樣式 | `data-css-url` 指向 `/client/ecoku.unstyled.css` | 想保留版面配置，顏色和裝飾全部自己寫 |
+| 完全自訂 | `data-css-url="none"` | 所有樣式都由部落格提供 |
 
-## 三種樣式接入策略
+樣式只影響評論區，與管理後台無關。評論區的字型繼承部落格頁面。
 
-```mermaid
-flowchart LR
-    A["選擇接入方式"] --> B["🎨 方案 1: 預設樣式 + 變數微調<br/>(開箱即用，適合絕大多數部落格)"]
-    A --> C["🦴 方案 2: 引入 unstyled 骨架樣式<br/>(保留版面配置，自由自訂顏色與陰影)"]
-    A --> D["✨ 方案 3: cssURL: 'none' 完全自繪<br/>(適合深度適配前端組件庫與主題)"]
-```
+## 用變數調整預設樣式
 
-### 1. 方案一：預設樣式 + CSS 變數微調（推薦）
-保持預設 `data-css-url` 為空，在部落格全域 CSS 中宣告並覆蓋 `--ecoku-*` 變數。
-
-### 2. 方案二：使用骨架樣式表 (`ecoku.unstyled.css`)
-透過 `<link rel="stylesheet" href=".../client/ecoku.unstyled.css">` 引入，並將 `data-css-url="none"`。
-骨架樣式僅包含 Flex/Grid 版面配置、盒模型與 3ch 等寬尺寸，剝離了所有背景、邊框和文字顏色。
-
-### 3. 方案三：完全自訂 (`none`)
-將 `cssURL` 設為 `'none'`，由您的站點完全定義所有 `.ecoku-*` 類別名稱的視覺規則。
-
----
-
-## Design Tokens / CSS 變數
-
-預設樣式的顏色、強調色、圓角、陰影、等寬字型和字級都由 `--ecoku-*` 變數控制。
-
-### 覆蓋方式
-
-- Ecoku 的預設值以零優先級宣告。在評論區根節點 `.ecoku-comments` 上寫同名變數即可覆蓋，不需要提高選擇器優先級，也不受樣式表載入順序影響。
-- 顏色變數會先讀取宿主同名的 PaperMod 變數（`--theme`、`--entry`、`--primary`、`--secondary`、`--content`、`--border`、`--border-soft`、`--code-bg`、`--surface-muted`）。PaperMod 主題通常無需額外設定。
-- `data-theme="auto"` 時評論區繼承宿主頁面的 `color-scheme`，因此宿主用 `light-dark()` 定義的變數會跟隨站點自己的明暗切換，而不是只跟隨系統設定。宿主沒有提供顏色變數時，Ecoku 依系統偏好使用內建的淺色或深色配色。
-- `data-theme="light"` 或 `"dark"` 會固定評論區配色，不再讀取宿主顏色變數。
+在部落格的 CSS 中，為 `.ecoku-comments` 寫入同名變數即可：
 
 ```css
-/* 在部落格樣式中覆蓋評論區變數 */
 .ecoku-comments {
-  --ecoku-accent: #a8412c;        /* 部落客標誌、連結懸停、表單錯誤 */
-  --ecoku-radius: 6px;            /* 發表卡片、選單、表情面板、Cap 外框 */
-  --ecoku-radius-sm: 3px;         /* 選單項、表情格、Cap 核取方塊 */
-  --ecoku-font-size: 15px;        /* 評論正文與輸入 */
-  --ecoku-font-size-small: 13px;  /* 中繼資訊、標籤、按鈕 */
-  --ecoku-font-size-title: 22px;  /* 「N 條評論」標題 */
+  --ecoku-accent: #a8412c;
+  --ecoku-radius: 8px;
+  --ecoku-font-size: 16px;
 }
 ```
 
-### 變數一覽
+預設值是以零權重的 `:where(.ecoku-comments)` 宣告的，你寫的任何 `.ecoku-comments` 規則都會生效，不需要 `!important`，也不受樣式表載入順序影響。
+
+### 明暗模式
+
+`data-theme` 決定評論區如何選擇配色：
+
+- **`auto`（預設）**：評論區繼承部落格頁面的 `color-scheme`。顏色變數優先讀取部落格定義的同名變數（見下表「預設值」欄中的 `var(--theme, …)` 等），所以部落格用 `light-dark()` 或切換類別名稱來改變這些變數時，評論區會跟著變。部落格沒有定義這些變數時，依系統的淺色／深色偏好使用內建配色。
+- **`light` / `dark`**：固定使用內建的淺色或深色配色，不再讀取部落格的顏色變數。
+
+顏色變數的後備名稱與 PaperMod 主題一致，因此在 PaperMod 中通常不需要任何設定。
+
+## 變數一覽 {#variables}
 
 | 變數 | 預設值 | 用途 |
 | --- | --- | --- |
-| `--ecoku-theme` | `var(--theme, #f7f4ee)` | 紙面底色；主按鈕文字色；Cap 核取方塊底色 |
-| `--ecoku-entry` | `var(--entry, #fbf9f5)` | 發表卡片、服務故障提示、排序選單、表情面板 |
-| `--ecoku-primary` | `var(--primary, #1e1c19)` | 標題、暱稱、輸入文字、實心主按鈕、聚焦底線 |
+| `--ecoku-theme` | `var(--theme, #f7f4ee)` | 紙面底色；主按鈕文字 |
+| `--ecoku-entry` | `var(--entry, #fbf9f5)` | 發表卡片、排序選單、貼圖面板、錯誤提示的底色 |
+| `--ecoku-primary` | `var(--primary, #1e1c19)` | 標題、暱稱、輸入文字、主按鈕底色、聚焦底線 |
 | `--ecoku-secondary` | `var(--secondary, #6b655b)` | 時間、字數、欄位標籤、文字按鈕 |
-| `--ecoku-content` | `var(--content, #35312b)` | 評論正文與正文輸入 |
-| `--ecoku-border` | `var(--border, #cbc3b5)` | 身分欄位底線、次要按鈕邊框、「回覆」底線 |
-| `--ecoku-border-soft` | `var(--border-soft, rgb(30 28 25 / 0.12))` | 卡片描邊、討論串分隔線、子評論引導線 |
-| `--ecoku-surface-muted` | `var(--surface-muted, #efebe3)` | 表情格懸停底色 |
-| `--ecoku-code-bg` | `var(--code-bg, #ece7de)` | 保留給自訂樣式，預設樣式不再使用 |
-| `--ecoku-accent` | 朱砂色與 `--ecoku-primary` 混合 | 部落客標誌、連結懸停；淺色下偏深、深色下偏淺 |
-| `--ecoku-danger` | `var(--ecoku-accent)` | 表單錯誤與無效欄位 |
-| `--ecoku-focus` | `--ecoku-primary` 的 40% | 鍵盤焦點框（1px）；設為 `transparent` 可隱藏 |
-| `--ecoku-radius` | `6px` | 卡片、選單、面板和按鈕圓角 |
-| `--ecoku-radius-sm` | `3px` | 選單項、表情格和核取方塊圓角 |
-| `--ecoku-shadow` | 淺色雙層陰影 | 排序選單與表情面板 |
-| `--ecoku-font-mono` | Maple Mono 與系統等寬字型 | 時間、`[+]`/`[-]`、字數、分頁頁碼 |
-| `--ecoku-font-size` | `15px` | 正文與輸入 |
+| `--ecoku-content` | `var(--content, #35312b)` | 評論內文與內文輸入框 |
+| `--ecoku-border` | `var(--border, #cbc3b5)` | 身分欄位底線、次要按鈕邊框、「回复」底線 |
+| `--ecoku-border-soft` | `var(--border-soft, rgb(30 28 25 / 0.12))` | 卡片描邊、討論串分隔線、回覆引導線 |
+| `--ecoku-surface-muted` | `var(--surface-muted, #efebe3)` | 貼圖格滑過時的底色 |
+| `--ecoku-code-bg` | `var(--code-bg, #ece7de)` | 預設樣式未使用，保留給自訂樣式 |
+| `--ecoku-accent` | 朱砂色 `#c8553a` 與 `--ecoku-primary` 混合 | 部落客標誌、連結滑過 |
+| `--ecoku-danger` | `var(--ecoku-accent)` | 表單錯誤提示與無效欄位 |
+| `--ecoku-focus` | `--ecoku-primary` 的 40% 透明度 | 鍵盤焦點框；設為 `transparent` 可隱藏 |
+| `--ecoku-radius` | `6px` | 卡片、選單、面板、按鈕圓角 |
+| `--ecoku-radius-sm` | `3px` | 選單項目、貼圖格、核取方塊圓角 |
+| `--ecoku-shadow` | 淺色雙層陰影 | 排序選單與貼圖面板 |
+| `--ecoku-font-mono` | Maple Mono，後備為系統等寬字型 | 時間、`[+]` / `[-]`、字數、頁碼 |
+| `--ecoku-font-size` | `15px` | 內文與輸入框 |
 | `--ecoku-font-size-small` | `13px` | 中繼資訊、標籤、按鈕 |
-| `--ecoku-font-size-title` | `22px`（窄螢幕 `20px`） | 評論數標題 |
+| `--ecoku-font-size-title` | `22px`（窄螢幕 `20px`） | 「N 条评论」標題 |
 
-評論區字型繼承宿主頁面；觸控裝置上的輸入框不小於 16px，避免 iOS 聚焦時放大頁面。
+等寬字型只使用頁面已經載入的 Maple Mono，Ecoku 不會下載字型；沒有時依序後備到 `ui-monospace`、`SFMono-Regular`、`Menlo`、`Consolas`。
 
----
+在觸控裝置上，輸入框字級至少為 16px，以免 iOS 在聚焦時放大頁面。
 
-## 視覺排版規範與基準線對齊（Baseline）
+## 結構樣式
 
-為確保評論區在任何部落格宿主字型環境下都能優雅呈現，Ecoku 遵循以下排版基準：
+`/client/ecoku.unstyled.css` 只包含版面配置：格線、間距、貼圖面板、驗證元件尺寸、摺疊按鈕寬度等，沒有任何顏色、邊框、背景，也不使用 `--ecoku-*` 變數。
 
-1. **等寬折疊控制項（3ch 等寬保障）**：
-   - 評論折疊按鈕 `.ecoku-collapse-button` 固定為 `3ch` 寬度，使用 `font-variant-numeric: tabular-nums`。
-   - 切換展開 `[-]` 與折疊 `[+]` 時，中繼資訊列的作者暱稱、發布時間與回覆動作不發生水平抖動。
-2. **基準線對齊（Baseline Alignment）**：
-   - 中繼資訊列 `.ecoku-comment-meta` 採用 `display: flex; align-items: baseline;`，15px 的作者暱稱、12px 的時間戳與 13px 的底線「回覆」在同一基準線上對齊。
-3. **等寬字型堆疊**：
-   - 時間、折疊控制項、字數和分頁頁碼使用 `--ecoku-font-mono`（宿主已載入的 Maple Mono，否則回退系統等寬 `ui-monospace, SFMono-Regular, Menlo, monospace`）。
+```html
+<section
+  data-ecoku-comments
+  data-css-url="https://ecoku.example.com/client/ecoku.unstyled.css"
+  ...
+>
+```
+
+使用 HTML 載入器時，它會自動在頁面中插入這個樣式表的 `<link>`；直接使用 SDK 時需要自行引入，見 [SDK · 樣式](./sdk#styles)。
+
+## 完全自訂
+
+`data-css-url="none"` 時，Ecoku 不注入也不載入任何樣式。評論區的根元素是 `.ecoku-comments`，所有元素都使用 `ecoku-` 前綴的類別名稱。可以先開啟 `ecoku.unstyled.css`，了解結構和需要處理的狀態（摺疊、隱藏、貼圖面板等），再以此為基礎撰寫。
+
+## 版面細節
+
+撰寫自訂樣式時，可以參考預設樣式的這些慣例：
+
+- 回覆縮排：每層 22px，窄螢幕（≤ 620px）為 14px，最多 3 層。目前的層級透過元素上的 `--ecoku-depth` 變數（0～3）提供。
+- 摺疊按鈕 `[+]` / `[-]` 固定寬度為 `3ch`，切換時同一行的內容不會移動。
+- 暱稱、時間、摺疊按鈕和「回复」在同一行，依文字基線對齊。
+- Turnstile 元件寬度不超過 300px；Cap 元件維持 260×58px。

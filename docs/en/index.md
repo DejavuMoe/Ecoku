@@ -2,39 +2,39 @@
 layout: home
 hero:
   name: Ecoku
-  text: Self-hosted Plain-text Comments
-  tagline: Tailored for static blogs and personal sites. Minimal single container, SQLite persistence, live on submit.
+  text: Self-hosted<br>plain-text comments
+  tagline: For static blogs and personal websites. One Docker container, one SQLite file, and comments go live on submit.
   image:
     src: /ecoku-hero.png
-    alt: Ecoku Diagram
+    alt: Ecoku comment section illustration
   actions:
     - theme: brand
-      text: Docker Deployment
+      text: Deploy
       link: /en/self-hosting/docker
     - theme: alt
-      text: Core Concepts
-      link: /en/guide/concepts
+      text: About Ecoku
+      link: /en/guide/introduction
     - theme: alt
-      text: Client Integration
+      text: Embed comments
       link: /en/integration/html
 
 features:
-  - title: Live on Submit · Unbroken Threads
-    details: Zero moderation queues. Infinite semantic nesting with up to 3 visual indent levels and tombstone soft-deletion.
-    link: /en/guide/concepts#threaded-comment-and-pagination-model
-  - title: Strict Privacy Boundary
-    details: Zero sensitive fields in public APIs. Visitor identity encrypted with AES-GCM in browser IndexedDB with 7-day TTL.
-    link: /en/guide/concepts#encrypted-visitor-identity-storage
-  - title: Single Container Topology
-    details: Go monolithic binary serving API, embedded admin (/admin/), and SDK (/client/); SQLite WAL in-place migrations.
-    link: /en/guide/introduction#architecture-overview
-  - title: Modern Bot Protection
-    details: "Tri-state instance protection: Off, Cloudflare Turnstile, and self-hosted Cap with dynamically converged CSP."
-    link: /en/self-hosting/admin#bot-protection-captcha
-  - title: Transactional Outbox Notifications
-    details: Outbox pattern driving SMTP (TLS/STARTTLS) and Telegram notifications with per-target retries and blogger passphrases.
-    link: /en/guide/concepts#transactional-outbox-notifications
-  - title: Lightweight & Versatile Integration
-    details: 2KB standalone loader, seamless Hugo PaperMod support, full CSS Design Tokens, and Smoji plain-text sticker protocol.
+  - title: Live on submit
+    details: No moderation queue. Replies open under the comment they answer, and deletes leave a tombstone, so the discussion keeps its context.
+    link: /en/guide/concepts#threads
+  - title: No visitor tracking
+    details: IP addresses and User-Agents are not stored, and public APIs never return email addresses. Visitor identity is kept encrypted in the browser for 7 days.
+    link: /en/guide/concepts#data
+  - title: One container, one file
+    details: A single Go program serves the API, the admin console, and the embed script. All data lives in one SQLite file.
+    link: /en/guide/introduction#components
+  - title: Multiple sites
+    details: One instance serves several websites. Each site has its own allowed origins, comment settings, and blogger identity.
+    link: /en/self-hosting/admin#sites
+  - title: Notifications and CAPTCHA
+    details: The blogger gets new comments by email or Telegram. Cloudflare Turnstile or self-hosted Cap can optionally block spam.
+    link: /en/self-hosting/notifications
+  - title: Embed with a snippet of HTML
+    details: Works with Hugo, Hexo, Astro, and any other static site, as well as Vue and React single-page apps. Adjust the look with CSS variables.
     link: /en/integration/html
 ---

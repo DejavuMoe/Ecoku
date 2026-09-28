@@ -1,30 +1,33 @@
 import { defineConfig } from 'vitepress'
-import { nav, sidebar, type SidebarCopy } from './shared'
+import { nav, sidebar, type SidebarCopy, type NavCopy } from './shared'
 
 const copy: SidebarCopy & NavCopy = {
   guide: 'Guide',
   selfHosting: 'Self-hosting',
   integration: 'Integration',
   reference: 'Reference',
-  introduction: 'Introduction & Architecture',
-  features: 'Features Overview',
-  concepts: 'Core Concepts',
+  introduction: 'Introduction',
+  features: 'Features',
+  concepts: 'How It Works',
   docker: 'Docker Deployment',
   proxy: 'Reverse Proxy',
   admin: 'Admin Console',
-  configuration: 'Configuration Reference',
+  notifications: 'Notifications',
+  captcha: 'CAPTCHA',
   backup: 'Backup & Restore',
-  upgrade: 'Upgrade & Migrations',
-  twikoo: 'Twikoo Migration',
-  faq: 'FAQ & Troubleshooting',
-  html: 'Plain HTML & Loader',
+  upgrade: 'Upgrading',
+  twikoo: 'Migrating from Twikoo',
+  faq: 'FAQ',
+  html: 'HTML Embed',
   sdk: 'JavaScript SDK',
   hugo: 'Hugo PaperMod',
-  customCss: 'Custom Styling & Tokens',
+  customCss: 'Custom Styles',
   smoji: 'Smoji Stickers',
+  configuration: 'Configuration',
+  cli: 'Command Line',
   api: 'REST API',
-  earlierVersions: 'Earlier versions (v0.0.x)',
-  versionLatest: ' (Latest)',
+  earlierVersions: 'Earlier release candidates',
+  versionLatest: ' (latest)',
 }
 
 export const en = defineConfig({

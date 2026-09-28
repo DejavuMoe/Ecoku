@@ -1,21 +1,16 @@
-# Hugo PaperMod 接入
+# Hugo PaperMod
 
-在基于 Hugo 与知名主题 **PaperMod** 的静态博客中，集成 Ecoku 评论区仅需修改一个 partial 模板文件。
+[PaperMod](https://github.com/adityatelange/hugo-PaperMod) 主题预留了评论区模板，覆盖一个 partial 文件就能接入 Ecoku。仓库的 `examples/hugo-papermod/` 目录中有完整示例。
 
----
+## 1. 添加评论模板
 
-## 1. 覆盖评论模板
-
-PaperMod 支持在站点根目录下通过 `layouts/_partials/comments.html` 覆盖默认评论部分。
-
-在您的 Hugo 站点根目录下创建 `layouts/_partials/comments.html`：
+在 Hugo 站点中创建 `layouts/_partials/comments.html`（Hugo 0.146 之前的版本使用 `layouts/partials/comments.html`）：
 
 ```html
 {{- $ecoku := site.Params.ecoku -}}
 {{- if and $ecoku $ecoku.server_url $ecoku.site_id -}}
 {{- $js := $ecoku.js_url | default (printf "%s/client/ecoku-loader.js" $ecoku.server_url) -}}
-<div class="ecoku-container" style="margin-top: 2rem;">
-  <section
+<section
     id="ecoku-comments"
     class="ecoku-shell"
     data-ecoku-comments
@@ -27,66 +22,67 @@ PaperMod 支持在站点根目录下通过 `layouts/_partials/comments.html` 覆
     data-page-size="10"
     data-theme="auto"
     {{- with $ecoku.css_url }} data-css-url="{{ . }}"{{ end }}
-  >
+>
     <div class="ecoku-loader" data-ecoku-loader hidden>
-      <p class="ecoku-loader-status" data-ecoku-status></p>
-      <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新加载评论</button>
+        <p class="ecoku-loader-status" data-ecoku-status></p>
+        <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新加载评论</button>
     </div>
     <div id="ecoku-mount" data-ecoku-mount></div>
-  </section>
-  <script src="{{ $js }}" defer></script>
-</div>
-{{- end }}
+</section>
+<script src="{{ $js }}" defer></script>
+{{- else -}}
+<section class="ecoku-shell" aria-label="评论区">
+    <p class="ecoku-loader-status" role="status">评论服务尚未配置。</p>
+</section>
+{{- end -}}
 ```
 
-并在 Hugo 站点配置文件（如 `hugo.yaml`）的 `params` 中加入配置：
+模板用 `.RelPermalink` 作为页面 key（如 `/posts/my-first-post/`），用 `.Title` 作为文章标题。没有填写 `server_url` 或 `site_id` 时，显示“评论服务尚未配置。”，方便发现配置遗漏。
+
+## 2. 添加站点配置
+
+在 `hugo.yaml` 中加入：
 
 ```yaml
 params:
   comments: true
   ecoku:
+    # 结尾不要加 /
     server_url: "https://ecoku.example.com"
     site_id: "blog"
-    # 可选：自定义加载器或样式 CDN 地址
-    # js_url: "https://ecoku.example.com/client/ecoku-loader.js"
-    # css_url: "https://ecoku.example.com/client/ecoku.css"
+    # 可选：使用自己托管的加载器，默认 {server_url}/client/ecoku-loader.js
+    # js_url: "https://cdn.example.com/ecoku-loader.js"
+    # 可选：替换默认样式，见「自定义样式」
+    # css_url: "https://ecoku.example.com/client/ecoku.unstyled.css"
 ```
 
+`params.comments: true` 为所有文章开启评论区。某篇文章不需要评论时，在它的 front matter 中写 `comments: false`：
+
+```yaml
 ---
-
-## 2. 核心变量解析
-
-- **`data-page-key`**：页面 key 使用 Hugo 的 `.RelPermalink` 输出站内相对路径（例如 `/posts/my-first-post/`），具备极高的唯一性与稳定性。
-- **`data-page-title`**：页面标题使用 `.Title` 输出当前文章标题，供邮件和 Telegram 通知精准标识讨论来源。
-- **`data-theme="auto"`**：评论区读取 PaperMod 的 `--theme`、`--primary`、`--border` 等颜色变量，并继承页面的 `color-scheme`，因此会跟随主题的日间/夜间切换，包括用 `light-dark()` 定义颜色的主题。
-
----
-
-## 3. 文章级开关控制
-
-在具体文章的 Markdown Front Matter 中，可通过 `comments` 字段按需开启或关闭该篇的评论区：
-
-```markdown
----
-title: "深入理解 Go 语言内存模型"
-date: 2026-08-20
-comments: true
+title: "关于本站"
+comments: false
 ---
 ```
 
----
+## 3. 登记来源
 
-## 4. 对齐主题样式（可选）
+在 Ecoku 后台为这个站点添加允许来源，如 `https://blog.example.com`。本地运行 `hugo server` 预览时，把 `http://localhost:1313` 也加进去。
 
-默认样式已经读取 PaperMod 的颜色变量。如果主题还定义了强调色、圆角或字号变量，可以在站点 CSS（例如 `assets/css/extended/comments.css`）中映射到 Ecoku，评论区会随主题一起变化：
+## 外观
+
+默认样式会读取 PaperMod 的颜色变量（`--theme`、`--entry`、`--primary`、`--secondary`、`--content`、`--border`、`--code-bg`），并跟随主题的明暗切换，通常不需要额外设置。
+
+想进一步统一圆角、字号或强调色，可以在 `assets/css/extended/` 下新建一个 CSS 文件，PaperMod 会自动把它打包进站点样式：
 
 ```css
 .ecoku-comments {
-  --ecoku-accent: var(--accent);
-  --ecoku-radius: var(--radius);
-  --ecoku-font-size: 15px;
-  --ecoku-font-size-small: 13px;
+  --ecoku-radius: 8px;
+  --ecoku-font-size: 16px;
+  --ecoku-accent: #b4532a;
 }
 ```
 
-变量名以主题实际定义为准，完整列表见[自定义 CSS](./custom-css.md)。
+所有可用变量见[自定义样式](./custom-css#variables)。
+
+示例目录中的 `assets/css/extended/ecoku.css` 只为加载失败提示和重试按钮设置样式，可以按需复制。

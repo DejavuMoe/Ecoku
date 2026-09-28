@@ -1,29 +1,40 @@
-# Docker Deployment
+# Docker deployment
 
-The container listens on `:12123`; Compose publishes it only on the host loopback `127.0.0.1:12123`. The host reverse proxy terminates HTTPS.
+This page starts from an empty Linux host and brings up an Ecoku instance with Docker Compose. When you are done, the service is reachable only on the local machine at `127.0.0.1:12123`. You set up public HTTPS in the next step, [Reverse proxy](./reverse-proxy).
 
-> [!NOTE]
-> These commands use the released image `git.via.moe/dejavu/ecoku:v0.2.5`. `ecoku.example.com` is a placeholder.
+## Before you start
 
----
+You need:
 
-## 1. Directory Structure & Permissions
+- A Linux host with Docker Engine and Compose v2 (the `docker compose` command), and `sudo` access.
+- A domain dedicated to Ecoku, such as `ecoku.example.com`. You reach the admin console through it, and your blog loads the comment section script from it. It cannot be the same as your blog's domain. See `admin.allowed_origins` below for why.
+- Caddy or Nginx running on this host to terminate HTTPS.
 
-Ecoku runs as non-root user `10001:10001` with a read-only root filesystem. On standard Linux systems, use `sudo install -d` to create directories and assign the required ownership and permissions in a single command:
+In the commands on this page, `ecoku.example.com` and `blog.example.com` are placeholders. Replace them with your own domains. The image is the current release, `git.via.moe/dejavu/ecoku:v0.2.5`.
+
+After deployment, the directory layout looks like this:
+
+```text
+~/Ecoku/
+├── compose.yaml        # Container definition
+├── ecoku.env           # Admin credentials, secrets, time zone (mode 600)
+├── app/
+│   ├── config.yaml     # Instance config (mounted read-only)
+│   └── logs/           # Copy of the log file
+└── data/
+    └── ecoku.sqlite3   # All data: sites, comments, settings
+```
+
+## 1. Create the directories
+
+The container runs as UID/GID `10001:10001` with a read-only root file system. Only the mounted `app/logs` and `data` directories are writable. Create these two directories first and hand them to that user:
 
 ```bash
-# Enter deployment directory
 mkdir -p ~/Ecoku && cd ~/Ecoku
-
-# Create logs and data directories with UID/GID 10001 and 750 permissions
 sudo install -d -o 10001 -g 10001 -m 750 app/logs data
 ```
 
----
-
-## 2. Docker Compose Configuration
-
-Write `compose.yaml` using `cat <<'EOF'`:
+## 2. Write compose.yaml
 
 ```bash
 cd ~/Ecoku
@@ -38,7 +49,6 @@ services:
     env_file:
       - ./ecoku.env
     ports:
-      # Bind to local loopback only; do NOT expose 0.0.0.0
       - "127.0.0.1:12123:12123"
     volumes:
       - ./app/config.yaml:/app/config.yaml:ro
@@ -70,15 +80,14 @@ services:
 EOF
 ```
 
-> [!IMPORTANT]
-> - Never use floating tags like `latest` in production. Always specify an exact semantic version tag (e.g. `v0.2.5`).
-> - Always bind the port to `127.0.0.1:12123` so requests must pass through your reverse proxy.
+Keep two things exactly as shown:
 
----
+- **Bind the port to `127.0.0.1` only.** Writing `12123:12123` makes Docker open the port on every network interface, so anyone can bypass the reverse proxy and reach Ecoku directly, and rate limiting stops working.
+- **Pin the image to an exact version.** Do not use `latest`. To upgrade, change this line. To roll back, change it back to the old version. See [Upgrade](./upgrade).
 
-## 3. Configuration File `app/config.yaml`
+The other options tighten the container's permissions: `read_only` and `tmpfs` let the container write only to `/tmp` (16 MB) and the mounted directories; `cap_drop: ALL` and `no-new-privileges` drop all Linux capabilities; `healthcheck` requests `/api/health` inside the container every 30 seconds.
 
-Write the configuration file using `cat <<'EOF'` and set read-only permissions for the container:
+## 3. Write app/config.yaml
 
 ```bash
 cd ~/Ecoku
@@ -86,10 +95,9 @@ cd ~/Ecoku
 cat <<'EOF' > app/config.yaml
 site:
   port: 12123
-  # Logs always go to stdout; specify a file path to additionally keep rotated log files
+  # Logs always go to stdout; this also keeps a copy in a file, rotated in-process
   log_path: "/var/log/ecoku/ecoku.log"
-  # Trusted reverse proxy IP or CIDR. When proxying via Caddy on host, set Docker gateway (e.g. 172.18.0.1/32).
-  # An empty list means all visitors share one rate limit bucket. Never use 0.0.0.0/0.
+  # Leave empty for now; fill in the Docker gateway after setting up the reverse proxy (see "Reverse proxy")
   trusted_proxies: []
 
 client:
@@ -97,16 +105,14 @@ client:
 
 rate_limit:
   window_seconds: 60
-  comment_submit: 5      # Comment submission rate limit (req/window)
-  comment_list: 60       # Comment list read rate limit (req/window)
-  comment_delete: 30     # Comment deletion rate limit
-  admin_login: 5         # Admin login rate limit
-  notification_test: 5   # Notification test rate limit
+  comment_submit: 5
+  comment_list: 60
+  comment_delete: 30
+  admin_login: 5
+  notification_test: 5
 
 notifications:
-  # Environment variable name containing the master encryption key
   encryption_key_env: "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
-  # Public canonical URL of this instance (used for reply links in notifications)
   instance_public_url: "https://ecoku.example.com"
 
 database:
@@ -119,89 +125,96 @@ admin:
   username_env: "ECOKU_ADMIN_USERNAME"
   password_hash_env: "ECOKU_ADMIN_PASSWORD_HASH"
   token_key_env: "ECOKU_ADMIN_TOKEN_KEY"
-  token_ttl_minutes: 480 # Admin session duration (8 hours)
+  token_ttl_minutes: 480
   allowed_origins:
-    # Exact allowed origin for the admin console
     - "https://ecoku.example.com"
 EOF
 
-# Ensure container non-root user (10001) has read permission
 sudo chown 10001:10001 app/config.yaml
 sudo chmod 640 app/config.yaml
 ```
 
----
+You only need to change two values for your environment:
 
-## 4. Secrets Generation in `ecoku.env`
+- `notifications.instance_public_url`: the public URL of Ecoku. You must set it before you enable email or Telegram notifications. Otherwise saving notification settings in the admin console fails.
+- `admin.allowed_origins`: the origin (scheme + domain + optional port) shown in the browser's address bar when you open the admin console. It **must not overlap with the allowed origins of any site**, or the service refuses to start. This is why Ecoku needs its own domain.
 
-Create `ecoku.env`. The following idempotent script generates cryptographically strong random keys and appends them to your environment file without terminal echo. Special characters (such as `$` in bcrypt hashes and base64 characters) are enclosed in single quotes to prevent shell interpolation:
+The config file does not hold any passwords or secrets. It only names the environment variables; the actual values go into `ecoku.env` in the next step. Unknown fields cause startup to fail. See the [Configuration reference](../reference/configuration) for what every field means.
+
+## 4. Generate ecoku.env {#env}
+
+`ecoku.env` holds the admin credentials and two secret keys. The script below is safe to run more than once: existing entries are skipped, not overwritten; the password is not echoed while you type it; and every value is wrapped in single quotes so Compose does not expand the `$` characters in the bcrypt hash as variables.
 
 ```bash
 cd ~/Ecoku
+touch ecoku.env && chmod 600 ecoku.env
 
-# 1. Create sensitive environment file with restricted permissions (read/write for owner only)
-touch ecoku.env
-chmod 600 ecoku.env
+grep -q '^GIN_MODE=' ecoku.env || echo "GIN_MODE='release'" >> ecoku.env
+grep -q '^TZ=' ecoku.env || echo "TZ='Asia/Shanghai'" >> ecoku.env
+grep -q '^ECOKU_ADMIN_USERNAME=' ecoku.env || echo "ECOKU_ADMIN_USERNAME='admin'" >> ecoku.env
 
-# 2. Write general defaults (skipped if already present)
-grep -q "^GIN_MODE=" ecoku.env || echo "GIN_MODE='release'" >> ecoku.env
-grep -q "^TZ=" ecoku.env || echo "TZ='Asia/Shanghai'" >> ecoku.env
-grep -q "^ECOKU_ADMIN_USERNAME=" ecoku.env || echo "ECOKU_ADMIN_USERNAME='admin'" >> ecoku.env
-
-# 3. Interactively enter admin password and generate bcrypt hash (silent input, skipped if already set)
-if ! grep -q "^ECOKU_ADMIN_PASSWORD_HASH=" ecoku.env; then
-  read -rsp 'Enter admin password: ' ADMIN_PASS; echo
-  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i --entrypoint /app/ecoku-server "git.via.moe/dejavu/ecoku:v0.2.5" hash-password)
+# Admin password: entered interactively; only the bcrypt hash is saved
+if ! grep -q '^ECOKU_ADMIN_PASSWORD_HASH=' ecoku.env; then
+  read -rsp 'Admin password: ' ADMIN_PASS; echo
+  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i "git.via.moe/dejavu/ecoku:v0.2.5" hash-password)
   unset ADMIN_PASS
   echo "ECOKU_ADMIN_PASSWORD_HASH='$HASH'" >> ecoku.env
 fi
 
-# 4. Generate 64-character hex admin token key (silent, skipped if already set)
-if ! grep -q "^ECOKU_ADMIN_TOKEN_KEY=" ecoku.env; then
+# Admin session signing key: 64 hexadecimal characters
+grep -q '^ECOKU_ADMIN_TOKEN_KEY=' ecoku.env || \
   echo "ECOKU_ADMIN_TOKEN_KEY='$(openssl rand -hex 32)'" >> ecoku.env
-fi
 
-# 5. Generate 32-byte base64 master encryption key (silent, skipped if already set)
-if ! grep -q "^ECOKU_NOTIFICATION_ENCRYPTION_KEY=" ecoku.env; then
+# Credential encryption master key: 32 bytes, Base64-encoded
+grep -q '^ECOKU_NOTIFICATION_ENCRYPTION_KEY=' ecoku.env || \
   echo "ECOKU_NOTIFICATION_ENCRYPTION_KEY='$(openssl rand -base64 32)'" >> ecoku.env
-fi
 ```
 
----
+What each variable does:
 
-## 5. Launch & Verify
+| Variable | Description |
+| --- | --- |
+| `TZ` | Comment times are displayed in this time zone. Use an IANA name, such as `Asia/Tokyo`. |
+| `ECOKU_ADMIN_USERNAME` | Admin sign-in username, 1 to 80 characters. |
+| `ECOKU_ADMIN_PASSWORD_HASH` | bcrypt hash of the admin password, generated by the `hash-password` command built into the image. |
+| `ECOKU_ADMIN_TOKEN_KEY` | Signing key for admin sessions, at least 32 characters. Changing it invalidates all signed-in sessions. |
+| `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | Encrypts the SMTP password, Telegram bot token, and CAPTCHA secret key stored in the database. |
+
+::: danger Back up the master key together with the database
+Once you have saved SMTP, Telegram, or CAPTCHA credentials in the admin console, `ECOKU_NOTIFICATION_ENCRYPTION_KEY` is the only key that can decrypt them. If the key is lost or changed, Ecoku refuses to start because it cannot decrypt them. When you [back up](./backup), `ecoku.env` must be in the same archive as `data/`.
+:::
+
+## 5. Start and check
 
 ```bash
 cd ~/Ecoku
-
-# Validate Compose syntax
-sudo docker compose config --quiet
-
-# Pull image and start in background
+sudo docker compose config --quiet   # Checks the syntax; no output means it is fine
 sudo docker compose pull
 sudo docker compose up -d
-
-# Check status and logs
 sudo docker compose ps
-sudo docker compose logs --tail=100 -f ecoku
+sudo docker compose logs --tail=100 ecoku
 ```
 
-### Health Check
+On first start, Ecoku creates the database at `data/ecoku.sqlite3` and initializes it to the latest schema. When `Server starting on :12123` appears in the log, the service is listening.
+
+Check the health endpoint on the host:
 
 ```bash
 curl --fail --silent --show-error http://127.0.0.1:12123/api/health
-# Expected output: {"code":200,"message":"Success","data":{"status":"healthy","timestamp":...}}
 ```
 
-Next, configure your [Reverse Proxy](/en/self-hosting/reverse-proxy) to terminate HTTPS, or visit the [Admin Console](/en/self-hosting/admin) to register sites and set up your blogger passphrase.
+A healthy instance returns:
 
----
+```json
+{"code":200,"message":"Success","data":{"status":"healthy","timestamp":1790000000}}
+```
 
-## 6. Historical Data Import (Optional)
+The health endpoint only tells you that the process is answering requests. If the container keeps restarting, look at `docker compose logs` first. Config errors, empty environment variables, and wrong directory permissions are all explained in the log. See the [FAQ](./faq) for common cases.
 
-If you previously used Twikoo, you can migrate historical comments into Ecoku after completing this initial deployment.
+## Next steps
 
-> [!IMPORTANT]
-> - **Initial Deployment Only**: The Twikoo import command (`import-twikoo`) **only supports target sites that have zero comments**.
-> - If comments have already been submitted to the target site, the system strictly rejects import to preserve tree relationships, foreign key integrity, and ID continuity.
-> - See [Twikoo Import](/en/self-hosting/twikoo) for details on the import workflow and dry-run verification.
+1. [Set up the reverse proxy](./reverse-proxy) so that `https://ecoku.example.com` is reachable from the internet.
+2. Open `https://ecoku.example.com/admin/`, [sign in to the admin console](./admin), and register your first site.
+3. [Embed the comment section in your blog pages](../integration/html).
+
+If you are migrating existing comments from Twikoo, do it after you register the site in step 2 and before anyone posts a new comment. See [Migrate from Twikoo](./twikoo).

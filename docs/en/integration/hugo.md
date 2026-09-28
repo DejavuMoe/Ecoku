@@ -1,21 +1,16 @@
-# Hugo PaperMod Integration
+# Hugo PaperMod
 
-Integrating Ecoku into a static blog powered by Hugo and the popular **PaperMod** theme requires overriding just a single partial template.
+The [PaperMod](https://github.com/adityatelange/hugo-PaperMod) theme has a placeholder for a comments template, so you can integrate Ecoku by overriding one partial. The repository's `examples/hugo-papermod/` directory has a complete example.
 
----
+## 1. Add the comments template
 
-## 1. Override Comments Partial
-
-PaperMod allows overriding its default comment partial by placing a template at `layouts/partials/comments.html` (or `layouts/_partials/comments.html`) in your Hugo site root.
-
-Create `layouts/partials/comments.html` in your site repository:
+In your Hugo site, create `layouts/_partials/comments.html` (Hugo versions before 0.146 use `layouts/partials/comments.html`):
 
 ```html
 {{- $ecoku := site.Params.ecoku -}}
 {{- if and $ecoku $ecoku.server_url $ecoku.site_id -}}
 {{- $js := $ecoku.js_url | default (printf "%s/client/ecoku-loader.js" $ecoku.server_url) -}}
-<div class="ecoku-container" style="margin-top: 2rem;">
-  <section
+<section
     id="ecoku-comments"
     class="ecoku-shell"
     data-ecoku-comments
@@ -27,66 +22,67 @@ Create `layouts/partials/comments.html` in your site repository:
     data-page-size="10"
     data-theme="auto"
     {{- with $ecoku.css_url }} data-css-url="{{ . }}"{{ end }}
-  >
+>
     <div class="ecoku-loader" data-ecoku-loader hidden>
-      <p class="ecoku-loader-status" data-ecoku-status></p>
-      <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>Reload Comments</button>
+        <p class="ecoku-loader-status" data-ecoku-status></p>
+        <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>Reload comments</button>
     </div>
     <div id="ecoku-mount" data-ecoku-mount></div>
-  </section>
-  <script src="{{ $js }}" defer></script>
-</div>
-{{- end }}
+</section>
+<script src="{{ $js }}" defer></script>
+{{- else -}}
+<section class="ecoku-shell" aria-label="Comments">
+    <p class="ecoku-loader-status" role="status">Comments are not configured.</p>
+</section>
+{{- end -}}
 ```
 
-Then add the configuration block under `params` in your Hugo site config (e.g. `hugo.yaml`):
+The template uses `.RelPermalink` as the page key (such as `/posts/my-first-post/`) and `.Title` as the post title. If `server_url` or `site_id` is not set, it shows "Comments are not configured." so you notice the missing configuration.
+
+## 2. Add the site config
+
+Add this to `hugo.yaml`:
 
 ```yaml
 params:
   comments: true
   ecoku:
+    # No trailing /
     server_url: "https://ecoku.example.com"
     site_id: "blog"
-    # Optional: Custom loader or stylesheet CDN URLs
-    # js_url: "https://ecoku.example.com/client/ecoku-loader.js"
-    # css_url: "https://ecoku.example.com/client/ecoku.css"
+    # Optional: use a self-hosted loader; defaults to {server_url}/client/ecoku-loader.js
+    # js_url: "https://cdn.example.com/ecoku-loader.js"
+    # Optional: replace the default styles; see "Custom styles"
+    # css_url: "https://ecoku.example.com/client/ecoku.unstyled.css"
 ```
 
+`params.comments: true` turns on the comment section for all posts. For a post that should not have comments, write `comments: false` in its front matter:
+
+```yaml
 ---
-
-## 2. Core Template Variables
-
-- **`data-page-key`**: Uses Hugo's `.RelPermalink` to output a canonical site-relative path (e.g. `/posts/my-first-post/`), ensuring stability and immutability across protocol or domain migrations.
-- **`data-page-title`**: Uses `.Title` to output the article title for clear attribution in notification emails and Telegram alerts.
-- **`data-theme="auto"`**: The comment area reads PaperMod colour variables such as `--theme`, `--primary` and `--border`, and inherits the page's `color-scheme`, so it follows the theme's light/dark toggle, including themes that define colours with `light-dark()`.
-
----
-
-## 3. Post-Level Toggle
-
-In individual post Markdown Front Matter, use the `comments` property to enable or disable discussions for that specific article:
-
-```markdown
----
-title: "Understanding Go Concurrency Internals"
-date: 2026-08-20
-comments: true
+title: "About this site"
+comments: false
 ---
 ```
 
----
+## 3. Register the origin
 
-## 4. Matching Theme Styles (Optional)
+In the Ecoku admin console, add an allowed origin for this site, such as `https://blog.example.com`. If you preview locally with `hugo server`, add `http://localhost:1313` as well.
 
-The default stylesheet already reads PaperMod colour variables. If your theme also defines accent, radius or type-size variables, map them to Ecoku in your site CSS (for example `assets/css/extended/comments.css`) so the comment area follows the theme:
+## Appearance
+
+The default styles read PaperMod's color variables (`--theme`, `--entry`, `--primary`, `--secondary`, `--content`, `--border`, `--code-bg`) and follow the theme's light/dark switch, so you usually do not need any extra setup.
+
+To further match corner radius, font size, or accent color, create a CSS file under `assets/css/extended/`. PaperMod bundles it into the site styles automatically:
 
 ```css
 .ecoku-comments {
-  --ecoku-accent: var(--accent);
-  --ecoku-radius: var(--radius);
-  --ecoku-font-size: 15px;
-  --ecoku-font-size-small: 13px;
+  --ecoku-radius: 8px;
+  --ecoku-font-size: 16px;
+  --ecoku-accent: #b4532a;
 }
 ```
 
-Use the variable names your theme actually defines. See [Custom CSS](./custom-css.md) for the full list.
+See [Custom styles](./custom-css#variables) for all available variables.
+
+The `assets/css/extended/ecoku.css` in the example directory only styles the loading failure message and the retry button. Copy it if you need it.

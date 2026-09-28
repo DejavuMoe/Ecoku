@@ -1,31 +1,50 @@
-# Features Overview
+# Features
 
-Ecoku pairs minimalist single-container operations with modern user experience, resilient security, and customizable design tokens.
+This page lists the features of the current Ecoku release (v0.2.5), grouped by who uses them. The link after each item points to the details.
 
----
+## Visitors
 
-## Comment Experience
-- **Live on Submit**: Direct publishing without moderation queues.
-- **16 Reply Levels & Max 3-Level Visual Indent**: Supports deep discussion hierarchies while capping indentation at 3 levels to maintain readability on mobile viewports. Replies at depth $\ge 3$ automatically display clickable `@Author` anchors.
-- **Root-Thread Pagination**: Returns complete root threads within fixed resource budgets; oversized requests fail explicitly. Large threads can be read on demand through the [single-level cursor API](../reference/api.md).
-- **Jitter-Free 3ch Collapse**: Toggle controls `[+]` and `[-]` are fixed at `3ch` tabular width, preventing meta-row layout shifts upon collapsing/expanding.
-- **Context-Preserving Tombstones**: Deleting a comment replaces its content with `[该评论已删除]`, preserving the downstream conversation tree.
-- **Smoji Plaintext Stickers**: Site-level customizable sticker packs using `![smoji:label](https://...)` markdown tokens, loaded on demand under strict same-origin rules.
+- Post without registering by entering a nickname, email address, and optional website. Each site decides whether the email address and website are required. [Visitor identity](./concepts#visitor-identity)
+- Reply directly under any comment. The reply box opens in place, and any missing identity fields are filled in inside that reply box.
+- The browser remembers the visitor's identity, encrypted, for 7 days. No cookies are used.
+- Preview before posting. Length is counted in Unicode characters, so one CJK character counts as one.
+- Switch between newest-first and oldest-first order.
+- Collapse long discussion branches.
+- Insert Smoji stickers when the site has a sticker pack enabled. [Smoji sticker packs](../integration/smoji)
 
----
+## Blogger
 
-## Identity & Privacy
-- **Configurable Field Requirements**: Nickname is always required; email and website requirements are configurable per site.
-- **Client-Side AES-GCM Encryption**: Visitor identities are encrypted via WebCrypto AES-GCM and stored in IndexedDB for 7 days. Never written to `localStorage` or cookies.
-- **Blogger Passphrase**: Site owners authenticate by typing a secret passphrase directly in the nickname field.
-- **Zero Privacy Leakage**: Public DTOs omit emails, IPs, User-Agents, and geo-locations.
+- Enter the passphrase in the nickname field of the comment section to post as the blogger, with a blogger badge. [Blogger identity](./concepts#blogger)
+- Get new comments and new replies by email or Telegram. [Notifications](../self-hosting/notifications)
+- When a visitor gets a reply, they are notified by email automatically.
 
----
+## Admins
 
-## Security & Operations
-- **Tri-State Bot Protection**: Toggle between `off`, Cloudflare Turnstile, and self-hosted Cap.
-- **Encrypted Database Credentials**: SMTP passwords, Telegram tokens, and CAPTCHA secrets are encrypted with AES-256-GCM using an instance master key.
-- **Dynamic CSP Convergence**: Automatically tightens Content-Security-Policy based on the active CAPTCHA provider.
-- **In-Memory Rate Limiter**: Windowed rate limiting on Socket peer IP and trusted proxy gateways.
-- **Outbox Notifications**: Transactionally enqueues SMTP and Telegram notifications with isolated per-target retries.
-- **Twikoo CLI Importer**: One-shot migration tool for importing legacy Twikoo discussions.
+- Register multiple sites on one instance, each with its own allowed origins, default sort order, required fields, length limit, and placeholder text. [Admin console](../self-hosting/admin#sites)
+- Browse comments by status, Published (已发布) or Deleted (已删除), and jump to the comment on the original page with one click.
+- Tombstone delete keeps the structure of the discussion. A tombstone with no replies can be permanently deleted. [Deletion](./concepts#deletion)
+- Switch between three CAPTCHA modes (off, Cloudflare Turnstile, and self-hosted Cap). CAPTCHA protects both commenting and admin sign-in. [CAPTCHA](../self-hosting/captcha)
+- Import existing comments from Twikoo. [Migrate from Twikoo](../self-hosting/twikoo)
+
+## Integration
+
+- Embed with a snippet of HTML and one script. Works on any static site. [HTML integration](../integration/html)
+- In single-page apps built with Vue, React, and similar frameworks, the comment section follows along when the reader switches posts. [JavaScript SDK](../integration/sdk)
+- Ready-made templates for the Hugo PaperMod theme. [Hugo PaperMod](../integration/hugo)
+- Adjust colors, corner radius, and font size of the default styles with CSS variables, or use only the structural styles, or write your own from scratch. [Custom styles](../integration/custom-css)
+- Follows the page's light and dark mode.
+
+## Operations
+
+- A single Docker container that runs as non-root on a read-only file system. [Docker deployment](../self-hosting/docker)
+- All data lives in one SQLite file. Stop the service and copy it to back up. [Backup and restore](../self-hosting/backup)
+- The database is migrated automatically on upgrade, and existing data stays in place. [Upgrade](../self-hosting/upgrade)
+- Per-IP rate limits, with support for running behind a reverse proxy or CDN. [Reverse proxy](../self-hosting/reverse-proxy)
+- Notifications are sent asynchronously through a database queue, with automatic retries on failure, and never hold up comment submission.
+
+## Privacy
+
+- Visitor IP addresses, User-Agents, and geolocation are not stored. [Data stored and made public](./concepts#data)
+- Email addresses never appear in any public API.
+- SMTP passwords, bot tokens, and CAPTCHA secrets are encrypted before they are stored in the database. The admin console only shows them as Set (已设置).
+- The comment section does not call any third-party avatar, analytics, or IP lookup service.

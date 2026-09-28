@@ -142,7 +142,8 @@ export function sidebar(prefix: string, t: SidebarCopy): DefaultTheme.SidebarIte
         { text: t.docker, link: `${p}/self-hosting/docker` },
         { text: t.proxy, link: `${p}/self-hosting/reverse-proxy` },
         { text: t.admin, link: `${p}/self-hosting/admin` },
-        { text: t.configuration, link: `${p}/self-hosting/configuration` },
+        { text: t.notifications, link: `${p}/self-hosting/notifications` },
+        { text: t.captcha, link: `${p}/self-hosting/captcha` },
         { text: t.backup, link: `${p}/self-hosting/backup` },
         {
           text: t.upgrade,
@@ -185,6 +186,8 @@ export function sidebar(prefix: string, t: SidebarCopy): DefaultTheme.SidebarIte
     {
       text: t.reference,
       items: [
+        { text: t.configuration, link: `${p}/reference/configuration` },
+        { text: t.cli, link: `${p}/reference/cli` },
         { text: t.api, link: `${p}/reference/api` },
       ],
     },
@@ -206,7 +209,7 @@ export function nav(prefix: string, t: NavCopy): DefaultTheme.NavItem[] {
     },
     {
       text: t.reference,
-      link: `${prefix}/reference/api`,
+      link: `${prefix}/reference/configuration`,
       activeMatch: `${prefix}/reference/`,
     },
   ]
@@ -226,7 +229,8 @@ export interface SidebarCopy extends NavCopy {
   docker: string
   proxy: string
   admin: string
-  configuration: string
+  notifications: string
+  captcha: string
   backup: string
   upgrade: string
   twikoo: string
@@ -236,6 +240,8 @@ export interface SidebarCopy extends NavCopy {
   hugo: string
   customCss: string
   smoji: string
+  configuration: string
+  cli: string
   api: string
   earlierVersions: string
   versionLatest: string

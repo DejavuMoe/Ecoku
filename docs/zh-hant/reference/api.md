@@ -1,259 +1,345 @@
-# REST API 參考
+# REST API
 
-Ecoku 提供了整潔的 RESTful HTTP 介面，分為面向訪客的**公開評論介面**與面向管理者的**管理後台介面**。
+本頁列出 Ecoku 的 HTTP API，供撰寫自訂前端或自動化腳本時參考。使用官方載入器或 SDK 時，不需要直接呼叫這些 API。
 
----
+所有路徑都相對於實例網址，例如 `https://ecoku.example.com/api/health`。
 
-## 通用約定與狀態碼
+## 通用慣例
 
-- **回應格式**：所有介面均回傳 `application/json; charset=utf-8`。
-- **時間格式**：採用 ISO 8601 UTC 時間戳記（如 `2026-08-20T10:00:00Z`）。
-- **標準狀態碼**：
-  - `200 OK`：請求成功。
-  - `201 Created`：資源建立成功。
-  - `400 Bad Request`：參數校驗未通過。
-  - `401 Unauthorized`：未提供有效憑證或管理 Token 已過期。
-  - `403 Forbidden`：跨域 Origin 未在站點白名單中。
-  - `404 Not Found`：目標站點、父評論或資源不存在。
-  - `422 Unprocessable Entity`：超出資源預算（200 節點、16 層深度、10,000 探針預算、1 MiB JSON）。
-  - `429 Too Many Requests`：觸發了單一 IP 記憶體頻控限流（包含 `Retry-After` 標頭）。
-  - `503 Service Unavailable`：伺服端忙碌（4 個工作槽滿載）或資料庫讀取逾時（2 秒）。
+### 回應格式
 
----
+所有 `/api/` 端點都回傳 JSON，結構一致：
 
-## 1. 公開端點（Public Endpoints）
-
-### 健康檢查 `GET /api/health`
-- **請求方法**：`GET`
-- **認證方式**：公開無認證
-- **回應示例 (HTTP 200)**：
-  ```json
-  {
-    "code": 200,
-    "message": "Success",
-    "data": {
-      "status": "healthy",
-      "timestamp": 1756700000
-    }
-  }
-  ```
-
----
-
-### 獲取評論列表 `GET /api/comment/list`
-預設按根討論串分頁回傳完整評論樹。成功回應保留 `data.data`、根數 `total`、可達評論數 `commentTotal`、`page/pageSize/pageCount`、`formConfig` 和 `timeZone`。
-
-完整討論串模式最多回傳 **200 個節點、16 層後代**（根為 0 層）；統計最多檢查同站點/頁面的 **10,000 條 ID/父關係**。任何預算超限回傳 **422**，不回傳殘缺討論串或近似總數。頁面總記錄超限時，即使 `pageSize=1` 也會失敗；現有 SDK 顯示既有載入失敗狀態，不會自動切換讀取模式。
-
-需要按需讀取時，顯式傳入 `parentId`：`0` 只取根節點，正整數只取該父節點的直接子評論（包括墓碑，限定同站點/頁面）。傳入 `afterId`（預設 0）按 **ID 遞增**繼續讀取；`pageSize` 預設 10、最大 100，不可同時使用 `page` 或 `sort`。該模式不遞迴、不計算總數，回應 `data` 內為 `data` 評論陣列、`parentId/pageSize/hasMore/nextAfterId/formConfig/timeZone`；僅在 `hasMore=true` 時用 `nextAfterId` 繼續請求。父節點不存在或不屬於該站點/頁面回傳 404，參數無效回傳 400。
-
-```http
-GET /api/comment/list?siteId=blog&key=/posts/example/&parentId=0&pageSize=20
-GET /api/comment/list?siteId=blog&key=/posts/example/&parentId=101&afterId=120&pageSize=20
+```json
+{ "code": 200, "message": "Success", "data": { } }
 ```
 
-兩種模式的完整 JSON 上限均為 **1 MiB**（包含跳脫和封裝）；超限回傳 422，可減小 `pageSize` 重試。列表處理共享 **4 個並行名額**及每次 **2 秒資料庫讀取逾時**；忙碌時回傳 503 / `Retry-After: 1`，逾時回傳 503。評論統計與後代查詢在同一 SQLite 快照中執行，不會因並行寫入無限增長。讀取頻控見[配置參考](../self-hosting/configuration.md)：預設每 IP 每 60 秒 60 次，超限回傳 429 / `Retry-After`。
+`code` 與 HTTP 狀態碼相同。出錯時沒有 `data`，`message` 是一句中文說明，例如：
 
-- **Query 參數**：
-  - `siteId` (string, 必填)：站點 ID。
-  - `key` (string, 必填)：站內頁面相對路徑。
-  - `page` (number, 可選)：根評論頁碼（預設 1）。
-  - `pageSize` (number, 可選)：每頁根評論數量（預設 10，最大 100）。
-  - `sort` (string, 可選)：排序方式，`newest` 或 `oldest`。
-  - `parentId` (number, 可選)：啟用單層游標模式。`0` 表示根評論，正整數表示特定父評論的子節點。
-  - `afterId` (number, 可選)：游標分頁錨點 ID。
+```json
+{ "code": 403, "message": "来源不属于当前站点" }
+```
 
-- **完整討論串回應示例 (HTTP 200)**：
-  ```json
-  {
-    "code": 200,
-    "message": "获取评论成功",
-    "data": {
-      "data": [
-        {
-          "id": 101,
-          "site_id": "blog",
-          "mark": "/posts/example/",
-          "parent": 0,
-          "username": "張三",
-          "url": "https://example.com",
-          "content": "這是一條根評論",
-          "isBlogger": false,
-          "deleted": false,
-          "created_at": "2026-08-20T12:00:00Z",
-          "updated_at": "2026-08-20T12:00:00Z"
-        }
-      ],
-      "total": 1,
-      "commentTotal": 1,
-      "page": 1,
-      "pageSize": 10,
-      "pageCount": 1,
-      "timeZone": "Asia/Taipei",
-      "formConfig": {
-        "emailRequired": true,
-        "websiteRequired": false,
-        "placeholder": "寫下評論（僅支援純文字）",
-        "defaultSort": "newest",
-        "lengthLimit": 1000,
-        "emptyMessage": "還沒有評論\n成為第一個留下評論的人。",
-        "bloggerBadge": "[站長]",
-        "bloggerProofEnabled": true,
-        "turnstileSitekey": "example-sitekey",
-        "captcha": {
-          "provider": "turnstile",
-          "sitekey": "example-sitekey"
-        },
-        "smoji": {
-          "enabled": false,
-          "manifestUrl": ""
-        }
+時間欄位為 UTC 的 RFC 3339 字串，例如 `2026-08-20T12:00:00Z`。
+
+### 狀態碼
+
+| 狀態碼 | 意義 |
+| --- | --- |
+| `200` / `201` | 成功；建立評論和站點時回傳 `201`。 |
+| `400` | 參數或請求本文不合法，或人機驗證未通過。 |
+| `401` | 管理 API 未登入或工作階段已失效。 |
+| `403` | 來源不在允許清單中，或沒有權限。 |
+| `404` | 站點、評論或端點不存在。 |
+| `409` | 狀態衝突：父評論屬於其他頁面、回覆已刪除的評論、設定已被其他工作階段修改等。 |
+| `413` | 請求本文超過上限。 |
+| `422` | 評論清單超出讀取上限，或回覆層數超過 16 層。 |
+| `429` | 觸發速率限制，回應標頭 `Retry-After` 列出需要等待的秒數。 |
+| `502` | 測試通知寄送失敗。 |
+| `503` | 服務忙碌、讀取逾時，或人機驗證服務無法使用。 |
+
+### 跨來源與來源
+
+- 瀏覽器請求帶有 `Origin` 時，公開 API 只接受已登記為某個站點允許來源的位址，管理 API 只接受 `admin.allowed_origins` 中的位址，其他來源回傳 `403`。
+- 送出評論**必須**帶有屬於該站點的 `Origin`，沒有 `Origin` 的送出請求也會被拒絕。
+- 讀取評論清單不要求 `Origin`，伺服器端腳本可以直接呼叫。
+
+### 請求本文上限
+
+送出評論為 80 KiB，管理 API 為 16 KiB。超過時回傳 `413`。
+
+## 公開 API
+
+### 健康檢查
+
+```http
+GET /api/health
+```
+
+```json
+{ "code": 200, "message": "Success", "data": { "status": "healthy", "timestamp": 1790000000 } }
+```
+
+只表示程式能夠回應請求，不檢查資料庫或外部服務。
+
+### 讀取評論
+
+```http
+GET /api/comment/list?siteId=blog&key=/posts/hello-world/&page=1&pageSize=10&sort=newest
+```
+
+| 參數 | 必填 | 說明 |
+| --- | :---: | --- |
+| `siteId` | 是 | 站點 ID。 |
+| `key` | 是 | 頁面 key，最多 512 個字元。 |
+| `page` | 否 | 根評論頁碼，預設 `1`。 |
+| `pageSize` | 否 | 每頁根評論數，1～100，預設 `10`。 |
+| `sort` | 否 | `newest` 或 `oldest`，預設使用站點設定。 |
+
+回傳目前頁面的根評論，**以及它們的全部回覆**：
+
+```json
+{
+  "code": 200,
+  "message": "获取评论成功",
+  "data": {
+    "data": [
+      {
+        "id": 101,
+        "site_id": "blog",
+        "mark": "/posts/hello-world/",
+        "parent": 0,
+        "username": "张三",
+        "url": "https://example.com",
+        "content": "这是一条根评论",
+        "isBlogger": false,
+        "deleted": false,
+        "created_at": "2026-08-20T12:00:00Z",
+        "updated_at": "2026-08-20T12:00:00Z"
       }
+    ],
+    "total": 1,
+    "commentTotal": 1,
+    "page": 1,
+    "pageSize": 10,
+    "pageCount": 1,
+    "timeZone": "Asia/Shanghai",
+    "formConfig": {
+      "emailRequired": true,
+      "websiteRequired": false,
+      "placeholder": "写下评论（仅支持纯文本）",
+      "defaultSort": "newest",
+      "lengthLimit": 1000,
+      "emptyMessage": "还没有评论\n成为第一个留下评论的人。",
+      "bloggerBadge": "[博主]",
+      "bloggerProofEnabled": true,
+      "turnstileSitekey": "",
+      "captcha": { "provider": "off", "sitekey": "" },
+      "smoji": { "enabled": false, "manifestUrl": "" }
     }
   }
-  ```
+}
+```
 
-- **游標模式回應示例 (HTTP 200，傳入 parentId)**：
-  ```json
-  {
-    "code": 200,
-    "message": "获取评论成功",
-    "data": {
-      "data": [
-        {
-          "id": 105,
-          "site_id": "blog",
-          "mark": "/posts/example/",
-          "parent": 101,
-          "username": "李四",
-          "content": "這是一條子評論",
-          "isBlogger": false,
-          "deleted": false,
-          "created_at": "2026-08-20T12:05:00Z",
-          "updated_at": "2026-08-20T12:05:00Z"
-        }
-      ],
-      "parentId": 101,
-      "pageSize": 20,
-      "hasMore": true,
-      "nextAfterId": 105,
-      "timeZone": "Asia/Taipei",
-      "formConfig": {
-        "emailRequired": true,
-        "websiteRequired": false,
-        "placeholder": "寫下評論（僅支援純文字）",
-        "defaultSort": "newest",
-        "lengthLimit": 1000,
-        "emptyMessage": "還沒有評論\n成為第一個留下評論的人。",
-        "bloggerBadge": "[站長]",
-        "bloggerProofEnabled": true,
-        "turnstileSitekey": "example-sitekey",
-        "captcha": {
-          "provider": "turnstile",
-          "sitekey": "example-sitekey"
-        },
-        "smoji": {
-          "enabled": false,
-          "manifestUrl": ""
-        }
-      }
-    }
+評論欄位：
+
+| 欄位 | 說明 |
+| --- | --- |
+| `id` | 評論 ID。對應頁面上的錨點 `#ecoku-comment-{id}`。 |
+| `site_id`、`mark` | 站點 ID 與頁面 key。 |
+| `parent` | 父評論 ID，根評論為 `0`。 |
+| `username` | 暱稱。已刪除的評論固定為「已删除」。 |
+| `url` | 訪客網址，沒有時省略該欄位。 |
+| `content` | 純文字內文。已刪除的評論固定為「[该评论已删除]」。 |
+| `isBlogger` | 是否為部落客評論。 |
+| `deleted` | 是否已刪除（墓碑）。 |
+
+其他欄位：
+
+| 欄位 | 說明 |
+| --- | --- |
+| `total` | 根評論總數，用於分頁。 |
+| `commentTotal` | 從根評論可到達的全部評論數（含回覆與墓碑）。 |
+| `pageCount` | 總頁數。 |
+| `timeZone` | 伺服器端的顯示時區（IANA 名稱）。 |
+| `formConfig` | 該站點的評論表單設定，見下表。 |
+
+`formConfig` 欄位：
+
+| 欄位 | 說明 |
+| --- | --- |
+| `emailRequired`、`websiteRequired` | 信箱、網址是否必填。 |
+| `placeholder`、`emptyMessage` | 評論框提示文字、沒有評論時顯示的文字。 |
+| `defaultSort` | 預設排序。 |
+| `lengthLimit` | 內文字數上限（以 Unicode 字元計）。 |
+| `bloggerBadge` | 部落客標誌文字，空字串表示不顯示。 |
+| `bloggerProofEnabled` | 站點是否已設定部落客口令。 |
+| `captcha` | 目前的人機驗證方式：`provider` 為 `off`、`turnstile` 或 `cap`；`sitekey` 為公開的 Site key；使用 Cap 時另有 `instanceUrl`。 |
+| `turnstileSitekey` | 為舊版用戶端保留。僅在 Turnstile 模式下有值。 |
+| `smoji` | 貼圖包是否啟用，以及清單網址。 |
+
+#### 讀取上限
+
+為了避免單一超大討論拖垮服務，每次請求有以下上限，超過任何一項都會回傳 `422`，不回傳截斷的資料：
+
+- 最多 200 則評論（根評論與回覆合計）；
+- 回覆最多 16 層；
+- 回應 JSON 最多 1 MiB；
+- 統計時，同一頁面最多檢查 10,000 則評論。
+
+頁面評論總數超過統計上限時，即使 `pageSize=1` 也會失敗。
+
+此外，清單端點同時最多處理 4 個請求，忙碌時回傳 `503` 和 `Retry-After: 1`；每次請求的資料庫讀取限時 2 秒，逾時回傳 `503`。讀取頻率受 `rate_limit.comment_list` 限制，預設每個 IP 每分鐘 60 次。
+
+#### 逐層讀取 {#cursor}
+
+傳入 `parentId` 時，端點改為只回傳一層直接回覆，不遞迴，也不統計總數。適合自訂前端依需要展開大型討論。
+
+```http
+GET /api/comment/list?siteId=blog&key=/posts/hello-world/&parentId=0&pageSize=20
+GET /api/comment/list?siteId=blog&key=/posts/hello-world/&parentId=101&afterId=120&pageSize=20
+```
+
+| 參數 | 說明 |
+| --- | --- |
+| `parentId` | `0` 表示讀取根評論，正整數表示讀取這則評論的直接回覆（包括已刪除的）。 |
+| `afterId` | 只回傳 ID 大於它的評論，預設 `0`。 |
+| `pageSize` | 1～100，預設 `10`。 |
+
+結果依 ID 遞增排列。這種模式下不能同時傳入 `page` 或 `sort`，否則回傳 `400`。父評論不存在或不屬於該頁面時回傳 `404`。
+
+```json
+{
+  "code": 200,
+  "message": "获取评论成功",
+  "data": {
+    "data": [ { "id": 121, "parent": 101, "...": "..." } ],
+    "parentId": 101,
+    "pageSize": 20,
+    "hasMore": true,
+    "nextAfterId": 140,
+    "timeZone": "Asia/Shanghai",
+    "formConfig": { }
   }
-  ```
+}
+```
 
----
+`hasMore` 為 `true` 時，把 `nextAfterId` 作為下一次請求的 `afterId`。1 MiB 的回應上限同樣適用，超過時可調低 `pageSize` 後重試。
 
-### 提交評論 `POST /api/comment/submit`
-提交一條新的根評論或對已有評論發表回覆。請求體上限為 **80 KiB**。
+### 送出評論
 
-- **請求體 (JSON)**：
-  ```json
-  {
-    "siteId": "blog",
-    "mark": "/posts/hello-world/",
-    "pageTitle": "你好，世界",
-    "parent": 0,
-    "username": "張三",
-    "email": "zhangsan@example.com",
-    "url": "https://example.com",
-    "content": "純文字內文內容",
-    "captchaToken": "0.xxxxxx"
-  }
-  ```
+```http
+POST /api/comment/submit
+Content-Type: application/json
+Origin: https://blog.example.com
+```
 
-- **回應示例 (HTTP 201 Created)**：
-  ```json
-  {
-    "code": 201,
-    "message": "评论提交成功",
-    "data": {
-      "id": 102,
-      "isBlogger": false
-    }
-  }
-  ```
+```json
+{
+  "siteId": "blog",
+  "mark": "/posts/hello-world/",
+  "pageTitle": "你好，世界",
+  "parent": 0,
+  "username": "张三",
+  "email": "zhangsan@example.com",
+  "url": "https://example.com",
+  "content": "纯文本正文",
+  "captchaToken": "..."
+}
+```
 
-- **站長免密發表**：
-  若站點已配置站長通關密語，站長只需將 `username` 設定為通關密語明文，`email` 與 `url` 留空，伺服端校驗通過後會自動賦予站長身分與徽章。
+| 欄位 | 必填 | 說明 |
+| --- | :---: | --- |
+| `siteId` | 是 | 站點 ID。 |
+| `mark` | 是 | 頁面 key，為站內相對路徑，最多 512 個字元，不能是完整網址，不能帶 `?` 或 `#`。 |
+| `pageTitle` | 否 | 文章標題，最多 200 個字元，用於通知。 |
+| `parent` | 否 | 所回覆的評論 ID；根評論傳 `0` 或省略。 |
+| `username` | 是 | 暱稱，最多 80 個字元。 |
+| `email` | 依站點設定 | 信箱，最多 254 個字元。 |
+| `url` | 依站點設定 | 網址，只接受 `http`/`https`，最多 2048 個字元。 |
+| `content` | 是 | 內文，不超過站點的字數上限。 |
+| `captchaToken` | 啟用驗證時 | Turnstile 或 Cap 元件回傳的一次性 token。 |
 
----
+成功時回傳 `201`：
 
-新回覆最多 16 層後代（根為 0），第 17 層回傳 422，提示回覆較上層留言。歷史深鏈與匯入資料不自動修改；200 節點、1 MiB JSON、10,000 節點統計等讀取預算仍然有效。
+```json
+{ "code": 201, "message": "评论提交成功", "data": { "id": 102, "isBlogger": false } }
+```
 
-## 2. 管理端端點（Admin Endpoints）
+部落客發言時，`username` 填部落客口令，`email` 和 `url` 留空。口令相符後，伺服器端以站點的部落客暱稱、信箱和站點 URL 保存，`isBlogger` 回傳 `true`。
 
-管理後台使用登入回應設定的 HttpOnly Cookie，同源請求自動攜帶，登入 JSON 不回傳 token。登入及 Cookie 寫入操作必須提供符合 `admin.allowed_origins` 的 `Origin`；恢復會話 GET 可省略。可信自動化可使用 Cookie jar；`Authorization: Bearer` 也必須使用新版已登記且未撤銷的會話憑證，舊版無狀態 token 不再接受。`EcokuSite` 原有站點墓碑刪除權限不變。
+與送出相關的錯誤：
 
-管理端寫入操作請求體上限為 **16 KiB**。
+| 狀態碼 | 原因 |
+| --- | --- |
+| `400` | 欄位不合法；人機驗證未通過（`请完成验证后再发布。`）；內文中含有不合規的 Smoji 標記。 |
+| `403` | 缺少 `Origin`，或來源不屬於該站點。 |
+| `404` | 站點或父評論不存在。 |
+| `409` | 父評論屬於其他頁面，或父評論已刪除。 |
+| `422` | 回覆層數超過 16 層。 |
+| `503` | 人機驗證服務無法使用。 |
 
-### 會話恢復與登出
+## 管理 API
 
-- `GET /api/admin/session`：回傳原有 `expires_at` 與剩餘 `expires_in`，不續期、不回傳憑證。無效或過期為 401，儲存不可用為 503。
-- `POST /api/admin/logout`：撤銷目前會話並清除 Cookie；成功 200，寫入失敗 503，不可當作已登出。兩者僅限實例管理員。
+管理 API 位於 `/api/admin/`，只在 `admin.enabled: true` 時存在。
 
-### 管理員登入 `POST /api/admin/login`
-- **請求體**：
-  ```json
-  {
-    "username": "admin",
-    "password": "my-strong-password",
-    "captchaToken": "0.xxxxxx"
-  }
-  ```
-- **回應示例 (HTTP 200)**：
-  ```json
-  {
-    "code": 200,
-    "message": "管理员登录成功",
-    "data": {
-      "expires_at": "2026-08-20T20:00:00Z",
-      "expires_in": 28800
-    }
-  }
-  ```
+### 驗證方式
 
-### 取得管理端配置 `GET /api/admin/login-config`
-取得管理端登入介面所需的人機驗證公鑰與參數（無需登入）。
+- **工作階段 Cookie**：`POST /api/admin/login` 成功後，伺服器端會設定名為 `ecoku_admin_session` 的 Cookie（HttpOnly、SameSite=Strict、Path=`/api/admin`，正式環境帶 Secure），有效期 8 小時。登入回應中不包含 token。
+- 登入請求，以及以 Cookie 驗證的非 GET 請求，必須帶有 `admin.allowed_origins` 中的 `Origin`。
+- 以 `Authorization: Bearer <凭据>` 驗證的請求不檢查 `Origin`。憑據必須是目前有效、未登出的工作階段；v0.2.4 之前簽發的舊 token 不再有效。
+- 登入要求 HTTPS，只有迴路位址可以用 HTTP。
 
-### 站點管理介面
-- `GET /api/admin/sites`：取得全部註冊站點列表與配置。
-- `POST /api/admin/sites`：註冊新站點（需提供 `id`, `site_url`, `name`, `allowed_origins` 等）。
-- `GET /api/admin/sites/:siteId`：取得指定站點的詳細配置。
-- `PUT /api/admin/sites/:siteId`：更新指定站點的配置（支援樂觀鎖 `revision`）。
+### 登入與工作階段
 
-### 安全與人機驗證介面
-- `GET /api/admin/captcha`：取得目前人機驗證三態配置（密碼部分掩碼保護）。
-- `PUT /api/admin/captcha`：更新人機驗證三態配置（關閉 / Turnstile / Cap）。
+| 方法與路徑 | 說明 |
+| --- | --- |
+| `GET /api/admin/login-config` | 不需登入。回傳登入頁需要的人機驗證設定（`captcha`、`turnstileSitekey`）。 |
+| `POST /api/admin/login` | 請求本文為 `{"username", "password", "captchaToken"}`。成功時回傳 `{"expires_at", "expires_in"}` 並設定 Cookie。受 `rate_limit.admin_login` 速率限制。 |
+| `GET /api/admin/session` | 回傳目前工作階段的 `expires_at` 與剩餘秒數 `expires_in`，不延長工作階段。 |
+| `POST /api/admin/logout` | 登出目前的工作階段並清除 Cookie。回傳 `503` 時表示登出沒有成功。 |
 
-### 通知管道管理介面
-- `GET /api/admin/notifications`：取得 SMTP 郵件與 Telegram 通知管道配置。
-- `PUT /api/admin/notifications/email`：更新郵件通知配置（SMTP 憑證使用主金鑰 AES-GCM 加密儲存）。
-- `POST /api/admin/notifications/email/test`：發送一封測試郵件驗證 SMTP 連通性。
-- `PUT /api/admin/notifications/telegram`：更新 Telegram Bot 通知配置。
-- `POST /api/admin/notifications/telegram/test`：發送測試 Telegram 訊息驗證 Bot 連通性。
+### 站點
 
-### 評論治理介面
-- `GET /api/admin/sites/:siteId/comments`：管理端多條件分頁查詢評論列表。
-- `GET /api/admin/sites/:siteId/comments/:commentId`：取得單條評論詳情與上下文。
-- `DELETE /api/admin/sites/:siteId/comments/:commentId`：將評論執行墓碑化軟刪除，清空隱私並保留樹狀結構。
-- `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent`：對**沒有任何子評論**的孤立墓碑評論執行物理 DELETE 清除。
+| 方法與路徑 | 說明 |
+| --- | --- |
+| `GET /api/admin/sites` | 所有站點。 |
+| `POST /api/admin/sites` | 新增站點。 |
+| `GET /api/admin/sites/:siteId` | 單一站點。 |
+| `PUT /api/admin/sites/:siteId` | 更新站點。請求本文需帶上讀取時取得的 `revision`；期間被其他工作階段修改過時回傳 `409`。 |
+
+站點欄位：`id`、`site_url`、`name`、`allowed_origins`、`default_sort`、`email_required`、`website_required`、`placeholder`、`comment_limit`、`empty_message`、`smoji_enabled`、`smoji_manifest_url`、`blogger_nickname`、`blogger_email`、`blogger_badge`、`blogger_passphrase`（唯寫）、`revision`。回應中以 `blogger_passphrase_set` 表示是否已設定口令。
+
+### 評論
+
+| 方法與路徑 | 說明 |
+| --- | --- |
+| `GET /api/admin/sites/:siteId/comments` | 評論清單。參數：`status`（`published` 或 `deleted`）、`page`、`pageSize`（預設 20，最大 100）、`sort`（`newest` 或 `oldest`）。 |
+| `GET /api/admin/sites/:siteId/comments/:commentId` | 單則評論，含私人信箱。 |
+| `DELETE /api/admin/sites/:siteId/comments/:commentId` | 墓碑刪除。已刪除的評論再次刪除時回傳成功，`unchanged` 為 `true`。 |
+| `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent` | 徹底刪除。只能用於沒有回覆的墓碑，否則回傳 `409`。 |
+
+兩個刪除端點都受 `rate_limit.comment_delete` 速率限制。
+
+### 人機驗證
+
+| 方法與路徑 | 說明 |
+| --- | --- |
+| `GET /api/admin/captcha` | 目前的設定。不回傳 Secret，以 `secret_set` 表示是否已設定。 |
+| `PUT /api/admin/captcha` | 儲存設定：`provider`（`off`、`turnstile`、`cap`）、`turnstile.sitekey` / `secret`、`cap.instance_url` / `sitekey` / `secret`，以及 `revision`。Secret 留空表示不修改。 |
+
+`/api/admin/turnstile` 是舊版端點，仍然可以使用，新的程式碼請使用 `/api/admin/captcha`。
+
+### 通知
+
+| 方法與路徑 | 說明 |
+| --- | --- |
+| `GET /api/admin/notifications` | 電子郵件與 Telegram 設定。不回傳密碼與 Token，以 `password_set`、`token_set` 表示。 |
+| `PUT /api/admin/notifications/email` | 儲存電子郵件設定：`enabled`、`host`、`port`、`encryption`（`tls` 或 `starttls`）、`username`、`password`、`from_address`、`recipients`、`revision`。 |
+| `POST /api/admin/notifications/email/test` | 以請求中的設定寄送測試郵件。失敗時回傳 `502`，`data.error_code` 為 `timeout`、`authentication_failed`、`tls_failed` 或 `delivery_failed`。 |
+| `PUT /api/admin/notifications/telegram` | 儲存 Telegram 設定：`enabled`、`token`、`targets`、`revision`。 |
+| `POST /api/admin/notifications/telegram/test` | 傳送測試訊息，失敗時同上。 |
+
+兩個測試端點受 `rate_limit.notification_test` 速率限制。
+
+## 站點管理金鑰 {#management-key}
+
+站點管理金鑰用於**可信的伺服器端自動化**，例如在自己的後台系統中刪除違規評論。它不能放進瀏覽器。
+
+1. 在 `app/config.yaml` 的 `sites` 中為站點設定 `management_key_env`，並在 `ecoku.env` 中設定對應的環境變數，值至少 32 個字元，各站點不能相同。見[設定參考](./configuration#sites)。
+2. 請求時帶上：
+
+   ```http
+   Authorization: EcokuSite <管理密钥>
+   ```
+
+管理金鑰**只能**對所屬站點的評論執行墓碑刪除：
+
+```http
+DELETE /api/admin/sites/blog/comments/102
+Authorization: EcokuSite <管理密钥>
+```
+
+它不能讀取評論清單或詳細資訊，不能徹底刪除，也不能存取其他站點或實例設定，這些請求會回傳 `403`。使用管理金鑰同樣要求 `admin.enabled: true`。
+
+`sites` 中的站點設定只在資料庫首次初始化時寫入，但 `management_key_env` 每次啟動都會讀取。既有實例若要啟用管理金鑰，可以在 `sites` 中補寫一個項目：`id` 與後台中既有的站點一致，`site_url` 和 `allowed_origins` 也要填寫，才能通過設定檢查。這個項目的其他欄位不會覆寫後台中的設定。

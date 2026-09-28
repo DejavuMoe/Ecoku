@@ -1,145 +1,102 @@
-# Core Concepts & Mechanisms
+# How it works
 
-This document covers Ecoku's internal models, data structures, and architectural algorithms.
+This page explains how Ecoku organizes comments, how it handles deletion and identity, and what data it stores. Read it before you deploy and embed Ecoku to avoid most surprises.
 
----
+## Sites and pages {#page-key}
 
-## Threaded Comment and Pagination Model
+Ecoku uses two values to identify "the comment section of one post":
 
-Ecoku balances deep tree-structured discussions with mobile readability using an **Up to 16 Reply Levels + Max 3-Level Indentation** model.
+- **Site ID** (`siteId`): set when you register a site in the admin console. One instance can have multiple sites, and their comments, allowed origins, and settings are completely separate.
+- **Page key** (`pageKey`): provided by the embed code. It is usually the post's path on the site, such as `/posts/hello-world/`.
 
-### 1. Visual and Semantic Layers
+Within one site, pages with the same page key share one comment section. A page key must be a relative path on the site, at most 512 characters long. It cannot be a full URL, and it cannot contain a `?` query string or a `#` fragment.
 
-```mermaid
-graph TD
-    Root["Root Comment 1 (aria-level=1, indent: 0)"]
-    Child1["Child 1.1 (aria-level=2, indent: 22px)"]
-    Child2["Child 1.1.1 (aria-level=3, indent: 44px)"]
-    Child3["Child 1.1.1.1 (aria-level=4, indent: 66px cap)"]
-    Anchor["@Child 1.1.1 (Context anchor link)"]
+::: warning Do not change a page key once it is in use
+Comments are stored by page key. If you later change your blog's permalink format, the page keys of old posts change with it, and their existing comments no longer appear (the data is still in the database). Pick a value that will not change as the page key.
+:::
 
-    Root --> Child1
-    Child1 --> Child2
-    Child2 --> Child3
-    Child3 -.->|Visual compensation| Anchor
-```
+## Threads and pagination {#threads}
 
-- **Semantic Depth**: `aria-level` and `data-depth` mirror the actual nesting depth in the database for assistive technologies.
-- **Visual Indentation**: Calculated as `min(depth, 3)` (up to 66px on desktop, 42px on mobile).
-- **Context Anchors**: For comments at depth $\ge 3$, an `@Author` anchor is rendered in the meta header linking directly to the immediate parent comment.
+Comments form a tree: a root comment can have replies, and replies can have replies of their own.
 
-### 2. Root-Thread Pagination
+- **Depth**: a root comment is at depth 0, and new replies can go down to depth 16. A reply to a comment at depth 16 is rejected, with a message asking the visitor to reply to a comment higher up.
+- **Indentation**: indentation grows with depth up to depth 3. Deeper replies line up with depth 3. From depth 3 on, the nickname line shows a clickable `@replied-to-name` that points to the comment being replied to. This keeps deep discussions from being squeezed into a narrow strip on phones.
+- **Collapsing**: a comment with replies has a `[-]` next to it. Click it to collapse the whole branch, which then shows "N replies collapsed" (已折叠 N 条回复).
 
-- `page` and `pageSize` operate strictly on root comments (`parent_id IS NULL`).
-- Within the resource budget, a successful page includes **all public descendants** of its roots. Exceeding 200 nodes, 16 descendant levels, 1 MiB JSON, or the 10,000-record count probe returns 422, never a truncated tree. The current SDK shows a load failure; custom integrations can use the [single-level cursor API](../reference/api.md) on demand.
-- Pagination switches the entire discussion batch rather than appending disconnected "load more" items.
+Pagination applies only to root comments. Each page shows a number of root comments (10 by default) and returns them **together with all of their replies**. Turning a page swaps in a whole batch of discussions, so replies are never split onto the next page.
 
----
+To keep a single huge discussion from overwhelming the service, one list request has limits: at most 200 comments, 16 levels, and a 1 MiB response. When counting totals, at most 10,000 comments on the same page are checked. If any limit is exceeded, the server returns an error instead of truncated data, and the comment section shows that loading failed. Normal blog comments rarely reach these limits. If you do hit them, lower the number of root comments per page, or use the [level-by-level API](../reference/api#cursor) in a custom frontend.
 
-## Tombstone Lifecycle (Soft Delete & Hard Purge)
+## Deletion {#deletion}
 
-```mermaid
-stateDiagram-v2
-    [*] --> Published: Visitor submits comment
-    Published --> Tombstone: Soft-delete by Admin or Site Key
-    note right of Tombstone
-      Wipes nickname, email, URL, and body
-      Sets is_blogger = 0
-      Preserves ID, parent_id, and timestamps
-      Displays "[该评论已删除]"
-    end note
-    Tombstone --> Purged: Hard purge (only if no child replies exist)
-    note right of Purged
-      Physically deleted from SQLite
-      Requires Instance Admin Session
-    end note
-    Purged --> [*]
-```
+The admin console offers two kinds of delete. Neither can be undone.
 
-1. **Soft Delete (Tombstone)**:
-   - Erases author nickname, email, website, and raw body. Sets `deleted_at`.
-   - Preserves `id` and `parent_id` so child replies retain their context.
-   - Public DTO returns `deleted: true` with text `[该评论已删除]`.
-   - Replies to tombstones are rejected.
-2. **Hard Purge**:
-   - Only allowed if the tombstone has **no descendant comments**.
-   - Accessible only by Instance Admin (site management keys cannot hard-purge).
+**Tombstone delete**: clears the comment's nickname, email address, website, and body, but keeps its position and time in the discussion. On public pages it shows as "Deleted" (已删除) and "[This comment has been deleted]" ([该评论已删除]). Its replies stay as they are, and nobody can reply to it anymore. Deleting one comment this way does not strip the rest of the thread of its context.
 
----
+**Permanent delete**: removes a tombstone from the database. Only a tombstone with **no replies at all** can be permanently deleted.
 
-## Encrypted Visitor Identity Storage
+## Visitor identity {#visitor-identity}
 
-Ecoku stores visitor credentials strictly on the client side using WebCrypto AES-GCM:
+Visitors do not need to register to comment. They fill in three fields:
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Visitor
-    participant SDK as Browser SDK
-    participant IDB as Local IndexedDB
+| Field | Required | Public |
+| --- | --- | --- |
+| Nickname | Required, at most 80 characters | Public |
+| Email | Required by default; a site setting can make it optional | Not public; used only for reply notifications |
+| Website | Optional by default; can be made required; only `http://` or `https://` is accepted | Public, as a link on the nickname |
 
-    Visitor->>SDK: Submit nickname & email
-    SDK->>SDK: WebCrypto generates 256-bit AES-GCM key
-    SDK->>SDK: Encrypt profile with random IV
-    SDK->>IDB: Write ciphertext & key (TTL = 7 Days)<br/>Scoped by serverURL + siteId
-    Note over SDK,IDB: Silent TTL expiration after 7 days<br/>Never written to localStorage / Cookies
-```
+The identity a visitor enters in the root comment box is reused automatically for replies. When a visitor clicks "Reply" (回复) under a comment directly, any missing identity fields are filled in inside that reply box, without jumping back to the top of the page.
 
-- **Isolated Namespace**: Scoped by `serverURL + "::" + siteId`.
-- **Encrypted Local Storage**: Stored in IndexedDB; never written to `localStorage`, `sessionStorage`, or cookies.
-- **7-Day Automatic TTL**: Saved identities are ignored after 7 days. Stored ciphertext and keys are not automatically deleted; use the browser’s site-data controls to remove them.
+After a successful post, the browser remembers this identity for 7 days so the visitor does not have to enter it again:
 
----
+- It is stored in the browser's IndexedDB, encrypted with a non-extractable AES-GCM key. It is not written to cookies, localStorage, or the URL.
+- It is stored separately per Ecoku server address and site ID, and is not shared between sites.
+- It expires after 7 days. If the browser does not support it, or the data is corrupted or expired, the comment box starts out empty. Commenting still works.
+- Clearing the browser's site data deletes it. The comment section has no separate "Forget me" (忘记我) button.
 
-## Blogger Passphrase Authentication
+## Blogger identity {#blogger}
 
-Site owners authenticate without entering private emails on public devices:
+The blogger does not need a separate account. After you set the blogger nickname, email address, and passphrase for a site in the admin console, the blogger posts by entering the passphrase in the **nickname field** of the comment section and leaving the email and website fields empty. When the server recognizes the passphrase, it:
 
-- Configured as a bcrypt hash in `sites.blogger_passphrase_hash`.
-- **Usage**: The blogger simply types their secret passphrase into the **Nickname** input field.
-- **Server Verification**: The server verifies the hash, replaces author fields with the configured blogger profile, sets `is_blogger = 1`, and returns the public badge.
-- **Historical backfill (v0.2.3)**: Limited to the original schema v5 migration and the empty-site Twikoo import transaction. Saving settings, first setting a passphrase or rotating it does not grant blogger status retroactively. Existing flags are preserved.
+- Replaces the comment's nickname with the blogger nickname, the website with the site URL, and the email address with the blogger email;
+- Marks the comment as a blogger comment, and the page shows a badge after the nickname (`[博主]` by default);
+- The browser clears the nickname field and does not save the passphrase as the identity.
 
----
+The blogger mark is written when the comment is saved and is never recalculated. Changing the blogger nickname or the passphrase does not change the mark on existing comments.
 
-## Transactional Outbox Notifications
+Only two cases backfill the blogger mark on existing comments by matching "nickname equals the blogger nickname and email equals the blogger email (case-insensitive)": the one-time migration when upgrading from an older release to schema v5, and the [first Twikoo import](../self-hosting/twikoo).
 
-Ecoku guarantees notification delivery by enqueuing notification events in the same SQLite transaction that commits the comment:
+## Plain text
 
-```mermaid
-flowchart TD
-    A["Visitor Submits Comment"] --> B["Begin SQLite Transaction"]
-    B --> C["Insert comments Record"]
-    B --> D["Compute Matrix & Enqueue notification_outbox"]
-    D --> E["Commit Transaction"]
-    E --> F["Single-Worker Polling Outbox"]
-    F --> G{"Delivery Channel"}
-    G -->|SMTP| H["Send Email (TLS / STARTTLS)"]
-    G -->|Telegram Bot| I["Invoke Telegram Bot API"]
-    H --> J["Update Outbox Status (Sent / Retry)"]
-    I --> J
-```
+Comment bodies and nicknames are always displayed as plain text:
 
-| Scenario | Blogger Channels (Email/TG) | Recipient Visitor Email |
-| :--- | :---: | :---: |
-| **Visitor posts root comment** | ✅ Sent | — |
-| **Visitor replies to visitor** | ✅ Sent | ✅ Sent |
-| **Visitor replies to blogger** | ✅ Sent (once) | — |
-| **Blogger posts root comment** | ❌ Not sent | — |
-| **Blogger replies to visitor** | ❌ Not sent | ✅ Sent |
-| **Blogger replies to blogger** | ❌ Not sent | ❌ Not sent |
-| **Self-reply with same email** | — | ❌ Not sent |
+- HTML tags are displayed literally as text and are not parsed;
+- Markdown is not rendered, and URLs are not turned into links automatically;
+- Line breaks are preserved.
 
----
+The only exception is [Smoji stickers](../integration/smoji). When a site has a sticker pack enabled, `![smoji:name](image-url)` that has the right format and the same origin as the sticker manifest is displayed as an image. Everything else is displayed as text.
 
-## Session & Dynamic CSP Security Model
+A visitor's website appears only as a link on their nickname, with `rel="nofollow ugc noopener noreferrer"`.
 
-1. **Revocable administrator sessions**:
-   - Administrator sessions use an HttpOnly cookie; SQLite stores only the credential digest and expiry. Sessions expire exactly eight hours after login. Reloading or reopening restores a valid session without extending its deadline. Logout revokes the current session on the server; a failed logout keeps the current screen and offers retry. Credentials do not enter JavaScript, localStorage, sessionStorage or URLs.
-   - Production uses HTTPS and a Secure, HttpOnly, SameSite=Strict, host-only cookie scoped to `/api/admin`. Only explicitly allowed loopback HTTP development origins may omit Secure. Rotating the administrator password hash or signing key and restarting invalidates existing sessions.
-2. **Dynamic Content-Security-Policy (CSP) Convergence**:
-   - When self-hosted Cap is active, the server dynamically permits Cap's HTTPS instance origin, WASM, Blob Worker, and nonce-scoped `'unsafe-eval'` required by Cap's sandboxed instrumentation.
-   - When switching to Turnstile or disabling CAPTCHA, the server immediately strips Cap's origins and evaluation directives, reverting to a strictly locked-down CSP baseline.
+## Data stored and made public {#data}
 
+For each comment, the database stores: site ID, page key, post title, parent comment, nickname, email address, website, body, blogger mark, deletion time, and creation and update times.
 
-UTF-8 encoding must also fit within 72 bytes. Passphrases are never truncated; existing bcrypt hashes remain valid.
+Public APIs return only: comment ID, site ID, page key, parent comment ID, nickname, website, body, whether it is a blogger comment, whether it is deleted, and the times. **Email addresses never appear in any public API.**
+
+Ecoku does not store visitor IP addresses, User-Agents, or geolocation, and does not record them in logs. IP addresses are held briefly in memory for rate limiting only and are cleared when the process restarts. The comment section does not call any third-party avatar, analytics, or IP lookup service.
+
+The visitor's browser connects directly to a third party in these cases:
+
+- When Turnstile or Cap is enabled, to load the verification widget;
+- When Smoji is enabled, to load sticker images from the server that hosts the manifest.
+
+## Origin checks and rate limits
+
+Each site registers its "allowed origins" in the admin console. When a browser reads comments, origins that are not on the list are rejected. When a browser submits a comment, the request must carry a registered origin, or it is rejected outright. As a result, the comment section works only on websites you have registered.
+
+Submitting, reading, deleting, and admin sign-in are all rate limited per IP. The defaults are 5 submissions and 60 reads per minute. Behind a reverse proxy, you need to configure [`trusted_proxies`](../self-hosting/reverse-proxy#trusted-proxies) correctly. Otherwise all visitors share a single quota.
+
+## Time and time zone
+
+Comment times are displayed in `YYYY-MM-DD HH:mm` format. The time zone comes from the container's `TZ` environment variable (set in `ecoku.env`). Hovering over a time shows the time zone name and offset, such as `Asia/Shanghai UTC+8`.

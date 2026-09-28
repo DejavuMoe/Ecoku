@@ -3,20 +3,37 @@
 ## 事实来源
 
 - 实现以当前源码为准；产品/安全/隐私以 `docs/internal/constraints.md` 为准；面向操作者的部署与接入以
-  VitePress 源文为准（默认简体中文：`docs/guide/`、`docs/self-hosting/`、`docs/integration/`）。
+  VitePress 源文为准（默认简体中文：`docs/guide/`、`docs/self-hosting/`、`docs/integration/`、`docs/reference/`）。
   `docs/progress/` 只是历史验收，不约束当前实现，也不进入文档站点。
 - 评论区基线 `designs/plain-thread-comments/index-v17.html`；管理端站点配置以
   `designs/admin-moderation/index-v11.html` 为准（系统衬线栈），安全与登录验证以 `index-v12.html` 为准，
   评论管理/通知设置仍沿用 v5。生产管理端不得展示通知判定预览或通知模板预览。
 - 边界不清时先查源码和上述文档，再集中向用户确认。不要把原型 mock、测试文案或设计标注带进生产。
 - 文档站点在 `docs/`（VitePress，pnpm workspace 包 `ecoku-docs`）。本地预览 `pnpm docs:dev`。
-  本地开发见 `docs/contribute/local-dev.md`。`docs/internal/` 不进入站点导航。
+  本地开发见 `docs/contribute/local-dev.md`，文档站点自身的发布见 `docs/contribute/docs-deploy.md`。
+  `docs/internal/`、`docs/progress/`、`docs/contribute/` 不进入站点。
 - 改运行时、部署契约、接入 markup、配置键、环境变量或用户可见行为后，按改动同步文档，不要留到发版才补：
-  产品/隐私边界写 `docs/internal/constraints.md`；部署、Compose、环境变量、备份和升级写
-  `docs/self-hosting/`（发版时在 `docs/self-hosting/upgrades/` 增加该 tag 页面），并同步
-  `docs/en/`、`docs/zh-hant/`、`docs/ja/` 对应路径与 `deploy/` 模板；公开接入片段写根 `README.md`、
+  产品/隐私边界写 `docs/internal/constraints.md`；部署、Compose、备份、升级、通知与人机验证写
+  `docs/self-hosting/`（发版时在 `docs/self-hosting/upgrades/` 增加该 tag 页面）；配置键与环境变量写
+  `docs/reference/configuration.md`，CLI 子命令写 `docs/reference/cli.md`，HTTP 接口写 `docs/reference/api.md`；
+  以上均同步 `docs/en/`、`docs/zh-hant/`、`docs/ja/` 对应路径与 `deploy/` 模板；公开接入片段写根 `README.md`、
   `examples/` 与 `docs/integration/`；未发版行为只追加 `CHANGELOG.md` 的 `[Unreleased]`，不得改写已发布章节。
   本文件只保留约定。面向读者的文档用操作说明，不要把本文件的约束口吻或提示词写进站点文案。
+
+## 文档写作
+
+- 简体中文（`docs/` 根下各目录）是源文；繁中、英文、日文从简中翻译，文件集合、标题顺序、表格与代码块保持一致。
+  新增或删除页面时，同步四套 locale，并在 `docs/.vitepress/config/shared.ts` 的 sidebar 与四个 locale 配置的 `copy` 中登记。
+- 被链接的标题必须带显式 ASCII 锚点（如 `## 配置 trusted_proxies {#trusted-proxies}`），链接只指向这些锚点；
+  翻译时保留 `{#id}` 与链接目标不变，不要依赖中文标题自动生成的 slug。
+- 管理端与评论区界面只有简体中文。所有 locale 引用界面文案、服务端报错或 CLI 输出时保留原文（英、日文附释义），
+  不要把译名写成界面上并不存在的标签。
+- 写之前先核对源码：默认值、上限、状态码、字段名、报错文案以代码为准，不从旧文档或原型照搬。
+  不确定的行为不写，或写明“取决于…”；不要为显得完整补写未经证实的细节。
+- 文风：先说读者要做什么、会看到什么，再讲原理；不用营销形容词、emoji 和“强大、极致、无缝、完美”之类空话；
+  同一件事只在一处详写，其他页面链接过去。本地若有 `.agents/skills/chinese-writing/`（已 gitignore），改写中文文档时按它执行。
+- 升级说明页统一结构：发布日期 / schema / 镜像 → 变更 → 兼容性 → 升级 → 回滚；通用步骤链接 `upgrade#steps`，
+  不在每页重复整段脚本。发版时同时更新 `upgrade.md` 的版本列表，并把 `shared.ts` 中的“最新”标记移到新版本。
 
 ## 产品边界
 

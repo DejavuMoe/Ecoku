@@ -1,259 +1,97 @@
-# 後台管理配置
+# 管理後台
 
-管理後台位於實例的 `/admin/` 路徑。
+管理後台位於 `https://ecoku.example.com/admin/`，用來註冊站點、處理評論、設定通知和人機驗證。一個實例只有一個管理員帳號，可以管理所有站點。
 
----
+## 登入
 
-## 1. 可撤銷管理員會話
+使用者名稱和密碼分別來自 `ecoku.env` 中的 `ECOKU_ADMIN_USERNAME`，以及產生密碼雜湊時輸入的密碼。如果啟用了人機驗證，登入頁也會顯示驗證元件。
 
-管理員會話使用 HttpOnly Cookie；SQLite 僅保存憑證摘要與到期時間。登入後固定 8 小時，重新整理或關閉重開可恢復有效會話，不延長期限。主動登出由服務端撤銷目前會話；登出失敗保留目前畫面並提示重試。憑證不進入 JavaScript、localStorage、sessionStorage 或 URL。
+登入需要滿足兩個條件，否則會被拒絕：
 
-正式環境使用 HTTPS、Secure、HttpOnly、SameSite=Strict、host-only Cookie，路徑為 `/api/admin`。只有明確允許的回環 HTTP 開發來源可省略 Secure。輪換管理員密碼雜湊或簽名金鑰並重啟後，舊會話失效。
+- 透過 HTTPS 存取。只有 `localhost`、`127.0.0.1` 這類迴路位址可以用 HTTP，供本機開發使用。
+- 瀏覽器網址列的來源已寫在 `app/config.yaml` 的 `admin.allowed_origins` 中。
 
----
+登入後工作階段固定維持 8 小時：重新整理頁面、關閉再開啟瀏覽器都不需要重新登入，但操作也不會延長這 8 小時。到期後頁面會提示重新登入。點擊「退出登录」會在伺服器端登出目前的工作階段；如果登出請求失敗，頁面會保留並提示重試，不會假裝已經登出。
 
-## 2. 站點管理
-- **站點 ID**：唯一識別碼，建立後永久唯讀。
-- **規範站點 URL**：產生原文連結的基礎 URL。
-- **允許來源 (Allowed Origins)**：精確的 CORS 白名單。
-- **表單必填項**：獨立設定信箱與網站是否必填。
-- **Smoji 貼圖**：支援配置遠端 HTTPS `smoji.json` 清單。
+工作階段憑據保存在只傳送到 `/api/admin` 的 HttpOnly Cookie 中，頁面腳本讀不到它。更換管理員密碼或 `ECOKU_ADMIN_TOKEN_KEY` 並重建容器後，所有舊的工作階段立即失效。
 
----
+如果人機驗證設定錯誤導致無法登入，請參閱[人機驗證](./captcha#disable)。
 
-## 3. 站長身分與口令（Passphrase）
-- 設定站長暱稱、私有信箱與 12～80 字元的站長口令。
-- 前台評論時，站長只需在暱稱框輸入口令，即可免密完成身分認證。
+## 介面
 
-儲存、首次設定或輪換口令不回填歷史博主標記；僅原 schema v5 遷移與首次 Twikoo 匯入保留回填。
+頂端有四個頁面：
 
----
+- **评论管理**：檢視、刪除目前站點的評論。
+- **站点管理**：新增和編輯站點。
+- **通知设置**：電子郵件與 Telegram 通知，對整個實例生效。
+- **安全**：人機驗證，對整個實例生效。
 
-## 4. 評論治理
-- **墓碑軟刪除**：抹除個人資訊並保留結構，顯示 `[该评论已删除]`。
-- **徹底清除**：僅在墓碑沒有任何子回覆時允許物理刪除。
+頂端的站點選擇器決定「评论管理」顯示哪個站點的評論。
 
----
+## 註冊站點 {#sites}
 
-## 5. 安全與人機驗證（Captcha） {#人機驗證}
+一個「站點」對應一個接入評論區的網站。在「站点管理」點擊「新增站点」，填寫：
 
-在「安全」視圖中，可為整個實例配置統一生效的機器人驗證（三態單選切換），同時保護**訪客評論提交**與**管理後台登入**：
+| 欄位 | 說明 |
+| --- | --- |
+| 站点 ID | 接入程式碼中的 `data-site-id`。以字母或數字開頭，可包含字母、數字、`.`、`_`、`-`，最多 100 個字元。**建立後無法修改。** |
+| 站点 URL | 網站的標準網址，例如 `https://blog.example.com`。通知郵件和後台的「查看原评论」會以它加上頁面路徑組出文章連結。 |
+| 站点名称 | 顯示在後台和通知郵件中，最多 120 個字元。留空時使用站點 URL 的網域。 |
+| 允许来源 | 可以載入這個站點評論區的來源，每行一個，最多 32 個。見下文說明。 |
+| 评论排序 | 訪客開啟評論區時的預設排序：最新評論或最早評論。訪客可以臨時切換。 |
+| 字段要求 | 信箱是否必填（預設必填），網站是否必填（預設選填）。暱稱一律必填。 |
+| 评论占位文案 | 評論框中的提示文字，1～80 個字元，預設為「写下评论（仅支持纯文本）」。 |
+| 评论长度上限 | 評論內文最多幾個字元，1～10000，預設 1000。以 Unicode 字元計數，一個漢字或假名算一個。 |
+| 无评论文案 | 還沒有評論時顯示的文字，1～240 個字元，可以換行。 |
 
-```mermaid
-graph TD
-    subgraph Provider["安全驗證提供方（三態單選）"]
-        P1["關閉 (Off)"]
-        P2["Cloudflare Turnstile"]
-        P3["開源自託管 Cap"]
-    end
+### 允許來源
 
-    subgraph Protection["雙向攔截保護"]
-        Visitor["訪客評論提交 (/api/comment/submit)"]
-        Admin["管理後台登入 (/api/admin/login)"]
-    end
+「來源」是 `协议://域名[:端口]`，不含路徑。評論區所在頁面的來源必須列在這裡，否則瀏覽器讀取和送出評論都會被拒絕。
 
-    subgraph Verification["伺服端校驗"]
-        VerifyToken["校驗 Token（不主動附加客戶端 IP）<br/>(AES-256-GCM 密文儲存金鑰)"]
-        Pass["放行通過"]
-        Reject["拒絕請求 (400/403)"]
-    end
+- `https://blog.example.com` 與 `https://www.blog.example.com` 是兩個不同的來源，兩個網域都能存取部落格時要兩個都寫上。
+- 在本機預覽部落格時，把 `http://localhost:1313` 這類位址也加進來，上線後可以刪除。
+- 不能填寫管理後台自己的來源（`admin.allowed_origins` 中的位址），兩者必須分開。
 
-    P2 -->|啟用| Visitor
-    P2 -->|啟用| Admin
-    P3 -->|啟用| Visitor
-    P3 -->|啟用| Admin
-    Visitor --> VerifyToken
-    Admin --> VerifyToken
-    VerifyToken -->|有效| Pass
-    VerifyToken -->|無效| Reject
-```
+儲存站點時，如果有人在另一個瀏覽器分頁中同時修改過這個站點，會提示「站点配置已被其他会话更新」，重新整理後再編輯即可。
 
-> [!NOTE]
-> Turnstile 與 Cap 的 Secret Key 均使用實例主金鑰以 AES-256-GCM 密文儲存，管理後台介面永不回顯明文。切換或關閉提供方時，已儲存的金鑰配置不會遺失。
+### 貼圖包
 
-### 1. Cloudflare Turnstile
+勾選「启用表情包」並填寫一個 Smoji 清單網址後，評論框會出現「表情」按鈕。清單網址必須是 HTTPS（迴路位址除外）。貼圖圖片由清單所在的伺服器直接提供給訪客瀏覽器，這台伺服器看得到訪客的 IP。清單格式和託管方式見 [Smoji 貼圖包](../integration/smoji)。
 
-伺服器端驗證請求不跟隨 HTTP 重新導向；收到重新導向時視為驗證服務無法使用，評論送出或管理員登入不會放行。
+### 部落客身分 {#blogger}
 
-[Cloudflare Turnstile 官方文件](https://developers.cloudflare.com/turnstile/)
+填寫部落客暱稱、部落客信箱和部落客口令後，你就可以在自己的部落格評論區以部落客身分發言：在**暱稱欄**中輸入口令，信箱和網址留空，直接發布。伺服器端辨識出口令後，會把這則評論的暱稱換成部落客暱稱，網址換成站點 URL，並在暱稱後顯示評論區標誌（預設為 `[博主]`）。
 
-- 前往 Cloudflare 儀表板建立 Turnstile Widget（推薦託管模式 Managed 或非互動式 Non-interactive）。
-- 在 **Domains** 網域允許清單中，新增部落格前端網域（如 `blog.example.com`）與 Ecoku 服務端網域（如 `ecoku.example.com`）。
-- 複製產生的 `Site Key` 與 `Secret Key`，在 Ecoku 管理後台「安全」頁面中選擇 Turnstile 並填入儲存。
-- 評論區與後台登入頁將自動渲染 300px 緊湊無感驗證槽位。
+| 欄位 | 說明 |
+| --- | --- |
+| 博主昵称 | 公開顯示的名稱，最多 80 個字元。 |
+| 博主邮箱 | 不公開。作為部落客評論的私人信箱保存；Twikoo 匯入時與暱稱一起用來辨識歷史部落客評論。部落客通知會寄到「通知设置」中的收件者，而不是這個信箱。 |
+| 博主口令 | 12～80 個字元，UTF-8 編碼不超過 72 位元組，不能換行。只保存 bcrypt 雜湊，儲存後不會再顯示；已設定時留空表示不修改。 |
+| 评论区标志 | 顯示在部落客暱稱後的文字，最多 16 個字元，留空則不顯示。 |
 
-### 2. 開源自託管 Cap (Capjs)
+暱稱與信箱要麼都填，要麼都留空。兩者都填時必須設定口令；把暱稱和信箱清空即關閉部落客身分，口令也會一併清除。
 
-[Cap (Capjs) 官方網站](https://capjs.org/) · [GitHub 倉庫](https://github.com/tiago2/cap)
+::: warning 口令輸入錯誤時
+口令不相符時，暱稱欄中的文字就只是一個普通暱稱。如果站點把信箱設為選填，這則評論會以口令文字作為暱稱公開發布。發現後請在「评论管理」中刪除，並更換口令。
+:::
 
-Cap 是一款現代、輕量、注重隱私且完全開源的自託管驗證碼服務。Ecoku 深度支援 Cap，並根據安全模式動態收斂管理端 CSP 策略（精確放行 Cap Origin、WASM、Blob Worker 與必要的 eval 權限）。
+設定或更換口令不會改變既有評論的部落客標記，回填規則見[運作方式](../guide/concepts#blogger)。
 
-#### Cap 自託管部署參考
+## 管理評論
 
-假設部署在宿主機 `~/capjs` 目錄下，使用 Valkey 作為高速快取後端：
+「评论管理」依狀態分為「已发布」和「已删除」兩個清單，每頁 20 則，可以切換為最新或最早送出的優先。點擊一則評論可檢視詳細資訊：私人信箱、訪客網站、文章標題、頁面 key、送出時間和父評論。
 
-```bash
-# 1. 建立 Cap 與 Valkey 資料目錄
-mkdir -p ~/capjs/data/cap ~/capjs/data/valkey && cd ~/capjs
+「查看原评论」會在新分頁中開啟文章，並定位到這則評論（`站點 URL + 頁面 key + #ecoku-comment-評論ID`）。
 
-# 2. 配置 Valkey 運行權限（UID/GID 999:1000）
-sudo chown -R 999:1000 data/valkey
-chmod 750 data/cap data/valkey
-```
+### 墓碑刪除
 
-使用 `cat <<'EOF'` 寫入 `~/capjs/compose.yml`（固定安全穩定版本）：
+「墓碑删除」會清空這則評論的暱稱、信箱、網址和內文，但保留它在討論中的位置。公開頁面上顯示為「已删除」和「[该评论已删除]」，它下面的回覆原樣保留，也不能再回覆它。這個動作無法復原。
 
-```bash
-cd ~/capjs
+### 徹底刪除
 
-cat <<'EOF' > compose.yml
-services:
-  cap:
-    image: tiago2/cap:3.1.8
-    restart: unless-stopped
-    init: true
-    stop_grace_period: 30s
-    depends_on:
-      valkey:
-        condition: service_healthy
-    ports:
-      - "127.0.0.1:3000:3000"
-    environment:
-      ADMIN_KEY: ${ADMIN_KEY:?ADMIN_KEY is required}
-      REDIS_URL: redis://valkey:6379
-      SERVER_PORT: "3000"
-      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required}
-      ENABLE_ASSETS_SERVER: "true"
-      WIDGET_VERSION: ${WIDGET_VERSION:?WIDGET_VERSION is required}
-      WASM_VERSION: ${WASM_VERSION:?WASM_VERSION is required}
-    volumes:
-      - ./data/cap:/usr/src/app/data
-    networks:
-      - public
-      - data
-    read_only: true
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    tmpfs:
-      - /tmp:rw,noexec,nosuid,nodev,size=64m
-    healthcheck:
-      test:
-        - CMD
-        - bun
-        - -e
-        - "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+在「已删除」清單中，如果一則墓碑下面**沒有任何回覆**，就可以「彻底删除」，把它從資料庫中移除。仍有回覆的墓碑不能徹底刪除，以免回覆失去上下文。
 
-  valkey:
-    image: valkey/valkey:9.1.1-alpine
-    restart: unless-stopped
-    stop_grace_period: 30s
-    user: "${VALKEY_UID:?VALKEY_UID is required}:${VALKEY_GID:?VALKEY_GID is required}"
-    command:
-      - valkey-server
-      - --save
-      - "60"
-      - "1"
-      - --appendonly
-      - "yes"
-      - --appendfsync
-      - everysec
-      - --loglevel
-      - warning
-      - --maxmemory-policy
-      - noeviction
-    volumes:
-      - ./data/valkey:/data
-    networks:
-      - data
-    read_only: true
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    tmpfs:
-      - /tmp:rw,noexec,nosuid,nodev,size=32m
-    healthcheck:
-      test:
-        - CMD
-        - valkey-cli
-        - ping
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 5s
+## 通知與人機驗證
 
-networks:
-  public:
-  data:
-    internal: true
-EOF
-```
-
-使用 `cat <<'EOF'` 寫入 `~/capjs/.env` 環境變數：
-
-```bash
-cd ~/capjs
-
-cat <<'EOF' > .env
-CAP_IMAGE=tiago2/cap:3.1.8
-VALKEY_IMAGE=valkey/valkey:9.1.1-alpine
-
-# Cap 管理控制台存取金鑰（建議使用 openssl rand -hex 32 產生）
-ADMIN_KEY=your_secure_admin_key_here
-
-# 允許跨域呼叫的 Origin（包含部落格前台與 Ecoku 評論服務網域）
-CORS_ORIGIN=https://blog.example.com,https://ecoku.example.com
-
-# 靜態 Widget 與 WASM 資源版本鎖定
-WIDGET_VERSION=0.1.56
-WASM_VERSION=0.0.7
-
-# Valkey 容器使用者權限
-VALKEY_UID=999
-VALKEY_GID=1000
-EOF
-
-chmod 600 .env
-```
-
-#### Cap 反向代理範例 (Caddy)
-
-Cap 容器監聽在本地 `127.0.0.1:3000`，透過 Caddy 暴露 HTTPS（例如網域 `cap.example.com`）：
-
-```caddyfile
-cap.example.com {
-    reverse_proxy 127.0.0.1:3000
-}
-```
-
-#### 對接到 Ecoku 後台
-
-1. 啟動 Cap 服務：`cd ~/capjs && sudo docker compose pull && sudo docker compose up -d`。
-2. 瀏覽器開啟 `https://cap.example.com`，輸入 `.env` 中的 `ADMIN_KEY` 登入 Cap 控制台。
-3. 建立新 Key，將前台部落格網域（如 `blog.example.com`）與 Ecoku 網域（如 `ecoku.example.com`）加入允許 Host 清單。
-4. 取得該 Key 的 `Site Key` 與 `Secret Key`。
-5. 開啟 Ecoku 管理後台 `/admin/` ->「安全」：
-   - 選擇 **開源自託管 Cap**
-   - **實例位址**：`https://cap.example.com`（必須為 HTTPS 規範 URL，結尾不帶斜線）
-   - **Site Key**：填入 Cap 產生的 Site Key
-   - **Secret Key**：填入 Cap 產生的 Secret Key
-6. 點擊「儲存設定」，系統即可無縫切換為 Cap 驗證碼防護。
-
----
-
-## 6. CLI 救磚命令
-
-```bash
-sudo docker compose down
-sudo docker compose run --rm --no-deps ecoku captcha disable
-sudo docker compose up -d
-```
-
-
-UTF-8 編碼同時不得超過 72 位元組，不截斷口令，既有 bcrypt 雜湊仍有效。
+- [通知](./notifications)：設定 SMTP 電子郵件與 Telegram 機器人，有新評論時通知部落客，訪客被回覆時寄送電子郵件通知對方。
+- [人機驗證](./captcha)：在關閉、Cloudflare Turnstile 和自託管 Cap 三者之間選擇，同時保護評論送出和後台登入。

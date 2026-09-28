@@ -1,38 +1,35 @@
-# Reverse Proxy & Rate Limiting
+# Reverse proxy
 
-Ecoku listens on `:12123` inside the container; Compose publishes the port only on the host loopback `127.0.0.1:12123`. In production, a front-end web server (such as Caddy or Nginx) must terminate HTTPS and reverse-proxy requests to the container port.
+The Ecoku container serves plain HTTP only, on `127.0.0.1:12123` on the host. For public access, Caddy or Nginx on the same host terminates HTTPS and forwards requests to this port.
 
----
+This page covers two tasks:
 
-## Network Topology Model
+1. Set up HTTPS forwarding so that `https://ecoku.example.com` is reachable;
+2. Let Ecoku see each visitor's real IP address, so rate limits apply per person instead of all visitors sharing one quota.
+
+## Request path
 
 ```mermaid
-flowchart TD
-    V["Visitor (Client)"]
-    CDN["Cloudflare CDN (Optional)"]
-    Proxy["Reverse Proxy (Caddy / Nginx)<br/>• Terminates HTTPS / Forwards X-Forwarded-For"]
-    Container["Ecoku Container<br/>• Container :12123 / Host 127.0.0.1:12123"]
-
-    V -->|Scenario 1: Direct HTTPS| Proxy
-    V -->|Scenario 2: Via CDN| CDN
-    CDN -->|HTTPS| Proxy
-    Proxy -->|Local HTTP| Container
+flowchart LR
+    V["Visitor browser"] -->|HTTPS| P["Caddy / Nginx<br/>(host)"]
+    V -.->|HTTPS| C["CDN (optional)"] -.-> P
+    P -->|"HTTP 127.0.0.1:12123"| E["Ecoku container"]
 ```
 
----
+When the reverse proxy connects to `127.0.0.1:12123`, Docker hands the connection over to the container. The peer address the container sees is not the visitor but the gateway of the Docker bridge network (usually something like `172.18.0.1`). The visitor's real IP address can therefore only reach Ecoku through the `X-Forwarded-For` request header written by the reverse proxy, and Ecoku reads that header only when it has confirmed that the request really comes from this gateway.
 
-## Scenario 1: Direct Origin Reverse Proxy
+## Direct to origin
 
-### Caddy (Recommended)
+### Caddy
 
-Caddy provides automatic TLS certificate provisioning and renewal with minimal configuration:
+Caddy obtains and renews certificates automatically.
 
 ```caddyfile
 ecoku.example.com {
     encode zstd gzip
 
     reverse_proxy 127.0.0.1:12123 {
-        # Force overwrite X-Forwarded-For with the direct peer IP to prevent client header spoofing
+        # Overwrite with the direct peer address, discarding any X-Forwarded-For sent by the browser
         header_up X-Forwarded-For {remote_host}
         header_up X-Forwarded-Proto {scheme}
     }
@@ -41,70 +38,66 @@ ecoku.example.com {
 
 ### Nginx
 
+The certificate paths use Certbot's default locations as an example.
+
 ```nginx
 server {
-    listen 443 ssl http2;
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
     server_name ecoku.example.com;
 
-    ssl_certificate /etc/letsencrypt/live/ecoku.example.com/fullchain.pem;
+    ssl_certificate     /etc/letsencrypt/live/ecoku.example.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/ecoku.example.com/privkey.pem;
 
-    # Enable Gzip compression
     gzip on;
     gzip_types text/plain text/css application/json application/javascript;
 
     location / {
         proxy_pass http://127.0.0.1:12123;
         proxy_set_header Host $host;
-        # Overwrite X-Forwarded-For with the direct TCP peer IP
+        # Overwrite instead of append: $remote_addr is the current TCP peer
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
 
----
+The key point in both configs is that they **overwrite** `X-Forwarded-For`. If you append instead (such as Nginx's `$proxy_add_x_forwarded_for`), a browser can send its own forged value and bypass rate limiting.
 
-## Scenario 2: Reverse Proxy via CDN (e.g. Cloudflare)
+## Through a CDN
 
-When traffic passes through Cloudflare CDN, the direct TCP peer is a Cloudflare edge node. Configure your reverse proxy to extract the authenticated visitor IP injected by the CDN into `X-Forwarded-For`.
-
-### Cloudflare + Caddy
+Once your domain is behind a CDN such as Cloudflare, the reverse proxy's direct peer becomes a CDN node. You then need to take the visitor IP from a request header provided by the CDN. For example, with Cloudflare and Caddy:
 
 ```caddyfile
 ecoku.example.com {
     encode zstd gzip
 
     reverse_proxy 127.0.0.1:12123 {
-        # Forward Cloudflare-authenticated real visitor IP into X-Forwarded-For
         header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
         header_up X-Forwarded-Proto {scheme}
     }
 }
 ```
 
-> [!WARNING]
-> - When using a CDN, your origin firewall must strictly allow incoming connections from Cloudflare IP ranges only, preventing attackers from bypassing CDN protection via your origin IP.
-> - In Ecoku's `trusted_proxies` configuration, **still only specify the local Docker gateway IP**. Never add wide CDN ranges into `trusted_proxies`.
+`CF-Connecting-IP` can be trusted only when the request really went through Cloudflare. In your firewall or in Caddy, allow only Cloudflare's IP ranges, so nobody can connect to the origin directly and set this header themselves.
 
----
+The Ecoku side of the config does not change: `trusted_proxies` still contains only the Docker gateway. Do not add the CDN's ranges to it.
 
-## Client IP Determination & `trusted_proxies`
+## Configure trusted_proxies {#trusted-proxies}
 
-Ecoku includes built-in protection against IP spoofing:
+`site.trusted_proxies` in `app/config.yaml` decides whose `X-Forwarded-For` Ecoku trusts:
 
-1. **Default Zero-Trust**: If `trusted_proxies` is empty (`[]`), Ecoku does not parse incoming `X-Forwarded-For` headers. All requests are attributed to the direct TCP socket peer IP (usually the reverse proxy gateway IP), meaning all visitors share a single rate-limit bucket.
-2. **Exact Trust Matching**: Only when the direct TCP peer IP **strictly matches** an IP or CIDR declared in `trusted_proxies` will Ecoku parse `X-Forwarded-For` to isolate client IPs for per-visitor rate limiting.
+- **Empty (default)**: no forwarding headers are read, and rate limits always use the peer address the container sees. Behind a reverse proxy, that address is the Docker gateway, so all visitors share the same rate limit quota. By default only 5 comment submissions per minute are allowed, so even modest traffic will get some visitors a `429`.
+- **Set to the Docker gateway**: the visitor IP is taken from `X-Forwarded-For` only when the direct peer is exactly the gateway.
 
-### Query Docker Gateway IP
-
-Run the following command on your host to find the container's bridge network gateway:
+Find the gateway of the network Ecoku is on:
 
 ```bash
 sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
 ```
 
-If the output is `172.18.0.1`, configure `app/config.yaml` as follows:
+If the output is `172.18.0.1`, add it to the config:
 
 ```yaml
 site:
@@ -112,20 +105,26 @@ site:
     - "172.18.0.1/32"
 ```
 
-> [!CAUTION]
-> Never configure `0.0.0.0/0` or `::/0` in `trusted_proxies`. Doing so allows any external request to bypass rate limiting via forged `X-Forwarded-For` headers.
-
----
-
-## Connectivity Verification
+Then restart the container:
 
 ```bash
-# Verify reverse proxy health check endpoint
-curl -i https://ecoku.example.com/api/health
-
-# Verify client SDK loader script
-curl -i https://ecoku.example.com/client/ecoku-loader.js
-
-# Verify admin console entry point
-curl -i https://ecoku.example.com/admin/
+cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 ```
+
+::: danger
+Do not use `0.0.0.0/0` or `::/0`. Ecoku refuses to start with them. Trusting every source means letting anyone forge an IP address.
+:::
+
+## Check
+
+Run this on any machine with internet access:
+
+```bash
+for path in /api/health /client/ecoku-loader.js /admin/; do
+  curl -sS -o /dev/null -w "%{http_code} $path\n" "https://ecoku.example.com$path"
+done
+```
+
+All three lines should start with `200`. It is fine to expose the health endpoint publicly; it returns only a status and a timestamp.
+
+Once everything checks out, open `https://ecoku.example.com/admin/` and continue with [setting up the admin console](./admin).

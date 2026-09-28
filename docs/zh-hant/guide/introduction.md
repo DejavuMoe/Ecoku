@@ -1,82 +1,71 @@
-# 簡介與系統架構
+# 簡介
 
-Ecoku 是一個專為靜態部落格與內容驅動型站點設計的**自託管、多站點純文字評論系統**。
+Ecoku 是一套自託管的評論系統，適合靜態部落格和個人網站。你在自己的伺服器上用 Docker 執行一個 Ecoku 實例，在文章範本裡加入一段 HTML，頁面上就有了評論區。
 
-它摒棄了繁重的審核隊列、複雜的使用者中心與外部依賴，以單容器 + SQLite3 的極致輕量化形態交付。評論一旦送出，通過安全檢查後立即面向公眾呈現。
+它刻意保持簡單：
 
----
+- **評論只有純文字**。不解析 HTML 和 Markdown，沒有富文字編輯器。
+- **送出後直接公開**。沒有審核佇列，不當的評論由管理員事後刪除。
+- **訪客不用註冊**。填寫暱稱、信箱（可設為選填）和選填的網址就能發言。
+- **一個實例服務多個網站**。每個網站在後台註冊為一個站點，評論和設定彼此獨立。
+- **所有資料都在一個 SQLite 檔案裡**。不需要 MySQL、Redis 或其他外部服務，備份就是複製一個目錄。
 
-## 核心設計哲學
+## 適合誰
 
-- **極簡拓撲**：單個 Docker 容器同時託管 Go API、靜態管理後台（`/admin/`）與瀏覽器 SDK（`/client/`），資料單檔案落盤於 SQLite3，無附加 Redis/MySQL 依賴。
-- **純文字交流**：正文永不解析 HTML 或 Markdown，杜絕 XSS 注入風險，回歸評論討論的本質。
-- **送出即公開**：無前置人工審核隊列，依靠 IP 頻控限流、站長口令與現代化人機驗證（Turnstile / Cap）維護討論秩序。
-- **強隱私邊界**：公共 API 絕不輸出信箱、IP、User-Agent、地區或資料庫內部 ID；訪客身分僅在本地 IndexedDB 加密保存 7 天。
-- **交易性升級**：Schema 原位版本化演進（v1～v8），單向遷移，杜絕破壞性重構。
+- 用 Hugo、Hexo、Astro、VitePress、Jekyll 等產生靜態網站，需要評論區的人。
+- 想把評論資料留在自己的伺服器上，不想依賴第三方評論服務的人。
+- 有好幾個網站，希望用一套服務統一管理評論的人。
 
----
+## 不提供什麼
 
-## 系統架構全景
+以下功能不在 Ecoku 的範圍內：
+
+- 富文字、Markdown、圖片上傳（[Smoji 貼圖](../integration/smoji)是唯一的圖片形式）；
+- 訪客帳號、第三方登入、大頭貼；
+- 按讚、倒讚、表情回應；
+- 評論審核佇列；
+- MySQL、PostgreSQL 等其他資料庫。
+
+如果你需要其中某一項，Ecoku 可能不適合你。
+
+## 組成 {#components}
 
 ```mermaid
-flowchart TD
-    subgraph Client["🌐 客戶端層 (Browser / Web)"]
-        direction LR
-        Visitor["📱 部落格訪客接入<br/>• 極簡載入器 (ecoku-loader.js)<br/>• 原生 SDK (ESM / UMD / CJS)<br/>• 身分憑據本地加密 7 天 (IndexedDB)<br/>• Smoji 輕量純文字表情包按需載入"]
-        Admin["💻 管理後台 (/admin/)<br/>• Vue 3 + Pinia + 系統襯線字型棧<br/>• HttpOnly Cookie + SQLite 可撤銷會話<br/>• 多站點配置 / 安全人機驗證管理<br/>• 評論軟刪除墓碑與物理徹底清除"]
+flowchart LR
+    subgraph Browser["訪客瀏覽器"]
+        Page["部落格文章頁<br/>載入 ecoku-loader.js"]
     end
-
-    subgraph Edge["🛡️ 邊界反代層 (Reverse Proxy)"]
-        Proxy["Caddy / Nginx / CDN<br/>• HTTPS / SSL 憑證自動申請與終結<br/>• 客戶端真實 IP 識別與透傳 (防標頭偽造)<br/>• 本地 TCP 連線轉發至 127.0.0.1:12123"]
+    subgraph Admin["管理員瀏覽器"]
+        Console["/admin/ 管理後台"]
     end
-
-    subgraph Runtime["📦 Ecoku 單容器運行環境 (10001:10001)"]
-        direction TB
-        subgraph Core["Go 1.24 HTTP 核心引擎"]
-            direction LR
-            Engine["⚡ Gin HTTP 核心服務<br/>• 處理程序內 IP 頻控限流 (Rate Limiter)<br/>• 動態收斂 CSP 安全策略 (Turnstile / Cap)<br/>• 人機驗證 Siteverify 遠端校驗<br/>• 管理員 Bcrypt 會話鑑權與版本控制"]
-            Outbox["📬 Outbox 非同步通知工作協程<br/>• 單實例輪詢機制與指數退避重試<br/>• SMTP 郵件通知 (TLS / STARTTLS)<br/>• Telegram Bot 機器人訊息推送<br/>• 站長口令免密身分識別與通知去重"]
-        end
-        Storage["💾 SQLite3 儲存引擎 (WAL 模式)<br/>• /data/ecoku.sqlite3 (嚴格外部鍵約束 · 原位版本遷移 v1~v8)<br/>• AES-256-GCM 敏感欄位落盤加密 (SMTP 密碼 / Bot Token / 驗證碼 Secret)"]
-        Core --> Storage
+    Proxy["反向代理<br/>Caddy / Nginx，HTTPS"]
+    subgraph Container["Ecoku 容器"]
+        Server["ecoku-server<br/>API · 靜態資源 · 通知佇列"]
+        DB[("SQLite<br/>data/ecoku.sqlite3")]
     end
-
-    Visitor -->|HTTPS REST| Proxy
-    Admin -->|HTTPS REST| Proxy
-    Proxy -->|127.0.0.1:12123| Engine
-    Engine -.->|寫入待發任務| Outbox
+    Page --> Proxy
+    Console --> Proxy
+    Proxy --> Server
+    Server --> DB
+    Server -.-> Mail["SMTP / Telegram"]
 ```
 
----
+一個容器裡只有一個 Go 程式 `ecoku-server`，它同時負責：
 
-## 適用場景與產品邊界
+- 評論 API `/api/comment/*` 和管理 API `/api/admin/*`；
+- 管理後台頁面 `/admin/`；
+- 嵌入部落格用的腳本和樣式 `/client/`；
+- 在背景寄送電子郵件和 Telegram 通知。
 
-### 適合什麼
+容器以非 root 使用者執行，只在主機的 `127.0.0.1:12123` 上監聽，由同一台機器上的反向代理提供 HTTPS。
 
-- **多站點統一託管**：單個 Ecoku 實例可同時為多個獨立網域或子站點提供隔離的評論服務。
-- **靜態部落格與文件站**：完美適配 Hugo、Hexo、Astro、VitePress、Next.js、SvelteKit 等現代靜態網站產生器。
-- **重視隱私的個人創作者**：將評論資料完全掌握在自己的伺服器上，不依賴第三方雲端或閉源服務。
-- **彈性的人機防護**：支援在純粹 IP 限流、Cloudflare Turnstile 與完全自託管的 Cap 驗證碼之間自由切換。
+## 上線步驟
 
-### 不提供什麼
+1. [Docker 部署](../self-hosting/docker)：準備目錄、設定檔和金鑰，啟動容器。
+2. [反向代理](../self-hosting/reverse-proxy)：為 Ecoku 設定 HTTPS 網域。
+3. [管理後台](../self-hosting/admin)：登入，註冊你的網站，視需要設定部落客身分。
+4. [嵌入評論區](../integration/html)：在文章範本中加入接入程式碼。
 
-為了保持極簡與純粹，Ecoku 明確將以下特性排除在產品範圍之外：
+之後可以視需要設定[通知](../self-hosting/notifications)、[人機驗證](../self-hosting/captcha)，或[從 Twikoo 遷移](../self-hosting/twikoo)歷史評論。
 
-- ❌ **富文字與 Markdown 渲染**：評論正文永久按純文字處理，不渲染圖片標籤（除規範的 Smoji 表情外）、不解析 HTML。
-- ❌ **普通使用者註冊與登入系統**：訪客無需註冊帳號，僅以暱稱、私有信箱和可選網站發表。
-- ❌ **按讚、倒讚、表態與頭像服務**：不請求任何第三方 Gravatar / IP / 分析服務，減少外部網路依賴與追蹤。
-- ❌ **前置審核隊列**：所有合規評論即發即顯，管理者透過軟刪除墓碑進行事後治理。
-- ❌ **MySQL / PostgreSQL 適配**：專注 SQLite3 的單機高可靠性，不維護多資料庫驅動相容層。
-
----
-
-## 部署概覽
-
-Ecoku 映像檔採用非 root 使用者（`10001:10001`）運行，對外僅監聽本地回環 `127.0.0.1:12123`。
-
-1. **準備環境**：配置 `compose.yaml`、`app/config.yaml` 與 `ecoku.env`。
-2. **反向代理**：透過 Caddy 或 Nginx 配置網域與 HTTPS 憑證並反代至本地埠。
-3. **管理後台**：訪問 `/admin/` 完成站點註冊、站長口令與通知配置。
-4. **頁面接入**：在部落格模板中引入 `ecoku-loader.js` 即可完成接入。
-
-詳細部署指引請參閱 [Docker 部署](/zh-hant/self-hosting/docker)。
+開始之前，建議先讀[運作方式](./concepts)，了解頁面 key、刪除和隱私的處理方式。

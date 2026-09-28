@@ -1,82 +1,71 @@
-# Introduction & Architecture
+# Introduction
 
-Ecoku is a **self-hosted, multi-site plain-text comment system** engineered for static blogs, documentation hubs, and independent websites.
+Ecoku is a self-hosted comment system for static blogs and personal websites. You run an Ecoku instance with Docker on your own server, add a snippet of HTML to your post template, and your pages have a comment section.
 
-It eliminates bloated moderation queues, user registration databases, and third-party tracking services. Delivered as a single container with SQLite3, comments become live immediately after basic security checks.
+It is deliberately simple:
 
----
+- **Comments are plain text only.** HTML and Markdown are not parsed, and there is no rich-text editor.
+- **Comments go live on submit.** There is no moderation queue. An admin deletes inappropriate comments after the fact.
+- **Visitors do not register.** They enter a nickname, an email address (which a site can make optional), and an optional website, and then they can post.
+- **One instance serves multiple websites.** Each website is registered as a site in the admin console, with its own comments and settings.
+- **All data lives in one SQLite file.** You do not need MySQL, Redis, or any other external service. A backup is a copy of one directory.
 
-## Design Philosophy
+## Who it is for
 
-- **Minimal Single Container**: A single Go binary simultaneously serves the REST API, the embedded admin panel (`/admin/`), and the client SDK assets (`/client/`). SQLite3 acts as the single-file transactional storage.
-- **Pure Text Conversations**: Comment bodies are never parsed as arbitrary HTML or Markdown, preventing XSS attacks by design.
-- **Live on Submit**: No artificial moderation delays. Safety is maintained via in-memory rate limiting, blogger passphrases, and modern CAPTCHA (Turnstile / Cap).
-- **Zero Privacy Leakage**: Public APIs never return email addresses, IP addresses, User-Agents, or internal database IDs. Visitor identity is stored strictly on the client side in IndexedDB with AES-GCM encryption for 7 days.
-- **In-Place Schema Evolution**: Versioned SQLite schema migrations (v1–v8) upgrade sequentially in a single transaction without external migration binaries.
+- People who build static sites with Hugo, Hexo, Astro, VitePress, Jekyll, or similar tools and need a comment section.
+- People who want to keep comment data on their own server instead of depending on a third-party comment service.
+- People who run several websites and want to manage all their comments from one service.
 
----
+## What it does not provide
 
-## Architecture Overview
+The following features are outside the scope of Ecoku:
+
+- Rich text, Markdown, and image uploads ([Smoji stickers](../integration/smoji) are the only form of image);
+- Visitor accounts, third-party login, and avatars;
+- Likes, dislikes, and emoji reactions;
+- A comment moderation queue;
+- MySQL, PostgreSQL, or any other database.
+
+If you need any of these, Ecoku may not be the right fit.
+
+## Components {#components}
 
 ```mermaid
-flowchart TD
-    subgraph Client["🌐 Client Layer (Browser / Web)"]
-        direction LR
-        Visitor["📱 Visitor Integration<br/>• Standalone Loader (ecoku-loader.js)<br/>• Native SDK (ESM / UMD / CJS)<br/>• 7-Day Encrypted Storage (IndexedDB)<br/>• Smoji Plain-Text Stickers on Demand"]
-        Admin["💻 Admin Console (/admin/)<br/>• Vue 3 + Pinia + System Serif<br/>• HttpOnly cookie + SQLite revocable session<br/>• Multi-site & CAPTCHA Security Settings<br/>• Comment Tombstones & Hard Purge"]
+flowchart LR
+    subgraph Browser["Visitor browser"]
+        Page["Blog post page<br/>loads ecoku-loader.js"]
     end
-
-    subgraph Edge["🛡️ Edge & Reverse Proxy"]
-        Proxy["Caddy / Nginx / CDN<br/>• Automatic TLS / SSL Termination<br/>• Trusted Client IP Forwarding & Anti-Spoofing<br/>• Forward to Local 127.0.0.1:12123"]
+    subgraph Admin["Admin browser"]
+        Console["/admin/ admin console"]
     end
-
-    subgraph Runtime["📦 Ecoku Single Container (10001:10001)"]
-        direction TB
-        subgraph Core["Go 1.24 HTTP Core Engine"]
-            direction LR
-            Engine["⚡ Gin HTTP Core Service<br/>• In-Memory IP Rate Limiter<br/>• Dynamic CSP Policies (Turnstile / Cap)<br/>• Remote Captcha Siteverify<br/>• Admin Bcrypt Auth & Credential Versioning"]
-            Outbox["📬 Outbox Notification Worker<br/>• Single-instance Polling & Exponential Backoff<br/>• SMTP Email Notifications (TLS / STARTTLS)<br/>• Telegram Bot Message Push<br/>• Blogger Passphrase Zero-Auth Match"]
-        end
-        Storage["💾 SQLite3 Storage Engine (WAL Mode)<br/>• /data/ecoku.sqlite3 (Strict Foreign Keys · In-Place Migrations v1~v8)<br/>• AES-256-GCM Sensitive Field Encryption (SMTP / Bot / Captcha Secrets)"]
-        Core --> Storage
+    Proxy["Reverse proxy<br/>Caddy / Nginx, HTTPS"]
+    subgraph Container["Ecoku container"]
+        Server["ecoku-server<br/>API · static assets · notification queue"]
+        DB[("SQLite<br/>data/ecoku.sqlite3")]
     end
-
-    Visitor -->|HTTPS REST| Proxy
-    Admin -->|HTTPS REST| Proxy
-    Proxy -->|127.0.0.1:12123| Engine
-    Engine -.->|Enqueue Tasks| Outbox
+    Page --> Proxy
+    Console --> Proxy
+    Proxy --> Server
+    Server --> DB
+    Server -.-> Mail["SMTP / Telegram"]
 ```
 
----
+The container runs a single Go program, `ecoku-server`, which handles:
 
-## Scope & Boundaries
+- The comment API `/api/comment/*` and the admin API `/api/admin/*`;
+- The admin console page `/admin/`;
+- The script and styles you embed in your blog, under `/client/`;
+- Sending email and Telegram notifications in the background.
 
-### What Ecoku Is Ideal For
+The container runs as a non-root user and listens only on `127.0.0.1:12123` on the host. A reverse proxy on the same machine provides HTTPS.
 
-- **Multi-Site Unified Hosting**: A single Ecoku instance can simultaneously provide isolated comment services for multiple independent domains, subdomains, and blogs.
-- **Static Blogs & Documentation**: Seamlessly integrates with modern static site generators such as Hugo, Hexo, Astro, VitePress, Next.js, and SvelteKit.
-- **Privacy-Conscious Creators**: Complete ownership of your discussion data in a local SQLite file, with zero external tracking or closed-source cloud dependencies.
-- **Flexible Anti-Bot Verification**: Freely toggle between in-memory IP rate limiting, Cloudflare Turnstile, and fully self-hosted open-source Cap.
+## Getting started
 
-### What Ecoku Deliberately Omits
+1. [Docker deployment](../self-hosting/docker): prepare the directories, config file, and secrets, then start the container.
+2. [Reverse proxy](../self-hosting/reverse-proxy): set up an HTTPS domain for Ecoku.
+3. [Admin console](../self-hosting/admin): sign in, register your website, and set up the blogger identity if you want one.
+4. [Embed the comment section](../integration/html): add the embed code to your post template.
 
-To maintain absolute simplicity, security, and performance, Ecoku explicitly excludes the following:
+After that, you can set up [notifications](../self-hosting/notifications) and [CAPTCHA](../self-hosting/captcha), or [migrate](../self-hosting/twikoo) existing comments from Twikoo.
 
-- ❌ **Rich Text & Raw HTML Rendering**: Comments are permanently treated as pure text to eliminate XSS injection risks (except strict same-origin Smoji stickers).
-- ❌ **User Registration & Accounts**: Visitors do not register or maintain passwords; they post using a nickname, private email, and optional website.
-- ❌ **Likes, Reactions, & Avatars**: No network calls to Gravatar, external IP databases, analytics, or telemetry services.
-- ❌ **Pre-Publish Moderation Queues**: Valid comments publish immediately upon passing rate limits and CAPTCHA.
-- ❌ **MySQL / PostgreSQL Complexity**: Exclusively built around SQLite3 with WAL mode for zero-ops, single-file resilience.
-
----
-
-## Deployment Overview
-
-Ecoku runs in Docker as an unprivileged user (`10001:10001`), listening internally on `127.0.0.1:12123`:
-
-1. **Prepare Environment**: Configure `compose.yaml`, `app/config.yaml`, and `ecoku.env`.
-2. **Reverse Proxy**: Terminate HTTPS and forward traffic via Caddy or Nginx.
-3. **Admin Console**: Access `/admin/` to register sites, configure blogger passphrases, and set up notifications.
-4. **Site Integration**: Embed the `ecoku-loader.js` snippet into your blog template.
-
-For complete step-by-step instructions, see [Docker Deployment](/en/self-hosting/docker).
+Before you start, read [How it works](./concepts) to learn how Ecoku handles page keys, deletion, and privacy.

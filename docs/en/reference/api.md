@@ -1,261 +1,345 @@
-# REST API Reference
+# REST API
 
-Ecoku provides a clean, predictable RESTful HTTP interface divided into public visitor endpoints and authenticated administrative endpoints.
+This page lists Ecoku's HTTP endpoints, for reference when you write a custom frontend or automation scripts. If you use the official loader or SDK, you do not need to call these endpoints directly.
 
----
+All paths are relative to the instance URL, such as `https://ecoku.example.com/api/health`.
 
-## General Conventions & Status Codes
+## Conventions
 
-- **Payload Format**: All responses use `application/json; charset=utf-8`.
-- **Timestamps**: Formatted as ISO 8601 UTC strings (e.g. `2026-08-20T12:00:00Z`).
-- **Standard HTTP Status Codes**:
-  - `200 OK`: Request succeeded.
-  - `201 Created`: Resource successfully created.
-  - `400 Bad Request`: Malformed parameters or invalid payload.
-  - `401 Unauthorized`: Missing or expired administrator session.
-  - `403 Forbidden`: Request origin not permitted by site CORS whitelist.
-  - `404 Not Found`: Target site, parent comment, or resource not found.
-  - `422 Unprocessable Entity`: Request exceeds resource budgets (200 nodes, 16 depth levels, 10,000 count probe, 1 MiB JSON).
-  - `429 Too Many Requests`: Rate limit quota exceeded (includes `Retry-After` header).
-  - `503 Service Unavailable`: Server busy (all 4 worker slots saturated) or DB read timeout (2 seconds).
+### Response format
 
----
+All `/api/` endpoints return JSON with the same structure:
 
-## 1. Public Endpoints
-
-### Health Check `GET /api/health`
-- **Method**: `GET`
-- **Authentication**: None
-- **Response Example (HTTP 200)**:
-  ```json
-  {
-    "code": 200,
-    "message": "Success",
-    "data": {
-      "status": "healthy",
-      "timestamp": 1756700000
-    }
-  }
-  ```
-
----
-
-### Fetch Comment List `GET /api/comment/list`
-
-By default, returns complete discussion threads paginated by root comments. Successful responses include `data.data`, root count `total`, reachable comments count `commentTotal`, pagination `page/pageSize/pageCount`, `formConfig`, and server `timeZone`.
-
-Complete-thread mode allows up to **200 returned nodes, 16 descendant levels** (root depth 0), and an ID/parent count probe of at most **10,000 records per site/page**. Exceeding any budget returns **422 Unprocessable Entity** rather than a partial tree or approximate count. When the overall page record count exceeds 10,000, even `pageSize=1` will fail; the current SDK displays its standard loading failure and will not switch modes automatically.
-
-For on-demand, single-layer reads, pass `parentId`: `0` reads roots only; a positive parent ID reads direct children of that comment only (including tombstones within the same site/page). Use `afterId` (default 0) for **ascending ID cursor pagination** with `pageSize` (default 10, max 100). Do not combine this mode with `page` or `sort`. It does not expand descendants or calculate totals. The response `data` contains `data` (comments), `parentId`, `pageSize`, `hasMore`, `nextAfterId`, `formConfig`, and `timeZone`. Request the next batch with `nextAfterId` only when `hasMore: true`. Missing or out-of-scope parent comments return 404; invalid parameters return 400.
-
-```http
-GET /api/comment/list?siteId=blog&key=/posts/example/&parentId=0&pageSize=20
-GET /api/comment/list?siteId=blog&key=/posts/example/&parentId=101&afterId=120&pageSize=20
+```json
+{ "code": 200, "message": "Success", "data": { } }
 ```
 
-Both modes cap the complete escaped JSON payload at **1 MiB**; exceeding it returns 422 (retry with a smaller `pageSize`). List processing shares **4 concurrent worker slots** and a **2-second database read deadline**. Saturation returns 503 with `Retry-After: 1`; deadline expiry returns 503. Comment counts and descendant reads run within the same SQLite read snapshot. [Read rate limiting](../self-hosting/configuration.md) defaults to **60 requests per IP per 60 seconds**, returning 429 with `Retry-After`.
+`code` is the same as the HTTP status code. On error there is no `data`, and `message` is a short explanation in Chinese, for example (the origin does not belong to the current site):
 
-- **Query Parameters**:
-  - `siteId` (string, required): Unique site identifier.
-  - `key` (string, required): Canonical site-relative page path.
-  - `page` (number, optional): Root comments page number (default 1).
-  - `pageSize` (number, optional): Root comments per page (default 10, max 100).
-  - `sort` (string, optional): Sorting order: `newest` (default) or `oldest`.
-  - `parentId` (number, optional): Enable single-layer cursor mode. `0` for roots, positive integer for children of specific comment.
-  - `afterId` (number, optional): Cursor anchor ID for pagination (used with `parentId`).
+```json
+{ "code": 403, "message": "来源不属于当前站点" }
+```
 
-- **Full-Thread Response Example (HTTP 200)**:
-  ```json
-  {
-    "code": 200,
-    "message": "获取评论成功",
-    "data": {
-      "data": [
-        {
-          "id": 101,
-          "site_id": "blog",
-          "mark": "/posts/example/",
-          "parent": 0,
-          "username": "Alice",
-          "url": "https://example.com",
-          "content": "This is a root comment",
-          "isBlogger": false,
-          "deleted": false,
-          "created_at": "2026-08-20T12:00:00Z",
-          "updated_at": "2026-08-20T12:00:00Z"
-        }
-      ],
-      "total": 1,
-      "commentTotal": 1,
-      "page": 1,
-      "pageSize": 10,
-      "pageCount": 1,
-      "timeZone": "Asia/Shanghai",
-      "formConfig": {
-        "emailRequired": true,
-        "websiteRequired": false,
-        "placeholder": "Write a comment (plain text only)",
-        "defaultSort": "newest",
-        "lengthLimit": 1000,
-        "emptyMessage": "No comments yet.\nBe the first to comment.",
-        "bloggerBadge": "[Blogger]",
-        "bloggerProofEnabled": true,
-        "turnstileSitekey": "example-sitekey",
-        "captcha": {
-          "provider": "turnstile",
-          "sitekey": "example-sitekey"
-        },
-        "smoji": {
-          "enabled": false,
-          "manifestUrl": ""
-        }
+Time fields are RFC 3339 strings in UTC, such as `2026-08-20T12:00:00Z`.
+
+### Status codes
+
+| Status code | Meaning |
+| --- | --- |
+| `200` / `201` | Success. Creating a comment or a site returns `201`. |
+| `400` | Invalid parameters or request body, or CAPTCHA verification failed. |
+| `401` | Not signed in to the admin API, or the session has expired. |
+| `403` | The origin is not on the allowed list, or permission is denied. |
+| `404` | The site, comment, or endpoint does not exist. |
+| `409` | State conflict: the parent comment belongs to another page, the reply targets a deleted comment, the settings were changed by another session, and so on. |
+| `413` | The request body exceeds the limit. |
+| `422` | The comment list exceeds the read limits, or the reply is more than 16 levels deep. |
+| `429` | Rate limited. The `Retry-After` response header gives the number of seconds to wait. |
+| `502` | Sending a test notification failed. |
+| `503` | The service is busy, a read timed out, or the CAPTCHA service is unavailable. |
+
+### Cross-origin requests and origins
+
+- When a browser request carries `Origin`, public endpoints accept only addresses registered as an allowed origin of some site, and admin endpoints accept only addresses in `admin.allowed_origins`. Other origins get `403`.
+- Submitting a comment **must** carry an `Origin` that belongs to the site. Submissions without `Origin` are rejected too.
+- Reading the comment list does not require `Origin`, so server-side scripts can call it directly.
+
+### Request body limits
+
+80 KiB for comment submission, 16 KiB for admin endpoints. Exceeding them returns `413`.
+
+## Public endpoints
+
+### Health check
+
+```http
+GET /api/health
+```
+
+```json
+{ "code": 200, "message": "Success", "data": { "status": "healthy", "timestamp": 1790000000 } }
+```
+
+This only shows that the process can answer requests. It does not check the database or external services.
+
+### Read comments
+
+```http
+GET /api/comment/list?siteId=blog&key=/posts/hello-world/&page=1&pageSize=10&sort=newest
+```
+
+| Parameter | Required | Description |
+| --- | :---: | --- |
+| `siteId` | Yes | Site ID. |
+| `key` | Yes | Page key, at most 512 characters. |
+| `page` | No | Root comment page number, default `1`. |
+| `pageSize` | No | Root comments per page, 1 to 100, default `10`. |
+| `sort` | No | `newest` or `oldest`. Defaults to the site setting. |
+
+Returns the root comments on the current page, **together with all of their replies**:
+
+```json
+{
+  "code": 200,
+  "message": "获取评论成功",
+  "data": {
+    "data": [
+      {
+        "id": 101,
+        "site_id": "blog",
+        "mark": "/posts/hello-world/",
+        "parent": 0,
+        "username": "Alice",
+        "url": "https://example.com",
+        "content": "This is a root comment",
+        "isBlogger": false,
+        "deleted": false,
+        "created_at": "2026-08-20T12:00:00Z",
+        "updated_at": "2026-08-20T12:00:00Z"
       }
+    ],
+    "total": 1,
+    "commentTotal": 1,
+    "page": 1,
+    "pageSize": 10,
+    "pageCount": 1,
+    "timeZone": "Asia/Shanghai",
+    "formConfig": {
+      "emailRequired": true,
+      "websiteRequired": false,
+      "placeholder": "写下评论（仅支持纯文本）",
+      "defaultSort": "newest",
+      "lengthLimit": 1000,
+      "emptyMessage": "还没有评论\n成为第一个留下评论的人。",
+      "bloggerBadge": "[博主]",
+      "bloggerProofEnabled": true,
+      "turnstileSitekey": "",
+      "captcha": { "provider": "off", "sitekey": "" },
+      "smoji": { "enabled": false, "manifestUrl": "" }
     }
   }
-  ```
+}
+```
 
-- **Cursor Mode Response Example (HTTP 200, with `parentId`)**:
-  ```json
-  {
-    "code": 200,
-    "message": "获取评论成功",
-    "data": {
-      "data": [
-        {
-          "id": 105,
-          "site_id": "blog",
-          "mark": "/posts/example/",
-          "parent": 101,
-          "username": "Bob",
-          "content": "This is a reply to comment 101",
-          "isBlogger": false,
-          "deleted": false,
-          "created_at": "2026-08-20T12:05:00Z",
-          "updated_at": "2026-08-20T12:05:00Z"
-        }
-      ],
-      "parentId": 101,
-      "pageSize": 20,
-      "hasMore": true,
-      "nextAfterId": 105,
-      "timeZone": "Asia/Shanghai",
-      "formConfig": {
-        "emailRequired": true,
-        "websiteRequired": false,
-        "placeholder": "Write a comment (plain text only)",
-        "defaultSort": "newest",
-        "lengthLimit": 1000,
-        "emptyMessage": "No comments yet.\nBe the first to comment.",
-        "bloggerBadge": "[Blogger]",
-        "bloggerProofEnabled": true,
-        "turnstileSitekey": "example-sitekey",
-        "captcha": {
-          "provider": "turnstile",
-          "sitekey": "example-sitekey"
-        },
-        "smoji": {
-          "enabled": false,
-          "manifestUrl": ""
-        }
-      }
-    }
+Comment fields:
+
+| Field | Description |
+| --- | --- |
+| `id` | Comment ID. It corresponds to the anchor `#ecoku-comment-{id}` on the page. |
+| `site_id`, `mark` | Site ID and page key. |
+| `parent` | Parent comment ID; `0` for a root comment. |
+| `username` | Nickname. Always "已删除" ("Deleted") for deleted comments. |
+| `url` | Visitor website. The field is omitted when there is none. |
+| `content` | Plain-text body. Always "[该评论已删除]" ("[This comment has been deleted]") for deleted comments. |
+| `isBlogger` | Whether it is a blogger comment. |
+| `deleted` | Whether it is deleted (a tombstone). |
+
+Other fields:
+
+| Field | Description |
+| --- | --- |
+| `total` | Total number of root comments, for pagination. |
+| `commentTotal` | Number of all comments reachable from root comments (including replies and tombstones). |
+| `pageCount` | Total number of pages. |
+| `timeZone` | The server's display time zone (IANA name). |
+| `formConfig` | The site's comment form settings. See the table below. |
+
+`formConfig` fields:
+
+| Field | Description |
+| --- | --- |
+| `emailRequired`, `websiteRequired` | Whether email and website are required. |
+| `placeholder`, `emptyMessage` | Hint text in the comment box, and the text shown when there are no comments. |
+| `defaultSort` | Default sort order. |
+| `lengthLimit` | Maximum body length (counted in Unicode characters). |
+| `bloggerBadge` | Blogger badge text. An empty string means no badge is shown. |
+| `bloggerProofEnabled` | Whether the site has a blogger passphrase set. |
+| `captcha` | The current CAPTCHA mode: `provider` is `off`, `turnstile`, or `cap`; `sitekey` is the public site key; for Cap there is also `instanceUrl`. |
+| `turnstileSitekey` | Kept for old clients. Has a value only in Turnstile mode. |
+| `smoji` | Whether sticker packs are enabled, and the manifest URL. |
+
+#### Read limits
+
+To keep a single huge discussion from overwhelming the service, each request has the following limits. Exceeding any of them returns `422` instead of truncated data:
+
+- At most 200 comments (root comments and replies combined);
+- Replies at most 16 levels deep;
+- At most 1 MiB of response JSON;
+- When counting, at most 10,000 comments on the same page are checked.
+
+When a page's total comment count exceeds the counting limit, the request fails even with `pageSize=1`.
+
+In addition, the list endpoint handles at most 4 requests at a time and returns `503` with `Retry-After: 1` when busy. Database reads are limited to 2 seconds per request, and a timeout returns `503`. The read rate is limited by `rate_limit.comment_list`, 60 per IP per minute by default.
+
+#### Level-by-level reads {#cursor}
+
+When you pass `parentId`, the endpoint returns only one level of direct replies, without recursion and without counting totals. This suits custom frontends that expand large discussions on demand.
+
+```http
+GET /api/comment/list?siteId=blog&key=/posts/hello-world/&parentId=0&pageSize=20
+GET /api/comment/list?siteId=blog&key=/posts/hello-world/&parentId=101&afterId=120&pageSize=20
+```
+
+| Parameter | Description |
+| --- | --- |
+| `parentId` | `0` reads root comments. A positive integer reads the direct replies of that comment (including deleted ones). |
+| `afterId` | Return only comments with an ID greater than this. Default `0`. |
+| `pageSize` | 1 to 100, default `10`. |
+
+Results are sorted by ID in ascending order. In this mode you cannot also pass `page` or `sort`; doing so returns `400`. If the parent comment does not exist or does not belong to the page, the response is `404`.
+
+```json
+{
+  "code": 200,
+  "message": "获取评论成功",
+  "data": {
+    "data": [ { "id": 121, "parent": 101, "...": "..." } ],
+    "parentId": 101,
+    "pageSize": 20,
+    "hasMore": true,
+    "nextAfterId": 140,
+    "timeZone": "Asia/Shanghai",
+    "formConfig": { }
   }
-  ```
+}
+```
 
----
+When `hasMore` is `true`, use `nextAfterId` as the `afterId` of the next request. The 1 MiB response limit applies here too. If you exceed it, retry with a smaller `pageSize`.
 
-### Submit Comment `POST /api/comment/submit`
+### Submit a comment
 
-Submit a new root comment or reply to an existing discussion. Request body limit: **80 KiB**.
+```http
+POST /api/comment/submit
+Content-Type: application/json
+Origin: https://blog.example.com
+```
 
-- **Request Body (JSON)**:
-  ```json
-  {
-    "siteId": "blog",
-    "mark": "/posts/hello-world/",
-    "pageTitle": "Hello World",
-    "parent": 0,
-    "username": "Alice",
-    "email": "alice@example.com",
-    "url": "https://example.com",
-    "content": "Plain text content only",
-    "captchaToken": "0.xxxxxx"
-  }
-  ```
+```json
+{
+  "siteId": "blog",
+  "mark": "/posts/hello-world/",
+  "pageTitle": "Hello, world",
+  "parent": 0,
+  "username": "Alice",
+  "email": "alice@example.com",
+  "url": "https://example.com",
+  "content": "Plain-text body",
+  "captchaToken": "..."
+}
+```
 
-- **Response Example (HTTP 201 Created)**:
-  ```json
-  {
-    "code": 201,
-    "message": "评论提交成功",
-    "data": {
-      "id": 102,
-      "isBlogger": false
-    }
-  }
-  ```
+| Field | Required | Description |
+| --- | :---: | --- |
+| `siteId` | Yes | Site ID. |
+| `mark` | Yes | Page key: a relative path on the site, at most 512 characters. It cannot be a full URL and cannot contain `?` or `#`. |
+| `pageTitle` | No | Post title, at most 200 characters, used in notifications. |
+| `parent` | No | ID of the comment being replied to. For a root comment, pass `0` or omit it. |
+| `username` | Yes | Nickname, at most 80 characters. |
+| `email` | Depends on site settings | Email, at most 254 characters. |
+| `url` | Depends on site settings | Website. Only `http`/`https` is accepted, at most 2048 characters. |
+| `content` | Yes | Body, no longer than the site's length limit. |
+| `captchaToken` | When verification is enabled | The one-time token returned by the Turnstile or Cap widget. |
 
-- **Blogger Passphrase Authentication**:
-  If a blogger passphrase is configured on the site, entering the secret passphrase in `username` (leaving `email` and `url` empty) authenticates the author as the verified blogger and displays the blogger badge.
+On success, it returns `201`:
 
----
+```json
+{ "code": 201, "message": "评论提交成功", "data": { "id": 102, "isBlogger": false } }
+```
 
-New replies support at most 16 descendant levels (root = 0). Level 17 returns 422 and asks the visitor to reply higher in the thread. Existing deep threads and imported data remain unchanged. The 200-node, 1 MiB JSON and 10,000-node counting budgets still apply.
+To post as the blogger, put the blogger passphrase in `username` and leave `email` and `url` empty. When the passphrase matches, the server saves the comment with the site's blogger nickname, blogger email, and site URL, and `isBlogger` is `true`.
 
-## 2. Admin Endpoints
+Errors related to submission:
 
-The admin browser uses the HttpOnly cookie set by login and same-origin requests. Login JSON contains no token. Login and cookie-authenticated writes require an `Origin` matching `admin.allowed_origins`; session restoration GET may omit Origin. Trusted automation can use a cookie jar. Explicit `Authorization: Bearer` also requires a registered, unrevoked new session credential; legacy stateless tokens are rejected. Existing site-scoped `EcokuSite` tombstone permissions remain unchanged.
+| Status code | Reason |
+| --- | --- |
+| `400` | Invalid fields; CAPTCHA verification failed (`请完成验证后再发布。`, "complete verification before posting"); or the body contains a non-conforming Smoji marker. |
+| `403` | `Origin` is missing, or the origin does not belong to the site. |
+| `404` | The site or parent comment does not exist. |
+| `409` | The parent comment belongs to another page, or the parent comment is deleted. |
+| `422` | The reply is more than 16 levels deep. |
+| `503` | The CAPTCHA service is unavailable. |
 
-Admin write request bodies are limited to **16 KiB**.
+## Admin endpoints
 
-### Session restoration and logout
+Admin endpoints live under `/api/admin/` and exist only when `admin.enabled: true`.
 
-- `GET /api/admin/session`: returns the original `expires_at` and remaining `expires_in`, without renewal or credentials. Invalid/expired sessions return 401; unavailable storage returns 503.
-- `POST /api/admin/logout`: revokes the current session and clears its cookie. Success returns 200; a failed write returns 503 and must not be treated as logout. Both endpoints require the instance administrator.
+### Authentication
 
-### Admin Login `POST /api/admin/login`
-- **Request Body**:
-  ```json
-  {
-    "username": "admin",
-    "password": "my-strong-password",
-    "captchaToken": "0.xxxxxx"
-  }
-  ```
-- **Response Example (HTTP 200)**:
-  ```json
-  {
-    "code": 200,
-    "message": "管理员登录成功",
-    "data": {
-      "expires_at": "2026-08-20T20:00:00Z",
-      "expires_in": 28800
-    }
-  }
-  ```
+- **Session cookie**: after a successful `POST /api/admin/login`, the server sets a cookie named `ecoku_admin_session` (HttpOnly, SameSite=Strict, Path=`/api/admin`, with Secure in production), valid for 8 hours. The sign-in response does not contain a token.
+- The sign-in request, and every non-GET request authenticated by cookie, must carry an `Origin` from `admin.allowed_origins`.
+- Requests authenticated with `Authorization: Bearer <credential>` are not checked for `Origin`. The credential must be a currently valid session that has not been signed out. Old tokens issued before v0.2.4 are no longer valid.
+- Sign-in requires HTTPS. Only loopback addresses may use HTTP.
 
-### Admin Login Configuration `GET /api/admin/login-config`
-Retrieves public CAPTCHA configuration required to render bot protection on the admin login page (no authentication required).
+### Sign-in and sessions
 
-### Site Management Endpoints
-- `GET /api/admin/sites`: List all registered sites and their settings.
-- `POST /api/admin/sites`: Register a new site (requires `id`, `site_url`, `name`, `allowed_origins`, etc.).
-- `GET /api/admin/sites/:siteId`: Retrieve configuration details for a specific site.
-- `PUT /api/admin/sites/:siteId`: Update site configuration (supports optimistic locking via `revision`).
+| Method and path | Description |
+| --- | --- |
+| `GET /api/admin/login-config` | No sign-in needed. Returns the CAPTCHA settings the sign-in page needs (`captcha`, `turnstileSitekey`). |
+| `POST /api/admin/login` | Request body `{"username", "password", "captchaToken"}`. On success, returns `{"expires_at", "expires_in"}` and sets the cookie. Rate limited by `rate_limit.admin_login`. |
+| `GET /api/admin/session` | Returns the current session's `expires_at` and the remaining seconds `expires_in`. Does not extend the session. |
+| `POST /api/admin/logout` | Revokes the current session and clears the cookie. A `503` means sign-out did not succeed. |
 
-### Bot Protection & CAPTCHA Endpoints
-- `GET /api/admin/captcha`: Retrieve current tri-state CAPTCHA configuration (passwords masked).
-- `PUT /api/admin/captcha`: Update instance bot protection (off / turnstile / cap).
+### Sites
 
-### Notification Channels Endpoints
-- `GET /api/admin/notifications`: Get SMTP and Telegram notification configuration.
-- `PUT /api/admin/notifications/email`: Update SMTP email settings (passwords encrypted with master key via AES-256-GCM).
-- `POST /api/admin/notifications/email/test`: Dispatch a test email to verify SMTP connectivity.
-- `PUT /api/admin/notifications/telegram`: Update Telegram Bot settings.
-- `POST /api/admin/notifications/telegram/test`: Dispatch a test Telegram message.
+| Method and path | Description |
+| --- | --- |
+| `GET /api/admin/sites` | All sites. |
+| `POST /api/admin/sites` | Create a site. |
+| `GET /api/admin/sites/:siteId` | A single site. |
+| `PUT /api/admin/sites/:siteId` | Update a site. The request body must include the `revision` you got when reading it. If another session changed the site in the meantime, the response is `409`. |
 
-### Comment Moderation Endpoints
-- `GET /api/admin/sites/:siteId/comments`: Paginated search and filtering of comments across published and deleted states.
-- `GET /api/admin/sites/:siteId/comments/:commentId`: Detailed comment view with thread context.
-- `DELETE /api/admin/sites/:siteId/comments/:commentId`: Tombstone soft delete (erases author personal information, preserves thread hierarchy).
-- `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent`: Hard purge (permitted **only if the comment has zero descendant replies**).
+Site fields: `id`, `site_url`, `name`, `allowed_origins`, `default_sort`, `email_required`, `website_required`, `placeholder`, `comment_limit`, `empty_message`, `smoji_enabled`, `smoji_manifest_url`, `blogger_nickname`, `blogger_email`, `blogger_badge`, `blogger_passphrase` (write-only), `revision`. Responses use `blogger_passphrase_set` to show whether a passphrase is set.
+
+### Comments
+
+| Method and path | Description |
+| --- | --- |
+| `GET /api/admin/sites/:siteId/comments` | Comment list. Parameters: `status` (`published` or `deleted`), `page`, `pageSize` (default 20, max 100), `sort` (`newest` or `oldest`). |
+| `GET /api/admin/sites/:siteId/comments/:commentId` | A single comment, including the private email. |
+| `DELETE /api/admin/sites/:siteId/comments/:commentId` | Tombstone delete. Deleting an already deleted comment again returns success, with `unchanged` set to `true`. |
+| `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent` | Permanent delete. Only works on a tombstone with no replies; otherwise returns `409`. |
+
+Both delete endpoints are rate limited by `rate_limit.comment_delete`.
+
+### CAPTCHA
+
+| Method and path | Description |
+| --- | --- |
+| `GET /api/admin/captcha` | Current settings. Secrets are not returned; `secret_set` shows whether one is set. |
+| `PUT /api/admin/captcha` | Save settings: `provider` (`off`, `turnstile`, `cap`), `turnstile.sitekey` / `secret`, `cap.instance_url` / `sitekey` / `secret`, and `revision`. An empty secret means unchanged. |
+
+`/api/admin/turnstile` is the old endpoint. It still works, but new code should use `/api/admin/captcha`.
+
+### Notifications
+
+| Method and path | Description |
+| --- | --- |
+| `GET /api/admin/notifications` | Email and Telegram settings. The password and token are not returned; `password_set` and `token_set` show whether they are set. |
+| `PUT /api/admin/notifications/email` | Save email settings: `enabled`, `host`, `port`, `encryption` (`tls` or `starttls`), `username`, `password`, `from_address`, `recipients`, `revision`. |
+| `POST /api/admin/notifications/email/test` | Send a test email with the settings in the request. On failure it returns `502`, with `data.error_code` set to `timeout`, `authentication_failed`, `tls_failed`, or `delivery_failed`. |
+| `PUT /api/admin/notifications/telegram` | Save Telegram settings: `enabled`, `token`, `targets`, `revision`. |
+| `POST /api/admin/notifications/telegram/test` | Send a test message. Failures are reported the same way. |
+
+Both test endpoints are rate limited by `rate_limit.notification_test`.
+
+## Site management keys {#management-key}
+
+Site management keys are for **trusted server-side automation**, such as deleting abusive comments from your own back-office system. Never put one in a browser.
+
+1. Configure `management_key_env` for the site under `sites` in `app/config.yaml`, and set the matching environment variable in `ecoku.env`. The value must be at least 32 characters, and each site must use a different one. See the [Configuration reference](./configuration#sites).
+2. Send it with each request:
+
+   ```http
+   Authorization: EcokuSite <management key>
+   ```
+
+A management key can **only** tombstone delete comments of the site it belongs to:
+
+```http
+DELETE /api/admin/sites/blog/comments/102
+Authorization: EcokuSite <management key>
+```
+
+It cannot read comment lists or details, cannot permanently delete, and cannot access other sites or instance settings. Those requests return `403`. Using a management key also requires `admin.enabled: true`.
+
+Site settings under `sites` are written only when the database is first initialized, but `management_key_env` is read on every startup. To enable a management key on an existing instance, add an entry under `sites` whose `id` matches the existing site in the admin console, and also fill in `site_url` and `allowed_origins` so the config passes validation. The other fields of this entry do not override the settings in the admin console.

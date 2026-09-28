@@ -1,92 +1,111 @@
-# 常見問題與排錯指南
+# 常見問題
 
-彙總 Ecoku 在部署、維運與日常管理中最常見的問題診斷與解決方案。
+遇到問題時，請先看容器日誌，大多數啟動錯誤都會在這裡寫明原因：
 
----
-
-## 1. 登入與權限問題
-
-### Q: 重新整理或重開瀏覽器後會保留登入嗎？
-
-管理員會話使用 HttpOnly Cookie；SQLite 僅保存憑證摘要與到期時間。登入後固定 8 小時，重新整理或關閉重開可恢復有效會話，不延長期限。主動登出由服務端撤銷目前會話；登出失敗保留目前畫面並提示重試。憑證不進入 JavaScript、localStorage、sessionStorage 或 URL。
-
-### Q: 啟動容器提示 `permission denied` 或無法讀寫 SQLite 資料庫？
-**答**：Ecoku 容器採用非 root 使用者 `10001:10001` 運行。請在宿主機上檢查資料目錄與設定檔的所有者權限：
 ```bash
-sudo chown -R 10001:10001 ~/Ecoku/data ~/Ecoku/app/logs ~/Ecoku/app/config.yaml
-sudo chmod 750 ~/Ecoku/data ~/Ecoku/app/logs
-sudo chmod 640 ~/Ecoku/app/config.yaml
+cd ~/Ecoku
+sudo docker compose ps
+sudo docker compose logs --tail=100 ecoku
 ```
 
----
+## 部署與啟動
 
-## 2. 人機驗證與緊急復原
+### 容器反覆重新啟動，日誌提示 permission denied
 
-### Q: 人機驗證（Turnstile 或 Cap）設定錯誤導致管理員無法登入後台，如何復原？
-**答**：使用官方內建的 CLI 救磚指令離線停用驗證碼：
+容器以 UID/GID `10001:10001` 執行，需要能讀取 `app/config.yaml`、能寫入 `data/` 和 `app/logs/`。修正擁有者與權限後重新啟動：
+
 ```bash
-sudo docker compose down
-sudo docker compose run --rm --no-deps ecoku captcha disable
+cd ~/Ecoku
+sudo chown -R 10001:10001 data app/logs app/config.yaml
+sudo chmod 750 data app/logs
+sudo chmod 640 app/config.yaml
 sudo docker compose up -d
 ```
-服務啟動後，直接使用管理員帳號密碼登入管理後台，修正驗證碼參數後重新儲存即可。
 
-### Q: 使用自託管 Cap 驗證碼時，主控台報錯 CSP (Content Security Policy) 攔截？
-**答**：Ecoku 會根據目前選中的驗證碼提供方動態產生精確收斂的 CSP。若使用 Cap，請確保：
-1. 在管理端安全設定中，Cap 的**實例位址必須以 `https://` 開頭**（本地開發除錯允許 `localhost` HTTP）。
-2. Cap 的 API 端點（`/<sitekey>/siteverify`）必須在同一 HTTPS 網域下提供。
-3. 若 Cap 客戶端開啟了 instrumentation（探針），Ecoku 的 CSP 會自動放行必要的 `'unsafe-eval'` 與 WASM 求值。
+### 日誌提示「管理员来源 … 不能复用公开站点来源」
 
----
+`admin.allowed_origins` 中的位址與某個站點的允許來源重複了。管理後台必須使用一個獨立的來源，通常就是 Ecoku 自己的網域，例如 `https://ecoku.example.com`。
 
-## 3. 網路反代與限流排錯
+### 日誌提示「管理员会话固定为 8 小时」
 
-### Q: 訪客發表評論頻繁提示 `429 Too Many Requests`？
-**答**：通常是因為未設定 `trusted_proxies`，導致所有訪客的請求都被識別為來自同一個反向代理網關 IP（如 Docker 網關 `172.18.0.1`），從而共享了同一個單一 IP 限流計數桶。
-**解決辦法**：
-1. 查詢 Docker 容器網關：
-   ```bash
-   sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
-   ```
-2. 在 `app/config.yaml` 的 `site.trusted_proxies` 中填入該網關 IP（例如 `172.18.0.1/32`）。
-3. 確保 Caddy 或 Nginx 設定中使用了 `{remote_host}` 或 `$remote_addr` **覆蓋**了 `X-Forwarded-For`。
+`app/config.yaml` 中的 `admin.token_ttl_minutes` 不是 480。刪除這一行或改為 `480`，再重建容器。
 
----
+### 日誌提示「无法解密 … 凭据」
 
-## 4. 郵件與通知排錯
+資料庫中儲存過 SMTP、Telegram 或人機驗證的憑據，但 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 缺失或與儲存時不同。請從備份中找回原本的 `ecoku.env`，還原這把金鑰。金鑰無法找回時，只能從先前的備份還原整個實例。
 
-### Q: 發送郵件測試提示逾時或握手失敗？
-**答**：
-- Ecoku 僅接受 `tls` 或 `starttls` 加密方式；連接埠依郵件服務商要求填寫（常見為 465 / 587），不支援明文 SMTP。
-- 請確認雲端伺服器安全性群組已放行實際設定的 SMTP 出站連接埠。
-- 確認 `ecoku.env` 中的 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 已經正確設定，若主金鑰缺失或不合法，資料庫內加密的密碼將無法解密。
+### 修改了 ecoku.env 但沒有生效
 
-### Q: 評論區時間顯示與目前時區不一致？
-**答**：
-- Ecoku 評論時間由 `ecoku.env` 中的環境變數 `TZ` 控制（如 `TZ=Asia/Taipei` 或 `TZ=Asia/Tokyo`）。
-- 該變數由 Docker Compose 注入給容器執行期，預設回退為 `Asia/Shanghai`。
-- 修改 `ecoku.env` 中的 `TZ` 後執行 `sudo docker compose up -d --force-recreate ecoku`，重建容器以載入新環境變數；`restart` 不會更新容器環境變數。參見 [Docker Compose restart 說明](https://docs.docker.com/reference/cli/docker/compose/restart/)。
+`docker compose restart` 不會重新讀取 `env_file`。修改 `ecoku.env` 或 `app/config.yaml` 後，請用下面的指令重建容器：
 
----
-
-## 5. 文件站點 CI 部署
-
-### Q: 文件站點的發佈目錄如何設定？
-
-儲存庫的 `.woodpecker/docs-deploy.yml` 在 `master` push 時獨立建置並發佈文件，固定使用文件伺服器 agent。發佈容器僅掛載單一站點目錄 `/var/www/<DOCS_DOMAIN>:/deploy`；該目錄必須是實體目錄，Web 服務根目錄設為 `/var/www/<DOCS_DOMAIN>/html`。
-
-Nginx 可參考儲存庫的 `deploy/nginx-docs.conf.example`，替換網域與 TLS snippet 佔位符；從舊目錄配置遷移時在現有 `root` 路徑後追加 `/html`。本站啟用了 VitePress `cleanUrls: true`，`location /` 中需使用 `try_files $uri $uri.html $uri/ =404;`，讓 `/self-hosting/docker` 等無副檔名路徑匹配產生的 `.html` 檔案，否則直接存取或重新整理會回傳 404。執行 `sudo nginx -t && sudo systemctl reload nginx` 後生效。
-
-```text
-/var/www/<DOCS_DOMAIN>/
-├── .deploy.lock
-├── html -> releases/<commit>-<pipeline>-<rerun>
-└── releases/
-    └── <commit>-<pipeline>-<rerun>/
+```bash
+cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 ```
 
-發佈腳本先驗證完整產物，再加鎖原子替換 `html`，拒絕舊流水線覆蓋新版本；切換驗證成功後僅保留目前版本和剛被替換的上一版，清理更早的發佈目錄；失敗或過期發佈不觸發清理。首次發佈只有一個版本，之後正常保留兩個，上一版可供手動回滾。清理失敗會輸出警告。驗證僅檢查本地檔案與軟連結，不包含線上 HTTP 健康檢查。
+## 評論區
 
-從舊配置遷移時，先確保沒有文件發佈工作正在執行或排隊，再移除舊 `/var/www/<DOCS_DOMAIN>` 軟連結、建立同名實體目錄並修改 Web 服務根目錄。若選擇刪除舊 `/var/www/.<DOCS_DOMAIN>-releases`，先確認無需保留其中的靜態產物。清空後文件站點會暫時無法使用，直到新 CI 發佈成功且 Web 設定生效；評論服務與資料庫不受影響。完成準備後再推送新版 CI，勿重新執行舊版發佈工作。
+### 頁面上沒有出現評論區
 
-本地隔離驗證使用 `sh scripts/test-publish-docs.sh`。`DOCS_DEPLOY_ROOT` 可覆蓋腳本預設的 `/deploy`，取代舊的 `DOCS_DEPLOY_PARENT` / `DOCS_DEPLOY_SITE`，它不是 Ecoku 應用程式環境變數。
+載入器找不到必要的屬性時會靜默略過，不顯示任何提示。請檢查：
+
+- 外層元素上有 `data-ecoku-comments`，內部有 `data-ecoku-mount`、`data-ecoku-loader`、`data-ecoku-status`、`data-ecoku-retry` 四個元素，結構與[接入範例](../integration/html)一致；
+- `data-server-url`、`data-site-id`、`data-page-key` 三個屬性都有值；
+- 在瀏覽器開發人員工具的「網路」面板中，`ecoku-loader.js` 和 `ecoku.umd.js` 能正常載入。
+
+### 評論區顯示「评论暂时不可用」，或提示沒有權限
+
+多半是文章頁的來源沒有登記。在後台「站点管理」中，把瀏覽器網址列中的 `协议://域名[:端口]` 加入該站點的允許來源。帶 `www` 與不帶 `www` 是兩個不同的來源。
+
+### 訪客頻繁收到「提交过于频繁」
+
+Ecoku 放在反向代理後面，但沒有設定 `trusted_proxies`，所有訪客都被算作同一個 IP，共用每分鐘 5 次的送出額度。請依照[反向代理](./reverse-proxy#trusted-proxies)填入 Docker 閘道位址，並確認反向代理以覆寫方式設定 `X-Forwarded-For`。
+
+### 某篇文章的評論載入失敗，其他文章正常
+
+這篇文章的討論可能超出了單次讀取的上限（200 則評論、16 層或 1 MiB）。可以在接入程式碼中調低 `data-page-size`；如果是單一討論串本身過大，調低也沒有用，需要在後台刪除部分評論。詳見[討論串與分頁](../guide/concepts#threads)。
+
+### 調整部落格連結格式後，舊評論不見了
+
+評論依頁面 key 儲存。連結格式改變後，接入程式碼產生的頁面 key 也跟著改變。資料仍在資料庫中，把 `data-page-key` 改回原本的產生方式即可重新顯示。
+
+### 評論時間的時區不對
+
+時區由 `ecoku.env` 中的 `TZ` 決定，例如 `TZ='Asia/Tokyo'`。修改後需要重建容器（見上文）。
+
+## 管理後台
+
+### 無法登入
+
+請依序排查：
+
+1. 透過 HTTPS 存取後台。只有 `localhost`、`127.0.0.1` 可以用 HTTP。
+2. 網址列中的來源已寫入 `admin.allowed_origins`，而且與存取的位址完全一致（包括連接埠）。
+3. 使用者名稱和密碼正確。連續失敗 5 次後需等待一分鐘。
+4. 人機驗證元件能正常完成驗證。驗證服務出問題時，用 `captcha disable` 暫時關閉，見[人機驗證](./captcha#disable)。
+
+### 忘記了管理員密碼
+
+重新產生密碼雜湊，取代 `ecoku.env` 中 `ECOKU_ADMIN_PASSWORD_HASH` 的值，再重建容器：
+
+```bash
+cd ~/Ecoku
+read -rsp '新密码: ' P; echo
+printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.5 hash-password
+unset P
+```
+
+更換後所有已登入的工作階段都會失效。
+
+## 通知與人機驗證
+
+### 測試郵件寄送失敗
+
+見[通知](./notifications#troubleshooting)。
+
+### 儲存 Cap 設定時提示位址無效
+
+Cap 實例位址必須是可從公開網路存取的 HTTPS 位址，結尾不加 `/`。`localhost`、`127.0.0.1` 和內部網路 IP 都會被拒絕。
+
+### 啟用 Cap 後，瀏覽器主控台出現 CSP 錯誤
+
+如果錯誤出現在部落格頁面，表示部落格自己的 CSP 沒有為 Cap 放行，需要加入 Cap 實例來源、`worker-src blob:` 和 WebAssembly 權限，詳見[人機驗證 · 內容安全政策](./captcha#csp)。管理後台的 CSP 由 Ecoku 自動調整，不需要手動處理。

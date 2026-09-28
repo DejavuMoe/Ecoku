@@ -1,88 +1,80 @@
-# 升级与迁移
+# 升级
 
-Ecoku 采用版本化、原位（In-Place）、事务性的 SQLite Schema 迁移体系。
+当前版本是 **v0.2.5**（2026-09-26 发布，schema v8）。
 
-**[v0.2.5](./upgrades/v0.2.5)** 已于 2026-09-26 发布：评论区默认样式改为纸与墨，默认变量可由宿主覆盖，`auto` 跟随宿主明暗；schema 保持 v8。
+## 升级时会发生什么
 
-升级前核对对应版本的配置兼容性。修改 Compose 文件中的精确镜像 tag 后，服务在启动时按版本顺序执行数据库升级。
+升级就是把 `compose.yaml` 中的镜像换成新版本再启动。新版本启动时检查数据库的 schema 版本，如果低于自己支持的版本，就按顺序执行迁移：
 
----
+- 每一步迁移在一个事务中完成，失败则整步回滚，数据库保持原样，服务不启动；
+- 迁移在原数据库文件上进行，不会删除或重建数据库、评论、配置、WAL 文件或你的备份；
+- 每完成一步，在 `schema_migrations` 表中追加一条记录；
+- **只能向上迁移**。旧版本的程序打不开更高 schema 的数据库，会拒绝启动。
 
-## 升级核心契约
+所以，升级前的备份是回滚到旧 schema 的唯一途径。
 
-1. **单向事务迁移**：Schema 迁移在同一个 SQLite 文件中顺序向上执行，成功后向 `schema_migrations` 表追加版本记录。Ecoku **不支持自动向下迁移（Down-migration）**。
-2. **严禁浮动 Tag**：生产环境绝对禁止使用 `latest`，必须使用形如 `v0.2.5` 的精确发布版本。
-3. **不可逆性与回滚原则**：一旦数据库成功升级至高版本 Schema（例如 v8），**不能仅将镜像 Tag 换回旧版本**，否则旧版本服务因无法识别高版本 Schema 会拒绝启动。回滚必须使用升级前冷备份的数据库文件进行恢复。
+可以跨版本直接升级，比如从 v0.1.8 直接换到 v0.2.5，中间的迁移会依次执行。但请把跨过的每个版本的升级说明都读一遍，有的版本需要调整配置（例如 [v0.2.4](./upgrades/v0.2.4) 要求 `admin.token_ttl_minutes` 为 480 或省略）。
 
----
+## 升级步骤 {#steps}
 
-## 标准停服升级 SOP
+**1. 阅读升级说明。**在下方的[版本列表](#versions)中找到目标版本，确认是否有配置变更、是否涉及 schema 迁移。
 
-```bash
-(
-set -eu
-umask 077
-cd "$HOME/Ecoku"
-install -d -m 700 "$HOME/backups"
-sudo docker compose down
-archive="$HOME/backups/ecoku-$(date +%Y%m%d_%H%M%S).tar.gz"
-[ ! -e "$archive" ]
-sudo tar -czf - data/ app/config.yaml ecoku.env compose.yaml > "$archive"
-contents=$(tar -tzf "$archive")
-for required in data/ecoku.sqlite3 app/config.yaml ecoku.env compose.yaml; do
-  printf '%s\n' "$contents" | grep -Fx "$required" > /dev/null
-done
-printf 'Verified backup: %s\n' "$archive"
-vi app/config.yaml compose.yaml
-sudo docker compose pull && sudo docker compose up -d
-curl --fail --silent --show-error http://127.0.0.1:12123/api/health
-)
+**2. 停服冷备份。**按[备份与恢复](./backup#cold-backup)执行，确认输出 `Verified backup`。
+
+**3. 修改镜像版本。**编辑 `~/Ecoku/compose.yaml`，把 `image` 改成目标版本，例如：
+
+```yaml
+    image: "git.via.moe/dejavu/ecoku:v0.2.5"
 ```
 
----
+请写精确的版本号，不要用 `latest`。如果升级说明要求修改 `app/config.yaml` 或 `ecoku.env`，一并修改。
 
-## Schema 版本演进历史
+**4. 拉取并启动。**
 
-| 镜像版本 | Schema 版本 | 核心数据库变更与特性 |
-| :--- | :---: | :--- |
-| **`v0.2.5`** | `v8`（不变） | 不新增迁移；评论区默认样式与可覆盖变量，Turnstile Siteverify 拒绝重定向。 |
-| **`v0.2.4`** | `v8` | `admin_sessions` |
-| **`v0.1.9`** | `v7`（不变） | 不新增迁移；公开评论列表 CWE-400 资源预算防护、单层游标分页与独立列表读取频控。 |
-| **`v0.1.8`** | `v7` | `sites` 表新增 `smoji_enabled` (布尔) 与 `smoji_manifest_url` (TEXT)，支持站点级表情包。 |
-| **`v0.1.7`** | `v6`（不变） | 不改变 Schema；构建工具链升级、多语言文档体系落地与 CI 镜像构建优化。 |
-| **`v0.1.6`** | `v6`（不变） | 不改变 Schema；修复 Cap instrumentation 脚本所需动态 CSP 策略。 |
-| **`v0.1.5`** | `v6` | `turnstile_settings` 表原位重命名为 `captcha_settings`，新增 `provider` 及自托管 Cap 相关配置字段。 |
-| **`v0.1.4`** | `v5`（不变） | 不改变 Schema；后台保存博主口令时自动回填历史所有未删除评论的 `is_blogger` 标记。 |
-| **`v0.1.3`** | `v5` | `sites` 表增加 `blogger_passphrase_hash`；`comments` 表增加 `is_blogger`；`notification_outbox` 拆为每接收目标单行。 |
-| **`v0.1.2`** | `v4`（不变） | 不改变 Schema；优化评论区昵称排版基线对齐与 14px 字号阶梯。 |
-| **`v0.1.1`** | `v4`（不变） | 不改变 Schema；评论折叠按钮 `[+]`/`[-]` 提高优先级并固定 3ch 等宽。 |
-| **`v0.1.0`** | `v4` | 首个正式发布版本；多站点纯文本评论模型、墓碑软删除、通知配置与 Cloudflare Turnstile 支持。 |
-| **更早候选版** | `v1` ～ `v4` | RC 候选阶段：单容器极简架构演进、SQLite WAL 模式引入与时区支持。 |
+```bash
+cd ~/Ecoku
+sudo docker compose config --quiet
+sudo docker compose pull
+sudo docker compose up -d
+```
 
----
+**5. 检查。**
 
-## 历史版本升级指南索引
+```bash
+sudo docker compose ps
+sudo docker compose logs --tail=100 ecoku
+curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+```
 
-| 版本 | 发布日期 | Schema 变化 | 升级要点与说明 |
-| :--- | :--- | :---: | :--- |
-| [**v0.2.5**](./upgrades/v0.2.5) | 2026-09-26 | v8（不变） | 评论区纸与墨默认样式；可覆盖变量；`auto` 跟随宿主明暗。 |
-| [**v0.2.4**](./upgrades/v0.2.4) | 2026-09-16 | v7 → v8 | HttpOnly Cookie + SQLite 可撤销会话 |
-| [**v0.2.3**](./upgrades/v0.2.3) | 2026-09-16 (tag) | v7（不变） | 身份、通知、导入与客户端审计修复。 |
-| [**v0.2.2**](./upgrades/v0.2.2) | 2026-09-13 | v7（不变） | 修复 Smoji 选择器在窄屏下的布局问题。 |
-| [**v0.2.1**](./upgrades/v0.2.1) | 2026-09-12 | v7（不变） | Smoji 清单容量提升与精简 `base` 模板支持。 |
-| [**v0.2.0**](./upgrades/v0.2.0) | 2026-09-12 | v7（不变） | 文档、接入示例与 API 参考事实校正和完善。 |
-| [**v0.1.9**](./upgrades/v0.1.9) | 2026-08-31 | v7（不变） | CWE-400 修复；旧配置可启动，大线程读取和显式新配置键的回滚需留意。 |
-| [**v0.1.8**](./upgrades/v0.1.8) | 2026-08-27 | v6 → v7 | 新增 Smoji 纯文本表情包；站点新增表情包开关与清单 URL。 |
-| [**v0.1.7**](./upgrades/v0.1.7) | 2026-08-26 | v6 | 构建工具链升级与多语言文档体系落地；运行时契约保持不变。 |
-| [**v0.1.6**](./upgrades/v0.1.6) | 2026-08-18 | v6 | 优化 Cap 客户端在管理端所需的动态 CSP 求值策略。 |
-| [**v0.1.5**](./upgrades/v0.1.5) | 2026-08-17 | v5 → v6 | 引入自托管 Cap 人机验证；安全设置升级为三态单选。 |
-| [**v0.1.4**](./upgrades/v0.1.4) | 2026-08-15 | v5 | 管理后台保存博主口令时自动回填历史评论的 `is_blogger` 标记。 |
-| [**v0.1.3**](./upgrades/v0.1.3) | 2026-08-15 | v4 → v5 | 引入博主口令认证；Outbox 通知队列按接收目标拆行入队。 |
-| [**v0.1.2**](./upgrades/v0.1.2) | 2026-08-15 | v4 | 优化评论区元信息排版基线与字号阶梯。 |
-| [**v0.1.1**](./upgrades/v0.1.1) | 2026-08-15 | v4 | 评论折叠按钮 `[+]`/`[-]` 固定为 3ch 等宽，消除折叠切换抖动。 |
-| [**v0.1.0**](./upgrades/v0.1.0) | 2026-08-15 | v4 | 首个正式发布版本。 |
-| [**更早候选版**](./upgrades/earlier) | 2026-08-14 | v1 ～ v4 | 早期单容器架构设计、WAL 模式引入与时区规范。 |
+容器状态为 `healthy`、日志中没有报错后，再打开博客文章页和管理后台，确认评论能正常加载、发布，后台能登录。
 
-## v0.2.5 升级兼容性
+## 回滚
 
-schema 保持 v8，不新增迁移；配置键、环境变量、Compose 挂载与密码哈希不变，v0.2.4 可原位升级，回滚到 v0.2.4 时通常只需改回镜像 tag。评论区默认样式随镜像更新，已有覆盖 CSS 可能与新默认值叠加，升级后请在浅色和深色下检查接入站点，详见 [v0.2.5 升级说明](./upgrades/v0.2.5)。
+先看新旧两个版本的 schema 是否相同（见下表）：
+
+- **schema 相同**：停止服务，把 `compose.yaml` 中的镜像改回旧版本号，拉取并启动。数据库不用动，升级后产生的新评论也会保留。如果新版本要求加过新的配置项，而旧版本不认识它，要先删掉，否则旧版本会因未知字段拒绝启动。
+- **schema 不同**：只改回镜像版本号不行，旧版本打不开已迁移的数据库。需要用升级前的冷备份[恢复](./backup#restore)。备份之后产生的评论和设置修改会丢失。
+
+## 版本列表 {#versions}
+
+| 版本 | 发布日期 | schema | 要点 |
+| --- | --- | --- | --- |
+| [v0.2.5](./upgrades/v0.2.5) | 2026-09-26 | v8 | 评论区默认样式改为“纸与墨”，CSS 变量可直接覆盖；Turnstile 核验拒绝重定向。 |
+| [v0.2.4](./upgrades/v0.2.4) | 2026-09-16 | v7 → v8 | 管理员会话改为可撤销的 Cookie 会话；`token_ttl_minutes` 只能为 480；新回复最多 16 层。 |
+| [v0.2.3](./upgrades/v0.2.3) | 2026-09-16 | v7 | 保存站点不再改写历史博主标记；通知、导入、SDK 多项修复。 |
+| [v0.2.2](./upgrades/v0.2.2) | 2026-09-13 | v7 | 修复窄屏下表情选择器超出页面。 |
+| [v0.2.1](./upgrades/v0.2.1) | 2026-09-12 | v7 | Smoji 清单容量提高，支持 `base` 模板。 |
+| [v0.2.0](./upgrades/v0.2.0) | 2026-09-12 | v7 | 文档与 API 参考修订，运行时无变化。 |
+| [v0.1.9](./upgrades/v0.1.9) | 2026-08-31 | v7 | 评论列表增加读取预算、逐层读取接口和独立读取限流。 |
+| [v0.1.8](./upgrades/v0.1.8) | 2026-08-27 | v6 → v7 | 新增 Smoji 表情包。 |
+| [v0.1.7](./upgrades/v0.1.7) | 2026-08-26 | v6 | 构建工具链与文档站更新，运行时无变化。 |
+| [v0.1.6](./upgrades/v0.1.6) | 2026-08-18 | v6 | 修正 Cap 所需的后台 CSP。 |
+| [v0.1.5](./upgrades/v0.1.5) | 2026-08-17 | v5 → v6 | 人机验证改为关闭 / Turnstile / Cap 三选一。 |
+| [v0.1.4](./upgrades/v0.1.4) | 2026-08-15 | v5 | 保存博主口令时回填历史博主标记（v0.2.3 起取消）。 |
+| [v0.1.3](./upgrades/v0.1.3) | 2026-08-15 | v4 → v5 | 博主改用口令认证；通知按收件人拆分。 |
+| [v0.1.2](./upgrades/v0.1.2) | 2026-08-15 | v4 | 评论元信息排版调整。 |
+| [v0.1.1](./upgrades/v0.1.1) | 2026-08-15 | v4 | 折叠按钮改为固定宽度，切换时不再跳动。 |
+| [v0.1.0](./upgrades/v0.1.0) | 2026-08-15 | v4 | 首个正式版本。 |
+| [更早的候选版本](./upgrades/earlier) | 2026-08-14 | v1 ～ v4 | `v0.1.0-rc.*` 系列。 |
+
+表中 schema 一栏只写一个版本号的，表示该版本没有数据库迁移。

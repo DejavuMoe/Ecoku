@@ -1,29 +1,40 @@
 # Docker 部署
 
-容器內監聽 `:12123`，Compose 僅在主機 `127.0.0.1:12123` 發佈連接埠；HTTPS 由主機反向代理終止。
+本頁從一台全新的 Linux 主機開始，用 Docker Compose 執行一個 Ecoku 實例。完成後，服務只能在本機 `127.0.0.1:12123` 上存取；公開網路的 HTTPS 在下一步[反向代理](./reverse-proxy)中設定。
 
-> [!NOTE]
-> 以下命令使用已發佈鏡像 `git.via.moe/dejavu/ecoku:v0.2.5`。`ecoku.example.com` 為預留網域。
+## 開始之前
 
----
+你需要：
 
-## 1. 準備目錄與權限
+- 一台安裝了 Docker Engine 與 Compose v2（`docker compose` 指令）的 Linux 主機，以及 `sudo` 權限。
+- 一個專門給 Ecoku 使用的網域，例如 `ecoku.example.com`。管理後台透過它存取，部落格透過它載入評論區腳本。它不能與部落格網域相同，原因見下文的 `admin.allowed_origins`。
+- 在這台主機上執行的 Caddy 或 Nginx，用來終止 HTTPS。
 
-Ecoku 容器採用非 root 使用者 `10001:10001` 運行，以唯讀根檔案系統啟動。主流 Linux 環境下可使用 `sudo install -d` 一步建立目錄並配置容器所需的所有者與權限：
+本頁指令中的 `ecoku.example.com`、`blog.example.com` 都是預留位置，請換成自己的網域。映像檔使用目前的發布版本 `git.via.moe/dejavu/ecoku:v0.2.5`。
+
+部署完成後，目錄結構如下：
+
+```text
+~/Ecoku/
+├── compose.yaml        # 容器定義
+├── ecoku.env           # 管理員憑據、金鑰、時區（權限 600）
+├── app/
+│   ├── config.yaml     # 實例設定（唯讀掛載）
+│   └── logs/           # 日誌檔案副本
+└── data/
+    └── ecoku.sqlite3   # 全部資料：站點、評論、設定
+```
+
+## 1. 建立目錄
+
+容器以 UID/GID `10001:10001` 執行，根檔案系統為唯讀，只有掛載進去的 `app/logs` 和 `data` 可寫入。先建立這兩個目錄，並將擁有者設為該使用者：
 
 ```bash
-# 進入部署根目錄
 mkdir -p ~/Ecoku && cd ~/Ecoku
-
-# 一步建立 logs 與 data 目錄並配置 UID/GID 10001 與 750 權限
 sudo install -d -o 10001 -g 10001 -m 750 app/logs data
 ```
 
----
-
-## 2. 編寫 Compose 配置
-
-使用 `cat <<'EOF'` 寫入 `compose.yaml`：
+## 2. 撰寫 compose.yaml
 
 ```bash
 cd ~/Ecoku
@@ -38,7 +49,6 @@ services:
     env_file:
       - ./ecoku.env
     ports:
-      # 僅綁定宿主機本地回環位址，嚴禁直接暴露 0.0.0.0
       - "127.0.0.1:12123:12123"
     volumes:
       - ./app/config.yaml:/app/config.yaml:ro
@@ -70,15 +80,14 @@ services:
 EOF
 ```
 
-> [!IMPORTANT]
-> - 生產環境**嚴禁**使用 `latest` 等浮動標籤，必須明確指定具體的語意化版本號（如 `v0.2.5`）。
-> - 容器埠口請務必綁定到 `127.0.0.1:12123`，防止繞過反向代理直接存取裸埠口。
+有兩處請保持原樣：
 
----
+- **連接埠只繫結 `127.0.0.1`。**寫成 `12123:12123` 會讓 Docker 在所有網路介面上開放連接埠，外部可以繞過反向代理直接存取，速率限制也會失效。
+- **映像檔寫明確的版本號。**不要用 `latest`。升級時修改這一行，回滾時改回舊版本號，詳見[升級](./upgrade)。
 
-## 3. 設定檔 `app/config.yaml`
+其餘選項用於收緊容器權限：`read_only` 與 `tmpfs` 讓容器只能寫入 `/tmp`（16 MB）和掛載目錄；`cap_drop: ALL` 與 `no-new-privileges` 移除所有 Linux capability；`healthcheck` 每 30 秒請求一次容器內的 `/api/health`。
 
-使用 `cat <<'EOF'` 產生設定檔，並設定容器唯讀權限：
+## 3. 撰寫 app/config.yaml
 
 ```bash
 cd ~/Ecoku
@@ -86,10 +95,9 @@ cd ~/Ecoku
 cat <<'EOF' > app/config.yaml
 site:
   port: 12123
-  # 日誌始終輸出到 stdout；指定普通檔案路徑時，處理程序內額外輪轉儲存日誌檔案
+  # 日誌一律寫到 stdout；這裡再額外保存一份到檔案，由程式自動輪替
   log_path: "/var/log/ecoku/ecoku.log"
-  # 信任的反代 IP 或 CIDR。生產若透過 Caddy 反代，填入 Docker 容器閘道 (如 172.18.0.1/32)
-  # 為空表示所有訪客共用一個全域限流桶。嚴禁配置 0.0.0.0/0
+  # 先留空，設定好反向代理後再填入 Docker 閘道位址，見「反向代理」
   trusted_proxies: []
 
 client:
@@ -97,16 +105,14 @@ client:
 
 rate_limit:
   window_seconds: 60
-  comment_submit: 5      # 評論提交頻控（次/窗口）
-  comment_list: 60       # 評論讀取頻控（次/窗口）
-  comment_delete: 30     # 評論刪除頻控
-  admin_login: 5         # 管理員登入頻控
-  notification_test: 5   # 通知測試發送頻控
+  comment_submit: 5
+  comment_list: 60
+  comment_delete: 30
+  admin_login: 5
+  notification_test: 5
 
 notifications:
-  # 資料庫敏感欄位加密主金鑰對應的環境變數名稱
   encryption_key_env: "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
-  # 實例對外公網規範 URL（用於拼裝郵件中的回覆連結）
   instance_public_url: "https://ecoku.example.com"
 
 database:
@@ -119,91 +125,96 @@ admin:
   username_env: "ECOKU_ADMIN_USERNAME"
   password_hash_env: "ECOKU_ADMIN_PASSWORD_HASH"
   token_key_env: "ECOKU_ADMIN_TOKEN_KEY"
-  token_ttl_minutes: 480 # 管理員會話有效期 8 小時
+  token_ttl_minutes: 480
   allowed_origins:
-    # 允許存取管理後台的精確 Origin
     - "https://ecoku.example.com"
 EOF
 
-# 設定所屬權與權限，確保容器內非 root 使用者 (10001) 擁有唯讀權限
 sudo chown 10001:10001 app/config.yaml
 sudo chmod 640 app/config.yaml
 ```
 
----
+需要依自己的環境修改的只有兩處：
 
-## 4. 環境變數與金鑰產生 `ecoku.env`
+- `notifications.instance_public_url`：Ecoku 的公開網址。啟用電子郵件或 Telegram 通知前必須填寫，否則在後台儲存通知設定會失敗。
+- `admin.allowed_origins`：開啟管理後台時瀏覽器網址列中的來源（協定 + 網域 + 選填的連接埠）。它**不能與任何站點的允許來源重複**，否則服務會拒絕啟動。這就是 Ecoku 需要獨立網域的原因。
 
-建立 `ecoku.env` 檔案。可透過下列命令自動產生高強度隨基金鑰並追加至環境變數中。
+設定檔不存放任何密碼或金鑰，只寫環境變數的名稱，實際的值放在下一步的 `ecoku.env`。未知欄位會導致啟動失敗，所有欄位的意義見[設定參考](../reference/configuration)。
 
-該流程具備**等冪性**：各項目若已存在會自動跳過，重複執行不會覆蓋；隨基金鑰在終端機**無須回顯**；密碼雜湊採用互動式不可見輸入產生；環境變數值若帶有特殊符號（如 bcrypt 中的 `$` 及 base64 中的字元）均自動以單引號包覆，防止被 shell 或 Compose 錯誤插值：
+## 4. 產生 ecoku.env {#env}
+
+`ecoku.env` 存放管理員憑據和兩把金鑰。下面這段腳本可以重複執行：已經存在的項目會略過，不會覆寫；輸入密碼時不會回顯；每個值都用單引號包住，避免 bcrypt 雜湊中的 `$` 被 Compose 當成變數展開。
 
 ```bash
 cd ~/Ecoku
+touch ecoku.env && chmod 600 ecoku.env
 
-# 1. 建立敏感環境變數檔案並賦予安全權限（僅目前使用者可讀寫）
-touch ecoku.env
-chmod 600 ecoku.env
+grep -q '^GIN_MODE=' ecoku.env || echo "GIN_MODE='release'" >> ecoku.env
+grep -q '^TZ=' ecoku.env || echo "TZ='Asia/Shanghai'" >> ecoku.env
+grep -q '^ECOKU_ADMIN_USERNAME=' ecoku.env || echo "ECOKU_ADMIN_USERNAME='admin'" >> ecoku.env
 
-# 2. 寫入通用預設變數（已存在則自動跳過）
-grep -q "^GIN_MODE=" ecoku.env || echo "GIN_MODE='release'" >> ecoku.env
-grep -q "^TZ=" ecoku.env || echo "TZ='Asia/Shanghai'" >> ecoku.env
-grep -q "^ECOKU_ADMIN_USERNAME=" ecoku.env || echo "ECOKU_ADMIN_USERNAME='admin'" >> ecoku.env
-
-# 3. 互動式輸入管理員密碼，產生 Bcrypt 雜湊並寫入（密碼輸入不回顯，已存在則自動跳過）
-if ! grep -q "^ECOKU_ADMIN_PASSWORD_HASH=" ecoku.env; then
-  read -rsp '輸入管理員密碼: ' ADMIN_PASS; echo
-  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i --entrypoint /app/ecoku-server "git.via.moe/dejavu/ecoku:v0.2.5" hash-password)
+# 管理員密碼：互動式輸入，只保存 bcrypt 雜湊
+if ! grep -q '^ECOKU_ADMIN_PASSWORD_HASH=' ecoku.env; then
+  read -rsp '管理员密码: ' ADMIN_PASS; echo
+  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i "git.via.moe/dejavu/ecoku:v0.2.5" hash-password)
   unset ADMIN_PASS
   echo "ECOKU_ADMIN_PASSWORD_HASH='$HASH'" >> ecoku.env
 fi
 
-# 4. 自動產生 64 位元十六進位管理員 Token 簽章金鑰（無終端機回顯，已存在則自動跳過）
-if ! grep -q "^ECOKU_ADMIN_TOKEN_KEY=" ecoku.env; then
+# 管理員工作階段簽章金鑰：64 個十六進位字元
+grep -q '^ECOKU_ADMIN_TOKEN_KEY=' ecoku.env || \
   echo "ECOKU_ADMIN_TOKEN_KEY='$(openssl rand -hex 32)'" >> ecoku.env
-fi
 
-# 5. 自動產生 32 位元組 Base64 主加密金鑰（用於通知與驗證碼憑據加密，無終端機回顯，已存在則自動跳過）
-if ! grep -q "^ECOKU_NOTIFICATION_ENCRYPTION_KEY=" ecoku.env; then
+# 憑據加密主金鑰：Base64 編碼的 32 位元組
+grep -q '^ECOKU_NOTIFICATION_ENCRYPTION_KEY=' ecoku.env || \
   echo "ECOKU_NOTIFICATION_ENCRYPTION_KEY='$(openssl rand -base64 32)'" >> ecoku.env
-fi
 ```
 
----
+各變數的作用：
 
-## 5. 啟動與驗證
+| 變數 | 說明 |
+| --- | --- |
+| `TZ` | 評論時間依這個時區顯示，填 IANA 名稱，例如 `Asia/Tokyo`。 |
+| `ECOKU_ADMIN_USERNAME` | 後台登入使用者名稱，1～80 個字元。 |
+| `ECOKU_ADMIN_PASSWORD_HASH` | 後台密碼的 bcrypt 雜湊，由映像檔內建的 `hash-password` 指令產生。 |
+| `ECOKU_ADMIN_TOKEN_KEY` | 管理員工作階段的簽章金鑰，至少 32 個字元。更換後所有已登入的工作階段都會失效。 |
+| `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 加密資料庫中的 SMTP 密碼、Telegram Bot Token 和人機驗證 Secret Key。 |
+
+::: danger 請把主金鑰和資料庫一起備份
+在後台儲存過 SMTP、Telegram 或人機驗證憑據之後，`ECOKU_NOTIFICATION_ENCRYPTION_KEY` 就是解開它們的唯一鑰匙。金鑰遺失或被更動，Ecoku 會在啟動時因為無法解密而拒絕執行。[備份](./backup)時 `ecoku.env` 必須與 `data/` 放在同一份封存檔裡。
+:::
+
+## 5. 啟動並檢查
 
 ```bash
 cd ~/Ecoku
-
-# 驗證 Compose 配置語法
-sudo docker compose config --quiet
-
-# 拉取映像檔並後台啟動
+sudo docker compose config --quiet   # 檢查語法，沒有輸出即為正常
 sudo docker compose pull
 sudo docker compose up -d
-
-# 檢查容器狀態與執行日誌
 sudo docker compose ps
-sudo docker compose logs --tail=100 -f ecoku
+sudo docker compose logs --tail=100 ecoku
 ```
 
-### 健康檢查驗證
+首次啟動時，Ecoku 會在 `data/ecoku.sqlite3` 建立資料庫並初始化到最新的 schema。日誌中出現 `Server starting on :12123` 即表示服務已開始監聽。
+
+在主機上確認健康檢查端點：
 
 ```bash
 curl --fail --silent --show-error http://127.0.0.1:12123/api/health
-# 預期輸出: {"code":200,"message":"Success","data":{"status":"healthy","timestamp":...}}
 ```
 
-接下來，請配置前端 [反向代理](/zh-hant/self-hosting/reverse-proxy) 終止 HTTPS 並完成公網轉發，或造訪 [管理後台配置](/zh-hant/self-hosting/admin) 註冊站點與博主身分。
+正常時回傳：
 
----
+```json
+{"code":200,"message":"Success","data":{"status":"healthy","timestamp":1790000000}}
+```
 
-## 6. 歷史評論匯入（可選）
+健康檢查端點只能說明程式有在回應請求。如果容器反覆重新啟動，先看 `docker compose logs`：設定錯誤、環境變數為空、目錄權限不對，都會在日誌中寫明原因，常見情況見[常見問題](./faq)。
 
-如果您之前使用的是 Twikoo 評論系統，可以在目前實例完成全新部署後，將原有歷史評論遷移至 Ecoku。
+## 下一步
 
-> [!IMPORTANT]
-> - **僅限全新初始部署階段**：Twikoo 評論匯入命令（`import-twikoo`）**僅支援匯入到已註冊且零評論的目標站點**。
-> - 若目標站點已有新評論寫入，系統為確保樹狀階層關係、父子引用約束與評論 ID 連續性，將**嚴格拒絕匯入**。
-> - 詳細匯入步驟、脫敏預檢與欄位對齊說明，請參閱 [Twikoo 評論匯入](/zh-hant/self-hosting/twikoo)。
+1. [設定反向代理](./reverse-proxy)，讓 `https://ecoku.example.com` 可以從公開網路存取。
+2. 開啟 `https://ecoku.example.com/admin/` [登入後台](./admin)，註冊第一個站點。
+3. 把評論區[嵌入部落格頁面](../integration/html)。
+
+如果要從 Twikoo 遷移歷史評論，請在第 2 步註冊站點之後、有人發表新評論之前完成，見[從 Twikoo 遷移](./twikoo)。
