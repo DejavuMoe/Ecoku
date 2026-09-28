@@ -197,8 +197,8 @@ describe('approved production surface', () => {
     expect(wrapper.find('script').exists()).toBe(false)
     expect(wrapper.find('.comment-body').text()).toContain('<script>alert("xss")</script>')
     expect(wrapper.find<HTMLAnchorElement>('a[href="https://blog.example.test/article/test#ecoku-comment-7"]').exists()).toBe(true)
-    expect(wrapper.find('.danger-button').text()).toBe('墓碑删除')
-    expect(wrapper.find('.queue-meta').exists()).toBe(true)
+    expect(wrapper.find('.detail-actions .danger-button').text()).toBe('墓碑删除')
+    expect(wrapper.find('.queue-toolbar').exists()).toBe(true)
     expect(wrapper.find('.queue-row').exists()).toBe(true)
     expect(wrapper.find('.pager').exists()).toBe(true)
     expect(wrapper.find('.detail-main').exists()).toBe(true)
@@ -289,6 +289,51 @@ describe('approved production surface', () => {
     expect(wrapper.text()).not.toContain('审核方式')
   })
 
+  it('switches sites from the comment list and shows a static label when only one site exists', async () => {
+    const store = useAdminStore()
+    store.authenticated = true; store.sessionReady = true; store.sites = [site(), site({ id: 'site-b', name: '', siteUrl: 'https://notes.example.test' })]; store.selectedSiteId = 'site-a'
+    const select = vi.spyOn(store, 'selectSite').mockResolvedValue()
+    const wrapper = mount(CommentManagementView, { props: { mobileDetail: false }, global: { plugins: [pinia] }, attachTo: document.body })
+    const trigger = wrapper.get('.site-trigger')
+    expect(trigger.text()).toContain("Dejavu's Blog")
+    await trigger.trigger('click')
+    const options = wrapper.findAll('.site-option')
+    expect(options.map((option) => option.find('strong').text())).toEqual(["Dejavu's Blog", 'notes.example.test'])
+    await options[1]!.trigger('click')
+    expect(select).toHaveBeenCalledWith('site-b')
+    store.sites = [site()]
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('.site-trigger').exists()).toBe(false)
+    expect(wrapper.get('.site-static').text()).toContain("Dejavu's Blog")
+    wrapper.unmount()
+  })
+
+  it('explains why a tombstone with replies cannot be permanently deleted and names the confirm action', async () => {
+    const store = useAdminStore()
+    const tombstone = comment({ status: 'deleted', deleted: true, hasChildren: true, username: '', content: '' })
+    store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'; store.status = 'deleted'; store.comments = [tombstone]; store.selectedComment = tombstone
+    const wrapper = mount(CommentManagementView, { props: { mobileDetail: false }, global: { plugins: [pinia] } })
+    expect(wrapper.find('.detail-actions .danger-button').exists()).toBe(false)
+    expect(wrapper.text()).toContain('仍有回复，不能彻底删除')
+    store.selectedComment = { ...tombstone, hasChildren: false }
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('.detail-actions .danger-button').text()).toBe('彻底删除')
+  })
+
+  it('collapses a disabled channel and asks to save only after turning a saved channel off', async () => {
+    const store = useAdminStore(); store.authenticated = true; store.sessionReady = true; store.notificationSettings = notifications()
+    const wrapper = mount(NotificationSettingsView, { global: { plugins: [pinia] } })
+    expect(wrapper.text()).toContain('发送测试邮件')
+    expect(wrapper.find('input[type="checkbox"][disabled][checked]').exists()).toBe(false)
+    await wrapper.get('input[aria-label="启用电子邮件通知"]').setValue(false)
+    expect(wrapper.text()).not.toContain('发送测试邮件')
+    expect(wrapper.text()).toContain('未开启，不会发送任何邮件，包括访客回复通知。')
+    expect(wrapper.text()).toContain('关闭后需保存才会生效')
+    const save = wrapper.findAll('.save-button')[0]!
+    expect(save.attributes('disabled')).toBeUndefined()
+    expect(wrapper.findAll('input[name="email-encryption"]').map((input) => input.attributes('value'))).toEqual(['tls', 'starttls'])
+  })
+
   it('renders redacted secret placeholders and destination separators without public template previews', () => {
     const store = useAdminStore(); store.authenticated = true; store.sessionReady = true; store.notificationSettings = notifications()
     const wrapper = mount(NotificationSettingsView, { global: { plugins: [pinia] } })
@@ -335,10 +380,18 @@ describe('approved production surface', () => {
     expect(html).toContain('data-theme="auto"')
     expect(html).toContain('content="light dark"')
     expect(css).toContain('@media (prefers-color-scheme: dark)')
-    expect(css).toMatch(/html\[data-theme="auto"\][\s\S]*--paper: rgb\(26, 29, 32\)/)
-    expect(css).toContain('--surface: rgb(34, 38, 42)')
-    expect(css).toContain('--ink: rgb(242, 236, 226)')
-    expect(css).toContain('--serif: "Noto Serif SC", "Noto Serif CJK SC", "Songti SC", "STSong", serif')
+    expect(css).toMatch(/html\[data-theme="auto"\][\s\S]*--paper: #1a1816;/)
+    const clientCss = fs.readFileSync(path.join(here, '../../client/src/style.css'), 'utf8')
+    for (const [admin, client] of [
+      ['--paper: #f7f4ee', '--ecoku-theme: #f7f4ee'], ['--surface: #fbf9f5', '--ecoku-entry: #fbf9f5'], ['--ink: #1e1c19', '--ecoku-primary: #1e1c19'],
+      ['--paper: #1a1816', '--ecoku-theme: #1a1816'], ['--surface: #211f1c', '--ecoku-entry: #211f1c'], ['--ink: #eee8dd', '--ecoku-primary: #eee8dd'],
+    ]) {
+      expect(css).toContain(admin)
+      expect(clientCss).toContain(client)
+    }
+    expect(css).toContain('--accent: color-mix(in oklab, #c8553a 75%, var(--ink))')
+    expect(css).toContain('--sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC"')
+    expect(css).not.toMatch(/"Songti SC"|"STSong"|"Noto Serif SC"|@font-face|@import/)
     expect(css).toContain('.provider-group')
     expect(css).toContain('.admin-cap-widget')
     expect(css).toContain('--cap-widget-width: 260px')

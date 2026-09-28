@@ -30,7 +30,7 @@ In addition:
 
 - No visitor email is sent if the visitor who was replied to left no email address, or if the replier and the person replied to have the same email address (replying to yourself).
 - If the comment that was replied to is deleted before the notification goes out, the visitor email is canceled.
-- Visitor reply notifications are sent only when the email channel is enabled. There is no separate switch. The **When a visitor gets a reply** (访客收到回复时) option in the admin console is always checked.
+- Visitor reply notifications are sent only when the email channel is enabled. There is no separate switch. Turning the email channel off also stops visitor reply notifications.
 - Telegram never notifies visitors.
 
 ## Email

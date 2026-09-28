@@ -120,10 +120,20 @@
             "width": 1440,
             "height": 900
           }
+        },
+        {
+          "path": "index-v13.html",
+          "createdAt": "2026-09-28T00:00:00.000Z",
+          "status": "approved",
+          "subtitle": "Approved: unified paper-and-ink admin aligned with comment v17 tokens, system CJK/Latin UI fonts, no new features",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          }
         }
       ]
     }
   },
   "createdAt": "2026-08-12T22:31:10.516Z",
-  "updatedAt": "2026-08-17T00:00:00.000Z"
+  "updatedAt": "2026-09-28T00:00:00.000Z"
 }

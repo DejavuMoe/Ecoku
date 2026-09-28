@@ -1,4 +1,4 @@
-/* Ecoku admin — paper and ink, aligned with the default comment surface (design revision 17).
+/* Ecoku admin v13 — paper and ink, aligned with the default comment surface (design revision 17).
    UI text uses the operating system's own CJK and Latin faces; no webfont is loaded. */
 
 :root {
@@ -77,7 +77,7 @@ h1, h2, h3, p, dl, dd { margin: 0; }
 [hidden] { display: none !important; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .mono { font-family: var(--mono); font-size: 0.92em; }
-.visually-hidden, .sr-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .skip-link { position: fixed; z-index: 200; top: 8px; left: 8px; padding: 6px 12px; border-radius: var(--radius); color: var(--paper); background: var(--ink); transform: translateY(-160%); }
 .skip-link:focus { transform: none; }
 .icon { width: 16px; height: 16px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
@@ -113,7 +113,6 @@ h1, h2, h3, p, dl, dd { margin: 0; }
 .input-affix { position: relative; display: flex; align-items: center; }
 .input-affix .input { padding-right: 44px; }
 .input-affix > span { position: absolute; right: 10px; color: var(--muted); font-size: 12px; pointer-events: none; }
-.limit-field { max-width: 200px; }
 
 .field { display: grid; min-width: 0; gap: 6px; }
 .field-label { display: flex; align-items: baseline; gap: 8px; color: var(--ink-soft); font-size: 13px; font-weight: 500; }
@@ -174,9 +173,15 @@ h1, h2, h3, p, dl, dd { margin: 0; }
 .login-card .input { height: 40px; }
 .login-button { width: 100%; min-height: 40px; font-size: 14px; }
 .captcha-slot:empty { display: none; }
+.auth-foot { color: var(--muted); font-size: 12px; text-align: center; }
+
+.turnstile-widget { display: flex; width: min(100%, 300px); height: 65px; align-items: center; gap: 12px; padding: 0 12px; border: 1px solid var(--line-soft); border-radius: 3px; background: var(--paper); font-size: 14px; }
+.turnstile-check { width: 24px; height: 24px; flex: 0 0 auto; padding: 0; border: 2px solid var(--line); border-radius: 4px; background: var(--surface); }
+.turnstile-label { flex: 1 1 auto; color: var(--ink-soft); }
+.turnstile-brand { color: var(--muted); font-size: 10px; letter-spacing: 0.04em; }
 
 /* Cap Widget: official geometry, tokens mapped the same way as the comment surface. */
-.admin-cap-widget {
+cap-widget.admin-cap-widget {
   display: block;
   width: min(100%, var(--cap-widget-width));
   --cap-background: var(--paper);
@@ -200,6 +205,25 @@ h1, h2, h3, p, dl, dd { margin: 0; }
   --cap-success-color: var(--success);
   --cap-error-color: var(--danger);
 }
+.cap-captcha { position: relative; display: block; width: 100%; height: var(--cap-widget-height); overflow: hidden; border: 1px solid var(--cap-border-color); border-radius: var(--cap-border-radius); color: var(--cap-color); background: var(--cap-background); font-family: var(--cap-font); user-select: none; }
+.cap-trigger { position: absolute; inset: 0; display: flex; width: 100%; align-items: center; gap: var(--cap-gap); padding: var(--cap-widget-padding); border: 0; border-radius: inherit; color: inherit; background: transparent; text-align: left; }
+.cap-trigger:focus-visible { outline: 2px solid var(--cap-focus-ring); outline-offset: -3px; }
+.cap-checkbox { display: grid; width: var(--cap-checkbox-size); height: var(--cap-checkbox-size); flex: 0 0 auto; place-items: center; border: var(--cap-checkbox-border); border-radius: var(--cap-checkbox-border-radius); background: var(--cap-checkbox-background); }
+.cap-label { font-size: 14px; font-weight: 500; white-space: nowrap; }
+.cap-progress-ring, .cap-state-icon { display: none; width: 100%; height: 100%; }
+.cap-progress-ring { transform: rotate(-90deg); }
+.cap-progress-ring-bg { fill: none; stroke: var(--cap-spinner-background-color); stroke-width: var(--cap-spinner-thickness); }
+.cap-progress-ring-circle { fill: none; stroke: var(--cap-spinner-color); stroke-width: var(--cap-spinner-thickness); stroke-linecap: round; stroke-dasharray: 87.96; animation: cap-progress 900ms ease-in-out infinite alternate; }
+.cap-checkmark { color: var(--cap-success-color); }
+.cap-error-icon { color: var(--cap-error-color); }
+.cap-captcha[data-state="verifying"] .cap-checkbox { border: 0; border-radius: 50%; background: transparent; transform: scale(1.1); }
+.cap-captcha[data-state="verifying"] .cap-progress-ring,
+.cap-captcha[data-state="done"] .cap-checkmark,
+.cap-captcha[data-state="error"] .cap-error-icon { display: block; }
+.cap-captcha[data-state="done"] .cap-checkbox,
+.cap-captcha[data-state="error"] .cap-checkbox { border-color: transparent; background: transparent; }
+.cap-credits { position: absolute; right: 4px; bottom: 4px; padding: 4px 6px; color: var(--cap-color); font-size: 12px; line-height: 1; text-decoration: underline; text-underline-offset: 0.18em; opacity: 0.8; pointer-events: none; }
+@keyframes cap-progress { from { stroke-dashoffset: 76; } to { stroke-dashoffset: 18; } }
 
 /* ---------- app shell ---------- */
 .app-shell { display: grid; height: 100dvh; grid-template-columns: minmax(0, 1fr); grid-template-rows: var(--header-height) minmax(0, 1fr); }
@@ -302,9 +326,6 @@ h1, h2, h3, p, dl, dd { margin: 0; }
 .fact-row dd a:hover { text-decoration-color: currentColor; }
 .fact-row .is-empty { color: var(--muted); }
 .detail-pane .notice { margin: 16px 28px 0; }
-.admin-smoji-content { white-space: inherit; }
-.admin-smoji-inline { display: inline-block; width: auto; max-width: 4.5em; height: 1.8em; margin: 0 .14em; object-fit: contain; vertical-align: -.48em; }
-.admin-smoji-content.is-compact .admin-smoji-inline { max-width: 3.5em; height: 1.45em; margin: 0 .08em; vertical-align: -.35em; }
 
 /* ---------- settings pages ---------- */
 .page-layout { height: 100%; overflow-y: auto; scrollbar-gutter: stable; }
@@ -352,7 +373,7 @@ h1, h2, h3, p, dl, dd { margin: 0; }
 .test-feedback.is-failure { color: var(--danger); }
 .test-feedback .icon { width: 14px; height: 14px; }
 
-.provider-group { display: grid; min-width: 0; margin: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 20px; border: 0; }
+.provider-group { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding: 20px; border: 0; }
 .provider-option { position: relative; display: grid; align-content: start; gap: 2px; padding: 12px 12px 12px 38px; border: 1px solid var(--field-line); border-radius: var(--radius); background: var(--paper); cursor: pointer; transition: border-color 0.15s ease; }
 .provider-option:hover { border-color: var(--muted); }
 .provider-option:has(input:checked) { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); background: var(--surface); }
@@ -431,3 +452,10 @@ dialog::backdrop { background: rgb(20 18 16 / 0.36); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+/* ---------- prototype only ---------- */
+.scenario-controller { position: fixed; z-index: 150; right: 16px; bottom: 16px; display: grid; width: 236px; gap: 6px; padding: 10px 12px 12px; border: 1px dashed var(--field-line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); font-size: 12px; }
+.scenario-controller[data-collapsed="true"] > :not(.scenario-toggle) { display: none; }
+.scenario-controller label { color: var(--muted); }
+.scenario-controller select { height: 30px; padding: 0 6px; border: 1px solid var(--field-line); border-radius: var(--radius-sm); background: var(--paper); font-size: 12px; }
+.scenario-toggle { justify-self: end; padding: 0; border: 0; color: var(--muted); background: transparent; font-size: 11px; text-decoration: underline; }

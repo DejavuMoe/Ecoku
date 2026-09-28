@@ -60,83 +60,77 @@ async function save() {
 
 <template>
   <section class="page-layout" aria-labelledby="security-title">
-    <div class="notification-column">
+    <div class="page-column is-narrow">
       <header class="page-heading">
         <div>
           <h1 id="security-title">安全</h1>
-          <p>选择一种实例级验证方式，同时用于访客评论和管理员登录，不按站点分开。</p>
+          <p>人机验证对整个实例生效，同时用于访客评论和管理员登录，不按站点分开。</p>
         </div>
       </header>
-      <p v-if="captchaMessage" class="inline-error page-message" role="alert">{{ captchaMessage }}</p>
+      <p v-if="captchaMessage" class="notice notice-error" role="alert">{{ captchaMessage }}</p>
 
-      <section class="captcha-settings-card" aria-label="验证方式">
-        <div class="provider-group" role="radiogroup" aria-label="验证方式">
+      <section class="settings-card" aria-label="验证方式">
+        <fieldset class="provider-group" role="radiogroup" aria-label="验证方式">
           <label class="provider-option">
-            <input v-model="draft.provider" type="radio" value="off" :disabled="captchaBusy">
+            <input v-model="draft.provider" type="radio" name="captcha-provider" value="off" :disabled="captchaBusy">
             <strong>关闭</strong>
             <small>不显示验证组件</small>
           </label>
           <label class="provider-option">
-            <input v-model="draft.provider" type="radio" value="turnstile" :disabled="captchaBusy">
+            <input v-model="draft.provider" type="radio" name="captcha-provider" value="turnstile" :disabled="captchaBusy">
             <strong>Cloudflare Turnstile</strong>
-            <small>继续使用现有云端验证</small>
+            <small>由 Cloudflare 托管的验证</small>
           </label>
           <label class="provider-option">
-            <input v-model="draft.provider" type="radio" value="cap" :disabled="captchaBusy">
+            <input v-model="draft.provider" type="radio" name="captcha-provider" value="cap" :disabled="captchaBusy">
             <strong>Cap</strong>
-            <small>连接自托管实例</small>
+            <small>连接自托管的 Cap 实例</small>
           </label>
+        </fieldset>
+
+        <div v-if="draft.provider === 'off'" class="provider-panel">
+          <p class="notice notice-warn">关闭后，访客评论和管理员登录都不再要求额外验证；现有限流仍然生效。</p>
         </div>
 
-        <div class="provider-panel">
-          <p v-if="draft.provider === 'off'" class="off-copy">关闭后，访客评论和管理员登录都不再要求额外验证；现有限流仍然生效。</p>
-
-          <div v-else-if="draft.provider === 'turnstile'" class="channel-form">
-            <div class="form-row">
-              <label class="form-label" for="turnstile-sitekey">Sitekey</label>
-              <div class="field-stack">
-                <input id="turnstile-sitekey" v-model="draft.turnstile.sitekey" class="input" type="text" maxlength="255" :disabled="captchaBusy" :aria-invalid="Boolean(errors.turnstileSitekey)">
-                <p v-if="errors.turnstileSitekey" class="field-error">{{ errors.turnstileSitekey }}</p>
-              </div>
-            </div>
-            <div class="form-row">
-              <label class="form-label" for="turnstile-secret">Secret key</label>
-              <div class="field-stack">
-                <input id="turnstile-secret" v-model="draft.turnstile.secret" class="input" type="password" autocomplete="new-password" :placeholder="draft.turnstile.secretSet ? '已设置，输入新值以更换' : ''" :disabled="captchaBusy" :aria-invalid="Boolean(errors.turnstileSecret)">
-                <p v-if="errors.turnstileSecret" class="field-error">{{ errors.turnstileSecret }}</p>
-              </div>
-            </div>
+        <div v-else-if="draft.provider === 'turnstile'" class="provider-panel">
+          <div class="field">
+            <label class="field-label" for="turnstile-sitekey">Sitekey</label>
+            <input id="turnstile-sitekey" v-model="draft.turnstile.sitekey" class="input input-mono" type="text" maxlength="255" spellcheck="false" :disabled="captchaBusy" :aria-invalid="Boolean(errors.turnstileSitekey)">
+            <p v-if="errors.turnstileSitekey" class="field-error">{{ errors.turnstileSitekey }}</p>
           </div>
-
-          <div v-else class="channel-form">
-            <div class="form-row">
-              <label class="form-label" for="cap-instance-url">实例地址</label>
-              <div class="field-stack">
-                <input id="cap-instance-url" v-model="draft.cap.instanceUrl" class="input" type="url" inputmode="url" spellcheck="false" placeholder="https://cap.example.com" maxlength="2048" :disabled="captchaBusy" :aria-invalid="Boolean(errors.capInstanceUrl)">
-                <p v-if="errors.capInstanceUrl" class="field-error">{{ errors.capInstanceUrl }}</p>
-              </div>
-            </div>
-            <div class="form-row">
-              <label class="form-label" for="cap-sitekey">Site key</label>
-              <div class="field-stack">
-                <input id="cap-sitekey" v-model="draft.cap.sitekey" class="input" type="text" maxlength="255" spellcheck="false" :disabled="captchaBusy" :aria-invalid="Boolean(errors.capSitekey)">
-                <p v-if="errors.capSitekey" class="field-error">{{ errors.capSitekey }}</p>
-              </div>
-            </div>
-            <div class="form-row">
-              <label class="form-label" for="cap-secret">Secret key</label>
-              <div class="field-stack">
-                <input id="cap-secret" v-model="draft.cap.secret" class="input" type="password" autocomplete="new-password" :placeholder="draft.cap.secretSet ? '已设置，输入新值以更换' : ''" :disabled="captchaBusy" :aria-invalid="Boolean(errors.capSecret)">
-                <p v-if="errors.capSecret" class="field-error">{{ errors.capSecret }}</p>
-              </div>
-            </div>
+          <div class="field">
+            <label class="field-label" for="turnstile-secret">Secret key</label>
+            <input id="turnstile-secret" v-model="draft.turnstile.secret" class="input input-mono" type="password" autocomplete="new-password" :placeholder="draft.turnstile.secretSet ? '已设置，输入新值以更换' : ''" :disabled="captchaBusy" :aria-invalid="Boolean(errors.turnstileSecret)">
+            <p v-if="errors.turnstileSecret" class="field-error">{{ errors.turnstileSecret }}</p>
           </div>
-
-          <footer class="channel-actions">
-            <button class="button button-primary save-button" type="button" :disabled="captchaBusy" @click="save">保存</button>
-          </footer>
         </div>
+
+        <div v-else class="provider-panel">
+          <div class="field">
+            <label class="field-label" for="cap-instance-url">实例地址</label>
+            <input id="cap-instance-url" v-model="draft.cap.instanceUrl" class="input input-mono" type="url" inputmode="url" spellcheck="false" placeholder="https://cap.example.com" maxlength="2048" :disabled="captchaBusy" :aria-invalid="Boolean(errors.capInstanceUrl)">
+            <p v-if="errors.capInstanceUrl" class="field-error">{{ errors.capInstanceUrl }}</p>
+            <p class="field-help">自托管 Cap 的 HTTPS 地址，不带查询参数。</p>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label class="field-label" for="cap-sitekey">Site key</label>
+              <input id="cap-sitekey" v-model="draft.cap.sitekey" class="input input-mono" type="text" maxlength="255" spellcheck="false" :disabled="captchaBusy" :aria-invalid="Boolean(errors.capSitekey)">
+              <p v-if="errors.capSitekey" class="field-error">{{ errors.capSitekey }}</p>
+            </div>
+            <div class="field">
+              <label class="field-label" for="cap-secret">Secret key</label>
+              <input id="cap-secret" v-model="draft.cap.secret" class="input input-mono" type="password" autocomplete="new-password" :placeholder="draft.cap.secretSet ? '已设置，输入新值以更换' : ''" :disabled="captchaBusy" :aria-invalid="Boolean(errors.capSecret)">
+              <p v-if="errors.capSecret" class="field-error">{{ errors.capSecret }}</p>
+            </div>
+          </div>
+        </div>
+
+        <footer class="channel-actions">
+          <button class="button button-primary save-button push" type="button" :disabled="captchaBusy" @click="save">保存</button>
+        </footer>
       </section>
+      <div class="page-end" />
     </div>
   </section>
 </template>

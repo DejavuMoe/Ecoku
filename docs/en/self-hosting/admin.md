@@ -26,7 +26,7 @@ There are four pages along the top:
 - **Notifications** (通知设置): email and Telegram notifications, for the whole instance.
 - **Security** (安全): CAPTCHA, for the whole instance.
 
-The site selector at the top decides which site's comments **Comments** (评论管理) shows.
+The top-left corner of **Comments** (评论管理) shows the current site. If you have more than one site, click the site name to switch. **Notifications** (通知设置) and **Security** (安全) apply to the whole instance and do not change with the site.
 
 ## Register a site {#sites}
 
@@ -56,7 +56,7 @@ If someone edited the same site in another browser tab while you were editing it
 
 ### Sticker packs
 
-After you check **Enable sticker pack** (启用表情包) and enter a Smoji manifest URL, the comment box shows a **Stickers** (表情) button. The manifest URL must use HTTPS (except for loopback addresses). Sticker images are served to the visitor's browser directly by the server that hosts the manifest, and that server can see the visitor's IP address. See [Smoji sticker packs](../integration/smoji) for the manifest format and how to host one.
+After you turn on the **Enable sticker pack** (启用表情包) switch and enter a Smoji manifest URL, the comment box shows a **Stickers** (表情) button. The manifest URL must use HTTPS (except for loopback addresses). Sticker images are served to the visitor's browser directly by the server that hosts the manifest, and that server can see the visitor's IP address. See [Smoji sticker packs](../integration/smoji) for the manifest format and how to host one.
 
 ### Blogger identity {#blogger}
 
@@ -89,7 +89,7 @@ Setting or changing the passphrase does not change the blogger mark on existing 
 
 ### Permanent delete
 
-In the **Deleted** (已删除) list, a tombstone with **no replies at all** can be removed from the database with **Permanent delete** (彻底删除). A tombstone that still has replies cannot be permanently deleted, so the replies do not lose their context.
+In the **Deleted** (已删除) list, a tombstone with **no replies at all** can be removed from the database with **Permanent delete** (彻底删除). A tombstone that still has replies cannot be permanently deleted, so the replies do not lose their context; its details show 仍有回复，不能彻底删除 (it still has replies and cannot be permanently deleted).
 
 ## Notifications and CAPTCHA
 
