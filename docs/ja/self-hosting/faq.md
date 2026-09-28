@@ -90,7 +90,7 @@ Ecoku をリバースプロキシの背後に置いているのに `trusted_prox
 ```bash
 cd ~/Ecoku
 read -rsp '新しいパスワード: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.5 hash-password
+printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.6 hash-password
 unset P
 ```
 

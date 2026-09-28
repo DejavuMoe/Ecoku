@@ -17,7 +17,7 @@ sudo docker compose run --rm --no-deps ecoku <サブコマンド> [引数]
 
 ```bash
 read -rsp '管理者パスワード: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.5 hash-password
+printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.6 hash-password
 unset P
 ```
 

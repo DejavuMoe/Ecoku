@@ -90,7 +90,7 @@ Generate a new password hash, replace the value of `ECOKU_ADMIN_PASSWORD_HASH` i
 ```bash
 cd ~/Ecoku
 read -rsp 'New password: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.5 hash-password
+printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.6 hash-password
 unset P
 ```
 

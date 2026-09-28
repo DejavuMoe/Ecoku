@@ -10,7 +10,7 @@
 - 一个专门给 Ecoku 用的域名，例如 `ecoku.example.com`。管理后台通过它访问，博客通过它加载评论区脚本。它不能与博客域名相同，原因见下文 `admin.allowed_origins`。
 - 在这台主机上运行的 Caddy 或 Nginx，用来终止 HTTPS。
 
-本页命令中的 `ecoku.example.com`、`blog.example.com` 都是占位，请替换成自己的域名。镜像使用当前发布版本 `git.via.moe/dejavu/ecoku:v0.2.5`。
+本页命令中的 `ecoku.example.com`、`blog.example.com` 都是占位，请替换成自己的域名。镜像使用当前发布版本 `git.via.moe/dejavu/ecoku:v0.2.6`。
 
 部署完成后，目录结构如下：
 
@@ -42,7 +42,7 @@ cd ~/Ecoku
 cat <<'EOF' > compose.yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.2.5"
+    image: "git.via.moe/dejavu/ecoku:v0.2.6"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -156,7 +156,7 @@ grep -q '^ECOKU_ADMIN_USERNAME=' ecoku.env || echo "ECOKU_ADMIN_USERNAME='admin'
 # 管理员密码：交互输入，只保存 bcrypt 哈希
 if ! grep -q '^ECOKU_ADMIN_PASSWORD_HASH=' ecoku.env; then
   read -rsp '管理员密码: ' ADMIN_PASS; echo
-  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i "git.via.moe/dejavu/ecoku:v0.2.5" hash-password)
+  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i "git.via.moe/dejavu/ecoku:v0.2.6" hash-password)
   unset ADMIN_PASS
   echo "ECOKU_ADMIN_PASSWORD_HASH='$HASH'" >> ecoku.env
 fi
