@@ -1,9 +1,9 @@
 # Ecoku 管理端设计基线
 
 本目录保存 Ecoku 管理端的已批准设计证据、脱敏 fixture 与发送模板设计基线。
-`index-v11.html` 是站点配置的当前已批准基线：在 v8 的站点表单上把管理端衬线改为系统字体栈
-`Noto Serif SC` / `Noto Serif CJK SC` / `Songti SC` / `STSong`，不加载网络字体。
-评论管理、通知设置和仅供服务端渲染参考的通知模板继续沿用 v5。`index-v12.html` 是已批准的实例级关闭 / Cloudflare Turnstile / 自托管 Cap 三态设置与管理员登录验证；Cap 保留官方组件几何和状态结构，只映射 Ecoku token。停服恢复命令只属于自托管文档，不进入界面。原型文件本身不调用真实 API，也不进入运行时镜像。
+`index-v13.html` 是管理端当前已批准的统一基线，覆盖登录、评论管理、站点管理、通知设置与安全：
+颜色、圆角与深色 token 与评论区 v17「纸与墨」一致，界面使用操作系统自带的 CJK 与英文无衬线字体栈，不加载网络字体。
+仅供服务端渲染参考的通知模板继续沿用 v5。v12 的关闭 / Cloudflare Turnstile / 自托管 Cap 三态语义与 Cap 官方组件几何在 v13 中保留，只映射 Ecoku token。停服恢复命令只属于自托管文档，不进入界面。原型文件本身不调用真实 API，也不进入运行时镜像。
 
 ## 当前产品边界
 
@@ -36,15 +36,17 @@
 
 ## 视觉来源
 
-设计沿用测试 Hugo 主题的暖纸张表面、低对比细边框、克制圆角、宿主衬线字体与明确焦点状态。
-深色模式使用与评论区相同的纸张、表面和正文 token。
+设计沿用评论区 v17 的暖纸张表面、墨色主操作、朱砂色危险操作、低对比细边框、6px / 3px 圆角与明确焦点状态；
+深色模式使用与评论区相同的纸张、表面和正文 token。后台不继承宿主字体，统一使用系统字体栈。
 可跟踪的站点接入示例位于 `examples/hugo-papermod/`。历史外部参考
 `D:\Forgejo\Blog\designs\twikoo-theme-styles` 仅用于视觉方向，不构成生产文件映射。
 
 ## 文件
 
-- `index-v12.html`：已批准的实例级三态验证、Cap 配置与官方风格 Cap 登录组件；
-- `index-v11.html`：已批准的管理端系统衬线栈（站点配置，沿用 v8 表单）；
+- `index-v13.html`、`styles-v13.css`、`prototype-v13.js`：当前已批准的统一视觉基线（v0.2.6 实施）：颜色、圆角与阴影使用评论区 v17
+  纸墨 token（含深色），界面字体为系统 CJK 与英文字体栈，重排五个界面的布局与文案；不新增功能、不改接口；
+- `index-v12.html`：上一版已批准的实例级三态验证、Cap 配置与官方风格 Cap 登录组件；
+- `index-v11.html`：上一版已批准的管理端系统衬线栈（站点配置，沿用 v8 表单）；
 - `index-v10.html`：上一版已批准的 Turnstile-only 安全与登录验证；
 - `index-v9.html`：上一版待审稿，含已撤销的小组件模式选择；
 - `index-v8.html`：当前已批准站点配置、博主身份、评论区标志与 `auto` 配色设计基线；
@@ -64,7 +66,7 @@
 从 `designs` 的父目录启动静态 HTTP 服务，然后打开：
 
 ```text
-http://127.0.0.1:4311/admin-moderation/index-v11.html
+http://127.0.0.1:4311/admin-moderation/index-v13.html
 ```
 
 执行无依赖静态契约测试：
@@ -73,4 +75,5 @@ http://127.0.0.1:4311/admin-moderation/index-v11.html
 node designs/admin-moderation/index-v11.test.mjs
 node designs/admin-moderation/index-v10.test.mjs
 node designs/admin-moderation/index-v12.test.mjs
+node designs/admin-moderation/index-v13.test.mjs
 ```

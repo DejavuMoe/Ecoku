@@ -7,12 +7,16 @@
   },
   "sourceReferences": [
     {
+      "path": "designs/admin-moderation/index-v13.html",
+      "role": "current approved unified admin baseline for login, comment management, site management, notification settings and security: comment v17 paper-and-ink tokens, system CJK/Latin sans stack, no webfont"
+    },
+    {
       "path": "designs/admin-moderation/index-v12.html",
-      "role": "current approved off / Turnstile / self-hosted Cap security and login baseline with official Cap Widget geometry"
+      "role": "previous approved off / Turnstile / self-hosted Cap security and login baseline; geometry carried into v13"
     },
     {
       "path": "designs/admin-moderation/index-v11.html",
-      "role": "current approved system serif stack on the site form: Noto Serif SC / Noto Serif CJK SC / Songti SC / STSong, no webfont"
+      "role": "previous approved system serif stack on the site form, superseded by v13 system sans stack"
     },
     {
       "path": "designs/admin-moderation/index-v10.html",
@@ -36,7 +40,7 @@
     },
     {
       "path": "designs/admin-moderation/index-v5.html",
-      "role": "current approved comment management and notification settings baseline"
+      "role": "previous approved comment management and notification settings layout, superseded by v13"
     },
     {
       "path": "designs/admin-moderation/email-blogger-new-comment-v5.html",
@@ -65,7 +69,7 @@
       "#theme-select",
       "[data-prototype-only]"
     ],
-      "notes": [
+    "notes": [
       "场景切换器、配色预览、发送模板设计页和 mock 数据不得进入生产构件。",
       "生产管理端固定 auto 配色，不得提供主题切换器或把配色写入本地存储。",
       "生产管理端不得展示或公开提供通知模板预览；实际模板仅由服务端在投递时渲染。"
@@ -75,7 +79,7 @@
     {
       "id": "admin-comment-management-workspace",
       "prototype": {
-        "entry": "index-v5.html",
+        "entry": "index-v13.html",
         "states": [
           "published",
           "deleted",
@@ -83,7 +87,14 @@
           "extreme-text",
           "desktop-split-view",
           "mobile-list",
-          "mobile-detail"
+          "mobile-detail",
+          "site-switcher-in-queue",
+          "single-site-static-label",
+          "queue-loading",
+          "queue-error-retry",
+          "tombstone-with-replies-hint",
+          "confirm-names-target",
+          "keyboard-queue-navigation"
         ]
       },
       "production": {
@@ -96,7 +107,8 @@
           "packages/admin/src/components/CommentManagementView.vue",
           "packages/admin/src/api.ts",
           "packages/admin/src/stores/admin.ts",
-          "server/handle/admin/deletion.go"
+          "server/handle/admin/deletion.go",
+          "packages/admin/src/components/AdminIcon.vue"
         ]
       },
       "status": "implemented"
@@ -104,7 +116,7 @@
     {
       "id": "admin-site-management",
       "prototype": {
-        "entry": "index-v11.html",
+        "entry": "index-v13.html",
         "states": [
           "sites-list",
           "sites-new",
@@ -120,7 +132,10 @@
           "theme-auto",
           "theme-light",
           "theme-dark",
-          "system-serif-stack"
+          "grouped-sections",
+          "sticky-save-bar",
+          "error-count-summary",
+          "system-sans-stack"
         ]
       },
       "production": {
@@ -143,7 +158,7 @@
     {
       "id": "admin-security-captcha",
       "prototype": {
-        "entry": "index-v12.html",
+        "entry": "index-v13.html",
         "states": [
           "security-cap",
           "security-turnstile",
@@ -151,7 +166,8 @@
           "security-cap-validation",
           "theme-auto",
           "theme-light",
-          "theme-dark"
+          "theme-dark",
+          "provider-tiles"
         ]
       },
       "production": {
@@ -172,14 +188,15 @@
     {
       "id": "admin-login-captcha",
       "prototype": {
-        "entry": "index-v12.html",
+        "entry": "index-v13.html",
         "states": [
           "login-off",
           "login-turnstile",
           "login-cap-idle",
           "login-cap-solving",
           "login-cap-solved",
-          "login-cap-failed"
+          "login-cap-failed",
+          "login-card"
         ]
       },
       "production": {
@@ -201,7 +218,7 @@
     {
       "id": "admin-notification-settings",
       "prototype": {
-        "entry": "index-v5.html",
+        "entry": "index-v13.html",
         "states": [
           "notifications-empty",
           "notifications-configured",
@@ -209,7 +226,10 @@
           "channel-disabled",
           "chip-multiple-values",
           "test-success",
-          "test-failure"
+          "test-failure",
+          "encryption-segmented",
+          "collapsed-disabled-channel",
+          "save-to-disable-hint"
         ]
       },
       "production": {

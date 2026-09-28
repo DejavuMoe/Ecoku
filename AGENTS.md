@@ -5,9 +5,9 @@
 - 实现以当前源码为准；产品/安全/隐私以 `docs/internal/constraints.md` 为准；面向操作者的部署与接入以
   VitePress 源文为准（默认简体中文：`docs/guide/`、`docs/self-hosting/`、`docs/integration/`、`docs/reference/`）。
   `docs/progress/` 只是历史验收，不约束当前实现，也不进入文档站点。
-- 评论区基线 `designs/plain-thread-comments/index-v17.html`；管理端站点配置以
-  `designs/admin-moderation/index-v11.html` 为准（系统衬线栈），安全与登录验证以 `index-v12.html` 为准，
-  评论管理/通知设置仍沿用 v5。生产管理端不得展示通知判定预览或通知模板预览。
+- 评论区基线 `designs/plain-thread-comments/index-v17.html`；管理端登录、评论管理、站点管理、
+  通知设置与安全以 `designs/admin-moderation/index-v13.html` 为准（评论区 v17 纸墨 token、系统 CJK/英文字体栈），
+  服务端通知模板仍沿用 v5。生产管理端不得展示通知判定预览或通知模板预览。
 - 边界不清时先查源码和上述文档，再集中向用户确认。不要把原型 mock、测试文案或设计标注带进生产。
 - 文档站点在 `docs/`（VitePress，pnpm workspace 包 `ecoku-docs`）。本地预览 `pnpm docs:dev`。
   本地开发见 `docs/contribute/local-dev.md`，文档站点自身的发布见 `docs/contribute/docs-deploy.md`。
@@ -62,7 +62,7 @@
   固定调度到 `role=netcup-nano`、`server=netcup-nano` 的 agent；发布 step 通过 trusted volume
   仅挂载 `/var/www/ecoku.zsh.moe:/deploy`；站点目录内的 `html` 软链接原子切换到 `releases/<发布标识>`，
   `.deploy.lock` 位于站点目录内，成功后仅保留当前版与刚被替换的上一版，清理更早发布目录。Web 服务根目录为 `/var/www/ecoku.zsh.moe/html`。
-- 文档与 Compose 模板中的 Docker 镜像统一使用实际注册地址与精确发布版本号（`git.via.moe/dejavu/ecoku:v` + `VERSION`，禁止占位镜像或浮动 tag，当前为 `v0.2.5`）；真实域名、密码、token、SMTP、Telegram、数据库和日志等敏感信息仍使用占位符，不得进 Git。
+- 文档与 Compose 模板中的 Docker 镜像统一使用实际注册地址与精确发布版本号（`git.via.moe/dejavu/ecoku:v` + `VERSION`，禁止占位镜像或浮动 tag，当前为 `v0.2.6`）；真实域名、密码、token、SMTP、Telegram、数据库和日志等敏感信息仍使用占位符，不得进 Git。
 - 提交、推送、tag、镜像发布、生产部署和真实数据库操作需要当前任务的明确授权。
 - 新 tag 若可能影响平滑升级（schema、Compose 挂载、配置键、日志出口、镜像契约），回复中先写：
   停服冷备份 → 改精确镜像 tag → `sudo docker compose pull && sudo docker compose up -d` →

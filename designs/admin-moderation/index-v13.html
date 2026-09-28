@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Ecoku 评论管理 · v13 统一视觉</title>
+  <link rel="stylesheet" href="styles-v13.css">
+</head>
+<body>
+  <!-- 已批准基线（v0.2.6 实施）：v13 统一视觉。场景切换器、配色预览与 mock 数据只用于设计验收，不进入生产。 -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-refresh" viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/><path d="M13.5 2.5v3h-3"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 16 16"><path d="m4 6 4 4 4-4"/></symbol>
+    <symbol id="i-left" viewBox="0 0 16 16"><path d="m10 3.5-4.5 4.5 4.5 4.5"/></symbol>
+    <symbol id="i-right" viewBox="0 0 16 16"><path d="m6 3.5 4.5 4.5L6 12.5"/></symbol>
+    <symbol id="i-sort" viewBox="0 0 16 16"><path d="M5 3v10M2.5 10.5 5 13l2.5-2.5M11 13V3M8.5 5.5 11 3l2.5 2.5"/></symbol>
+    <symbol id="i-external" viewBox="0 0 16 16"><path d="M9.5 2.5h4v4M13.5 2.5 7.5 8.5M12 9.5v3a1 1 0 0 1-1 1H3.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3"/></symbol>
+    <symbol id="i-check" viewBox="0 0 16 16"><path d="m3 8.5 3 3 7-7"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v3.5M8 11v.01"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></symbol>
+  </svg>
+
+  <a class="skip-link" href="#main-content">跳到主要内容</a>
+
+  <!-- ============ 登录 ============ -->
+  <main id="login-screen" class="auth-screen" hidden>
+    <section class="auth-shell" aria-labelledby="login-title">
+      <span class="brand" aria-hidden="true"><span class="brand-mark">E</span><span class="brand-name">Ecoku</span></span>
+      <form id="login-form" class="login-card" novalidate>
+        <h1 id="login-title">管理员登录</h1>
+        <p id="login-error" class="notice notice-error" role="alert" hidden></p>
+        <div class="field">
+          <label class="field-label" for="login-username">用户名</label>
+          <input id="login-username" class="input" name="username" type="text" autocomplete="username" maxlength="80" required>
+        </div>
+        <div class="field">
+          <label class="field-label" for="login-password">密码</label>
+          <input id="login-password" class="input" name="password" type="password" autocomplete="current-password" required>
+        </div>
+
+        <div id="login-turnstile" class="captcha-slot" hidden>
+          <div class="turnstile-widget" role="group" aria-label="Cloudflare Turnstile">
+            <button class="turnstile-check" type="button" aria-label="确认您是真人"></button>
+            <span class="turnstile-label">确认您是真人</span>
+            <span class="turnstile-brand" aria-hidden="true">Turnstile</span>
+          </div>
+        </div>
+
+        <div id="login-cap-slot" class="captcha-slot" hidden>
+          <cap-widget
+            class="admin-cap-widget"
+            id="login-cap"
+            data-cap-api-endpoint="https://cap.example.com/d9256640cb53/"
+            data-cap-disable-haptics
+            data-cap-i18n-initial-state="点击进行真人验证"
+            data-cap-i18n-verifying-label="正在验证…"
+            data-cap-i18n-solved-label="验证已完成"
+            data-cap-i18n-error-label="验证失败，请重试"
+          >
+            <div class="cap-captcha" id="cap-captcha">
+              <button class="cap-trigger" id="cap-trigger" type="button" aria-label="点击进行真人验证">
+                <span class="cap-checkbox" aria-hidden="true">
+                  <svg class="cap-progress-ring" viewBox="0 0 32 32"><circle class="cap-progress-ring-bg" cx="16" cy="16" r="14"></circle><circle class="cap-progress-ring-circle" cx="16" cy="16" r="14"></circle></svg>
+                  <svg class="cap-state-icon cap-checkmark" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                  <svg class="cap-state-icon cap-error-icon" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z" fill="none" stroke="currentColor" stroke-width="1.8"></path><path d="M12 7v6M12 16.5v.5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path></svg>
+                </span>
+                <span class="cap-label" id="cap-label">点击进行真人验证</span>
+              </button>
+              <span class="cap-credits" aria-hidden="true">Cap</span>
+            </div>
+          </cap-widget>
+        </div>
+
+        <button id="login-submit" class="button button-primary login-button" type="submit" disabled>登录</button>
+      </form>
+    </section>
+  </main>
+
+  <!-- ============ 主界面 ============ -->
+  <div id="app-shell" class="app-shell" hidden>
+    <header class="app-header">
+      <div class="header-inner">
+        <button class="brand" type="button" data-view-link="comments" aria-label="Ecoku 评论管理首页">
+          <span class="brand-mark" aria-hidden="true">E</span><span class="brand-name">Ecoku</span>
+        </button>
+        <nav class="primary-nav" aria-label="主导航">
+          <button class="nav-tab" type="button" data-view-link="comments">评论管理</button>
+          <button class="nav-tab" type="button" data-view-link="sites">站点管理</button>
+          <button class="nav-tab" type="button" data-view-link="notifications">通知设置</button>
+          <button class="nav-tab" type="button" data-view-link="security">安全</button>
+        </nav>
+        <div class="header-end">
+          <p id="logout-error" class="notice notice-error" role="alert" hidden>退出失败，请重试。</p>
+          <button id="logout-button" class="logout-button" type="button">退出登录</button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main-content" class="main-area">
+      <!-- 评论管理 -->
+      <div id="view-comments" class="moderation-layout" data-mobile-detail="false">
+        <section class="queue-pane" aria-labelledby="queue-title">
+          <h1 id="queue-title" class="visually-hidden">评论管理</h1>
+          <div class="queue-head">
+            <div id="site-picker" class="site-picker"></div>
+            <button id="refresh-button" class="icon-button" type="button" aria-label="刷新评论" title="刷新评论"><svg class="icon"><use href="#i-refresh"/></svg></button>
+          </div>
+          <div class="queue-toolbar">
+            <div class="status-tabs" role="tablist" aria-label="评论状态">
+              <button class="status-tab" type="button" role="tab" data-status="published">已发布 <span class="count" id="count-published">504</span></button>
+              <button class="status-tab" type="button" role="tab" data-status="deleted">已删除 <span class="count" id="count-deleted">15</span></button>
+            </div>
+            <button id="sort-button" class="sort-button" type="button"><svg class="icon"><use href="#i-sort"/></svg><span id="sort-label">最新在前</span></button>
+          </div>
+          <div id="queue-scroll" class="queue-scroll"></div>
+          <nav class="pager" aria-label="评论列表分页">
+            <span id="pager-total">共 504 条</span>
+            <span class="pager-controls">
+              <button id="pager-prev" class="icon-button" type="button" aria-label="上一页"><svg class="icon"><use href="#i-left"/></svg></button>
+              <span id="pager-status" class="pager-status">1 / 26</span>
+              <button id="pager-next" class="icon-button" type="button" aria-label="下一页"><svg class="icon"><use href="#i-right"/></svg></button>
+            </span>
+          </nav>
+        </section>
+        <section id="detail-pane" class="detail-pane" aria-label="评论详情"></section>
+      </div>
+
+      <!-- 站点管理 -->
+      <section id="view-sites" class="page-layout" aria-labelledby="sites-title" hidden>
+        <div class="page-column">
+          <header class="page-heading">
+            <div><h1 id="sites-title">站点管理</h1><p>每个接入评论区的网站对应一个站点。</p></div>
+            <button id="new-site-button" class="button" type="button"><svg class="icon"><use href="#i-plus"/></svg>新增站点</button>
+          </header>
+          <p id="site-message" class="notice notice-error" role="alert" hidden></p>
+          <div class="sites-grid">
+            <nav id="site-list" class="site-list-panel" aria-label="站点列表"></nav>
+            <form id="site-form" class="settings-card" novalidate aria-labelledby="site-form-title">
+              <h2 id="site-form-title" class="visually-hidden">编辑站点</h2>
+
+              <section class="form-section" aria-labelledby="sec-basic">
+                <div class="section-heading"><h2 id="sec-basic">基本信息</h2><p>站点 ID 写在接入代码里，站点 URL 用于拼出文章链接。</p></div>
+                <div class="section-fields">
+                  <div class="field">
+                    <label class="field-label" for="site-id">站点 ID</label>
+                    <input id="site-id" class="input input-mono" maxlength="100" spellcheck="false">
+                    <p class="field-help" id="site-id-help">对应接入代码中的 <code class="mono">data-site-id</code>，创建后不能修改。</p>
+                    <p class="field-error" data-error="id" hidden>站点 ID 格式无效</p>
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="site-url">站点 URL</label>
+                    <input id="site-url" class="input" type="url" maxlength="2048" spellcheck="false" placeholder="https://blog.example.com">
+                    <p class="field-help">「查看原评论」和通知中的文章链接由它加上页面 key 拼成。</p>
+                    <p class="field-error" data-error="siteUrl" hidden>站点 URL 格式无效</p>
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="site-name">站点名称 <span class="optional">可选</span></label>
+                    <input id="site-name" class="input" maxlength="240">
+                    <p class="field-help">留空时使用站点 URL 的域名。</p>
+                    <p class="field-error" data-error="name" hidden>站点名称不能超过 120 个字符</p>
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="site-origins">允许来源</label>
+                    <textarea id="site-origins" class="textarea input-mono" rows="3" spellcheck="false"></textarea>
+                    <p class="field-help">每行一个完整来源，例如 <span class="mono">https://blog.example.com</span>；最多 32 个。</p>
+                    <p class="field-error" data-error="origins" hidden>允许来源格式无效</p>
+                  </div>
+                </div>
+              </section>
+
+              <section class="form-section" aria-labelledby="sec-thread">
+                <div class="section-heading"><h2 id="sec-thread">评论区</h2><p>访客在评论区看到的默认行为与文案。</p></div>
+                <div class="section-fields">
+                  <div class="field">
+                    <span class="field-label" id="sort-group-label">评论排序</span>
+                    <div class="segmented" role="radiogroup" aria-labelledby="sort-group-label">
+                      <label><input type="radio" name="site-sort" value="newest"><span>最新评论</span></label>
+                      <label><input type="radio" name="site-sort" value="oldest"><span>最早评论</span></label>
+                    </div>
+                    <p class="field-help">访客可以在评论区临时切换。</p>
+                  </div>
+                  <div class="field">
+                    <span class="field-label">字段要求</span>
+                    <div class="choice-row">
+                      <label class="choice"><input id="site-email-required" type="checkbox">邮箱必填</label>
+                      <label class="choice"><input id="site-website-required" type="checkbox">网站必填</label>
+                    </div>
+                    <p class="field-help">昵称始终必填。</p>
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="site-placeholder">评论占位文案</label>
+                    <input id="site-placeholder" class="input" maxlength="160">
+                    <p class="field-error" data-error="placeholder" hidden>评论占位文案需为 1 至 80 个字符</p>
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="site-limit">评论长度上限</label>
+                    <div class="input-affix" style="max-width: 200px"><input id="site-limit" class="input" type="number" min="1" max="10000"><span>字符</span></div>
+                    <p class="field-help">1–10000。中文、日文、韩文与其他 Unicode 字符均按一个字符计数。</p>
+                    <p class="field-error" data-error="commentLimit" hidden>评论长度上限需为 1 至 10000</p>
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="site-empty">无评论文案</label>
+                    <textarea id="site-empty" class="textarea" rows="2" maxlength="480"></textarea>
+                    <p class="field-help">还没有评论时显示，可以换行。</p>
+                    <p class="field-error" data-error="emptyMessage" hidden>无评论文案需为 1 至 240 个字符</p>
+                  </div>
+                </div>
+              </section>
+
+              <section class="form-section" aria-labelledby="sec-smoji">
+                <div class="section-heading"><h2 id="sec-smoji">表情包</h2><p>表情图片由清单所在的服务器直接提供，可能向该站点暴露访客 IP 等请求信息。</p></div>
+                <div class="section-fields">
+                  <label class="switch">
+                    <input id="smoji-enabled" class="switch-input" type="checkbox">
+                    <span class="switch-track" aria-hidden="true"></span><span>启用表情包</span>
+                  </label>
+                  <div class="field">
+                    <label class="field-label" for="smoji-manifest-url">Smoji 清单 URL</label>
+                    <input id="smoji-manifest-url" class="input input-mono" type="url" maxlength="2048" spellcheck="false" placeholder="https://static.example.com/smoji.json">
+                    <p class="field-help">HTTPS 地址，图片须与清单同源。关闭表情包时可以保留此地址。</p>
+                    <p class="field-error" data-error="smojiManifestUrl" hidden>清单 URL 无效；生产环境需使用 HTTPS</p>
+                  </div>
+                </div>
+              </section>
+
+              <section class="form-section" aria-labelledby="sec-blogger">
+                <div class="section-heading"><h2 id="sec-blogger">博主身份</h2><p>在评论区昵称栏输入口令即可以博主身份发言。昵称与邮箱需同时填写或同时留空。</p></div>
+                <div class="section-fields">
+                  <div class="field-grid">
+                    <div class="field">
+                      <label class="field-label" for="blogger-nickname">博主昵称</label>
+                      <input id="blogger-nickname" class="input" maxlength="160">
+                      <p class="field-help">公开显示，并链接到站点 URL。</p>
+                      <p class="field-error" data-error="bloggerNickname" hidden>博主昵称不能超过 80 个字符</p>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="blogger-email">博主邮箱</label>
+                      <input id="blogger-email" class="input" type="email" maxlength="254">
+                      <p class="field-help">仅用于通知去重与历史评论回填，不会公开。</p>
+                      <p class="field-error" data-error="bloggerEmail" hidden>博主邮箱格式无效</p>
+                    </div>
+                    <p class="field-error span-2" data-error="bloggerIdentity" hidden>博主昵称与邮箱需同时填写</p>
+                    <div class="field">
+                      <label class="field-label" for="blogger-passphrase">博主口令</label>
+                      <input id="blogger-passphrase" class="input" type="password" maxlength="80" autocomplete="new-password">
+                      <p class="field-help">12–80 个字符，UTF-8 编码不超过 72 字节。保存后不再显示，已设置时留空表示不更改。</p>
+                      <p class="field-error" data-error="bloggerPassphrase" hidden>启用博主身份时必须设置口令</p>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="blogger-badge">评论区标志 <span class="optional">可选</span></label>
+                      <input id="blogger-badge" class="input" maxlength="32">
+                      <p class="field-help">显示在博主昵称之后，例如 [博主] 或 [OP]。留空则不显示。</p>
+                      <p class="field-error" data-error="bloggerBadge" hidden>评论区标志不能超过 16 个字符</p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <footer class="form-actions">
+                <span id="site-form-summary" class="summary"></span>
+                <span class="push"></span>
+                <button id="site-cancel" class="button" type="button" hidden>取消</button>
+                <button id="site-submit" class="button button-primary" type="submit">保存站点</button>
+              </footer>
+            </form>
+          </div>
+          <div class="page-end"></div>
+        </div>
+      </section>
+
+      <!-- 通知设置 -->
+      <section id="view-notifications" class="page-layout" aria-labelledby="notifications-title" hidden>
+        <div class="page-column is-narrow">
+          <header class="page-heading">
+            <div><h1 id="notifications-title">通知设置</h1><p>对所有站点生效，保存后立即使用新配置。</p></div>
+          </header>
+          <p id="notification-message" class="notice notice-error" role="alert" hidden></p>
+          <div class="channel-stack">
+            <section class="settings-card" id="email-card" aria-labelledby="email-title">
+              <header class="channel-head">
+                <div>
+                  <h2 id="email-title">电子邮件</h2>
+                  <p>有新评论时发给通知收件人；访客留了邮箱时，他的评论被别人回复也会收到邮件。</p>
+                </div>
+                <label class="switch">
+                  <input id="email-enabled" class="switch-input" type="checkbox" aria-label="启用电子邮件通知">
+                  <span class="switch-track" aria-hidden="true"></span><span class="switch-state" data-state-for="email-enabled">已开启</span>
+                </label>
+              </header>
+              <div id="email-body" class="channel-body">
+                <div class="field-grid">
+                  <div class="span-2 host-port">
+                    <div class="field">
+                      <label class="field-label" for="email-server">SMTP 服务器</label>
+                      <input id="email-server" class="input input-mono" type="text" placeholder="smtp.example.com" maxlength="255" spellcheck="false">
+                      <p class="field-error" data-error="host" hidden>SMTP 服务器无效</p>
+                    </div>
+                    <div class="field">
+                      <label class="field-label" for="email-port">端口</label>
+                      <input id="email-port" class="input input-mono" type="number" min="1" max="65535" placeholder="465">
+                      <p class="field-error" data-error="port" hidden>端口无效</p>
+                    </div>
+                  </div>
+                  <div class="field span-2">
+                    <span class="field-label" id="email-encryption-label">加密方式</span>
+                    <div class="segmented" role="radiogroup" aria-labelledby="email-encryption-label">
+                      <label><input type="radio" name="email-encryption" value="tls" checked><span>SSL/TLS</span></label>
+                      <label><input type="radio" name="email-encryption" value="starttls"><span>STARTTLS</span></label>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="email-user">用户名</label>
+                    <input id="email-user" class="input" type="text" autocomplete="username">
+                  </div>
+                  <div class="field">
+                    <label class="field-label" for="email-password">密码</label>
+                    <input id="email-password" class="input" type="password" autocomplete="new-password" placeholder="已设置，输入新值以更换">
+                    <p class="field-error" data-error="password" hidden>密码为空</p>
+                  </div>
+                  <div class="field span-2">
+                    <label class="field-label" for="email-sender">发件人地址</label>
+                    <input id="email-sender" class="input" type="email">
+                    <p class="field-error" data-error="from" hidden>发件人地址格式错误</p>
+                  </div>
+                  <div class="field span-2">
+                    <label class="field-label" for="email-recipients-input">通知收件人</label>
+                    <div class="chip-field" id="email-recipients" data-kind="email"></div>
+                    <p class="field-help">按 Enter、逗号或换行添加多个邮箱</p>
+                  </div>
+                </div>
+              </div>
+              <p id="email-off" class="channel-off" hidden>未开启，不会发送任何邮件，包括访客回复通知。</p>
+              <footer class="channel-actions">
+                <button id="email-test" class="button" type="button">发送测试邮件</button>
+                <span id="email-feedback" class="test-feedback" aria-live="polite"></span>
+                <button id="email-save" class="button button-primary push" type="button">保存</button>
+              </footer>
+            </section>
+
+            <section class="settings-card" id="telegram-card" aria-labelledby="telegram-title">
+              <header class="channel-head">
+                <div>
+                  <h2 id="telegram-title">Telegram</h2>
+                  <p>有新评论时由机器人发到下列用户、群组或频道。</p>
+                </div>
+                <label class="switch">
+                  <input id="telegram-enabled" class="switch-input" type="checkbox" aria-label="启用 Telegram 通知">
+                  <span class="switch-track" aria-hidden="true"></span><span class="switch-state" data-state-for="telegram-enabled">已开启</span>
+                </label>
+              </header>
+              <div id="telegram-body" class="channel-body">
+                <div class="field">
+                  <label class="field-label" for="telegram-token">Bot Token</label>
+                  <input id="telegram-token" class="input input-mono" type="password" autocomplete="new-password" placeholder="已设置，输入新值以更换">
+                  <p class="field-help">通过 @BotFather 获取。</p>
+                  <p class="field-error" data-error="token" hidden>Bot Token 为空</p>
+                </div>
+                <div class="field">
+                  <label class="field-label" for="telegram-targets-input">接收目标 ID</label>
+                  <div class="chip-field" id="telegram-targets" data-kind="telegram"></div>
+                  <p class="field-help">按 Enter、逗号或换行添加；支持用户、群组、频道 ID，如 123456789 或 -1001234567890</p>
+                </div>
+              </div>
+              <p id="telegram-off" class="channel-off" hidden>未开启。</p>
+              <footer class="channel-actions">
+                <button id="telegram-test" class="button" type="button">发送测试消息</button>
+                <span id="telegram-feedback" class="test-feedback" aria-live="polite"></span>
+                <button id="telegram-save" class="button button-primary push" type="button">保存</button>
+              </footer>
+            </section>
+          </div>
+          <div class="page-end"></div>
+        </div>
+      </section>
+
+      <!-- 安全 -->
+      <section id="view-security" class="page-layout" aria-labelledby="security-title" hidden>
+        <div class="page-column is-narrow">
+          <header class="page-heading">
+            <div><h1 id="security-title">安全</h1><p>人机验证对整个实例生效，同时用于访客评论和管理员登录，不按站点分开。</p></div>
+          </header>
+          <p id="captcha-message" class="notice notice-error" role="alert" hidden></p>
+          <section class="settings-card" aria-label="验证方式">
+            <fieldset class="provider-group" role="radiogroup" aria-label="验证方式">
+              <label class="provider-option"><input type="radio" name="captcha-provider" value="off"><strong>关闭</strong><small>不显示验证组件</small></label>
+              <label class="provider-option"><input type="radio" name="captcha-provider" value="turnstile"><strong>Cloudflare Turnstile</strong><small>由 Cloudflare 托管的验证</small></label>
+              <label class="provider-option"><input type="radio" name="captcha-provider" value="cap"><strong>Cap</strong><small>连接自托管的 Cap 实例</small></label>
+            </fieldset>
+
+            <div id="panel-off" class="provider-panel" hidden>
+              <p class="notice notice-warn">关闭后，访客评论和管理员登录都不再要求额外验证；现有限流仍然生效。</p>
+            </div>
+
+            <div id="panel-turnstile" class="provider-panel" hidden>
+              <div class="field">
+                <label class="field-label" for="turnstile-sitekey">Sitekey</label>
+                <input id="turnstile-sitekey" class="input input-mono" type="text" maxlength="255" spellcheck="false" value="0x4AAAAAAA00000000000000">
+                <p class="field-error" data-error="turnstileSitekey" hidden>Sitekey 不能为空</p>
+              </div>
+              <div class="field">
+                <label class="field-label" for="turnstile-secret">Secret key</label>
+                <input id="turnstile-secret" class="input input-mono" type="password" autocomplete="new-password" placeholder="已设置，输入新值以更换">
+                <p class="field-error" data-error="turnstileSecret" hidden>Secret key 不能为空</p>
+              </div>
+            </div>
+
+            <div id="panel-cap" class="provider-panel" hidden>
+              <div class="field">
+                <label class="field-label" for="cap-instance-url">实例地址</label>
+                <input id="cap-instance-url" class="input input-mono" type="url" inputmode="url" spellcheck="false" placeholder="https://cap.example.com" maxlength="2048">
+                <p class="field-help">自托管 Cap 的 HTTPS 地址，不带查询参数。</p>
+                <p class="field-error" data-error="capInstanceUrl" hidden>请输入有效的 HTTPS 实例地址</p>
+              </div>
+              <div class="field-grid">
+                <div class="field">
+                  <label class="field-label" for="cap-sitekey">Site key</label>
+                  <input id="cap-sitekey" class="input input-mono" type="text" maxlength="255" spellcheck="false">
+                  <p class="field-error" data-error="capSitekey" hidden>Site key 不能为空</p>
+                </div>
+                <div class="field">
+                  <label class="field-label" for="cap-secret">Secret key</label>
+                  <input id="cap-secret" class="input input-mono" type="password" autocomplete="new-password" placeholder="已设置，输入新值以更换">
+                  <p class="field-error" data-error="capSecret" hidden>Secret key 不能为空</p>
+                </div>
+              </div>
+            </div>
+
+            <footer class="channel-actions">
+              <button id="captcha-save" class="button button-primary push save-button" type="button">保存</button>
+            </footer>
+          </section>
+          <div class="page-end"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="confirm-dialog" aria-labelledby="confirm-title">
+    <div class="dialog-body">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-copy"></p>
+      <p id="confirm-target" class="dialog-target"></p>
+    </div>
+    <div class="dialog-actions">
+      <button id="confirm-cancel" class="button" type="button">取消</button>
+      <button id="confirm-ok" class="button danger-button is-solid" type="button"></button>
+    </div>
+  </dialog>
+
+  <div id="sr-status" class="visually-hidden" aria-live="polite"></div>
+  <div id="toast" class="toast" role="status" hidden></div>
+
+  <aside class="scenario-controller" id="scenario-controller" aria-label="原型场景" data-prototype-only="true">
+    <button class="scenario-toggle" id="scenario-toggle" type="button">收起</button>
+    <label for="scenario-select">原型场景</label>
+    <select id="scenario-select"></select>
+    <label for="theme-select">配色预览</label>
+    <select id="theme-select">
+      <option value="auto">跟随系统</option>
+      <option value="light">浅色</option>
+      <option value="dark">深色</option>
+    </select>
+  </aside>
+
+  <script src="prototype-v13.js"></script>
+</body>
+</html>
