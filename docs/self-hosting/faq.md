@@ -90,7 +90,7 @@ Ecoku 放在反向代理后面，但没有配置 `trusted_proxies`，所有访�
 ```bash
 cd ~/Ecoku
 read -rsp '新密码: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.5 hash-password
+printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.6 hash-password
 unset P
 ```
 
