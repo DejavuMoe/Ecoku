@@ -1,163 +1,182 @@
-# JavaScript SDK 參考
+# JavaScript SDK
 
-`ecoku` 提供了適用於現代化前端工程（Vite / Webpack / React / Vue / Astro / Svelte）的 TypeScript / JavaScript SDK。
+[HTML 接入](./html)適合每篇文章都是獨立頁面的靜態網站。在 Vue、React 這類單頁應用程式中，切換文章時頁面不會重新整理，評論區需要跟著切換，這時請直接使用 SDK。
 
----
+## 取得 SDK
 
-## 1. 安裝
+每個 Ecoku 實例都在 `/client/ecoku.umd.js` 提供 SDK，載入後會註冊全域變數 `Ecoku`。
 
-```bash
-# 使用 npm
-npm install ecoku
+::: info npm 套件尚未發布
+SDK 的套件名稱為 `ecoku`，但目前還沒有發布到 npm，`npm install ecoku` 無法使用。需要 ES 模組或 TypeScript 型別時，可以從原始碼儲存庫的 `packages/client` 目錄自行建置（`pnpm build`），產出位於 `dist/`。
+:::
 
-# 使用 pnpm
-pnpm add ecoku
+在單頁應用程式中，可以用一個函式依需要載入 UMD 檔案，確保只載入一次：
 
-# 使用 yarn
-yarn add ecoku
+```js
+const ECOKU_URL = 'https://ecoku.example.com'
+let ecokuPromise
+
+export function loadEcoku() {
+  if (window.Ecoku) return Promise.resolve(window.Ecoku)
+  ecokuPromise ??= new Promise((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = `${ECOKU_URL}/client/ecoku.umd.js`
+    script.async = true
+    script.onload = () => (window.Ecoku ? resolve(window.Ecoku) : reject(new Error('Ecoku 未加载')))
+    script.onerror = () => {
+      ecokuPromise = undefined
+      script.remove()
+      reject(new Error('无法加载 Ecoku'))
+    }
+    document.head.append(script)
+  })
+  return ecokuPromise
+}
 ```
 
----
+## 建立評論區
 
-## 2. 建構函式與配置參數
-
-```typescript
-import Ecoku, { type EcokuConfig } from 'ecoku'
-
-const options: EcokuConfig = {
+```js
+const Ecoku = await loadEcoku()
+const comments = new Ecoku({
   container: '#comments',
   serverURL: 'https://ecoku.example.com',
   siteId: 'blog',
-  pageKey: '/posts/example/',
-}
-const ecoku = new Ecoku(options)
+  pageKey: '/posts/hello-world/',
+  pageTitle: '你好，世界',
+})
+await comments.init()
 ```
 
-### `EcokuConfig` 完整屬性列表
+### 設定項目
 
-| 屬性名 | 類型 | 必填 | 預設值 | 約束與說明 |
-| :--- | :--- | :---: | :---: | :--- |
-| `container` | `string \| HTMLElement` | **是** | — | 掛載目標容器的選取器字串（如 `#comments`）或 DOM 元素實例。 |
-| `serverURL` | `string` | **是** | — | Ecoku 伺服端絕對位址（如 `https://ecoku.example.com`）。 |
-| `siteId` | `string` | **是** | — | 站點唯一識別碼（匹配正規表示式 `/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/`）。 |
-| `pageKey` | `string` | **是** | — | 站內相對路徑（1～512 字元，如 `/posts/my-first-post/`）。 |
-| `pageTitle` | `string` | 否 | `""` | 文章標題（最多 200 字元），用於郵件和 TG 訊息展示。 |
-| `pageSize` | `number` | 否 | `10` | 根評論每頁展示筆數（1～100 整數）。 |
-| `theme` | `'auto' \| 'light' \| 'dark'` | 否 | `'auto'` | 主題模式。`'auto'` 將自動響應 `prefers-color-scheme`。 |
-| `cssURL` | `string` | 否 | `""` | 自訂 CSS URL。若傳入 `'none'`，則完全停用 SDK 內嵌樣式注入。 |
+| 設定項目 | 型別 | 必填 | 預設值 | 說明 |
+| --- | --- | :---: | --- | --- |
+| `container` | `string \| HTMLElement` | 是 | — | 掛載位置，為 CSS 選擇器或 DOM 元素。容器原有的內容會被取代。 |
+| `serverURL` | `string` | 是 | — | Ecoku 的網址，以 `http://` 或 `https://` 開頭，不能帶查詢參數或 `#`。 |
+| `siteId` | `string` | 是 | — | 後台註冊的站點 ID。 |
+| `pageKey` | `string` | 是 | — | 目前文章的頁面 key，1～512 個字元。SDK 不會自動從網址推斷，必須明確傳入。 |
+| `pageTitle` | `string` | 否 | `''` | 文章標題，顯示在通知中，最多 200 個字元。 |
+| `pageSize` | `number` | 否 | `10` | 每頁根評論數，1～100 的整數。 |
+| `theme` | `'auto' \| 'light' \| 'dark'` | 否 | `'auto'` | 配色。`auto` 跟隨頁面的明暗設定。 |
+| `cssURL` | `string` | 否 | `''` | 留空時注入預設樣式。填寫任何值（樣式表網址或 `'none'`）都會停止注入，見下文。 |
 
----
+參數不合法時，建構函式或 `init()` 會擲出 `TypeError`。
 
-## 3. 實例方法清單
+舊的設定項目 `apiBaseUrl` 是 `serverURL` 的別名，仍可使用，但已棄用。
 
-### `init(options?: EcokuConfig): Promise<void>`
-初始化並掛載評論區。
-- 會校驗配置合法性，並透過 `WeakMap` 確保同一 DOM 容器在同一時刻僅被單個 Ecoku 實例掛载。
-- 自動解密復原本地 IndexedDB 中儲存的 7 天訪客身分。
-- 拉取第 1 頁根評論與伺服端配置並渲染。
+### 樣式 {#styles}
 
-### `reload(): Promise<void>`
-重新拉取目前頁碼的最新評論資料並重新渲染，保持現有排序不變。
+- `cssURL` 留空：SDK 在評論區內注入預設樣式，不需要另外引入 CSS。
+- `cssURL` 填入樣式表網址：SDK 不再注入，也**不會**替你載入這個網址，需要自己在頁面中加上 `<link rel="stylesheet">`。（HTML 載入器會自動加上，SDK 不會。）
+- `cssURL` 為 `'none'`：不注入任何樣式，外觀完全由你的 CSS 決定。
 
-### `setPageKey(newPageKey: string, pageTitle?: string): Promise<void>`
-在單頁應用（SPA）無重新整理路由切換時，無縫切換評論區綁定的頁面。
-- 若傳入的 `newPageKey` 與目前相同，靜默觸發 `reload()`。
-- 若為全新頁面，自動中止前一頁面所有在途中網路請求、關閉活動回覆框、重設分頁與表單，並重新載入新頁面的第 1 頁評論。
+可以使用實例提供的 `/client/ecoku.css`（與預設樣式相同）或 `/client/ecoku.unstyled.css`（只有版面配置）。詳見[自訂樣式](./custom-css)。
 
-### `destroy(): void`
-完全銷毀實例。
-- 解除 DOM 容器與實例的綁定關係。
-- 中止所有進行中的 Fetch 請求控制器（AbortController）。
-- 註銷人機驗證控制項及全域事件監聽器。
-- 清空評論區產生的 DOM 結構。
+## 實例方法
 
-### `isInitialized(): boolean`
-回傳布林值，指示目前實例是否處於已掛載且未銷毀的就緒狀態。
+### `init(options?)`
 
----
+掛載評論區，恢復瀏覽器保存的訪客身分，並載入第一頁評論。回傳 Promise。
 
-## 4. 框架整合實戰
+- 傳入 `options` 時會取代建構時的設定。
+- 已經初始化過的實例再次呼叫不會重複掛載。
+- 同一個容器同時只能由一個實例使用，否則會擲出錯誤。請先對舊實例呼叫 `destroy()`。
 
-### 在 Vue 3 中使用
+### `setPageKey(pageKey, pageTitle?)`
+
+切換到另一篇文章的評論區，適合在單頁應用程式的路由變化後呼叫。
+
+- 頁面 key 與目前相同時，只重新載入評論。
+- 不同時，會取消進行中的請求、關閉已開啟的回覆框、清空評論框，並載入新頁面的第一頁。
+- **第二個參數請傳入新文章的標題**。省略時標題會被清空，而不是沿用上一篇的標題，否則新評論的通知會顯示錯誤的文章名稱。請在路由和標題都更新之後再呼叫。
+
+### `reload()`
+
+重新載入目前頁面的評論，排序不變。
+
+### `destroy()`
+
+卸載評論區：取消所有請求，移除驗證元件和事件監聽器，清空容器。請在元件卸載時呼叫。
+
+### `isInitialized()`
+
+回傳實例目前是否已初始化。
+
+## Vue 3
 
 ```vue
-<script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+<script setup>
+import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import Ecoku from 'ecoku'
+import { loadEcoku } from './load-ecoku'
 
 const route = useRoute()
-const mountEl = ref<HTMLElement | null>(null)
-let ecokuInstance: Ecoku | null = null
+const el = ref(null)
+let comments = null
 
 onMounted(async () => {
-  if (!mountEl.value) return
-  ecokuInstance = new Ecoku({
-    container: mountEl.value,
+  const Ecoku = await loadEcoku()
+  comments = new Ecoku({
+    container: el.value,
     serverURL: 'https://ecoku.example.com',
     siteId: 'blog',
     pageKey: route.path,
     pageTitle: document.title,
-    theme: 'auto',
   })
-  await ecokuInstance.init()
+  await comments.init()
 })
 
-// 監聽 SPA 路由變化無刷新切換
-watch(() => route.path, (newPath) => {
-  ecokuInstance?.setPageKey(newPath, document.title)
-}, { flush: 'post' })
+watch(
+  () => route.path,
+  (path) => comments?.setPageKey(path, document.title),
+  { flush: 'post' },
+)
 
-onUnmounted(() => {
-  ecokuInstance?.destroy()
-  ecokuInstance = null
+onBeforeUnmount(() => {
+  comments?.destroy()
+  comments = null
 })
 </script>
 
 <template>
-  <div ref="mountEl" class="comments-wrapper"></div>
+  <div ref="el"></div>
 </template>
 ```
 
-### 在 React 中使用
+`document.title` 需要在路由切換後已經更新為新文章的標題。如果標題由其他邏輯非同步設定，請改為傳入文章資料中的標題。
 
-```tsx
-import React, { useEffect, useRef } from 'react'
-import Ecoku from 'ecoku'
+## React
 
-interface CommentProps {
-  pageKey: string
-  pageTitle?: string
-}
+```jsx
+import { useEffect, useRef } from 'react'
+import { loadEcoku } from './load-ecoku'
 
-export const CommentBox: React.FC<CommentProps> = ({ pageKey, pageTitle }) => {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const instanceRef = useRef<Ecoku | null>(null)
+export function Comments({ pageKey, pageTitle }) {
+  const el = useRef(null)
 
   useEffect(() => {
-    if (!containerRef.current) return
-
-    const ecoku = new Ecoku({
-      container: containerRef.current,
-      serverURL: 'https://ecoku.example.com',
-      siteId: 'blog',
-      pageKey,
-      pageTitle,
-      theme: 'auto',
+    let comments
+    let cancelled = false
+    loadEcoku().then((Ecoku) => {
+      if (cancelled) return
+      comments = new Ecoku({
+        container: el.current,
+        serverURL: 'https://ecoku.example.com',
+        siteId: 'blog',
+        pageKey,
+        pageTitle,
+      })
+      comments.init().catch(console.error)
     })
-
-    ecoku.init().catch(console.error)
-    instanceRef.current = ecoku
-
     return () => {
-      ecoku.destroy()
-      instanceRef.current = null
+      cancelled = true
+      comments?.destroy()
     }
-  }, [pageKey])
+  }, [pageKey, pageTitle])
 
-  return <div ref={containerRef} />
+  return <div ref={el} />
 }
 ```
 
-
-第二參數明確傳入新文章標題；省略會清空舊標題。請在路由與文章標題更新完成後呼叫。直接 SDK 的非空 `cssURL` 只停用內嵌 CSS，主機頁面需自行加入 `<link rel="stylesheet">`；託管 loader 才會自動加入外部樣式。
+這個元件在文章變化時銷毀舊實例、建立新實例，寫法最簡單。也可以只建立一次實例，在 `pageKey` 變化時呼叫 `setPageKey(pageKey, pageTitle)`，省去重新掛載。

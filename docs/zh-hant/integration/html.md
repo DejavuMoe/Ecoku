@@ -1,15 +1,18 @@
-# 通用 HTML 與 Loader 接入
+# HTML 接入
 
-Ecoku 提供了非同步載入器 `ecoku-loader.js`。透過在 HTML 中宣告 `data-*` 屬性，載入器會自動非同步拉取核心 SDK 與樣式並完成掛載。
+在文章範本中放入一段 HTML 和一個腳本，就能在任何靜態網站上顯示評論區。腳本 `ecoku-loader.js` 由你的 Ecoku 實例提供，讀取 HTML 上的屬性後會自動載入評論元件。
 
----
+開始前，請確認已在後台[註冊站點](../self-hosting/admin#sites)，並把部落格的來源加入該站點的允許來源。
 
-## 快速接入範例
+## 接入程式碼
 
-在頁面的評論區掛載位置插入以下 HTML 結構：
+把下面的程式碼放在文章範本中評論區的位置，並替換三處值：
+
+- `data-server-url`：你的 Ecoku 網址；
+- `data-site-id`：後台註冊的站點 ID；
+- `data-page-key`、`data-page-title`：用範本變數輸出目前文章的路徑和標題。
 
 ```html
-<!-- 評論區容器外殼 -->
 <section
   id="ecoku-comments"
   class="ecoku-shell"
@@ -21,71 +24,84 @@ Ecoku 提供了非同步載入器 `ecoku-loader.js`。透過在 HTML 中宣告 `
   data-page-size="10"
   data-theme="auto"
 >
-  <!-- 錯誤狀態與重試按鈕容器 (預設隱藏) -->
   <div class="ecoku-loader" data-ecoku-loader hidden>
     <p class="ecoku-loader-status" data-ecoku-status></p>
-    <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新載入評論</button>
+    <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新加载评论</button>
   </div>
-  <!-- 實際掛載 DOM -->
   <div id="ecoku-mount" data-ecoku-mount></div>
 </section>
-
-<!-- 非同步引入載入器腳本 -->
 <script src="https://ecoku.example.com/client/ecoku-loader.js" defer></script>
 ```
 
----
+外層中四個帶有 `data-ecoku-*` 的元素都要保留：`data-ecoku-mount` 是評論區掛載的位置，另外三個用來在載入失敗時顯示錯誤訊息和重試按鈕。按鈕文字可以自行修改。
 
-## HTML `data-*` 屬性規範
+## 屬性
 
-| 屬性名 | 必填 | 類型 | 規範與說明 |
-| :--- | :---: | :--- | :--- |
-| `data-server-url` | **是** | String | Ecoku 後端服務的絕對 HTTPS 位址（如 `https://ecoku.example.com`）。 |
-| `data-site-id` | **是** | String | 在管理後台建立的站點唯一識別碼。 |
-| `data-page-key` | **是** | String | 目前頁面的**穩定站內相對路徑**（1～512 字元，如 `/posts/hello-world/`）。嚴禁使用完整 URL 或帶 query/fragment 的參數。 |
-| `data-page-title` | 否 | String | 目前頁面的文章標題（最多 200 字元），用於在郵件通知中清晰展示來源。 |
-| `data-page-size` | 否 | Number | 根評論每頁筆數（1～100 整數，預設 `10`）。 |
-| `data-theme` | 否 | String | 主題模式：`auto`（跟隨系統，預設）、`light`（淺色）、`dark`（深色）。 |
-| `data-css-url` | 否 | String | 自訂 CSS 位址。可填絕對 URL、站內相對路徑，或填 `none` 完全停用內建樣式注入。詳見 [自訂 CSS](/zh-hant/integration/custom-css)。 |
+| 屬性 | 必填 | 說明 |
+| --- | :---: | --- |
+| `data-server-url` | 是 | Ecoku 的網址，例如 `https://ecoku.example.com`，必須是以 `http://` 或 `https://` 開頭的完整網址。 |
+| `data-site-id` | 是 | 後台註冊的站點 ID。 |
+| `data-page-key` | 是 | 目前文章的頁面 key，為站內相對路徑，最多 512 個字元，不能帶 `?` 或 `#`。見下文。 |
+| `data-page-title` | 否 | 文章標題，顯示在通知郵件中。超過 200 個字元的部分會被截掉。 |
+| `data-page-size` | 否 | 每頁顯示幾則根評論，1～100，預設 10。填寫無效值時以 10 處理。 |
+| `data-theme` | 否 | `auto`（預設）、`light` 或 `dark`。`auto` 跟隨頁面的明暗設定。 |
+| `data-css-url` | 否 | 取代預設樣式，見[自訂樣式](./custom-css)。 |
 
----
+## 選擇頁面 key
 
-## 運作機制與優勢
+頁面 key 決定評論屬於哪一篇文章，[一旦使用就不要再更改](../guide/concepts#page-key)。通常使用文章的站內路徑。常見產生器的寫法：
 
-1. **延後執行**：範例中的 `defer` 讓載入器在 HTML 解析完成後執行，再非同步載入 SDK。
-2. **靜默載入**：載入過程中不顯示任何侵入性的「正在載入…」骨架提示，保持頁面清爽。
-3. **網路容錯與重試**：若因網路波動導致核心 SDK 載入逾時（預設 12 秒）或失敗，容器會自動啟動 `.ecoku-loader` 並展示「重新載入」互動按鈕。
-4. **自動樣式注入**：未指定 `data-css-url` 時，SDK 初始化後會自動注入經過優化的內嵌完整樣式，無需額外引入外部 `<link rel="stylesheet">`。
+::: v-pre
+| 產生器 | `data-page-key` 的值 |
+| --- | --- |
+| Hugo | `{{ .RelPermalink }}` |
+| Hexo | `<%- url_for(page.path) %>` |
+| Jekyll | `{{ page.url }}` |
+| Astro | `{Astro.url.pathname}` |
+| VitePress | 在自訂主題中讀取 `useRoute().path`，並使用 [SDK](./sdk) 接入 |
+:::
 
----
+以上僅供參考。請在瀏覽器中檢視產生的 HTML，確認輸出的是穩定的路徑，例如 `/posts/hello-world/`，而不是完整網址。
 
-## 手動引入 UMD（不使用 Loader）
+## 載入過程
 
-如果您希望透過標準的 `<script>` 標籤手動控制初始化生命週期，可以直接使用 UMD 產物：
+1. 頁面解析完成後，載入器讀取外層元素上的屬性。缺少 `data-server-url`、`data-site-id`、`data-page-key`，或缺少四個 `data-ecoku-*` 子元素中的任何一個時，它會**靜默略過**，頁面上不會出現任何內容。
+2. 載入器從自己所在的目錄載入 `ecoku.umd.js`，並初始化評論區。載入期間不會顯示「正在載入」之類的文字。
+3. 腳本載入或初始化超過 12 秒、或者失敗時，會顯示錯誤訊息和「重新加载评论」按鈕，訪客可以點擊重試。
+
+一個頁面上可以有多個外層元素，每個都會獨立初始化。
+
+## 使用自行託管的載入器
+
+可以把 `ecoku-loader.js` 放到自己的 CDN 上，只修改 `<script src>`。載入器會從**同一個目錄**載入 `ecoku.umd.js`，所以兩個檔案要放在一起，並且在升級 Ecoku 時同步更新。
+
+## 部落格頁面的 CSP
+
+如果部落格設定了內容安全政策（CSP），需要放行：
+
+- `script-src` 和 `connect-src`：Ecoku 的來源，例如 `https://ecoku.example.com`；
+- 預設樣式以 `<style>` 元素注入。CSP 不允許內嵌樣式時，把 `data-css-url` 設為 `https://ecoku.example.com/client/ecoku.css`，改用外部樣式表，並在 `style-src` 中放行該來源；
+- 啟用人機驗證時，還要放行驗證服務，見[人機驗證 · 內容安全政策](../self-hosting/captcha#csp)。
+
+## 不使用載入器
+
+也可以直接引入 UMD 檔案，自行控制初始化的時機：
 
 ```html
-<!-- 1. 引入樣式表 -->
 <link rel="stylesheet" href="https://ecoku.example.com/client/ecoku.css">
-
-<!-- 2. 掛載容器 -->
 <div id="ecoku-mount"></div>
-
-<!-- 3. 引入 UMD 核心腳本 -->
 <script src="https://ecoku.example.com/client/ecoku.umd.js"></script>
-
-<!-- 4. 初始化實例 -->
 <script>
   const comments = new Ecoku({
     container: '#ecoku-mount',
     serverURL: 'https://ecoku.example.com',
     siteId: 'blog',
-    pageKey: window.location.pathname,
-    pageTitle: document.title,
-    pageSize: 10,
-    theme: 'auto',
-    cssURL: 'none' // 告知 SDK 樣式已由外部 link 引入，避免重複注入
+    pageKey: '/posts/hello-world/',
+    pageTitle: '你好，世界',
+    cssURL: 'https://ecoku.example.com/client/ecoku.css',
   })
-
   comments.init().catch(console.error)
 </script>
 ```
+
+UMD 檔案會註冊全域變數 `Ecoku`。上例用 `<link>` 引入樣式，並透過 `cssURL` 告訴 SDK 不要再注入預設樣式；如果去掉這兩處，SDK 會自行注入。設定項目和方法見 [JavaScript SDK](./sdk)。

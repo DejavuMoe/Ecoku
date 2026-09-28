@@ -3,38 +3,38 @@ layout: home
 hero:
   name: Ecoku
   text: 自托管的<br>纯文本评论系统
-  tagline: 为静态博客与个人站点而生。极简单容器架构，数据全在 SQLite，提交后立即公开。
+  tagline: 给静态博客和个人网站用。一个 Docker 容器，一个 SQLite 文件，评论提交即公开。
   image:
     src: /ecoku-hero.png
-    alt: Ecoku 示意图
+    alt: Ecoku 评论区示意图
   actions:
     - theme: brand
-      text: 快速开始部署
+      text: 开始部署
       link: /self-hosting/docker
     - theme: alt
-      text: 核心设计与机制
-      link: /guide/concepts
+      text: 了解 Ecoku
+      link: /guide/introduction
     - theme: alt
-      text: 客户端快速接入
+      text: 嵌入评论区
       link: /integration/html
 
 features:
-  - title: 提交即发布 · 讨论不中断
-    details: 无审核队列，回复直达原评论下方；数据层无限嵌套语义，视觉最多 3 级缩进，软删除保留墓碑上下文。
-    link: /guide/concepts#树状评论与分页模型
-  - title: 严格隐私边界 · 零泄露
-    details: 公开 API 绝不返回邮箱、IP 或 User-Agent；访客身份在浏览器 IndexedDB 中使用 AES-GCM 本地加密保存 7 天。
-    link: /guide/concepts#访客身份加密存储
-  - title: 单容器极简拓扑
-    details: Go 单二进制同源提供 API、静态管理端 (/admin/) 与 SDK 加载器 (/client/)；单 SQLite 文件 WAL 事务演进。
-    link: /guide/introduction#系统架构全景
-  - title: 现代化人机验证
-    details: 实例级三态安全切换：关闭、Cloudflare Turnstile 与开源自托管 Cap，配合动态收敛的 CSP 安全防护。
-    link: /self-hosting/admin#人机验证
-  - title: 事务一致性异步通知
-    details: Outbox 模式驱动 SMTP（TLS/STARTTLS）与 Telegram 机器人通知，按目标拆行重试，支持博主口令免密认证。
-    link: /guide/concepts#outbox-事务一致性通知
-  - title: 轻量且灵活的接入
-    details: 提供 2KB 极简 Loader 声明式嵌入，支持 Hugo PaperMod、原生 HTML 与 Vue/React，具备全套 CSS Design Tokens。
+  - title: 提交即公开
+    details: 没有审核队列。回复在被回复的评论下方展开，删除时保留墓碑，讨论上下文不会断。
+    link: /guide/concepts#threads
+  - title: 不收集访客信息
+    details: 不保存 IP 和 User-Agent，公开接口不返回邮箱。访客身份只在浏览器里加密保存 7 天。
+    link: /guide/concepts#data
+  - title: 一个容器，一个文件
+    details: 一个 Go 程序同时提供接口、管理后台和嵌入脚本，全部数据在一个 SQLite 文件中。
+    link: /guide/introduction#components
+  - title: 多站点
+    details: 一个实例服务多个网站，每个站点有独立的来源白名单、评论设置和博主身份。
+    link: /self-hosting/admin#sites
+  - title: 通知与人机验证
+    details: 新评论通过邮件或 Telegram 通知博主；可选 Cloudflare Turnstile 或自托管 Cap 防刷。
+    link: /self-hosting/notifications
+  - title: 一段 HTML 即可接入
+    details: 适用于 Hugo、Hexo、Astro 等任何静态网站，也支持 Vue、React 单页应用；样式可用 CSS 变量调整。
     link: /integration/html
 ---

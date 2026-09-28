@@ -1,110 +1,103 @@
-# 反向代理與網路限流
+# 反向代理
 
-Ecoku 在容器內監聽 `:12123`；Compose 僅在宿主機回環 `127.0.0.1:12123` 發佈連接埠。在生產環境中，必須透過前端 Web 伺服器（如 Caddy 或 Nginx）終止 HTTPS，並將流量反向代理到容器連接埠。
+Ecoku 容器只在主機的 `127.0.0.1:12123` 上提供 HTTP。要從公開網路存取，需要由同一台主機上的 Caddy 或 Nginx 終止 HTTPS，再轉送到這個連接埠。
 
----
+本頁要完成兩件事：
 
-## 網路拓撲模型
+1. 設定 HTTPS 轉送，讓 `https://ecoku.example.com` 可以存取；
+2. 讓 Ecoku 辨識訪客的真實 IP，使速率限制依個人計算，而不是所有訪客共用同一份額度。
+
+## 請求經過的路徑
 
 ```mermaid
-flowchart TD
-    V["訪客 (Client)"]
-    CDN["Cloudflare CDN (可選代理)"]
-    Proxy["反向代理 (Caddy / Nginx)<br/>• 終止 HTTPS / 透傳 X-Forwarded-For"]
-    Container["Ecoku 容器<br/>• 容器內 :12123 / 宿主機 127.0.0.1:12123"]
-
-    V -->|場景 1: 直連 HTTPS| Proxy
-    V -->|場景 2: 經 CDN| CDN
-    CDN -->|HTTPS| Proxy
-    Proxy -->|本地 HTTP| Container
+flowchart LR
+    V["訪客瀏覽器"] -->|HTTPS| P["Caddy / Nginx<br/>（主機）"]
+    V -.->|HTTPS| C["CDN（選用）"] -.-> P
+    P -->|"HTTP 127.0.0.1:12123"| E["Ecoku 容器"]
 ```
 
----
+反向代理連到 `127.0.0.1:12123` 時，Docker 會把連線轉交給容器。容器看到的對端位址不是訪客，而是 Docker 橋接網路的閘道（通常形如 `172.18.0.1`）。因此訪客的真實 IP 只能由反向代理寫進 `X-Forwarded-For` 請求標頭傳過去，而 Ecoku 只有在確認請求確實來自這個閘道時才會讀取它。
 
-## 場景 1：直連來源站反向代理
+## 直接回源
 
-### Caddy 設定（推薦）
+### Caddy
 
-Caddy 具備自動憑證申請與維護能力，設定最為精簡：
+Caddy 會自動申請和續期憑證。
 
 ```caddyfile
 ecoku.example.com {
     encode zstd gzip
 
     reverse_proxy 127.0.0.1:12123 {
-        # 強制覆蓋 X-Forwarded-For 為對端直連 IP，防止客戶端偽造 Header 欺騙限流
+        # 以直連對端位址覆寫，捨棄瀏覽器自帶的 X-Forwarded-For
         header_up X-Forwarded-For {remote_host}
         header_up X-Forwarded-Proto {scheme}
     }
 }
 ```
 
-### Nginx 設定
+### Nginx
+
+憑證路徑以 Certbot 的預設位置為例。
 
 ```nginx
 server {
-    listen 443 ssl http2;
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
     server_name ecoku.example.com;
 
-    ssl_certificate /etc/letsencrypt/live/ecoku.example.com/fullchain.pem;
+    ssl_certificate     /etc/letsencrypt/live/ecoku.example.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/ecoku.example.com/privkey.pem;
 
-    # 啟用 Gzip 壓縮
     gzip on;
     gzip_types text/plain text/css application/json application/javascript;
 
     location / {
         proxy_pass http://127.0.0.1:12123;
         proxy_set_header Host $host;
-        # 覆蓋 X-Forwarded-For 為目前直接 TCP 對端 IP
+        # 覆寫而不是附加：$remote_addr 是目前的 TCP 對端
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
 
----
+兩份設定的關鍵都是**覆寫** `X-Forwarded-For`。如果改成附加（例如 Nginx 的 `$proxy_add_x_forwarded_for`），瀏覽器就可以自己帶一個偽造的值，繞過速率限制。
 
-## 場景 2：經 CDN（如 Cloudflare）反向代理
+## 經過 CDN 回源
 
-當網域名稱透過 Cloudflare CDN 代理時，直接對端是 CDN 節點。必須設定反向代理將 CDN 注入的真實客戶端 IP 寫入 `X-Forwarded-For`。
-
-### Cloudflare + Caddy 設定
+網域接上 Cloudflare 等 CDN 後，反向代理的直連對端就變成 CDN 節點。這時要從 CDN 提供的請求標頭取得訪客 IP。以 Cloudflare 和 Caddy 為例：
 
 ```caddyfile
 ecoku.example.com {
     encode zstd gzip
 
     reverse_proxy 127.0.0.1:12123 {
-        # 將 Cloudflare 鑑權後的訪客真實 IP 覆蓋寫入 X-Forwarded-For
         header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
         header_up X-Forwarded-Proto {scheme}
     }
 }
 ```
 
-> [!WARNING]
-> - 開啟 CDN 時，來源站防火牆應嚴格限制僅放行 Cloudflare 官方 IP 區段，禁止透過公網 IP 繞過 CDN 直接回源。
-> - 在 Ecoku 的 `trusted_proxies` 設定中，**仍舊只填寫 Docker 網關 IP**，絕不能將整個 CDN 龐大的網段填入 `trusted_proxies`。
+`CF-Connecting-IP` 只有在請求確實經過 Cloudflare 時才可信。請在防火牆或 Caddy 中只放行 Cloudflare 的 IP 範圍，避免有人直連來源伺服器並自行填入這個請求標頭。
 
----
+Ecoku 這一端的設定不變：`trusted_proxies` 仍然只填 Docker 閘道，不要把 CDN 的網段填進去。
 
-## 客戶端 IP 判定與 `trusted_proxies`
+## 設定 trusted_proxies {#trusted-proxies}
 
-Ecoku 內建嚴格的防偽造保護機制：
+`app/config.yaml` 中的 `site.trusted_proxies` 決定 Ecoku 信任誰轉送的 `X-Forwarded-For`：
 
-1. **預設不信任**：若 `trusted_proxies` 為空（`[]`），Ecoku 預設不解析任何 `X-Forwarded-For` 請求標頭，所有請求均按 TCP Socket 對端 IP（通常為反向代理網關 IP）處理。此時所有訪客共用一個限流桶。
-2. **精確信任**：只有當 TCP 直接連線對端**精確匹配** `trusted_proxies` 中宣告的單一 IP 或 CIDR 時，Ecoku 才會從 `X-Forwarded-For` 讀取真實客戶端 IP 進行獨立限流。
+- **留空（預設）**：不讀取任何轉送標頭，一律依容器看到的對端位址進行速率限制。放在反向代理後面時，這個位址就是 Docker 閘道，於是所有訪客共用同一份速率限制額度。預設每分鐘只允許 5 次評論送出，流量稍大就會有人收到 `429`。
+- **填入 Docker 閘道**：只有直連對端正好是閘道時，才從 `X-Forwarded-For` 取得訪客 IP。
 
-### 查詢 Docker 網關 IP
-
-執行以下指令取得目前容器所在的 Docker 橋接網路網關：
+查出 Ecoku 所在網路的閘道：
 
 ```bash
 sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
 ```
 
-例如輸出為 `172.18.0.1`，則在 `app/config.yaml` 中設定：
+假設輸出為 `172.18.0.1`，把它寫進設定：
 
 ```yaml
 site:
@@ -112,20 +105,26 @@ site:
     - "172.18.0.1/32"
 ```
 
-> [!CAUTION]
-> 絕對禁止在 `trusted_proxies` 中設定 `0.0.0.0/0` 或 `::/0`，否則任何外部請求均可透過偽造 `X-Forwarded-For` 繞過限流。
-
----
-
-## 連通性測試
+然後重新啟動容器：
 
 ```bash
-# 驗證反向代理健康檢查端點
-curl -i https://ecoku.example.com/api/health
-
-# 驗證前端靜態載入器腳本可存取
-curl -i https://ecoku.example.com/client/ecoku-loader.js
-
-# 驗證管理後台入口
-curl -i https://ecoku.example.com/admin/
+cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 ```
+
+::: danger
+不要填 `0.0.0.0/0` 或 `::/0`，Ecoku 會拒絕啟動。信任任意來源等於允許任何人偽造 IP。
+:::
+
+## 檢查
+
+在任何一台能連上網路的機器上執行：
+
+```bash
+for path in /api/health /client/ecoku-loader.js /admin/; do
+  curl -sS -o /dev/null -w "%{http_code} $path\n" "https://ecoku.example.com$path"
+done
+```
+
+三行都應以 `200` 開頭。健康檢查端點可以對公開網路開放，它只回傳狀態和時間戳記。
+
+確認無誤後，開啟 `https://ecoku.example.com/admin/` 繼續[設定管理後台](./admin)。

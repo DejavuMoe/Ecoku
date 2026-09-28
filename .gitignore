@@ -42,3 +42,6 @@ deploy/ecoku.env
 *.sqlite3
 *.bin
 .atomcode
+
+# Local agent skills
+.agents/skills/chinese-writing/

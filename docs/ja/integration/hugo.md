@@ -1,21 +1,16 @@
-# Hugo PaperMod への組み込み
+# Hugo PaperMod
 
-Hugo と定番テーマ **PaperMod** を使用した静的ブログでは、単一の partial テンプレートを上書きするだけで Ecoku コメント欄を統合できます。
+[PaperMod](https://github.com/adityatelange/hugo-PaperMod) テーマにはコメント欄用のテンプレートが用意されているので、partial ファイルを 1 つ上書きするだけで Ecoku を組み込めます。リポジトリの `examples/hugo-papermod/` ディレクトリに完全な例があります。
 
----
+## 1. コメントテンプレートを追加する
 
-## 1. コメントテンプレートの上書き
-
-PaperMod はサイトルートの `layouts/partials/comments.html`（または `layouts/_partials/comments.html`）を配置することで、既定のコメント欄を上書きできます。
-
-Hugo サイトのルートディレクトリに `layouts/partials/comments.html` を作成します：
+Hugo サイトに `layouts/_partials/comments.html` を作成します（Hugo 0.146 より前のバージョンでは `layouts/partials/comments.html` を使います）。
 
 ```html
 {{- $ecoku := site.Params.ecoku -}}
 {{- if and $ecoku $ecoku.server_url $ecoku.site_id -}}
 {{- $js := $ecoku.js_url | default (printf "%s/client/ecoku-loader.js" $ecoku.server_url) -}}
-<div class="ecoku-container" style="margin-top: 2rem;">
-  <section
+<section
     id="ecoku-comments"
     class="ecoku-shell"
     data-ecoku-comments
@@ -27,66 +22,67 @@ Hugo サイトのルートディレクトリに `layouts/partials/comments.html`
     data-page-size="10"
     data-theme="auto"
     {{- with $ecoku.css_url }} data-css-url="{{ . }}"{{ end }}
-  >
+>
     <div class="ecoku-loader" data-ecoku-loader hidden>
-      <p class="ecoku-loader-status" data-ecoku-status></p>
-      <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>コメントを再読み込み</button>
+        <p class="ecoku-loader-status" data-ecoku-status></p>
+        <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>コメントを再読み込み</button>
     </div>
     <div id="ecoku-mount" data-ecoku-mount></div>
-  </section>
-  <script src="{{ $js }}" defer></script>
-</div>
-{{- end }}
+</section>
+<script src="{{ $js }}" defer></script>
+{{- else -}}
+<section class="ecoku-shell" aria-label="コメント欄">
+    <p class="ecoku-loader-status" role="status">コメントサービスはまだ設定されていません。</p>
+</section>
+{{- end -}}
 ```
 
-Hugo サイト設定ファイル（`hugo.yaml` など）の `params` に以下の設定を追加します：
+このテンプレートは、`.RelPermalink` をページキー（例：`/posts/my-first-post/`）として、`.Title` を記事のタイトルとして使います。`server_url` または `site_id` が設定されていない場合は「コメントサービスはまだ設定されていません。」と表示されるので、設定漏れに気づけます。
+
+## 2. サイトの設定を追加する
+
+`hugo.yaml` に次を追加します。
 
 ```yaml
 params:
   comments: true
   ecoku:
+    # 末尾に / を付けないでください
     server_url: "https://ecoku.example.com"
     site_id: "blog"
-    # 任意：カスタムローダーまたはスタイル CDN アドレス
-    # js_url: "https://ecoku.example.com/client/ecoku-loader.js"
-    # css_url: "https://ecoku.example.com/client/ecoku.css"
+    # 任意：自分でホストしたローダーを使います。デフォルトは {server_url}/client/ecoku-loader.js
+    # js_url: "https://cdn.example.com/ecoku-loader.js"
+    # 任意：デフォルトのスタイルを置き換えます。「カスタムスタイル」を参照
+    # css_url: "https://ecoku.example.com/client/ecoku.unstyled.css"
 ```
 
+`params.comments: true` で、すべての記事のコメント欄が有効になります。コメントが不要な記事では、その front matter に `comments: false` と書きます。
+
+```yaml
 ---
-
-## 2. テンプレート変数の解説
-
-- **`data-page-key`**：Hugo の `.RelPermalink` を使用してサイト内相対パス（例: `/posts/my-first-post/`）を出力し、ドメインやプロトコルの変更に影響されない高い安定性を確保します。
-- **`data-page-title`**：`.Title` を使用して記事タイトルを出力し、メールや Telegram 通知で発信元を正確に明示します。
-- **`data-theme="auto"`**：コメント欄は PaperMod の `--theme`、`--primary`、`--border` などの色変数を読み取り、ページの `color-scheme` を継承します。そのため `light-dark()` で色を定義したテーマも含め、テーマのライト/ダーク切り替えに追従します。
-
----
-
-## 3. 記事単位での表示制御
-
-個別の記事 Markdown の Front Matter で `comments` プロパティを設定し、記事ごとにコメント欄の表示/非表示を制御できます：
-
-```markdown
----
-title: "Go 言語のメモリモデルを深く理解する"
-date: 2026-08-20
-comments: true
+title: "关于本站"
+comments: false
 ---
 ```
 
----
+## 3. オリジンを登録する
 
-## 4. テーマのスタイルに合わせる（任意）
+Ecoku の管理画面で、このサイトの許可オリジン（例：`https://blog.example.com`）を追加します。ローカルで `hugo server` を実行してプレビューする場合は、`http://localhost:1313` も追加してください。
 
-既定スタイルはすでに PaperMod の色変数を読み取ります。テーマがアクセントカラー、角丸、文字サイズの変数も定義している場合は、サイトの CSS（例：`assets/css/extended/comments.css`）で Ecoku の変数に対応付けると、コメント欄がテーマと一緒に変わります：
+## 見た目
+
+デフォルトのスタイルは PaperMod の色の変数（`--theme`、`--entry`、`--primary`、`--secondary`、`--content`、`--border`、`--code-bg`）を読み取り、テーマのライト / ダークの切り替えに追従するので、通常は追加の設定は不要です。
+
+角丸、文字サイズ、アクセントカラーをさらに揃えたい場合は、`assets/css/extended/` に CSS ファイルを新しく作成します。PaperMod がサイトのスタイルに自動でまとめてくれます。
 
 ```css
 .ecoku-comments {
-  --ecoku-accent: var(--accent);
-  --ecoku-radius: var(--radius);
-  --ecoku-font-size: 15px;
-  --ecoku-font-size-small: 13px;
+  --ecoku-radius: 8px;
+  --ecoku-font-size: 16px;
+  --ecoku-accent: #b4532a;
 }
 ```
 
-変数名はテーマで実際に定義されているものに合わせてください。一覧は[カスタム CSS](./custom-css.md)を参照してください。
+使えるすべての変数は[カスタムスタイル](./custom-css#variables)を参照してください。
+
+例のディレクトリにある `assets/css/extended/ecoku.css` は、読み込み失敗時のメッセージと再試行ボタンにだけスタイルを付けています。必要に応じてコピーしてください。

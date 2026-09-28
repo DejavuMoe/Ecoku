@@ -1,89 +1,89 @@
-# 自定义 CSS 与 Design Tokens
+# 自定义样式
 
-Ecoku 提供了细致的样式覆盖方案。您可以通过 CSS 变量微调配色，也可以使用纯净骨架样式表打造完全定制的评论区视觉。
+评论区的样式有三种用法，按改动程度从小到大：
 
----
+| 方式 | 怎么做 | 适合 |
+| --- | --- | --- |
+| 默认样式 + 变量 | 不设 `data-css-url`，在博客 CSS 中覆盖 `--ecoku-*` 变量 | 大多数博客，只想调颜色、圆角、字号 |
+| 结构样式 | `data-css-url` 指向 `/client/ecoku.unstyled.css` | 想保留布局，颜色和装饰全部自己写 |
+| 完全自定义 | `data-css-url="none"` | 所有样式都由博客提供 |
 
-## 三种样式接入策略
+样式只影响评论区，与管理后台无关。评论区的字体继承博客页面。
 
-```mermaid
-flowchart LR
-    A["选择接入方式"] --> B["🎨 方案 1: 默认样式 + 变量微调<br/>(开箱即用，适合绝大多数博客)"]
-    A --> C["🦴 方案 2: 引入 unstyled 骨架样式<br/>(保留布局，自由定制颜色与阴影)"]
-    A --> D["✨ 方案 3: cssURL: 'none' 完全自绘<br/>(适合深度适配前端组件库与主题)"]
-```
+## 用变量调整默认样式
 
-### 1. 方案一：默认样式 + CSS 变量微调（推荐）
-保持默认 `data-css-url` 为空，在博客全局 CSS 中声明并覆盖 `--ecoku-*` 变量。
-
-### 2. 方案二：使用骨架样式表 (`ecoku.unstyled.css`)
-通过 `<link rel="stylesheet" href=".../client/ecoku.unstyled.css">` 引入，并将 `data-css-url="none"`。
-骨架样式仅包含 Flex/Grid 布局、盒模型与 3ch 等宽尺寸，剥离了所有背景、边框和文字颜色。
-
-### 3. 方案三：完全自定义 (`none`)
-将 `cssURL` 设为 `'none'`，由您的站点完全定义所有 `.ecoku-*` 类名的视觉规则。
-
----
-
-## Design Tokens / CSS 变量
-
-默认样式的颜色、强调色、圆角、阴影、等宽字体和字号都由 `--ecoku-*` 变量控制。
-
-### 覆盖方式
-
-- Ecoku 的默认值以零优先级声明。在评论区根节点 `.ecoku-comments` 上写同名变量即可覆盖，不需要提高选择器优先级，也不受样式表加载顺序影响。
-- 颜色变量会先读取宿主同名的 PaperMod 变量（`--theme`、`--entry`、`--primary`、`--secondary`、`--content`、`--border`、`--border-soft`、`--code-bg`、`--surface-muted`）。PaperMod 主题通常无需额外配置。
-- `data-theme="auto"` 时评论区继承宿主页面的 `color-scheme`，因此宿主用 `light-dark()` 定义的变量会跟随站点自己的明暗切换，而不是只跟随系统设置。宿主没有提供颜色变量时，Ecoku 按系统偏好使用内置的浅色或深色配色。
-- `data-theme="light"` 或 `"dark"` 会固定评论区配色，不再读取宿主颜色变量。
+在博客的 CSS 中，给 `.ecoku-comments` 写同名变量即可：
 
 ```css
-/* 在博客样式中覆盖评论区变量 */
 .ecoku-comments {
-  --ecoku-accent: #a8412c;        /* 博主标志、链接悬停、表单错误 */
-  --ecoku-radius: 6px;            /* 发表卡片、菜单、表情面板、Cap 外框 */
-  --ecoku-radius-sm: 3px;         /* 菜单项、表情格、Cap 复选框 */
-  --ecoku-font-size: 15px;        /* 评论正文与输入 */
-  --ecoku-font-size-small: 13px;  /* 元信息、标签、按钮 */
-  --ecoku-font-size-title: 22px;  /* “N 条评论”标题 */
+  --ecoku-accent: #a8412c;
+  --ecoku-radius: 8px;
+  --ecoku-font-size: 16px;
 }
 ```
 
-### 变量一览
+默认值是用零优先级的 `:where(.ecoku-comments)` 声明的，你写的任何 `.ecoku-comments` 规则都会生效，不需要 `!important`，也不受样式表加载顺序影响。
 
-| 变量 | 默认值 | 用途 |
+### 明暗模式
+
+`data-theme` 决定评论区如何选择配色：
+
+- **`auto`（默认）**：评论区继承博客页面的 `color-scheme`。颜色变量优先读取博客定义的同名变量（见下表“默认值”一列中的 `var(--theme, …)` 等），所以博客用 `light-dark()` 或切换类名改变这些变量时，评论区会一起变。博客没有定义这些变量时，按系统的浅色/深色偏好使用内置配色。
+- **`light` / `dark`**：固定使用内置的浅色或深色配色，不再读取博客的颜色变量。
+
+颜色变量的回退名称与 PaperMod 主题一致，因此在 PaperMod 中通常无需任何设置。
+
+## 变量一览 {#variables}
+
+| 变量 | 默认值 | 用于 |
 | --- | --- | --- |
-| `--ecoku-theme` | `var(--theme, #f7f4ee)` | 纸面底色；主按钮文字色；Cap 复选框底色 |
-| `--ecoku-entry` | `var(--entry, #fbf9f5)` | 发表卡片、服务故障提示、排序菜单、表情面板 |
-| `--ecoku-primary` | `var(--primary, #1e1c19)` | 标题、昵称、输入文字、实心主按钮、聚焦底线 |
+| `--ecoku-theme` | `var(--theme, #f7f4ee)` | 纸面底色；主按钮文字 |
+| `--ecoku-entry` | `var(--entry, #fbf9f5)` | 发表卡片、排序菜单、表情面板、错误提示的底色 |
+| `--ecoku-primary` | `var(--primary, #1e1c19)` | 标题、昵称、输入文字、主按钮底色、聚焦下划线 |
 | `--ecoku-secondary` | `var(--secondary, #6b655b)` | 时间、字数、字段标签、文字按钮 |
-| `--ecoku-content` | `var(--content, #35312b)` | 评论正文与正文输入 |
-| `--ecoku-border` | `var(--border, #cbc3b5)` | 身份字段底线、次要按钮边框、“回复”下划线 |
-| `--ecoku-border-soft` | `var(--border-soft, rgb(30 28 25 / 0.12))` | 卡片描边、线程分隔线、子评论引导线 |
+| `--ecoku-content` | `var(--content, #35312b)` | 评论正文与正文输入框 |
+| `--ecoku-border` | `var(--border, #cbc3b5)` | 身份字段下划线、次要按钮边框、“回复”下划线 |
+| `--ecoku-border-soft` | `var(--border-soft, rgb(30 28 25 / 0.12))` | 卡片描边、讨论串分隔线、回复引导线 |
 | `--ecoku-surface-muted` | `var(--surface-muted, #efebe3)` | 表情格悬停底色 |
-| `--ecoku-code-bg` | `var(--code-bg, #ece7de)` | 保留给自定义样式，默认样式不再使用 |
-| `--ecoku-accent` | 朱砂色与 `--ecoku-primary` 混合 | 博主标志、链接悬停；浅色下偏深、深色下偏浅 |
-| `--ecoku-danger` | `var(--ecoku-accent)` | 表单错误与无效字段 |
-| `--ecoku-focus` | `--ecoku-primary` 的 40% | 键盘焦点框（1px）；设为 `transparent` 可隐藏 |
-| `--ecoku-radius` | `6px` | 卡片、菜单、面板和按钮圆角 |
-| `--ecoku-radius-sm` | `3px` | 菜单项、表情格和复选框圆角 |
+| `--ecoku-code-bg` | `var(--code-bg, #ece7de)` | 默认样式未使用，留给自定义样式 |
+| `--ecoku-accent` | 朱砂色 `#c8553a` 与 `--ecoku-primary` 混合 | 博主标志、链接悬停 |
+| `--ecoku-danger` | `var(--ecoku-accent)` | 表单错误提示与无效字段 |
+| `--ecoku-focus` | `--ecoku-primary` 的 40% 透明度 | 键盘焦点框；设为 `transparent` 可隐藏 |
+| `--ecoku-radius` | `6px` | 卡片、菜单、面板、按钮圆角 |
+| `--ecoku-radius-sm` | `3px` | 菜单项、表情格、复选框圆角 |
 | `--ecoku-shadow` | 浅色双层阴影 | 排序菜单与表情面板 |
-| `--ecoku-font-mono` | Maple Mono 与系统等宽字体 | 时间、`[+]`/`[-]`、字数、分页页码 |
-| `--ecoku-font-size` | `15px` | 正文与输入 |
+| `--ecoku-font-mono` | Maple Mono，回退到系统等宽字体 | 时间、`[+]` / `[-]`、字数、页码 |
+| `--ecoku-font-size` | `15px` | 正文与输入框 |
 | `--ecoku-font-size-small` | `13px` | 元信息、标签、按钮 |
-| `--ecoku-font-size-title` | `22px`（窄屏 `20px`） | 评论数标题 |
+| `--ecoku-font-size-title` | `22px`（窄屏 `20px`） | “N 条评论”标题 |
 
-评论区字体继承宿主页面；触屏设备上的输入框不小于 16px，避免 iOS 聚焦时放大页面。
+等宽字体只使用页面已经加载的 Maple Mono，Ecoku 不会下载字体；没有时依次回退到 `ui-monospace`、`SFMono-Regular`、`Menlo`、`Consolas`。
 
----
+触屏设备上，输入框字号至少为 16px，以免 iOS 在聚焦时放大页面。
 
-## 视觉排版规范与基线对齐（Baseline）
+## 结构样式
 
-为保障评论区在任何博客宿主字体环境下均能优雅呈现，Ecoku 遵循以下排版基线：
+`/client/ecoku.unstyled.css` 只包含布局：网格、间距、表情面板、验证组件尺寸、折叠按钮宽度等，没有任何颜色、边框、背景，也不使用 `--ecoku-*` 变量。
 
-1. **等宽折叠控件（3ch 等宽保障）**：
-   - 评论折叠按钮 `.ecoku-collapse-button` 固定为 `3ch` 宽度，使用 `font-variant-numeric: tabular-nums`。
-   - 切换展开 `[-]` 与折叠 `[+]` 时，元信息行的作者昵称、发布时间与回复动作不发生水平抖动。
-2. **基线对齐（Baseline Alignment）**：
-   - 元信息行 `.ecoku-comment-meta` 采用 `display: flex; align-items: baseline;`，15px 的作者昵称、12px 的时间戳与 13px 的下划线“回复”在同一基线上对齐。
-3. **等宽字体栈**：
-   - 时间、折叠控件、字数和分页页码使用 `--ecoku-font-mono`（宿主已加载的 Maple Mono，否则回退系统等宽 `ui-monospace, SFMono-Regular, Menlo, monospace`）。
+```html
+<section
+  data-ecoku-comments
+  data-css-url="https://ecoku.example.com/client/ecoku.unstyled.css"
+  ...
+>
+```
+
+使用 HTML 加载器时，它会自动在页面中插入这个样式表的 `<link>`；直接使用 SDK 时需要自己引入，见 [SDK · 样式](./sdk#styles)。
+
+## 完全自定义
+
+`data-css-url="none"` 时，Ecoku 不注入也不加载任何样式。评论区的根元素是 `.ecoku-comments`，所有元素都使用 `ecoku-` 前缀的类名。可以先打开 `ecoku.unstyled.css`，了解结构和需要处理的状态（折叠、隐藏、表情面板等），再在此基础上编写。
+
+## 布局细节
+
+写自定义样式时可以参考默认样式的这些约定：
+
+- 回复缩进：每级 22px，窄屏（≤ 620px）14px，最多 3 级。当前层级通过元素上的 `--ecoku-depth` 变量（0～3）提供。
+- 折叠按钮 `[+]` / `[-]` 固定宽度 `3ch`，切换时同一行的内容不会移动。
+- 昵称、时间、折叠按钮和“回复”在同一行，按文字基线对齐。
+- Turnstile 组件宽度不超过 300px；Cap 组件保持 260×58px。

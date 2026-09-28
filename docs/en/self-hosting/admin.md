@@ -1,262 +1,97 @@
-# Admin Console
+# Admin console
 
-The management interface is located at `/admin/`.
+The admin console lives at `https://ecoku.example.com/admin/`. You use it to register sites, handle comments, and configure notifications and CAPTCHA. An instance has a single admin account that manages all sites.
 
----
+## Sign in
 
-## 1. Revocable administrator sessions
+The username comes from `ECOKU_ADMIN_USERNAME` in `ecoku.env`, and the password is the one you entered when generating the password hash. If CAPTCHA is enabled, the sign-in page also shows the verification widget.
 
-Administrator sessions use an HttpOnly cookie; SQLite stores only the credential digest and expiry. Sessions expire exactly eight hours after login. Reloading or reopening restores a valid session without extending its deadline. Logout revokes the current session on the server; a failed logout keeps the current screen and offers retry. Credentials do not enter JavaScript, localStorage, sessionStorage or URLs.
+Sign-in is rejected unless both of these hold:
 
-Production uses HTTPS and a Secure, HttpOnly, SameSite=Strict, host-only cookie scoped to `/api/admin`. Only explicitly allowed loopback HTTP development origins may omit Secure. Rotating the administrator password hash or signing key and restarting invalidates existing sessions.
+- You are connecting over HTTPS. Only loopback addresses such as `localhost` and `127.0.0.1` may use HTTP, for local development.
+- The origin in the browser's address bar is listed in `admin.allowed_origins` in `app/config.yaml`.
 
----
+After you sign in, the session lasts a fixed 8 hours. Reloading the page or closing and reopening the browser does not require signing in again, but activity does not extend those 8 hours either. When the session expires, the page asks you to sign in again. **Sign out** (退出登录) ends the current session on the server. If the sign-out request fails, the page stays open and asks you to try again; it does not pretend you are signed out.
 
-## 2. Multi-Site Management
-- **Site ID**: Unique immutable identifier used by client SDKs.
-- **Canonical URL**: Base URL used to assemble comment links in emails and admin views.
-- **Allowed Origins**: Strict list of `https://` origins allowed to make CORS requests.
-- **Form Controls**: Configure mandatory email/website fields, placeholder text, character limits (1~10,000), and empty state text.
-- **Smoji Stickers**: Enable Smoji support and provide a remote HTTPS `smoji.json` manifest URL.
+The session credential is stored in an HttpOnly cookie that is sent only to `/api/admin`, so page scripts cannot read it. After you change the admin password or `ECOKU_ADMIN_TOKEN_KEY` and recreate the container, all old sessions stop working immediately.
 
----
+If a CAPTCHA misconfiguration keeps you from signing in, see [CAPTCHA](./captcha#disable).
 
-## 3. Blogger Identity & Passphrases
-- Configure blogger nickname, private email, and an optional public badge (`[Blogger]`).
-- Set a secret 12~80 character passphrase.
-- In the public comment form, entering the passphrase into the Nickname field authenticates the blogger without exposing their email.
+## Layout
 
-Saving, first setting or rotating a passphrase does not backfill historical blogger flags. Backfill remains only in the original schema v5 migration and initial Twikoo import.
+There are four pages along the top:
 
----
+- **Comments** (评论管理): view and delete comments for the current site.
+- **Sites** (站点管理): add and edit sites.
+- **Notifications** (通知设置): email and Telegram notifications, for the whole instance.
+- **Security** (安全): CAPTCHA, for the whole instance.
 
-## 4. Comment Moderation
-- **Tombstone Soft-Delete**: Erases author name, email, website, and raw body while preserving comment IDs and discussion threads.
-- **Hard Purge**: Only allowed on isolated tombstones with zero descendant replies.
+The site selector at the top decides which site's comments **Comments** (评论管理) shows.
 
----
+## Register a site {#sites}
 
-## 5. Bot Protection (CAPTCHA) {#bot-protection-captcha}
+A "site" is one website that embeds the comment section. On **Sites** (站点管理), click **Add site** (新增站点) and fill in:
 
-Ecoku provides instance-wide bot protection supporting three states, protecting both **visitor comment submission** and **admin console login**:
+| Field | Description |
+| --- | --- |
+| Site ID (站点 ID) | The `data-site-id` in the embed code. Starts with a letter or digit and may contain letters, digits, `.`, `_`, and `-`, up to 100 characters. **It cannot be changed after the site is created.** |
+| Site URL (站点 URL) | The canonical address of the website, such as `https://blog.example.com`. Notification emails and the admin console's **View original comment** (查看原评论) build post links from it plus the page path. |
+| Site name (站点名称) | Shown in the admin console and in notification emails, up to 120 characters. If empty, the domain of the site URL is used. |
+| Allowed origins (允许来源) | Origins that may load this site's comment section, one per line, up to 32. See below. |
+| Comment order (评论排序) | The default order when a visitor opens the comment section: newest or oldest first. Visitors can switch it temporarily. |
+| Field requirements (字段要求) | Whether email is required (required by default) and whether website is required (optional by default). Nickname is always required. |
+| Comment placeholder (评论占位文案) | The hint text in the comment box, 1 to 80 characters. The default is "Write a comment (plain text only)" (写下评论（仅支持纯文本）). |
+| Comment length limit (评论长度上限) | Maximum number of characters in a comment body, 1 to 10000, default 1000. Counted in Unicode characters, so one CJK character or kana counts as one. |
+| Empty-state text (无评论文案) | Text shown when there are no comments yet, 1 to 240 characters. It may contain line breaks. |
 
-```mermaid
-graph TD
-    subgraph Provider["Bot Protection Provider (Tri-state)"]
-        P1["Off"]
-        P2["Cloudflare Turnstile"]
-        P3["Self-Hosted Cap"]
-    end
+### Allowed origins
 
-    subgraph Protection["Dual Protection Boundary"]
-        Visitor["Visitor Comment Submission (/api/comment/submit)"]
-        Admin["Admin Console Login (/api/admin/login)"]
-    end
+An "origin" is `scheme://domain[:port]`, without a path. The origin of the page that hosts the comment section must be listed here. Otherwise the browser is refused both when reading and when submitting comments.
 
-    subgraph Verification["Server-Side Verification"]
-        VerifyToken["Verify token (no added client IP)<br/>(AES-256-GCM encrypted credentials)"]
-        Pass["Allow Request"]
-        Reject["Reject Request (400/403)"]
-    end
+- `https://blog.example.com` and `https://www.blog.example.com` are two different origins. If your blog is reachable on both domains, list both.
+- When you preview your blog locally, add addresses such as `http://localhost:1313` too. You can remove them after you go live.
+- You cannot list the admin console's own origin (an address in `admin.allowed_origins`). The two must be kept separate.
 
-    P2 -->|Enforce| Visitor
-    P2 -->|Enforce| Admin
-    P3 -->|Enforce| Visitor
-    P3 -->|Enforce| Admin
-    Visitor --> VerifyToken
-    Admin --> VerifyToken
-    VerifyToken -->|Valid| Pass
-    VerifyToken -->|Invalid| Reject
-```
+If someone edited the same site in another browser tab while you were editing it, saving shows "Site configuration was updated by another session" (站点配置已被其他会话更新). Reload and edit again.
 
-> [!NOTE]
-> Turnstile and Cap secret keys are encrypted with AES-256-GCM using your master key and never displayed in plaintext. Switching between providers preserves saved credentials.
+### Sticker packs
 
-### 1. Cloudflare Turnstile
+After you check **Enable sticker pack** (启用表情包) and enter a Smoji manifest URL, the comment box shows a **Stickers** (表情) button. The manifest URL must use HTTPS (except for loopback addresses). Sticker images are served to the visitor's browser directly by the server that hosts the manifest, and that server can see the visitor's IP address. See [Smoji sticker packs](../integration/smoji) for the manifest format and how to host one.
 
-Server-side verification requests do not follow HTTP redirects. A redirect is treated as an unavailable verification service, so comment submission or administrator login is denied.
+### Blogger identity {#blogger}
 
-[Cloudflare Turnstile Documentation](https://developers.cloudflare.com/turnstile/)
+After you fill in the blogger nickname, blogger email, and blogger passphrase, you can post as the blogger in your own blog's comment section: type the passphrase in the **nickname field**, leave email and website empty, and post. When the server recognizes the passphrase, it replaces the comment's nickname with the blogger nickname and the website with the site URL, and shows the blogger badge after the nickname (`[博主]` by default).
 
-- Navigate to Cloudflare Dashboard and create a Turnstile Widget (Managed or Non-interactive mode recommended).
-- Add your blog domain (e.g. `blog.example.com`) and Ecoku domain (e.g. `ecoku.example.com`) to the **Domains** whitelist.
-- Copy your `Site Key` and `Secret Key`, choose **Cloudflare Turnstile** in `/admin/` -> **Security**, paste and save.
-- A 300px compact widget will automatically mount on the public comment form and admin login page.
+| Field | Description |
+| --- | --- |
+| Blogger nickname (博主昵称) | The publicly shown name, up to 80 characters. |
+| Blogger email (博主邮箱) | Not public. Stored as the private email of blogger comments. During a Twikoo import it is used together with the nickname to recognize past blogger comments. Blogger notifications go to the recipients set on **Notifications** (通知设置), not to this address. |
+| Blogger passphrase (博主口令) | 12 to 80 characters, no more than 72 bytes in UTF-8, no line breaks. Only a bcrypt hash is stored, and it is never shown again after saving. When one is already set, leaving the field empty keeps it unchanged. |
+| Badge text (评论区标志) | Text shown after the blogger nickname, up to 16 characters. If empty, no badge is shown. |
 
-### 2. Self-Hosted Cap (Capjs)
+Fill in both the nickname and the email, or leave both empty. When both are filled in, a passphrase is required. Clearing the nickname and email turns off the blogger identity and also clears the passphrase.
 
-[Cap (Capjs) Official Site](https://capjs.org/) · [GitHub Repository](https://github.com/tiago2/cap)
+::: warning If you mistype the passphrase
+When the passphrase does not match, the text in the nickname field is just an ordinary nickname. If the site makes email optional, the comment is published with the passphrase text as its nickname. If that happens, delete it on **Comments** (评论管理) and change the passphrase.
+:::
 
-Cap is a modern, lightweight, privacy-focused open-source CAPTCHA service. Ecoku natively integrates with Cap, automatically adjusting admin Content-Security-Policy (CSP) headers when Cap is enabled.
+Setting or changing the passphrase does not change the blogger mark on existing comments. See [How it works](../guide/concepts#blogger) for the backfill rules.
 
-#### Cap Deployment Template
+## Manage comments
 
-Assuming deployment under `~/capjs` with Valkey as the cache backend:
+**Comments** (评论管理) has two lists by status, **Published** (已发布) and **Deleted** (已删除), with 20 comments per page. You can switch between newest-first and oldest-first by submission time. Click a comment to see its details: private email, visitor website, post title, page key, submission time, and parent comment.
 
-```bash
-# 1. Create data directories
-mkdir -p ~/capjs/data/cap ~/capjs/data/valkey && cd ~/capjs
+**View original comment** (查看原评论) opens the post in a new tab, scrolled to this comment (`site URL + page key + #ecoku-comment-<comment ID>`).
 
-# 2. Set Valkey permissions (UID/GID 999:1000)
-sudo chown -R 999:1000 data/valkey
-chmod 750 data/cap data/valkey
-```
+### Tombstone delete
 
-Write `compose.yml` using `cat <<'EOF'`:
+**Tombstone delete** (墓碑删除) clears the comment's nickname, email, website, and body, but keeps its position in the discussion. On public pages it shows as "Deleted" (已删除) and "[This comment has been deleted]" ([该评论已删除]). Its replies stay as they are, and nobody can reply to it anymore. This cannot be undone.
 
-```bash
-cd ~/capjs
+### Permanent delete
 
-cat <<'EOF' > compose.yml
-services:
-  cap:
-    image: tiago2/cap:3.1.8
-    restart: unless-stopped
-    init: true
-    stop_grace_period: 30s
-    depends_on:
-      valkey:
-        condition: service_healthy
-    ports:
-      - "127.0.0.1:3000:3000"
-    environment:
-      ADMIN_KEY: ${ADMIN_KEY:?ADMIN_KEY is required}
-      REDIS_URL: redis://valkey:6379
-      SERVER_PORT: "3000"
-      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required}
-      ENABLE_ASSETS_SERVER: "true"
-      WIDGET_VERSION: ${WIDGET_VERSION:?WIDGET_VERSION is required}
-      WASM_VERSION: ${WASM_VERSION:?WASM_VERSION is required}
-    volumes:
-      - ./data/cap:/usr/src/app/data
-    networks:
-      - public
-      - data
-    read_only: true
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    tmpfs:
-      - /tmp:rw,noexec,nosuid,nodev,size=64m
-    healthcheck:
-      test:
-        - CMD
-        - bun
-        - -e
-        - "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+In the **Deleted** (已删除) list, a tombstone with **no replies at all** can be removed from the database with **Permanent delete** (彻底删除). A tombstone that still has replies cannot be permanently deleted, so the replies do not lose their context.
 
-  valkey:
-    image: valkey/valkey:9.1.1-alpine
-    restart: unless-stopped
-    stop_grace_period: 30s
-    user: "${VALKEY_UID:?VALKEY_UID is required}:${VALKEY_GID:?VALKEY_GID is required}"
-    command:
-      - valkey-server
-      - --save
-      - "60"
-      - "1"
-      - --appendonly
-      - "yes"
-      - --appendfsync
-      - everysec
-      - --loglevel
-      - warning
-      - --maxmemory-policy
-      - noeviction
-    volumes:
-      - ./data/valkey:/data
-    networks:
-      - data
-    read_only: true
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    tmpfs:
-      - /tmp:rw,noexec,nosuid,nodev,size=32m
-    healthcheck:
-      test:
-        - CMD
-        - valkey-cli
-        - ping
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 5s
+## Notifications and CAPTCHA
 
-networks:
-  public:
-  data:
-    internal: true
-EOF
-```
-
-Write `.env` using `cat <<'EOF'`:
-
-```bash
-cd ~/capjs
-
-cat <<'EOF' > .env
-CAP_IMAGE=tiago2/cap:3.1.8
-VALKEY_IMAGE=valkey/valkey:9.1.1-alpine
-
-# Admin key for Cap console (generate via openssl rand -hex 32)
-ADMIN_KEY=your_secure_admin_key_here
-
-# Allowed CORS origins (blog and comment instance)
-CORS_ORIGIN=https://blog.example.com,https://ecoku.example.com
-
-# Pinned widget and WASM versions
-WIDGET_VERSION=0.1.56
-WASM_VERSION=0.0.7
-
-# Valkey container UID/GID
-VALKEY_UID=999
-VALKEY_GID=1000
-EOF
-
-chmod 600 .env
-```
-
-#### Reverse Proxy (Caddy Example)
-
-Cap listens on `127.0.0.1:3000`. Expose it with HTTPS:
-
-```caddyfile
-cap.example.com {
-    reverse_proxy 127.0.0.1:3000
-}
-```
-
-#### Connect to Ecoku
-
-1. Start Cap: `cd ~/capjs && sudo docker compose pull && sudo docker compose up -d`.
-2. Visit `https://cap.example.com` in your browser, log in with `ADMIN_KEY`.
-3. Create a Key, add `blog.example.com` and `ecoku.example.com` to allowed hosts.
-4. Copy the generated `Site Key` and `Secret Key`.
-5. Open Ecoku Admin `/admin/` -> **Security**:
-   - Select **Self-hosted Cap**
-   - **Instance URL**: `https://cap.example.com` (HTTPS, no trailing slash)
-   - **Site Key**: paste generated Site Key
-   - **Secret Key**: paste generated Secret Key
-6. Click Save.
-
----
-
-## 6. Emergency Recovery (CLI)
-
-If misconfigured CAPTCHA locks you out of the admin panel:
-
-```bash
-sudo docker compose down
-sudo docker compose run --rm --no-deps ecoku captcha disable
-sudo docker compose up -d
-```
-
-
-UTF-8 encoding must also fit within 72 bytes. Passphrases are never truncated; existing bcrypt hashes remain valid.
+- [Notifications](./notifications): set up SMTP email and a Telegram bot to notify the blogger of new comments, and to email visitors when someone replies to them.
+- [CAPTCHA](./captcha): choose between off, Cloudflare Turnstile, and self-hosted Cap. It protects both comment submission and admin sign-in.

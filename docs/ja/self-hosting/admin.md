@@ -1,259 +1,97 @@
-# 管理画面の設定
+# 管理画面
 
-管理画面は `/admin/` で提供されます。
+管理画面は `https://ecoku.example.com/admin/` にあり、サイトの登録、コメントの管理、通知と CAPTCHA の設定を行います。1 つのインスタンスには管理者アカウントが 1 つだけあり、すべてのサイトを管理できます。
 
----
+## ログイン
 
-## 1. 失効可能な管理者セッション
+ユーザー名は `ecoku.env` の `ECOKU_ADMIN_USERNAME`、パスワードはパスワードハッシュを生成したときに入力したものです。CAPTCHA を有効にしている場合は、ログインページにも検証ウィジェットが表示されます。
 
-管理者セッションは HttpOnly Cookie を使用し、SQLite には認証情報のダイジェストと有効期限のみ保存します。ログインから固定 8 時間で失効し、再読み込みやブラウザを開き直しても有効なセッションを復元します。期限は延長しません。ログアウトはサーバーで現在のセッションを失効させ、失敗時は画面を維持して再試行を案内します。認証情報は JavaScript、localStorage、sessionStorage、URL に保存しません。
+ログインには次の 2 つの条件を満たす必要があり、満たさない場合は拒否されます。
 
-本番では HTTPS、Secure、HttpOnly、SameSite=Strict、host-only Cookie を使い、Path は `/api/admin` です。明示的に許可したループバック HTTP 開発オリジンのみ Secure を省略できます。管理者パスワードハッシュまたは署名鍵を変更して再起動すると旧セッションは失効します。
+- HTTPS でアクセスしていること。HTTP を使えるのは、ローカル開発用の `localhost`、`127.0.0.1` などのループバックアドレスだけです。
+- ブラウザのアドレスバーのオリジンが、`app/config.yaml` の `admin.allowed_origins` に書かれていること。
 
----
+ログイン後のセッションは 8 時間固定です。ページを再読み込みしても、ブラウザを閉じて開き直しても再ログインは不要ですが、操作してもこの 8 時間は延長されません。期限が切れると、ページに再ログインが促されます。「ログアウト」（退出登录）を押すと、サーバー側で現在のセッションが無効になります。ログアウトのリクエストが失敗した場合は、ページはそのまま残って再試行を促し、ログアウトしたように見せかけることはありません。
 
-## 2. サイト管理
-- **サイト ID**：SDK で使用する不変の一意の識別子。
-- **サイト URL**：通知メール内のリンク生成に使用されるベース URL。
-- **許可オリジン (Allowed Origins)**：厳格な CORS ホワイトリスト。
-- **必須項目制御**：メールアドレスやウェブサイトの必須/任意設定。
-- **Smoji スタンプ**：リモートの HTTPS `smoji.json` マニフェストを設定可能。
+セッションの認証情報は `/api/admin` にだけ送られる HttpOnly Cookie に保存され、ページのスクリプトからは読み取れません。管理者パスワードまたは `ECOKU_ADMIN_TOKEN_KEY` を変更してコンテナを作り直すと、古いセッションはすべて即座に無効になります。
 
----
+CAPTCHA の設定ミスでログインできなくなった場合は、[CAPTCHA](./captcha#disable) を参照してください。
 
-## 3. ブロガー認証と合言葉
-- ニックネーム、メール、12〜80 文字の秘密の合言葉を設定。
-- 公開フォームでニックネーム欄に合言葉を入力することで、メールアドレスを入力せずに認証可能。
+## 画面構成
 
-保存、初回設定、合言葉変更では過去コメントの管理者フラグを補完しません。元の schema v5 移行と初回 Twikoo インポートのみ補完します。
+上部に 4 つのページがあります。
 
----
+- **コメント管理**（评论管理）：現在のサイトのコメントを閲覧・削除します。
+- **サイト管理**（站点管理）：サイトを追加・編集します。
+- **通知設定**（通知设置）：メールと Telegram の通知です。インスタンス全体に適用されます。
+- **セキュリティ**（安全）：CAPTCHA です。インスタンス全体に適用されます。
 
-## 4. コメント管理
-- **墓標ソフトデリート**：投稿者情報を消去し、`[该评论已删除]` としてスレッド構造を維持。
-- **完全削除**：子孫返信が一切存在しない墓標コメントのみ物理削除可能。
+上部のサイトセレクターで、「コメント管理」にどのサイトのコメントを表示するかを選びます。
 
----
+## サイトを登録する {#sites}
 
-## 5. ボット対策・認証 (CAPTCHA) {#ボット対策-captcha}
+1 つの「サイト」は、コメント欄を埋め込む 1 つの Web サイトに対応します。「サイト管理」（站点管理）で「サイトを追加」（新增站点）を押し、次の項目を入力します。
 
-「セキュリティ」画面では、インスタンス全体に適用されるボット対策（3つの状態から選択）を設定でき、**訪問者のコメント投稿**と**管理画面ログイン**の両方を保護します：
+| 項目 | 説明 |
+| --- | --- |
+| サイト ID（站点 ID） | 埋め込みコードの `data-site-id` です。英字または数字で始まり、英字、数字、`.`、`_`、`-` を使えます。最大 100 文字。**作成後は変更できません。** |
+| サイト URL（站点 URL） | サイトの正規 URL（例：`https://blog.example.com`）。通知メールと管理画面の「元のコメントを表示」は、この URL にページのパスを付けて記事のリンクを組み立てます。 |
+| サイト名（站点名称） | 管理画面と通知メールに表示されます。最大 120 文字。空の場合はサイト URL のドメインを使います。 |
+| 許可オリジン（允许来源） | このサイトのコメント欄を読み込めるオリジンです。1 行に 1 つ、最大 32 個。後述の説明を参照してください。 |
+| コメントの並び順（评论排序） | 訪問者がコメント欄を開いたときのデフォルトの並び順で、新しい順か古い順です。訪問者は一時的に切り替えられます。 |
+| 入力項目の要件（字段要求） | メールアドレスを必須にするか（デフォルトは必須）、Web サイトを必須にするか（デフォルトは任意）。ニックネームは常に必須です。 |
+| コメント欄のプレースホルダー（评论占位文案） | コメント欄に表示する案内文です。1～80 文字。デフォルトは「写下评论（仅支持纯文本）」（コメントを書く。純テキストのみ）です。 |
+| コメントの最大文字数（评论长度上限） | コメント本文の最大文字数です。1～10000、デフォルトは 1000。Unicode 文字単位で数え、漢字や仮名 1 文字は 1 文字です。 |
+| コメントがないときの文言（无评论文案） | まだコメントがないときに表示する文字です。1～240 文字。改行できます。 |
 
-```mermaid
-graph TD
-    subgraph Provider["ボット対策プロバイダー（3態選択）"]
-        P1["無効 (Off)"]
-        P2["Cloudflare Turnstile"]
-        P3["セルフホスト Cap"]
-    end
+### 許可オリジン
 
-    subgraph Protection["二重防御の境界"]
-        Visitor["訪問者コメント投稿 (/api/comment/submit)"]
-        Admin["管理画面ログイン (/api/admin/login)"]
-    end
+「オリジン」は `スキーム://ドメイン[:ポート]` の形式で、パスは含みません。コメント欄を置くページのオリジンがここに含まれていないと、ブラウザからのコメントの読み込みも投稿も拒否されます。
 
-    subgraph Verification["サーバー側検証"]
-        VerifyToken["Token を検証（クライアント IP は付加しない）<br/>(AES-256-GCM 暗号化保存)"]
-        Pass["リクエスト通過"]
-        Reject["リクエスト拒否 (400/403)"]
-    end
+- `https://blog.example.com` と `https://www.blog.example.com` は別のオリジンです。どちらのドメインでもブログにアクセスできる場合は、両方を書いてください。
+- ローカルでブログをプレビューするときは、`http://localhost:1313` のようなアドレスも追加します。公開後は削除してかまいません。
+- 管理画面自身のオリジン（`admin.allowed_origins` のアドレス）は書けません。両者は分ける必要があります。
 
-    P2 -->|有効化| Visitor
-    P2 -->|有効化| Admin
-    P3 -->|有効化| Visitor
-    P3 -->|有効化| Admin
-    Visitor --> VerifyToken
-    Admin --> VerifyToken
-    VerifyToken -->|有効| Pass
-    VerifyToken -->|無効| Reject
-```
+サイトを保存するとき、ほかのブラウザタブで同時にこのサイトが変更されていた場合は「站点配置已被其他会话更新」（サイト設定がほかのセッションで更新されました）と表示されます。再読み込みしてから編集し直してください。
 
-> [!NOTE]
-> Turnstile および Cap の Secret Key は、マスターキーを使用して AES-256-GCM で暗号化されて保存され、管理画面に平文で表示されることはありません。プロバイダーを切り替えても保存済みの認証情報は保持されます。
+### スタンプパック
 
-### 1. Cloudflare Turnstile
+「スタンプパックを有効にする」（启用表情包）にチェックを入れて Smoji の一覧 URL を入力すると、コメント欄に「スタンプ」（表情）ボタンが表示されます。一覧の URL は HTTPS でなければなりません（ループバックアドレスを除く）。スタンプ画像は一覧があるサーバーから訪問者のブラウザに直接配信されるため、そのサーバーは訪問者の IP を知ることができます。一覧の形式とホスティング方法は [Smoji スタンプパック](../integration/smoji)を参照してください。
 
-サーバー側の検証リクエストは HTTP リダイレクトを追跡しません。リダイレクトを受信した場合は検証サービスが利用できないものとして扱い、コメント投稿や管理者ログインを拒否します。
+### ブロガー {#blogger}
 
-[Cloudflare Turnstile 公式ドキュメント](https://developers.cloudflare.com/turnstile/)
+ブロガーのニックネーム、メールアドレス、合言葉を設定すると、自分のブログのコメント欄でブロガーとして発言できます。**ニックネーム欄**に合言葉を入力し、メールアドレスと URL を空のまま投稿するだけです。サーバーが合言葉を認識すると、このコメントのニックネームをブロガーのニックネームに、URL をサイト URL に置き換え、ニックネームの後にコメント欄用のバッジ（デフォルトは `[博主]`）を表示します。
 
-- Cloudflare ダッシュボードで Turnstile Widget を作成します（Managed または Non-interactive モード推奨）。
-- **Domains** 許可リストに、ブログのドメイン（例：`blog.example.com`）と Ecoku のドメイン（例：`ecoku.example.com`）を追加します。
-- 生成された `Site Key` と `Secret Key` をコピーし、Ecoku 管理画面の「セキュリティ」で Turnstile を選択して入力・保存します。
-- コメント欄およびログイン画面に 300px のコンパクトな認証スロットが自動的に表示されます。
+| 項目 | 説明 |
+| --- | --- |
+| ブロガーのニックネーム（博主昵称） | 公開される名前です。最大 80 文字。 |
+| ブロガーのメールアドレス（博主邮箱） | 公開されません。ブロガーのコメントの非公開メールアドレスとして保存されます。Twikoo のインポート時には、ニックネームと合わせて過去のブロガーのコメントを識別するのに使います。ブロガー向けの通知は「通知設定」（通知设置）の宛先に送られ、このアドレスには送られません。 |
+| ブロガーの合言葉（博主口令） | 12～80 文字で、UTF-8 で 72 バイト以内、改行は使えません。bcrypt ハッシュだけが保存され、保存後は再表示されません。設定済みの場合、空のままにすると変更しません。 |
+| コメント欄のバッジ（评论区标志） | ブロガーのニックネームの後に表示する文字です。最大 16 文字。空にすると表示しません。 |
 
-### 2. オープンソース・セルフホスト Cap (Capjs)
+ニックネームとメールアドレスは、両方入力するか両方空にするかのどちらかです。両方入力する場合は合言葉の設定が必須です。ニックネームとメールアドレスを空にするとブロガー機能が無効になり、合言葉も一緒に消去されます。
 
-[Cap (Capjs) 公式サイト](https://capjs.org/) · [GitHub リポジトリ](https://github.com/tiago2/cap)
+::: warning 合言葉を打ち間違えたとき
+合言葉が一致しない場合、ニックネーム欄の文字は普通のニックネームとして扱われます。サイトでメールアドレスを任意にしている場合、このコメントは合言葉の文字列をニックネームとして公開されてしまいます。気づいたら「コメント管理」（评论管理）で削除し、合言葉を変更してください。
+:::
 
-Cap はモダンで軽量、プライバシー重視の完全オープンソースなセルフホスト型 CAPTCHA サービスです。Ecoku は Cap に完全対応しており、有効化時は管理画面の CSP ポリシーを動的に最適化します（Cap Origin、WASM、Blob Worker、および必要な eval 権限を正確に許可）。
+合言葉を設定・変更しても、既存のコメントのブロガーの印は変わりません。補完のルールは[動作の仕組み](../guide/concepts#blogger)を参照してください。
 
-#### Cap セルフホスト構成例
+## コメントを管理する
 
-ホストの `~/capjs` ディレクトリに配置し、Valkey をキャッシュバックエンドとして使用する例：
+「コメント管理」（评论管理）は状態によって「公開中」（已发布）と「削除済み」（已删除）の 2 つの一覧に分かれ、1 ページ 20 件です。新しい順と古い順を切り替えられます。コメントを押すと、非公開のメールアドレス、訪問者の Web サイト、記事タイトル、ページキー、投稿日時、親コメントといった詳細が表示されます。
 
-```bash
-# 1. データディレクトリの作成
-mkdir -p ~/capjs/data/cap ~/capjs/data/valkey && cd ~/capjs
+「元のコメントを表示」（查看原评论）は新しいタブで記事を開き、このコメントの位置に移動します（`サイト URL + ページキー + #ecoku-comment-コメントID`）。
 
-# 2. Valkey 実行権限の設定（UID/GID 999:1000）
-sudo chown -R 999:1000 data/valkey
-chmod 750 data/cap data/valkey
-```
+### 墓標削除
 
-`cat <<'EOF'` を使用して `~/capjs/compose.yml` を作成します：
+「墓標削除」（墓碑删除）は、このコメントのニックネーム、メールアドレス、URL、本文を消去しますが、議論内の位置は残します。公開ページでは「削除済み」（已删除）と「[このコメントは削除されました]」（[该评论已删除]）と表示され、その下の返信はそのまま残り、このコメントには返信できなくなります。この操作は取り消せません。
 
-```bash
-cd ~/capjs
+### 完全削除
 
-cat <<'EOF' > compose.yml
-services:
-  cap:
-    image: tiago2/cap:3.1.8
-    restart: unless-stopped
-    init: true
-    stop_grace_period: 30s
-    depends_on:
-      valkey:
-        condition: service_healthy
-    ports:
-      - "127.0.0.1:3000:3000"
-    environment:
-      ADMIN_KEY: ${ADMIN_KEY:?ADMIN_KEY is required}
-      REDIS_URL: redis://valkey:6379
-      SERVER_PORT: "3000"
-      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required}
-      ENABLE_ASSETS_SERVER: "true"
-      WIDGET_VERSION: ${WIDGET_VERSION:?WIDGET_VERSION is required}
-      WASM_VERSION: ${WASM_VERSION:?WASM_VERSION is required}
-    volumes:
-      - ./data/cap:/usr/src/app/data
-    networks:
-      - public
-      - data
-    read_only: true
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    tmpfs:
-      - /tmp:rw,noexec,nosuid,nodev,size=64m
-    healthcheck:
-      test:
-        - CMD
-        - bun
-        - -e
-        - "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+「削除済み」（已删除）の一覧で、墓標の下に**返信が 1 件もない**場合は「完全削除」（彻底删除）でデータベースから取り除けます。返信が残っている墓標は、返信の文脈が失われないよう完全削除できません。
 
-  valkey:
-    image: valkey/valkey:9.1.1-alpine
-    restart: unless-stopped
-    stop_grace_period: 30s
-    user: "${VALKEY_UID:?VALKEY_UID is required}:${VALKEY_GID:?VALKEY_GID is required}"
-    command:
-      - valkey-server
-      - --save
-      - "60"
-      - "1"
-      - --appendonly
-      - "yes"
-      - --appendfsync
-      - everysec
-      - --loglevel
-      - warning
-      - --maxmemory-policy
-      - noeviction
-    volumes:
-      - ./data/valkey:/data
-    networks:
-      - data
-    read_only: true
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    tmpfs:
-      - /tmp:rw,noexec,nosuid,nodev,size=32m
-    healthcheck:
-      test:
-        - CMD
-        - valkey-cli
-        - ping
-      interval: 5s
-      timeout: 3s
-      retries: 10
-      start_period: 5s
+## 通知と CAPTCHA
 
-networks:
-  public:
-  data:
-    internal: true
-EOF
-```
-
-`cat <<'EOF'` を使用して `~/capjs/.env` を作成します：
-
-```bash
-cd ~/capjs
-
-cat <<'EOF' > .env
-CAP_IMAGE=tiago2/cap:3.1.8
-VALKEY_IMAGE=valkey/valkey:9.1.1-alpine
-
-# Cap 管理画面アクセスキー（openssl rand -hex 32 での生成を推奨）
-ADMIN_KEY=your_secure_admin_key_here
-
-# 許可する CORS オリジン（ブログおよび Ecoku インスタンス）
-CORS_ORIGIN=https://blog.example.com,https://ecoku.example.com
-
-# ウィジェットおよび WASM バージョン固定
-WIDGET_VERSION=0.1.56
-WASM_VERSION=0.0.7
-
-# Valkey コンテナ実行ユーザー権限
-VALKEY_UID=999
-VALKEY_GID=1000
-EOF
-
-chmod 600 .env
-```
-
-#### Cap リバースプロキシ設定例 (Caddy)
-
-Cap コンテナはローカル `127.0.0.1:3000` で待ち受けます。Caddy で HTTPS を公開します：
-
-```caddyfile
-cap.example.com {
-    reverse_proxy 127.0.0.1:3000
-}
-```
-
-#### Ecoku への連携設定
-
-1. Cap を起動：`cd ~/capjs && sudo docker compose pull && sudo docker compose up -d`
-2. ブラウザで `https://cap.example.com` にアクセスし、`.env` の `ADMIN_KEY` でログインします。
-3. 新しい Key を作成し、ブログドメイン（例：`blog.example.com`）と Ecoku ドメイン（例：`ecoku.example.com`）を許可ホストに追加します。
-4. 生成された `Site Key` と `Secret Key` を取得します。
-5. Ecoku 管理画面 `/admin/` ->「セキュリティ」を開きます：
-   - **セルフホスト Cap** を選択
-   - **インスタンス URL**：`https://cap.example.com`（HTTPS 正規 URL、末尾スラッシュなし）
-   - **Site Key**：Cap で生成された Site Key
-   - **Secret Key**：Cap で生成された Secret Key
-6. 「保存」をクリックすると、Cap による保護が有効化されます。
-
----
-
-## 6. CLI 救済コマンド
-
-```bash
-sudo docker compose down
-sudo docker compose run --rm --no-deps ecoku captcha disable
-sudo docker compose up -d
-```
-
-
-UTF-8 で 72 バイト以下にしてください。切り詰めは行わず、既存 bcrypt ハッシュは引き続き有効です。
+- [通知](./notifications)：SMTP メールと Telegram ボットを設定し、新しいコメントがあればブロガーに通知し、訪問者のコメントに返信が付けばその訪問者にメールで知らせます。
+- [CAPTCHA](./captcha)：無効、Cloudflare Turnstile、セルフホストの Cap の 3 つから選び、コメント投稿と管理画面ログインの両方を保護します。

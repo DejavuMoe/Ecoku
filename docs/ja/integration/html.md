@@ -1,15 +1,18 @@
-# 汎用 HTML と Loader の組み込み
+# HTML で埋め込む
 
-Ecoku には非同期ローダー `ecoku-loader.js` が用意されています。HTML 内で `data-*` 属性を宣言するだけで、ローダーが非同期でコア SDK とスタイルシートを読み込み、コメント欄をマウントします。
+記事テンプレートに HTML とスクリプトを 1 つずつ置くだけで、どの静的サイトにもコメント欄を表示できます。スクリプト `ecoku-loader.js` は自分の Ecoku インスタンスが提供し、HTML の属性を読み取ってコメントウィジェットを自動で読み込みます。
 
----
+始める前に、管理画面で[サイトを登録](../self-hosting/admin#sites)し、ブログのオリジンをそのサイトの許可オリジンに追加してあることを確認してください。
 
-## クイックスタート例
+## 埋め込みコード
 
-ページ内のコメント欄を表示させたい場所に以下の HTML を配置します：
+次のコードを記事テンプレートのコメント欄の位置に置き、3 か所の値を置き換えます。
+
+- `data-server-url`：自分の Ecoku のアドレス
+- `data-site-id`：管理画面で登録したサイト ID
+- `data-page-key`、`data-page-title`：テンプレート変数で現在の記事のパスとタイトルを出力します
 
 ```html
-<!-- コメント欄コンテナシェル -->
 <section
   id="ecoku-comments"
   class="ecoku-shell"
@@ -17,75 +20,88 @@ Ecoku には非同期ローダー `ecoku-loader.js` が用意されています�
   data-server-url="https://ecoku.example.com"
   data-site-id="blog"
   data-page-key="/posts/hello-world/"
-  data-page-title="こんにちは世界"
+  data-page-title="こんにちは、世界"
   data-page-size="10"
   data-theme="auto"
 >
-  <!-- エラー状態と再試行ボタンコンテナ (初期状態は非表示) -->
   <div class="ecoku-loader" data-ecoku-loader hidden>
     <p class="ecoku-loader-status" data-ecoku-status></p>
     <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>コメントを再読み込み</button>
   </div>
-  <!-- 実際のマウント先 DOM -->
   <div id="ecoku-mount" data-ecoku-mount></div>
 </section>
-
-<!-- ローダースクリプトの非同期読み込み -->
 <script src="https://ecoku.example.com/client/ecoku-loader.js" defer></script>
 ```
 
----
+外側の要素の中にある `data-ecoku-*` 付きの 4 つの要素は、すべて残してください。`data-ecoku-mount` はコメント欄をマウントする位置で、残りの 3 つは読み込みに失敗したときにエラーメッセージと再試行ボタンを表示するためのものです。ボタンの文字は自由に変えられます。
 
-## HTML `data-*` 属性仕様
+## 属性
 
-| 属性名 | 必須 | 型 | 仕様と説明 |
-| :--- | :---: | :--- | :--- |
-| `data-server-url` | **はい** | String | Ecoku バックエンドサービスの絶対 HTTPS アドレス（例: `https://ecoku.example.com`）。 |
-| `data-site-id` | **はい** | String | 管理コンソールで作成したサイトの一意な識別子。 |
-| `data-page-key` | **はい** | String | 現在のページの**安定したサイト内相対パス**（1〜512文字、例: `/posts/hello-world/`）。完全な URL やクエリ/フラグメントを含めてはなりません。 |
-| `data-page-title` | いいえ | String | 現在の記事タイトル（最大200文字）。メール通知での表示に使用されます。 |
-| `data-page-size` | いいえ | Number | ルートコメントの 1 ページあたり表示件数（1〜100 の整数、既定 `10`）。 |
-| `data-theme` | いいえ | String | テーマモード：`auto`（システム連動、既定）、`light`（ライト）、`dark`（ダーク）。 |
-| `data-css-url` | いいえ | String | カスタム CSS URL。絶対 URL、相対パス、または `none` を指定して内蔵スタイルの注入を無効化できます。詳細は [カスタム CSS](/ja/integration/custom-css) を参照。 |
+| 属性 | 必須 | 説明 |
+| --- | :---: | --- |
+| `data-server-url` | はい | Ecoku のアドレス（例：`https://ecoku.example.com`）。`http://` または `https://` で始まる完全なアドレスでなければなりません。 |
+| `data-site-id` | はい | 管理画面で登録したサイト ID。 |
+| `data-page-key` | はい | 現在の記事のページキー。サイト内の相対パスで、最大 512 文字、`?` や `#` は含められません。後述を参照してください。 |
+| `data-page-title` | いいえ | 記事のタイトル。通知メールに表示されます。200 文字を超えた部分は切り捨てられます。 |
+| `data-page-size` | いいえ | 1 ページに表示するルートコメントの数。1～100、デフォルトは 10。無効な値を指定した場合は 10 として扱います。 |
+| `data-theme` | いいえ | `auto`（デフォルト）、`light`、`dark` のいずれか。`auto` はページのライト / ダーク設定に従います。 |
+| `data-css-url` | いいえ | デフォルトのスタイルを置き換えます。[カスタムスタイル](./custom-css)を参照してください。 |
 
----
+## ページキーを選ぶ
 
-## 仕組みとメリット
+ページキーはコメントがどの記事に属するかを決めるもので、[一度使ったら変更しないでください](../guide/concepts#page-key)。通常は記事のサイト内パスを使います。主なジェネレーターでの書き方：
 
-1. **遅延実行**：例の `defer` 属性により HTML の解析完了後にローダーを実行し、その後 SDK を非同期で読み込みます。
-2. **サイレントローディング**：読み込み中に邪魔なスケルトンや「読み込み中…」スピナーを表示せず、準備が整い次第スムーズにマウントします。
-3. **耐障害性と対話的再試行**：ネットワーク瞬断等でコア SDK の読み込みがタイムアウト（既定 12 秒）または失敗した場合、`.ecoku-loader` が自動起動し再試行ボタンを表示します。
-4. **スタイルの自動注入**：`data-css-url` を明示しない限り、SDK 初期化時に最適化されたインラインスタイルが自動挿入されるため、外部 `<link rel="stylesheet">` の追加は不要です。
+::: v-pre
+| ジェネレーター | `data-page-key` の値 |
+| --- | --- |
+| Hugo | `{{ .RelPermalink }}` |
+| Hexo | `<%- url_for(page.path) %>` |
+| Jekyll | `{{ page.url }}` |
+| Astro | `{Astro.url.pathname}` |
+| VitePress | カスタムテーマで `useRoute().path` を読み取り、[SDK](./sdk) で埋め込みます |
+:::
 
----
+上記は参考です。ブラウザで生成された HTML を見て、完全な URL ではなく `/posts/hello-world/` のような安定したパスが出力されていることを確認してください。
 
-## UMD 直接組み込み（ローダー不使用）
+## 読み込みの流れ
 
-ライフサイクルを `<script>` タグで完全に手動制御したい場合は、UMD ビルドを直接利用できます：
+1. ページの解析が終わると、ローダーが外側の要素の属性を読み取ります。`data-server-url`、`data-site-id`、`data-page-key` のいずれかがない場合や、4 つの `data-ecoku-*` 子要素のどれかが欠けている場合は、**何も表示せずにスキップ**し、ページには何も現れません。
+2. ローダーは自分と同じディレクトリから `ecoku.umd.js` を読み込み、コメント欄を初期化します。読み込み中に「読み込み中」のような文字は表示しません。
+3. スクリプトの読み込みや初期化が 12 秒を超えた場合、または失敗した場合は、エラーメッセージと「コメントを再読み込み」ボタンを表示し、訪問者はクリックして再試行できます。
+
+1 つのページに複数の外側要素を置くことができ、それぞれが独立して初期化されます。
+
+## 自分でホストしたローダーを使う
+
+`ecoku-loader.js` を自分の CDN に置き、`<script src>` だけを変更することもできます。ローダーは**同じディレクトリ**から `ecoku.umd.js` を読み込むので、2 つのファイルは一緒に置き、Ecoku をアップグレードするときは両方を更新してください。
+
+## ブログのページの CSP
+
+ブログでコンテンツセキュリティポリシー（CSP）を設定している場合は、次を許可する必要があります。
+
+- `script-src` と `connect-src`：Ecoku のオリジン（例：`https://ecoku.example.com`）
+- デフォルトのスタイルは `<style>` 要素として注入されます。CSP でインラインスタイルを許可していない場合は、`data-css-url` を `https://ecoku.example.com/client/ecoku.css` にして外部スタイルシートを使い、`style-src` でそのオリジンを許可してください。
+- CAPTCHA を有効にしている場合は、検証サービスも許可する必要があります。[CAPTCHA · コンテンツセキュリティポリシー](../self-hosting/captcha#csp)を参照してください。
+
+## ローダーを使わない場合
+
+UMD ファイルを直接読み込み、初期化のタイミングを自分で制御することもできます。
 
 ```html
-<!-- 1. スタイルシートの読み込み -->
 <link rel="stylesheet" href="https://ecoku.example.com/client/ecoku.css">
-
-<!-- 2. マウント先コンテナ -->
 <div id="ecoku-mount"></div>
-
-<!-- 3. コア UMD スクリプト -->
 <script src="https://ecoku.example.com/client/ecoku.umd.js"></script>
-
-<!-- 4. インスタンスの初期化 -->
 <script>
   const comments = new Ecoku({
     container: '#ecoku-mount',
     serverURL: 'https://ecoku.example.com',
     siteId: 'blog',
-    pageKey: window.location.pathname,
-    pageTitle: document.title,
-    pageSize: 10,
-    theme: 'auto',
-    cssURL: 'none' // 外部 link で読み込み済みであることを伝え、重複注入を防止
+    pageKey: '/posts/hello-world/',
+    pageTitle: 'こんにちは、世界',
+    cssURL: 'https://ecoku.example.com/client/ecoku.css',
   })
-
   comments.init().catch(console.error)
 </script>
 ```
+
+UMD ファイルはグローバル変数 `Ecoku` を登録します。上の例では `<link>` でスタイルを読み込み、`cssURL` で SDK にデフォルトのスタイルを注入しないよう伝えています。この 2 か所を取り除くと、SDK が自分でスタイルを注入します。設定項目とメソッドは [JavaScript SDK](./sdk) を参照してください。

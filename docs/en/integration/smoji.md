@@ -1,29 +1,36 @@
-# Smoji Stickers Protocol & Self-Hosted Sources
+# Smoji sticker packs
 
-Smoji is the **plain-text lightweight sticker protocol** adopted by Ecoku.
+Smoji lets visitors insert sticker images into plain-text comments. A sticker is saved as a text marker in the comment body and becomes an image only when displayed, so the comment itself is still plain text.
 
-It balances an expressive emoji/sticker experience with strict plain-text security boundaries: stickers are stored solely as plain-text markdown tokens in the SQLite database, while client SDKs render them on demand under strict same-origin guarantees.
+Ecoku does not bundle, proxy, or cache any sticker images. You host a `smoji.json` manifest and the images on your own static server or CDN, then enter the manifest URL for the site in the admin console.
 
----
+## How it works
 
-## Protocol Workflow
+1. The first time a visitor clicks the **Stickers** (表情) button in the comment box, the browser loads the manifest (without cookies or Referer).
+2. When the visitor picks a sticker, a marker is inserted into the comment box:
 
-```mermaid
-flowchart TD
-    A["Visitor clicks sticker icon"] --> B["SDK asynchronously fetches smoji.json (no-referrer)"]
-    B --> C["Select sticker · Inserts plain-text markdown marker<br/>![smoji:thumbsup](https://cdn.example.com/...)"]
-    C --> D["Submit plain-text comment to Ecoku server"]
-    D --> E{"Validate Manifest Same-Origin"}
-    E -->|Valid Same-Origin| F["Save to SQLite as plain text (Zero rich-text XSS risk)"]
-    E -->|Invalid External Origin| G["Reject submission"]
-    F --> H["Client SDK safely renders matching tokens as <img>"]
-```
+   ```text
+   ![smoji:Thumbs up](https://stickers.example.com/paopao/thumbsup.png)
+   ```
 
----
+3. On submit, the server checks every marker. It allows saving only if the site has sticker packs enabled and the image URL has the same origin as the manifest.
+4. When a comment is displayed, markers that meet the same conditions are rendered as images. Everything else is displayed as written.
 
-## `smoji.json` Manifest Schema Specification (v1)
+After a site turns sticker packs off, the markers in existing comments are displayed as literal text, and no images are loaded.
 
-To host a custom sticker source, serve a `smoji.json` file compliant with the following JSON schema at an accessible HTTPS URL:
+::: warning Privacy
+Sticker images are sent to the visitor's browser directly by the server that hosts them, and that server can see the visitor's IP address.
+:::
+
+## Enable
+
+On **Sites** (站点管理) in the admin console, edit the site, check **Enable sticker pack** (启用表情包), enter the manifest URL, and save.
+
+- The manifest URL must use HTTPS. Only loopback addresses such as `localhost` and `127.0.0.1` may use HTTP, for local development.
+- The URL cannot contain a username or password, a `?` query string, or a `#` fragment.
+- If the manifest and the comment page are on different domains, the server hosting the manifest must allow cross-origin requests (CORS) from the comment page's origin.
+
+## Manifest format
 
 ```json
 {
@@ -31,68 +38,73 @@ To host a custom sticker source, serve a `smoji.json` file compliant with the fo
   "packs": [
     {
       "id": "paopao",
-      "label": "PaoPao",
+      "label": "Paopao",
       "items": [
-        {
-          "id": "smile",
-          "label": "Smile",
-          "src": "https://stickers.example.com/paopao/smile.png"
-        },
-        {
-          "id": "thumbsup",
-          "label": "Thumbs Up",
-          "src": "https://stickers.example.com/paopao/thumbsup.png"
-        }
+        { "id": "smile", "label": "Smile", "src": "https://stickers.example.com/paopao/smile.png" },
+        { "id": "thumbsup", "label": "Thumbs up", "src": "thumbsup.png" }
       ]
     }
   ]
 }
 ```
 
-### Field Constraints & Technical Specifications
+| Field | Rules |
+| --- | --- |
+| `version` | Always `1`. |
+| `base` | Optional. See below. |
+| `packs` | List of groups, 1 to 64. |
+| `packs[].id` | Group ID. Starts with a letter or digit and may contain letters, digits, `.`, `_`, and `-`, up to 64 characters. Must be unique. |
+| `packs[].label` | Group name, shown on the picker's tab. Same rules as `items[].label`. |
+| `packs[].items` | List of stickers, 1 to 600 per group, and no more than 6000 in the whole manifest. |
+| `items[].id` | Sticker ID. Same rules as the group ID. Must be unique within the group. |
+| `items[].label` | Sticker name, 1 to 40 characters after trimming leading and trailing spaces. It cannot contain `]` or line breaks. It is written into the comment marker and also used as the image's alt text. |
+| `items[].src` | Image URL. Either a full URL or a path relative to the manifest. |
 
-- `version`: Must be integer `1`.
-- `packs`: Array of sticker pack groupings (1–64 packs).
-- `packs[].id`: Unique pack identifier (regex `/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/`).
-- `packs[].label`: Pack display name (trimmed, up to 40 characters).
-- `packs[].items`: List of sticker items (1–600 items per pack; total items across the entire manifest cannot exceed 6,000).
-- `items[].id`: Unique item identifier (regex `/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/`).
-- `items[].label`: Sticker display label (trimmed, 1–40 characters, no `]` or newlines).
-- `items[].src`: Sticker image URL (same-origin absolute URL, or relative path resolved against `smoji.json`, no username, password, query, or hash).
-- **Exact Keys Enforcement**: The JSON structure strictly permits only these keys. Any undefined or extraneous fields cause immediate validation failure.
-- **Payload & Network Limits**: Manifest file size is capped at **1 MiB**. Total request-to-read timeout is 8 seconds.
-- **Strict Same-Origin Enforcement**: The `src` of every sticker image **must share the exact same Origin as `smoji.json` itself**. Production manifests must use the `https://` scheme.
+Requirements for the manifest as a whole:
 
----
+- **Each object may contain only the fields listed above.** Any extra field causes rejection.
+- Every image URL, once resolved, must have the **same origin** as the manifest (same scheme, domain, and port), and cannot contain a username or password, `?`, or `#`.
+- The file is no larger than 1 MiB, the response `Content-Type` is `application/json` or ends in `+json`, and the download completes within 8 seconds.
 
-## Plain-Text Marker Syntax
+## Compact form: base {#base}
 
-- **Syntax**: `![smoji:label](https://absolute-image-url)`
-- **Example**: `![smoji:Thumbs Up](https://stickers.example.com/paopao/thumbsup.png)`
-
-### Safe Degradation Rules
-If a comment contains an image marker whose origin does not match the active site manifest, or if Smoji is disabled for the site, the client SDK renders the marker verbatim as plain text. It is never interpreted as an HTML image tag, eliminating cross-site IP tracking and phishing vectors.
-
----
-
-## Configuration & Asset Updates
-
-Click the sticker button in a comment or reply form to open the picker. The panel opens above the form footer, aligned to its right edge, and shrinks to fit narrow forms. Both the default and unstyled stylesheets use this layout.
-
-Enable Smoji in the admin console under Site Settings and enter your manifest URL. Manifest and image URLs must not contain usernames, passwords, query parameters, or hash fragments. HTTP is permitted exclusively on loopback development hosts (`localhost`). If hosting the manifest cross-origin, your resource server must allow CORS requests from your blog domain.
-
-The public API exposes safe configuration in `formConfig.smoji`; the management API uses `smoji_enabled` / `smoji_manifest_url`. Enter the manifest URL in the admin console; do not import the public response JSON.
-
-Comments persist full, absolute image URLs in the database. When updating sticker assets, preserve your domain name and historical image paths. When publishing builds from the Smoji workbench, deploy the full `demo/dist` folder including compatibility copies of old assets. Replacing a manifest alone cannot repair broken URLs in historical comments. Switching to a new Origin will cause existing markers to fall back to plain-text display.
-
-## Compact manifests (v0.2.1)
+When you have many stickers, you can use a `base` template instead of writing `src` for each one:
 
 ```json
-{"version":1,"base":"https://stickers.example.com/smoji/{pack}/{id}.webp","packs":[{"id":"douyin-current","label":"抖音","items":[{"id":"fehpikklicec","label":"微笑"}]}]}
+{
+  "version": 1,
+  "base": "https://stickers.example.com/smoji/{pack}/{id}.webp",
+  "packs": [
+    {
+      "id": "douyin",
+      "label": "Douyin",
+      "items": [
+        { "id": "smile", "label": "Smile" },
+        { "id": "cool", "label": "Cool", "src": "https://stickers.example.com/smoji/extra/cool.png" }
+      ]
+    }
+  ]
+}
 ```
 
-The optional `base` URL template must contain `{pack}` and `{id}`, expanded from the pack and item IDs. Items without `src` use this template; custom groups and other file extensions can override it with `src`. The parser still returns full URLs and comments retain their existing marker format. Legacy per-item `src` manifests remain supported; unknown fields are rejected.
+- `base` must contain both `{pack}` and `{id}`, which are replaced with the group ID and the sticker ID. It must itself have the same origin as the manifest.
+- Stickers without `src` get their URL from the template. Stickers with `src` use `src`.
+- The expanded result is still a full URL, so the format of markers saved in comments does not change.
 
-Expanded images must share the manifest origin, without credentials, queries or fragments. Do not publish localhost image URLs. Configure exported resource URLs for your own CDN, such as `https://stickers.example.com/smoji/`. Serve JSON with `application/json` or a `+json` media type. The size limit counts UTF-8 bytes; the 8-second timeout covers body reading.
+`base` is supported starting with v0.2.1.
 
-v0.2.0 cannot read `base` and allows only 32 packs, 300 items per pack, 2000 total items and 256 KiB. Export a smaller per-item `src` manifest for that version; switch to compact manifests after upgrading. Publish both the manifest and assets to the CDN. Replacing JSON does not deploy application code or repair old comment URLs.
+## Update sticker assets
+
+Comments store the **full image URL**. When you update your assets:
+
+- Keep the old image URLs working, or put compatible copies at the original paths. Replacing only the manifest does not fix images that are already broken in existing comments.
+- Do not change the domain that hosts your stickers. If you do, old markers no longer have the same origin as the new manifest, and all of them are displayed as text.
+- Do not put `localhost` URLs in a production manifest. When exporting with an asset tool, set the asset URL to your CDN, such as `https://stickers.example.com/smoji/`.
+
+## Marker format
+
+```text
+![smoji:name](image-url)
+```
+
+`(` and `)` in the image URL are encoded as `%28` and `%29`. `formConfig.smoji` in the public API returns whether the site has sticker packs enabled and the manifest URL. A custom frontend can use it to build its own picker and rendering, following the same rules as above.

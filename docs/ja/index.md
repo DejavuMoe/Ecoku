@@ -2,39 +2,39 @@
 layout: home
 hero:
   name: Ecoku
-  text: セルフホストの純テキストコメント
-  tagline: 静的ブログと個人サイトのために設計。極小シングルコンテナ、データは SQLite、投稿はその場で公開。
+  text: セルフホストの純テキストコメントシステム
+  tagline: 静的ブログと個人サイトのために。Docker コンテナ 1 つ、SQLite ファイル 1 つ。コメントは投稿するとすぐに公開されます。
   image:
     src: /ecoku-hero.png
-    alt: Ecoku 概要図
+    alt: Ecoku コメント欄のイメージ
   actions:
     - theme: brand
-      text: Docker 導入
+      text: デプロイを始める
       link: /ja/self-hosting/docker
     - theme: alt
-      text: コアコンセプト
-      link: /ja/guide/concepts
+      text: Ecoku について
+      link: /ja/guide/introduction
     - theme: alt
-      text: 組み込み手順
+      text: コメント欄を埋め込む
       link: /ja/integration/html
 
 features:
-  - title: 投稿はその場で公開 · 会話を遮らない
-    details: 審査キューなし。返信は対象コメントの直下に表示。無制限の階層セマンティクスと最大3段階のインデント。
-    link: /ja/guide/concepts#スレッドコメントとページネーションモデル
-  - title: 厳格なプライバシー保護
-    details: 公開 API からメールや IP、UA を排除。訪問者情報はブラウザの IndexedDB に AES-GCM で暗号化保存（7日間）。
-    link: /ja/guide/concepts#訪問者情報の暗号化保存
-  - title: シングルコンテナ構成
-    details: Go 単一バイナリで API・管理画面 (/admin/)・SDK (/client/) を同時にホスト。単一 SQLite ファイルで WAL 運用。
-    link: /ja/guide/introduction#システム構成概要
-  - title: 最新のロボット検証
-    details: 無効・Cloudflare Turnstile・セルフホスト Cap の 3 状態を切り替え可能。動的 CSP ポリシー対応。
-    link: /ja/self-hosting/admin#ボット対策-captcha
-  - title: トランザクショナル Outbox 通知
-    details: Outbox パターンによる SMTP (TLS/STARTTLS) および Telegram 通知。ブロガー合言葉によるパスワードレス認証。
-    link: /ja/guide/concepts#トランザクショナル-outbox-通知
-  - title: 軽量かつ柔軟な組み込み
-    details: 2KB のスタンドアロン Loader、Hugo PaperMod 対応、完全な CSS Design Tokens、Smoji テキストスタンププロトコル。
+  - title: 投稿するとすぐに公開
+    details: 審査キューはありません。返信は返信先のコメントの下に展開され、削除しても墓標が残るので議論の文脈が途切れません。
+    link: /ja/guide/concepts#threads
+  - title: 訪問者の情報を集めない
+    details: IP と User-Agent を保存せず、公開 API はメールアドレスを返しません。訪問者の情報はブラウザ内で暗号化され、7 日間だけ保存されます。
+    link: /ja/guide/concepts#data
+  - title: コンテナ 1 つ、ファイル 1 つ
+    details: 1 つの Go プログラムが API、管理画面、埋め込みスクリプトをまとめて提供し、すべてのデータは 1 つの SQLite ファイルに入ります。
+    link: /ja/guide/introduction#components
+  - title: マルチサイト
+    details: 1 つのインスタンスで複数のサイトを扱えます。サイトごとに許可オリジン、コメント設定、ブロガー情報を個別に持ちます。
+    link: /ja/self-hosting/admin#sites
+  - title: 通知と CAPTCHA
+    details: 新しいコメントをメールまたは Telegram でブロガーに通知します。スパム対策として Cloudflare Turnstile またはセルフホストの Cap を選べます。
+    link: /ja/self-hosting/notifications
+  - title: HTML を貼るだけで導入
+    details: Hugo、Hexo、Astro などあらゆる静的サイトで使え、Vue や React のシングルページアプリにも対応します。見た目は CSS 変数で調整できます。
     link: /ja/integration/html
 ---

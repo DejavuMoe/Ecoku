@@ -1,110 +1,103 @@
-# リバースプロキシとレート制限
+# リバースプロキシ
 
-Ecoku はコンテナ内の `:12123` で待ち受け、Compose はホストのループバック `127.0.0.1:12123` にのみポートを公開します。本番環境では、フロントエンド Web サーバー（Caddy または Nginx）で HTTPS を終端し、トラフィックをコンテナポートへリバースプロキシする必要があります。
+Ecoku コンテナは、ホストの `127.0.0.1:12123` でのみ HTTP を提供します。インターネットからアクセスするには、同じホスト上の Caddy または Nginx で HTTPS を終端し、このポートに転送する必要があります。
 
----
+このページで行うことは 2 つです。
 
-## ネットワークトポロジモデル
+1. HTTPS の転送を設定し、`https://ecoku.example.com` にアクセスできるようにする
+2. Ecoku が訪問者の実 IP を識別できるようにし、すべての訪問者で 1 つの枠を共有するのではなく、訪問者ごとにレート制限がかかるようにする
+
+## リクエストの経路
 
 ```mermaid
-flowchart TD
-    V["訪問者 (Client)"]
-    CDN["Cloudflare CDN (任意)"]
-    Proxy["リバースプロキシ (Caddy / Nginx)<br/>• HTTPS 終端 / X-Forwarded-For 転送"]
-    Container["Ecoku コンテナ<br/>• コンテナ :12123 / ホスト 127.0.0.1:12123"]
-
-    V -->|シナリオ 1: 直連 HTTPS| Proxy
-    V -->|シナリオ 2: CDN 経由| CDN
-    CDN -->|HTTPS| Proxy
-    Proxy -->|ローカル HTTP| Container
+flowchart LR
+    V["訪問者のブラウザ"] -->|HTTPS| P["Caddy / Nginx<br/>（ホスト）"]
+    V -.->|HTTPS| C["CDN（任意）"] -.-> P
+    P -->|"HTTP 127.0.0.1:12123"| E["Ecoku コンテナ"]
 ```
 
----
+リバースプロキシが `127.0.0.1:12123` に接続すると、Docker がその接続をコンテナに引き渡します。コンテナから見える接続元アドレスは訪問者ではなく、Docker ブリッジのゲートウェイ（通常は `172.18.0.1` のような形）です。そのため、訪問者の実 IP はリバースプロキシが `X-Forwarded-For` リクエストヘッダーに書き込んで渡すしかなく、Ecoku はリクエストが確かにこのゲートウェイから来たと確認できた場合にだけそれを読み取ります。
 
-## シナリオ 1：オリジン直接リバースプロキシ
+## オリジンに直接転送する場合
 
-### Caddy 設定（推奨）
+### Caddy
 
-Caddy は証明書の自動取得と更新を備えており、最も簡潔に設定できます：
+Caddy は証明書を自動で取得・更新します。
 
 ```caddyfile
 ecoku.example.com {
     encode zstd gzip
 
     reverse_proxy 127.0.0.1:12123 {
-        # クライアントヘッダーの偽造によるレート制限バイパスを防ぐため、X-Forwarded-For を直接接続 IP で上書き
+        # 直接の接続元アドレスで上書きし、ブラウザが付けた X-Forwarded-For は破棄します
         header_up X-Forwarded-For {remote_host}
         header_up X-Forwarded-Proto {scheme}
     }
 }
 ```
 
-### Nginx 設定
+### Nginx
+
+証明書のパスは Certbot のデフォルトの場所を例にしています。
 
 ```nginx
 server {
-    listen 443 ssl http2;
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
     server_name ecoku.example.com;
 
-    ssl_certificate /etc/letsencrypt/live/ecoku.example.com/fullchain.pem;
+    ssl_certificate     /etc/letsencrypt/live/ecoku.example.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/ecoku.example.com/privkey.pem;
 
-    # Gzip 圧縮の有効化
     gzip on;
     gzip_types text/plain text/css application/json application/javascript;
 
     location / {
         proxy_pass http://127.0.0.1:12123;
         proxy_set_header Host $host;
-        # X-Forwarded-For を直接の TCP ピア IP で上書き
+        # 追加ではなく上書きします。$remote_addr は現在の TCP 接続元です
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
 
----
+どちらの設定も、要点は `X-Forwarded-For` を**上書き**することです。追加する方式（Nginx の `$proxy_add_x_forwarded_for` など）にすると、ブラウザが偽の値を自分で付けられるため、レート制限を回避されてしまいます。
 
-## シナリオ 2：CDN（Cloudflare など）経由のリバースプロキシ
+## CDN を経由する場合
 
-ドメインが Cloudflare CDN を経由している場合、直接のピアは CDN ノードになります。CDN が検証・注入した正規の訪問者 IP を `X-Forwarded-For` に書き込むよう設定します。
-
-### Cloudflare + Caddy 設定
+ドメインを Cloudflare などの CDN に載せると、リバースプロキシの直接の接続元は CDN のノードになります。この場合は、CDN が付けるリクエストヘッダーから訪問者の IP を取り出します。Cloudflare と Caddy の例：
 
 ```caddyfile
 ecoku.example.com {
     encode zstd gzip
 
     reverse_proxy 127.0.0.1:12123 {
-        # Cloudflare が検証した訪問者の実 IP を X-Forwarded-For に転送
         header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
         header_up X-Forwarded-Proto {scheme}
     }
 }
 ```
 
-> [!WARNING]
-> - CDN を使用する場合、オリジンのファイアウォールは Cloudflare 公式の IP 範囲のみを許可し、パブリック IP による CDN バイパスを遮断してください。
-> - Ecoku の `trusted_proxies` 設定には、**常にローカルの Docker ゲートウェイ IP のみを指定**してください。広大な CDN IP レンジを直接登録してはなりません。
+`CF-Connecting-IP` が信頼できるのは、リクエストが実際に Cloudflare を経由している場合だけです。ファイアウォールまたは Caddy で Cloudflare の IP レンジだけを許可し、誰かがオリジンに直接接続してこのヘッダーを自分で付けられないようにしてください。
 
----
+Ecoku 側の設定は変わりません。`trusted_proxies` には引き続き Docker ゲートウェイだけを指定し、CDN のネットワークレンジは入れないでください。
 
-## クライアント IP の判定と `trusted_proxies`
+## trusted_proxies を設定する {#trusted-proxies}
 
-Ecoku は IP 偽造防止メカニズムを内蔵しています：
+`app/config.yaml` の `site.trusted_proxies` は、Ecoku がどこから転送された `X-Forwarded-For` を信頼するかを決めます。
 
-1. **デフォルトのゼロトラスト**：`trusted_proxies` が空（`[]`）の場合、Ecoku は `X-Forwarded-For` ヘッダーを一切解析しません。すべてのリクエストは直接の TCP ソケットピア IP（通常はリバースプロキシの IP）として処理され、全訪問者が 1 つのレート制限バケットを共有します。
-2. **完全一致トラスト**：直接の TCP 接続ピアが `trusted_proxies` に宣言された IP または CIDR と**完全に一致**した場合にのみ、Ecoku は `X-Forwarded-For` から正規のクライアント IP を読み取り、訪問者ごとの個別レート制限を適用します。
+- **空（デフォルト）**：転送ヘッダーを一切読まず、コンテナから見える接続元アドレスでレート制限します。リバースプロキシの背後に置くと、このアドレスは Docker ゲートウェイになるため、すべての訪問者が同じレート制限枠を共有します。デフォルトではコメント投稿は 1 分あたり 5 回までなので、アクセスが少し増えるだけで `429` を受け取る人が出ます。
+- **Docker ゲートウェイを指定**：直接の接続元がちょうどゲートウェイである場合にだけ、`X-Forwarded-For` から訪問者の IP を取り出します。
 
-### Docker ゲートウェイ IP の確認
-
-ホスト側で以下のコマンドを実行し、コンテナが属する Docker ブリッジネットワークのゲートウェイを確認します：
+Ecoku が属するネットワークのゲートウェイを調べます。
 
 ```bash
 sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
 ```
 
-出力が `172.18.0.1` の場合、`app/config.yaml` を以下のように設定します：
+出力が `172.18.0.1` だったとすると、次のように設定に書きます。
 
 ```yaml
 site:
@@ -112,20 +105,26 @@ site:
     - "172.18.0.1/32"
 ```
 
-> [!CAUTION]
-> `trusted_proxies` に `0.0.0.0/0` や `::/0` を指定することは厳禁です。偽造された `X-Forwarded-For` によって誰でもレート制限を回避できてしまいます。
-
----
-
-## 疎通確認テスト
+その後、コンテナを再起動します。
 
 ```bash
-# ヘルスチェックエンドポイントの確認
-curl -i https://ecoku.example.com/api/health
-
-# フロントエンド SDK ローダーの取得確認
-curl -i https://ecoku.example.com/client/ecoku-loader.js
-
-# 管理画面エントリポイントの確認
-curl -i https://ecoku.example.com/admin/
+cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 ```
+
+::: danger
+`0.0.0.0/0` や `::/0` は指定しないでください。Ecoku は起動を拒否します。すべての接続元を信頼することは、誰にでも IP の偽装を許すことと同じです。
+:::
+
+## 確認
+
+インターネットに接続できる任意のマシンで次を実行します。
+
+```bash
+for path in /api/health /client/ecoku-loader.js /admin/; do
+  curl -sS -o /dev/null -w "%{http_code} $path\n" "https://ecoku.example.com$path"
+done
+```
+
+3 行とも `200` で始まるはずです。ヘルスチェック API はインターネットに公開してかまいません。返すのは状態とタイムスタンプだけです。
+
+問題がなければ、`https://ecoku.example.com/admin/` を開いて[管理画面の設定](./admin)に進みます。
