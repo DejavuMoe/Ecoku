@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-09-29
+
 ### 变更
 
 - 通知邮件按已批准的 v6 设计改版：配色、6px 圆角与深色模式改用评论区 v17 / 管理后台 v13「纸与墨」token，正文与标题使用系统自带的中英文无衬线字体栈（Georgia 只用于 `Ecoku` 字标），改为表格布局并兼容 Outlook；新增预览摘要，主按钮改为墨色。
@@ -27,7 +29,9 @@
 
 ### 文档
 
-- 「通知」页更新邮件内容、主题格式、时区与表情包显示、Telegram 字段、不可重试的失败与记录保留期，新增「删除评论之后」一节。
+- 「通知」页更新邮件内容、主题格式、时区与表情包显示、Telegram 字段、不可重试的失败与记录保留期，新增「删除评论之后」一节；「管理后台」的墓碑删除说明链接到该节。
+- 按源码核对四语言的接口、命令行、配置、Docker 部署、备份恢复、人机验证、Twikoo 迁移与常见问题页面：补充 `405`/`413`/`429`/`503` 等状态码、`afterId` 分页、站点 `revision` 与 `409` 冲突、管理密钥权限范围、`--dry-run` 输出与快照恢复步骤；`ecoku.env.example` 顶部说明改为只列出为空时拒绝启动的变量。
+- 新增 v0.2.7 升级说明。
 
 ## [0.2.6] - 2026-09-29
 
@@ -477,4 +481,5 @@
 [0.2.4]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.4
 [0.2.5]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.5
 [0.2.6]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.6
-[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.2.6...master
+[0.2.7]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.7
+[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.2.7...master

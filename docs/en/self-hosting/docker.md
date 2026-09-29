@@ -10,7 +10,7 @@ You need:
 - A domain dedicated to Ecoku, such as `ecoku.example.com`. You reach the admin console through it, and your blog loads the comment section script from it. It cannot be the same as your blog's domain. See `admin.allowed_origins` below for why.
 - Caddy or Nginx running on this host to terminate HTTPS.
 
-In the commands on this page, `ecoku.example.com` and `blog.example.com` are placeholders. Replace them with your own domains. The image is the current release, `git.via.moe/dejavu/ecoku:v0.2.6`.
+In the commands on this page, `ecoku.example.com` and `blog.example.com` are placeholders. Replace them with your own domains. The image is the current release, `git.via.moe/dejavu/ecoku:v0.2.7`.
 
 After deployment, the directory layout looks like this:
 
@@ -42,7 +42,7 @@ cd ~/Ecoku
 cat <<'EOF' > compose.yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.2.6"
+    image: "git.via.moe/dejavu/ecoku:v0.2.7"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -157,7 +157,7 @@ grep -q '^ECOKU_ADMIN_USERNAME=' ecoku.env || echo "ECOKU_ADMIN_USERNAME='admin'
 # Admin password: entered interactively; only the bcrypt hash is saved
 if ! grep -q '^ECOKU_ADMIN_PASSWORD_HASH=' ecoku.env; then
   read -rsp 'Admin password: ' ADMIN_PASS; echo
-  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i "git.via.moe/dejavu/ecoku:v0.2.6" hash-password)
+  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i "git.via.moe/dejavu/ecoku:v0.2.7" hash-password)
   unset ADMIN_PASS
   if [ -n "$HASH" ]; then
     echo "ECOKU_ADMIN_PASSWORD_HASH='$HASH'" >> ecoku.env

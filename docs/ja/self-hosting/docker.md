@@ -10,7 +10,7 @@
 - Ecoku 専用のドメイン（例：`ecoku.example.com`）。管理画面はこのドメインでアクセスし、ブログはこのドメインからコメント欄のスクリプトを読み込みます。ブログと同じドメインは使えません。理由は後述の `admin.allowed_origins` を参照してください。
 - HTTPS を終端するための、このホスト上で動く Caddy または Nginx。
 
-このページのコマンドに出てくる `ecoku.example.com` と `blog.example.com` はプレースホルダーです。自分のドメインに置き換えてください。イメージは現在のリリースバージョン `git.via.moe/dejavu/ecoku:v0.2.6` を使います。
+このページのコマンドに出てくる `ecoku.example.com` と `blog.example.com` はプレースホルダーです。自分のドメインに置き換えてください。イメージは現在のリリースバージョン `git.via.moe/dejavu/ecoku:v0.2.7` を使います。
 
 デプロイ後のディレクトリ構成は次のとおりです。
 
@@ -42,7 +42,7 @@ cd ~/Ecoku
 cat <<'EOF' > compose.yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.2.6"
+    image: "git.via.moe/dejavu/ecoku:v0.2.7"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -157,7 +157,7 @@ grep -q '^ECOKU_ADMIN_USERNAME=' ecoku.env || echo "ECOKU_ADMIN_USERNAME='admin'
 # 管理者パスワード：対話的に入力し、bcrypt ハッシュだけを保存します
 if ! grep -q '^ECOKU_ADMIN_PASSWORD_HASH=' ecoku.env; then
   read -rsp '管理者パスワード: ' ADMIN_PASS; echo
-  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i "git.via.moe/dejavu/ecoku:v0.2.6" hash-password)
+  HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i "git.via.moe/dejavu/ecoku:v0.2.7" hash-password)
   unset ADMIN_PASS
   if [ -n "$HASH" ]; then
     echo "ECOKU_ADMIN_PASSWORD_HASH='$HASH'" >> ecoku.env

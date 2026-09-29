@@ -1,6 +1,6 @@
 # Upgrade
 
-The current release is **v0.2.6** (released 2026-09-29, schema v8).
+The current release is **v0.2.7** (released 2026-09-29, schema v9).
 
 ## What happens during an upgrade
 
@@ -13,7 +13,7 @@ Upgrading means changing the image in `compose.yaml` to the new version and star
 
 That makes a backup taken before the upgrade the only way to roll back to an older schema.
 
-You can skip versions and upgrade directly, for example from v0.1.8 straight to v0.2.6. The intermediate migrations run one after another. But read the upgrade notes for every version you skip, because some versions require config changes (for example, [v0.2.4](./upgrades/v0.2.4) requires `admin.token_ttl_minutes` to be 480 or omitted).
+You can skip versions and upgrade directly, for example from v0.1.8 straight to v0.2.7. The intermediate migrations run one after another. But read the upgrade notes for every version you skip, because some versions require config changes (for example, [v0.2.4](./upgrades/v0.2.4) requires `admin.token_ttl_minutes` to be 480 or omitted).
 
 ## Upgrade steps {#steps}
 
@@ -24,7 +24,7 @@ You can skip versions and upgrade directly, for example from v0.1.8 straight to 
 **3. Change the image version.** Edit `~/Ecoku/compose.yaml` and change `image` to the target version, for example:
 
 ```yaml
-    image: "git.via.moe/dejavu/ecoku:v0.2.6"
+    image: "git.via.moe/dejavu/ecoku:v0.2.7"
 ```
 
 Use an exact version number, not `latest`. If the upgrade notes ask you to change `app/config.yaml` or `ecoku.env`, change them at the same time.
@@ -59,6 +59,7 @@ First check whether the old and new versions have the same schema (see the table
 
 | Version | Release date | Schema | Highlights |
 | --- | --- | --- | --- |
+| [v0.2.7](./upgrades/v0.2.7) | 2026-09-29 | v8 → v9 | Notification emails use the paper-and-ink look and system fonts, with the post title in the subject; deleting a comment cancels pending notifications and retracts sent Telegram messages; the queue stops retrying deliveries that cannot succeed. |
 | [v0.2.6](./upgrades/v0.2.6) | 2026-09-29 | v8 | The admin console uses the same paper-and-ink colours as the comment section and system fonts, with reorganized page layouts; features and APIs are unchanged. |
 | [v0.2.5](./upgrades/v0.2.5) | 2026-09-26 | v8 | Default comment styles changed to "paper and ink" and can be overridden directly with CSS variables; Turnstile verification rejects redirects. |
 | [v0.2.4](./upgrades/v0.2.4) | 2026-09-16 | v7 → v8 | Admin sessions changed to revocable cookie sessions; `token_ttl_minutes` can only be 480; new replies go at most 16 levels deep. |
