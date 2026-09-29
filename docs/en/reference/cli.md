@@ -1,6 +1,6 @@
 # Command line
 
-The image's entry program is `/app/ecoku-server`. Without arguments, it starts the service. With one of the subcommands below, it runs a one-off task and exits.
+The image's entry program is `/app/ecoku-server`. Without arguments, it starts the service. With one of the subcommands below, it runs a one-off task and exits. A misspelled subcommand name does not cause an error; the service starts as usual instead, so check the spelling before running.
 
 In the deployment directory, use `docker compose run` to run a subcommand with the same config and mounts:
 
@@ -61,18 +61,27 @@ The saved Turnstile and Cap settings and keys are all kept. After signing in to 
 
 Imports a Twikoo JSON export into a site that has no comments.
 
+First run a dry run with `--dry-run`:
+
 ```bash
 sudo docker compose run --rm --no-deps ecoku \
-  import-twikoo --site=blog --file=/data/twikoo.json [--dry-run]
+  import-twikoo --site=blog --file=/data/twikoo.json --dry-run
+```
+
+After checking the result, drop `--dry-run` to run the real import:
+
+```bash
+sudo docker compose run --rm --no-deps ecoku \
+  import-twikoo --site=blog --file=/data/twikoo.json
 ```
 
 | Argument | Description |
 | --- | --- |
 | `--site` | Target site ID. The site must already be registered in the admin console and have no comments at all (including deleted ones). |
-| `--file` | Path of the export file inside the container. Put the file in the `data/` directory first; its path inside the container is `/data/...`. |
+| `--file` | Path of the export file inside the container. Put the file in the `data/` directory first (see [Migrate from Twikoo](../self-hosting/twikoo) for how); its path inside the container is `/data/...`. |
 | `--dry-run` | Runs the complete import and then rolls it back. It only prints the statistics and saves no comments. |
 
-On success, it prints the statistics in Chinese: counts of comments, root comments, replies, pages, emails, websites, and missing parents. A dry run reports “预检通过” (dry run passed); a real import reports “完成” (done):
+On success, its last line prints the statistics in Chinese (prefixed with the date and time): counts of comments, root comments, replies, pages, emails, websites, and missing parents. A dry run reports “预检通过” (dry run passed); a real import reports “完成” (done), for example:
 
 ```text
 Twikoo 导入预检通过：评论=128 根评论=90 回复=38 页面=24 邮箱=110 网站=45 缺失父记录=0

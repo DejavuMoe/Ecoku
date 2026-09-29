@@ -71,7 +71,7 @@ Ecoku の管理画面で、このサイトの許可オリジン（例：`https:/
 
 ## 見た目
 
-デフォルトのスタイルは PaperMod の色の変数（`--theme`、`--entry`、`--primary`、`--secondary`、`--content`、`--border`、`--code-bg`）を読み取り、テーマのライト / ダークの切り替えに追従するので、通常は追加の設定は不要です。
+デフォルトのスタイルは PaperMod の色の変数（`--theme`、`--entry`、`--primary`、`--secondary`、`--content`、`--border`）を読み取り、テーマのライト / ダークの切り替えに追従するので、通常は追加の設定は不要です。
 
 角丸、文字サイズ、アクセントカラーをさらに揃えたい場合は、`assets/css/extended/` に CSS ファイルを新しく作成します。PaperMod がサイトのスタイルに自動でまとめてくれます。
 

@@ -15,7 +15,7 @@ This setting applies to the whole instance. All sites and admin sign-in use the 
 - When the browser submits a comment or signs in, it attaches a one-time token. The server verifies it with Turnstile or Cap before processing the request any further. Verification happens before the blogger passphrase is checked, so nobody can probe the passphrase without passing verification.
 - If verification fails, the token is missing, or the verification service times out or is unavailable, the request is rejected. It is never let through automatically, and Ecoku does not fall back to the other mode.
 - When verifying, the server sends only the token and the secret key. It does not include the visitor's IP address.
-- The secret key is encrypted with `ECOKU_NOTIFICATION_ENCRYPTION_KEY` before it is stored in the database, and the admin console only shows it as Set (已设置). Without that key, verification settings cannot be saved.
+- The secret key is encrypted with `ECOKU_NOTIFICATION_ENCRYPTION_KEY` before it is stored in the database, and the admin console only shows “已设置，输入新值以更换” (set; enter a new value to replace it). Without that key, a new secret key cannot be saved.
 - When you switch modes or turn verification off, the settings already entered for the other mode are kept, so you do not have to enter them again when you switch back.
 
 ## Cloudflare Turnstile
@@ -38,9 +38,9 @@ The Cap instance URL must be a **publicly reachable HTTPS URL**. Addresses such 
 The example below runs Cap and the Valkey server it depends on with Docker Compose in `~/capjs`. Cap listens only on `127.0.0.1:3000` on the local machine, and a reverse proxy provides HTTPS.
 
 ```bash
-mkdir -p ~/capjs/data/cap ~/capjs/data/valkey && cd ~/capjs
-sudo chown -R 999:1000 data/valkey
-chmod 750 data/cap data/valkey
+mkdir -p ~/capjs/data && cd ~/capjs
+sudo install -d -o 1000 -g 1000 -m 750 data/cap
+sudo install -d -o 999 -g 1000 -m 750 data/valkey
 ```
 
 Write `compose.yml`:

@@ -37,7 +37,7 @@ The fallback names of the color variables match the PaperMod theme, so in PaperM
 
 | Variable | Default | Used for |
 | --- | --- | --- |
-| `--ecoku-theme` | `var(--theme, #f7f4ee)` | Paper background; primary button text |
+| `--ecoku-theme` | `var(--theme, #f7f4ee)` | Primary button text; Cap checkbox background |
 | `--ecoku-entry` | `var(--entry, #fbf9f5)` | Background of the posting card, sort menu, sticker panel, and error messages |
 | `--ecoku-primary` | `var(--primary, #1e1c19)` | Headings, nicknames, input text, primary button background, focus underline |
 | `--ecoku-secondary` | `var(--secondary, #6b655b)` | Times, character counts, field labels, text buttons |

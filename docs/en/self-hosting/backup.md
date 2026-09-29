@@ -62,13 +62,26 @@ printf 'Snapshot: %s\n' "$snapshot"
 )
 ```
 
-The result is a directory containing the database snapshot `database.sqlite3` (owned by root, mode 600) and the config archive `config.tar.gz`. Its format differs from a cold backup, so you cannot use it directly with the restore script below. To restore from it, put `database.sqlite3` back as `data/ecoku.sqlite3` by hand and unpack the config archive. If the config changed while the snapshot was being taken, the database and config may not match. When the two must correspond exactly, use a cold backup.
+The result is a directory containing the database snapshot `database.sqlite3` (owned by root, mode 600) and the config archive `config.tar.gz`. Its format differs from a cold backup, so you cannot use it directly with the restore script below. If the config changed while the snapshot was being taken, the database and config may not match. When the two must correspond exactly, use a cold backup.
+
+To restore from a snapshot, stop the service first, delete any leftover WAL files, and then put the database back owned by the container user (change `snapshot=` to the snapshot directory):
+
+```bash
+cd ~/Ecoku
+snapshot="$HOME/backups/ecoku-snapshot-XXXXXXXX"
+sudo docker compose down
+sudo rm -f data/ecoku.sqlite3-wal data/ecoku.sqlite3-shm
+sudo install -o 10001 -g 10001 -m 600 "$snapshot/database.sqlite3" data/ecoku.sqlite3
+sudo docker compose up -d
+```
+
+If you also need to restore the config, unpack `config.tar.gz` before starting, and fix ownership and permissions as in the restore script below.
 
 ## Restore from a cold backup {#restore}
 
 Restoring replaces the current database and config with the state in the backup. Comments and settings changes made after the backup are lost.
 
-First change `archive=` in the script to the path of the archive you want to restore. The script:
+First change `archive=` in the script to the path of the archive you want to restore. The script runs in the original deployment directory; when restoring on a new host, create `~/Ecoku` first as in step 1 of [Docker deployment](./docker). The script:
 
 1. Checks that the archive contains the required files;
 2. Stops the service;
@@ -89,15 +102,20 @@ done
 sudo docker compose down
 saved="recovery-before-$(date +%Y%m%d_%H%M%S)"
 mkdir -m 700 "$saved"
-sudo mv data app/config.yaml ecoku.env compose.yaml "$saved/"
+for item in data app/config.yaml ecoku.env compose.yaml; do
+  [ ! -e "$item" ] || sudo mv "$item" "$saved/"
+done
 sudo tar -xzf "$archive" --no-same-owner
-sudo chown -R 10001:10001 data app/config.yaml
+sudo chown -R 10001:10001 data
 sudo chmod 750 data
-sudo chmod 640 app/config.yaml
-sudo chown "$(id -u):$(id -g)" ecoku.env compose.yaml
+sudo install -d -o 10001 -g 10001 -m 750 app/logs
+sudo chown "$(id -u):$(id -g)" app app/config.yaml ecoku.env compose.yaml
+chmod 755 app
+chmod 644 app/config.yaml
 chmod 600 ecoku.env
 sudo docker compose up -d
-curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+curl --fail --silent --show-error --retry 15 --retry-delay 2 --retry-all-errors \
+  http://127.0.0.1:12123/api/health
 )
 ```
 

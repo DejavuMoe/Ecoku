@@ -71,7 +71,7 @@ In the Ecoku admin console, add an allowed origin for this site, such as `https:
 
 ## Appearance
 
-The default styles read PaperMod's color variables (`--theme`, `--entry`, `--primary`, `--secondary`, `--content`, `--border`, `--code-bg`) and follow the theme's light/dark switch, so you usually do not need any extra setup.
+The default styles read PaperMod's color variables (`--theme`, `--entry`, `--primary`, `--secondary`, `--content`, `--border`) and follow the theme's light/dark switch, so you usually do not need any extra setup.
 
 To further match corner radius, font size, or accent color, create a CSS file under `assets/css/extended/`. PaperMod bundles it into the site styles automatically:
 

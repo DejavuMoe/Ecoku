@@ -14,7 +14,7 @@ All `/api/` endpoints return JSON with the same structure:
 { "code": 200, "message": "Success", "data": { } }
 ```
 
-`code` is the same as the HTTP status code. On error there is no `data`, and `message` is a short explanation in Chinese, for example (the origin does not belong to the current site):
+`code` is the same as the HTTP status code. On error there is usually no `data` (a failed test notification is the exception, see [Notifications](#notifications)), and `message` is a short explanation in Chinese, for example (the origin does not belong to the current site):
 
 ```json
 { "code": 403, "message": "来源不属于当前站点" }
@@ -31,12 +31,13 @@ Time fields are RFC 3339 strings in UTC, such as `2026-08-20T12:00:00Z`.
 | `401` | Not signed in to the admin API, or the session has expired. |
 | `403` | The origin is not on the allowed list, or permission is denied. |
 | `404` | The site, comment, or endpoint does not exist. |
+| `405` | The path exists, but does not support the request method. |
 | `409` | State conflict: the parent comment belongs to another page, the reply targets a deleted comment, the settings were changed by another session, and so on. |
 | `413` | The request body exceeds the limit. |
 | `422` | The comment list exceeds the read limits, or the reply is more than 16 levels deep. |
 | `429` | Rate limited. The `Retry-After` response header gives the number of seconds to wait. |
 | `502` | Sending a test notification failed. |
-| `503` | The service is busy, a read timed out, or the CAPTCHA service is unavailable. |
+| `503` | The service is busy, a read timed out, the CAPTCHA service is unavailable, the admin session store is unavailable, or the credential encryption master key is not configured. |
 
 ### Cross-origin requests and origins
 
@@ -186,7 +187,7 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&parentId=101&afterId=1
 | `afterId` | Return only comments with an ID greater than this. Default `0`. |
 | `pageSize` | 1 to 100, default `10`. |
 
-Results are sorted by ID in ascending order. In this mode you cannot also pass `page` or `sort`; doing so returns `400`. If the parent comment does not exist or does not belong to the page, the response is `404`.
+Results are sorted by ID in ascending order. `afterId` must be used together with `parentId`; in this mode you cannot also pass `page` or `sort`; doing so returns `400`. If the parent comment does not exist or does not belong to the page, the response is `404`.
 
 ```json
 {
@@ -256,7 +257,9 @@ Errors related to submission:
 | `403` | `Origin` is missing, or the origin does not belong to the site. |
 | `404` | The site or parent comment does not exist. |
 | `409` | The parent comment belongs to another page, or the parent comment is deleted. |
+| `413` | The request body exceeds 80 KiB. |
 | `422` | The reply is more than 16 levels deep. |
+| `429` | Exceeds `rate_limit.comment_submit` (by default 5 per IP every 60 seconds). |
 | `503` | The CAPTCHA service is unavailable. |
 
 ## Admin endpoints
@@ -267,7 +270,7 @@ Admin endpoints live under `/api/admin/` and exist only when `admin.enabled: tru
 
 - **Session cookie**: after a successful `POST /api/admin/login`, the server sets a cookie named `ecoku_admin_session` (HttpOnly, SameSite=Strict, Path=`/api/admin`, with Secure in production), valid for 8 hours. The sign-in response does not contain a token.
 - The sign-in request, and every non-GET request authenticated by cookie, must carry an `Origin` from `admin.allowed_origins`.
-- Requests authenticated with `Authorization: Bearer <credential>` are not checked for `Origin`. The credential must be a currently valid session that has not been signed out. Old tokens issued before v0.2.4 are no longer valid.
+- Requests authenticated with `Authorization: Bearer <credential>` or a management key may omit `Origin`; if they carry one, it must still be in `admin.allowed_origins`, otherwise the response is `403`. The Bearer credential must be a currently valid session that has not been signed out. Old tokens issued before v0.2.4 are no longer valid.
 - Sign-in requires HTTPS. Only loopback addresses may use HTTP.
 
 ### Sign-in and sessions
@@ -286,15 +289,17 @@ Admin endpoints live under `/api/admin/` and exist only when `admin.enabled: tru
 | `GET /api/admin/sites` | All sites. |
 | `POST /api/admin/sites` | Create a site. |
 | `GET /api/admin/sites/:siteId` | A single site. |
-| `PUT /api/admin/sites/:siteId` | Update a site. The request body must include the `revision` you got when reading it. If another session changed the site in the meantime, the response is `409`. |
+| `PUT /api/admin/sites/:siteId` | Update a site. The request body must include the `revision` you got when reading it; if it is missing, the response is `400`. If another session changed the site in the meantime, the response is `409`. |
 
-Site fields: `id`, `site_url`, `name`, `allowed_origins`, `default_sort`, `email_required`, `website_required`, `placeholder`, `comment_limit`, `empty_message`, `smoji_enabled`, `smoji_manifest_url`, `blogger_nickname`, `blogger_email`, `blogger_badge`, `blogger_passphrase` (write-only), `revision`. Responses use `blogger_passphrase_set` to show whether a passphrase is set.
+Site fields: `id`, `site_url`, `name`, `allowed_origins`, `default_sort`, `email_required`, `website_required`, `placeholder`, `comment_limit`, `empty_message`, `smoji_enabled`, `smoji_manifest_url`, `blogger_nickname`, `blogger_email`, `blogger_badge`, `blogger_passphrase` (write-only), `revision`. Responses use `blogger_passphrase_set` to show whether a passphrase is set, and also include the read-only `created_at` and `updated_at`. The site list is in the `data.data` array; a single site, and the result of creating or updating one, is in `data.site`.
+
+Creating a site whose ID already exists, or whose `allowed_origins` duplicates `admin.allowed_origins`, returns `409`.
 
 ### Comments
 
 | Method and path | Description |
 | --- | --- |
-| `GET /api/admin/sites/:siteId/comments` | Comment list. Parameters: `status` (`published` or `deleted`), `page`, `pageSize` (default 20, max 100), `sort` (`newest` or `oldest`). |
+| `GET /api/admin/sites/:siteId/comments` | Comment list. Parameters: `status` (`published` or `deleted`, default `published`), `page` (max 1000000), `pageSize` (default 20, max 100), `sort` (`newest` or `oldest`, default `newest`). The response includes `total`, `pageCount`, and the per-status counts `counts`. |
 | `GET /api/admin/sites/:siteId/comments/:commentId` | A single comment, including the private email. |
 | `DELETE /api/admin/sites/:siteId/comments/:commentId` | Tombstone delete. Deleting an already deleted comment again returns success, with `unchanged` set to `true`. |
 | `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent` | Permanent delete. Only works on a tombstone with no replies; otherwise returns `409`. |
@@ -310,7 +315,7 @@ Both delete endpoints are rate limited by `rate_limit.comment_delete`.
 
 `/api/admin/turnstile` is the old endpoint. It still works, but new code should use `/api/admin/captcha`.
 
-### Notifications
+### Notifications {#notifications}
 
 | Method and path | Description |
 | --- | --- |
@@ -326,7 +331,7 @@ Both test endpoints are rate limited by `rate_limit.notification_test`.
 
 Site management keys are for **trusted server-side automation**, such as deleting abusive comments from your own back-office system. Never put one in a browser.
 
-1. Configure `management_key_env` for the site under `sites` in `app/config.yaml`, and set the matching environment variable in `ecoku.env`. The value must be at least 32 characters, and each site must use a different one. See the [Configuration reference](./configuration#sites).
+1. Configure `management_key_env` for the site under `sites` in `app/config.yaml`, and set the matching environment variable in `ecoku.env`. The value must be at least 32 bytes, and each site must use a different one. See the [Configuration reference](./configuration#sites).
 2. Send it with each request:
 
    ```http
@@ -340,6 +345,6 @@ DELETE /api/admin/sites/blog/comments/102
 Authorization: EcokuSite <management key>
 ```
 
-It cannot read comment lists or details, cannot permanently delete, and cannot access other sites or instance settings. Those requests return `403`. Using a management key also requires `admin.enabled: true`.
+It cannot read comment lists or details, cannot permanently delete, and cannot access other sites or instance settings. Those requests return `403`; an invalid key returns `401`. Using a management key also requires `admin.enabled: true`.
 
 Site settings under `sites` are written only when the database is first initialized, but `management_key_env` is read on every startup. To enable a management key on an existing instance, add an entry under `sites` whose `id` matches the existing site in the admin console, and also fill in `site_url` and `allowed_origins` so the config passes validation. The other fields of this entry do not override the settings in the admin console.

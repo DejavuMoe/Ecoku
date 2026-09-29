@@ -14,7 +14,7 @@
 { "code": 200, "message": "Success", "data": { } }
 ```
 
-`code` 與 HTTP 狀態碼相同。出錯時沒有 `data`，`message` 是一句中文說明，例如：
+`code` 與 HTTP 狀態碼相同。出錯時通常沒有 `data`（測試通知失敗例外，見[通知](#notifications)），`message` 是一句中文說明，例如：
 
 ```json
 { "code": 403, "message": "来源不属于当前站点" }
@@ -31,12 +31,13 @@
 | `401` | 管理 API 未登入或工作階段已失效。 |
 | `403` | 來源不在允許清單中，或沒有權限。 |
 | `404` | 站點、評論或端點不存在。 |
+| `405` | 路徑存在，但不支援該請求方法。 |
 | `409` | 狀態衝突：父評論屬於其他頁面、回覆已刪除的評論、設定已被其他工作階段修改等。 |
 | `413` | 請求本文超過上限。 |
 | `422` | 評論清單超出讀取上限，或回覆層數超過 16 層。 |
 | `429` | 觸發速率限制，回應標頭 `Retry-After` 列出需要等待的秒數。 |
 | `502` | 測試通知寄送失敗。 |
-| `503` | 服務忙碌、讀取逾時，或人機驗證服務無法使用。 |
+| `503` | 服務忙碌、讀取逾時、人機驗證服務無法使用、管理員工作階段儲存無法使用，或未設定憑據加密主金鑰。 |
 
 ### 跨來源與來源
 
@@ -186,7 +187,7 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&parentId=101&afterId=1
 | `afterId` | 只回傳 ID 大於它的評論，預設 `0`。 |
 | `pageSize` | 1～100，預設 `10`。 |
 
-結果依 ID 遞增排列。這種模式下不能同時傳入 `page` 或 `sort`，否則回傳 `400`。父評論不存在或不屬於該頁面時回傳 `404`。
+結果依 ID 遞增排列。`afterId` 必須和 `parentId` 一起使用；這種模式下不能同時傳入 `page` 或 `sort`，否則回傳 `400`。父評論不存在或不屬於該頁面時回傳 `404`。
 
 ```json
 {
@@ -256,7 +257,9 @@ Origin: https://blog.example.com
 | `403` | 缺少 `Origin`，或來源不屬於該站點。 |
 | `404` | 站點或父評論不存在。 |
 | `409` | 父評論屬於其他頁面，或父評論已刪除。 |
+| `413` | 請求本文超過 80 KiB。 |
 | `422` | 回覆層數超過 16 層。 |
+| `429` | 超過 `rate_limit.comment_submit`（預設每個 IP 每 60 秒 5 次）。 |
 | `503` | 人機驗證服務無法使用。 |
 
 ## 管理 API
@@ -267,7 +270,7 @@ Origin: https://blog.example.com
 
 - **工作階段 Cookie**：`POST /api/admin/login` 成功後，伺服器端會設定名為 `ecoku_admin_session` 的 Cookie（HttpOnly、SameSite=Strict、Path=`/api/admin`，正式環境帶 Secure），有效期 8 小時。登入回應中不包含 token。
 - 登入請求，以及以 Cookie 驗證的非 GET 請求，必須帶有 `admin.allowed_origins` 中的 `Origin`。
-- 以 `Authorization: Bearer <凭据>` 驗證的請求不檢查 `Origin`。憑據必須是目前有效、未登出的工作階段；v0.2.4 之前簽發的舊 token 不再有效。
+- 以 `Authorization: Bearer <凭据>` 或管理金鑰驗證的請求可以不帶 `Origin`；如果帶了，仍須在 `admin.allowed_origins` 中，否則回傳 `403`。Bearer 憑據必須是目前有效、未登出的工作階段；v0.2.4 之前簽發的舊 token 不再有效。
 - 登入要求 HTTPS，只有迴路位址可以用 HTTP。
 
 ### 登入與工作階段
@@ -286,15 +289,17 @@ Origin: https://blog.example.com
 | `GET /api/admin/sites` | 所有站點。 |
 | `POST /api/admin/sites` | 新增站點。 |
 | `GET /api/admin/sites/:siteId` | 單一站點。 |
-| `PUT /api/admin/sites/:siteId` | 更新站點。請求本文需帶上讀取時取得的 `revision`；期間被其他工作階段修改過時回傳 `409`。 |
+| `PUT /api/admin/sites/:siteId` | 更新站點。請求本文需帶上讀取時取得的 `revision`，缺少時回傳 `400`；期間被其他工作階段修改過時回傳 `409`。 |
 
-站點欄位：`id`、`site_url`、`name`、`allowed_origins`、`default_sort`、`email_required`、`website_required`、`placeholder`、`comment_limit`、`empty_message`、`smoji_enabled`、`smoji_manifest_url`、`blogger_nickname`、`blogger_email`、`blogger_badge`、`blogger_passphrase`（唯寫）、`revision`。回應中以 `blogger_passphrase_set` 表示是否已設定口令。
+站點欄位：`id`、`site_url`、`name`、`allowed_origins`、`default_sort`、`email_required`、`website_required`、`placeholder`、`comment_limit`、`empty_message`、`smoji_enabled`、`smoji_manifest_url`、`blogger_nickname`、`blogger_email`、`blogger_badge`、`blogger_passphrase`（唯寫）、`revision`。回應中以 `blogger_passphrase_set` 表示是否已設定口令，另含唯讀的 `created_at`、`updated_at`。站點清單在 `data.data` 陣列中，單一站點以及建立、更新的結果在 `data.site` 中。
+
+新增站點時 ID 已存在，或 `allowed_origins` 與 `admin.allowed_origins` 重複，都會回傳 `409`。
 
 ### 評論
 
 | 方法與路徑 | 說明 |
 | --- | --- |
-| `GET /api/admin/sites/:siteId/comments` | 評論清單。參數：`status`（`published` 或 `deleted`）、`page`、`pageSize`（預設 20，最大 100）、`sort`（`newest` 或 `oldest`）。 |
+| `GET /api/admin/sites/:siteId/comments` | 評論清單。參數：`status`（`published` 或 `deleted`，預設 `published`）、`page`（最大 1000000）、`pageSize`（預設 20，最大 100）、`sort`（`newest` 或 `oldest`，預設 `newest`）。回應含 `total`、`pageCount` 和各狀態數量 `counts`。 |
 | `GET /api/admin/sites/:siteId/comments/:commentId` | 單則評論，含私人信箱。 |
 | `DELETE /api/admin/sites/:siteId/comments/:commentId` | 墓碑刪除。已刪除的評論再次刪除時回傳成功，`unchanged` 為 `true`。 |
 | `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent` | 徹底刪除。只能用於沒有回覆的墓碑，否則回傳 `409`。 |
@@ -310,7 +315,7 @@ Origin: https://blog.example.com
 
 `/api/admin/turnstile` 是舊版端點，仍然可以使用，新的程式碼請使用 `/api/admin/captcha`。
 
-### 通知
+### 通知 {#notifications}
 
 | 方法與路徑 | 說明 |
 | --- | --- |
@@ -326,7 +331,7 @@ Origin: https://blog.example.com
 
 站點管理金鑰用於**可信的伺服器端自動化**，例如在自己的後台系統中刪除違規評論。它不能放進瀏覽器。
 
-1. 在 `app/config.yaml` 的 `sites` 中為站點設定 `management_key_env`，並在 `ecoku.env` 中設定對應的環境變數，值至少 32 個字元，各站點不能相同。見[設定參考](./configuration#sites)。
+1. 在 `app/config.yaml` 的 `sites` 中為站點設定 `management_key_env`，並在 `ecoku.env` 中設定對應的環境變數，值至少 32 位元組，各站點不能相同。見[設定參考](./configuration#sites)。
 2. 請求時帶上：
 
    ```http
@@ -340,6 +345,6 @@ DELETE /api/admin/sites/blog/comments/102
 Authorization: EcokuSite <管理密钥>
 ```
 
-它不能讀取評論清單或詳細資訊，不能徹底刪除，也不能存取其他站點或實例設定，這些請求會回傳 `403`。使用管理金鑰同樣要求 `admin.enabled: true`。
+它不能讀取評論清單或詳細資訊，不能徹底刪除，也不能存取其他站點或實例設定，這些請求會回傳 `403`；金鑰無效時回傳 `401`。使用管理金鑰同樣要求 `admin.enabled: true`。
 
 `sites` 中的站點設定只在資料庫首次初始化時寫入，但 `management_key_env` 每次啟動都會讀取。既有實例若要啟用管理金鑰，可以在 `sites` 中補寫一個項目：`id` 與後台中既有的站點一致，`site_url` 和 `allowed_origins` 也要填寫，才能通過設定檢查。這個項目的其他欄位不會覆寫後台中的設定。

@@ -62,13 +62,26 @@ printf 'Snapshot: %s\n' "$snapshot"
 )
 ```
 
-结果是一个目录，里面有数据库快照 `database.sqlite3`（属主 root，权限 600）和配置归档 `config.tar.gz`。它的格式与冷备份不同，不能直接用于下面的恢复脚本；要恢复时，需要手动把 `database.sqlite3` 放回 `data/ecoku.sqlite3` 并解开配置归档。快照期间如果修改了配置，数据库和配置可能不一致。需要两者严格对应时，请用冷备份。
+结果是一个目录，里面有数据库快照 `database.sqlite3`（属主 root，权限 600）和配置归档 `config.tar.gz`。它的格式与冷备份不同，不能直接用于下面的恢复脚本。快照期间如果修改了配置，数据库和配置可能不一致。需要两者严格对应时，请用冷备份。
+
+从快照恢复时，先停止服务，删掉残留的 WAL 文件，再以容器用户的属主放回数据库（`snapshot=` 改成快照目录）：
+
+```bash
+cd ~/Ecoku
+snapshot="$HOME/backups/ecoku-snapshot-XXXXXXXX"
+sudo docker compose down
+sudo rm -f data/ecoku.sqlite3-wal data/ecoku.sqlite3-shm
+sudo install -o 10001 -g 10001 -m 600 "$snapshot/database.sqlite3" data/ecoku.sqlite3
+sudo docker compose up -d
+```
+
+需要同时恢复配置时，在启动前解开 `config.tar.gz`，并按下文恢复脚本修正属主和权限。
 
 ## 从冷备份恢复 {#restore}
 
 恢复会用备份中的状态替换当前的数据库和配置，备份之后产生的评论和设置修改都会丢失。
 
-先把脚本中的 `archive=` 改成要恢复的归档路径。脚本会：
+先把脚本中的 `archive=` 改成要恢复的归档路径。脚本在原部署目录中运行，在新主机上恢复时先按 [Docker 部署](./docker)第 1 步建好 `~/Ecoku`。脚本会：
 
 1. 检查归档中包含必要文件；
 2. 停止服务；
@@ -89,15 +102,20 @@ done
 sudo docker compose down
 saved="recovery-before-$(date +%Y%m%d_%H%M%S)"
 mkdir -m 700 "$saved"
-sudo mv data app/config.yaml ecoku.env compose.yaml "$saved/"
+for item in data app/config.yaml ecoku.env compose.yaml; do
+  [ ! -e "$item" ] || sudo mv "$item" "$saved/"
+done
 sudo tar -xzf "$archive" --no-same-owner
-sudo chown -R 10001:10001 data app/config.yaml
+sudo chown -R 10001:10001 data
 sudo chmod 750 data
-sudo chmod 640 app/config.yaml
-sudo chown "$(id -u):$(id -g)" ecoku.env compose.yaml
+sudo install -d -o 10001 -g 10001 -m 750 app/logs
+sudo chown "$(id -u):$(id -g)" app app/config.yaml ecoku.env compose.yaml
+chmod 755 app
+chmod 644 app/config.yaml
 chmod 600 ecoku.env
 sudo docker compose up -d
-curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+curl --fail --silent --show-error --retry 15 --retry-delay 2 --retry-all-errors \
+  http://127.0.0.1:12123/api/health
 )
 ```
 

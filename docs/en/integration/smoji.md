@@ -57,7 +57,7 @@ On **Sites** (站点管理) in the admin console, edit the site, check **Enable 
 | `packs[].label` | Group name, shown on the picker's tab. Same rules as `items[].label`. |
 | `packs[].items` | List of stickers, 1 to 600 per group, and no more than 6000 in the whole manifest. |
 | `items[].id` | Sticker ID. Same rules as the group ID. Must be unique within the group. |
-| `items[].label` | Sticker name, 1 to 40 characters after trimming leading and trailing spaces. It cannot contain `]` or line breaks. It is written into the comment marker and also used as the image's alt text. |
+| `items[].label` | Sticker name, 1 to 40 characters after trimming leading and trailing spaces. It cannot contain `]` or control characters such as line breaks. It is written into the comment marker and also used as the image's alt text. |
 | `items[].src` | Image URL. Either a full URL or a path relative to the manifest. |
 
 Requirements for the manifest as a whole:

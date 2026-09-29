@@ -27,10 +27,10 @@
 
 ## 1. 建立目錄
 
-容器以 UID/GID `10001:10001` 執行，根檔案系統為唯讀，只有掛載進去的 `app/logs` 和 `data` 可寫入。先建立這兩個目錄，並將擁有者設為該使用者：
+容器以 UID/GID `10001:10001` 執行，根檔案系統為唯讀，只有掛載進去的 `app/logs` 和 `data` 可寫入。部署目錄和 `app/` 用你自己的帳號建立，之後編輯設定不需要 `sudo`；`app/logs` 和 `data` 的擁有者則設為容器使用者：
 
 ```bash
-mkdir -p ~/Ecoku && cd ~/Ecoku
+mkdir -p ~/Ecoku/app && cd ~/Ecoku
 sudo install -d -o 10001 -g 10001 -m 750 app/logs data
 ```
 
@@ -130,14 +130,15 @@ admin:
     - "https://ecoku.example.com"
 EOF
 
-sudo chown 10001:10001 app/config.yaml
-sudo chmod 640 app/config.yaml
+chmod 644 app/config.yaml
 ```
+
+`config.yaml` 不含密碼或金鑰，維持屬於你自己、權限 `644` 即可：容器以唯讀方式掛載它，靠其他使用者的讀取權限讀取，之後修改也不需要 `sudo`。
 
 需要依自己的環境修改的只有兩處：
 
 - `notifications.instance_public_url`：Ecoku 的公開網址。啟用電子郵件或 Telegram 通知前必須填寫，否則在後台儲存通知設定會失敗。
-- `admin.allowed_origins`：開啟管理後台時瀏覽器網址列中的來源（協定 + 網域 + 選填的連接埠）。它**不能與任何站點的允許來源重複**，否則服務會拒絕啟動。這就是 Ecoku 需要獨立網域的原因。
+- `admin.allowed_origins`：開啟管理後台時瀏覽器網址列中的來源（協定 + 網域 + 選填的連接埠）。它**不能與任何站點的允許來源重複**，在後台儲存站點時會拒絕與它相同的來源。這就是 Ecoku 需要獨立網域的原因。
 
 設定檔不存放任何密碼或金鑰，只寫環境變數的名稱，實際的值放在下一步的 `ecoku.env`。未知欄位會導致啟動失敗，所有欄位的意義見[設定參考](../reference/configuration)。
 
@@ -158,7 +159,11 @@ if ! grep -q '^ECOKU_ADMIN_PASSWORD_HASH=' ecoku.env; then
   read -rsp '管理员密码: ' ADMIN_PASS; echo
   HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i "git.via.moe/dejavu/ecoku:v0.2.6" hash-password)
   unset ADMIN_PASS
-  echo "ECOKU_ADMIN_PASSWORD_HASH='$HASH'" >> ecoku.env
+  if [ -n "$HASH" ]; then
+    echo "ECOKU_ADMIN_PASSWORD_HASH='$HASH'" >> ecoku.env
+  else
+    echo '產生密碼雜湊失敗，請重新執行本段腳本' >&2
+  fi
 fi
 
 # 管理員工作階段簽章金鑰：64 個十六進位字元
@@ -177,7 +182,7 @@ grep -q '^ECOKU_NOTIFICATION_ENCRYPTION_KEY=' ecoku.env || \
 | `TZ` | 評論時間依這個時區顯示，填 IANA 名稱，例如 `Asia/Tokyo`。 |
 | `ECOKU_ADMIN_USERNAME` | 後台登入使用者名稱，1～80 個字元。 |
 | `ECOKU_ADMIN_PASSWORD_HASH` | 後台密碼的 bcrypt 雜湊，由映像檔內建的 `hash-password` 指令產生。 |
-| `ECOKU_ADMIN_TOKEN_KEY` | 管理員工作階段的簽章金鑰，至少 32 個字元。更換後所有已登入的工作階段都會失效。 |
+| `ECOKU_ADMIN_TOKEN_KEY` | 管理員工作階段的簽章金鑰，至少 32 位元組。更換後所有已登入的工作階段都會失效。 |
 | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 加密資料庫中的 SMTP 密碼、Telegram Bot Token 和人機驗證 Secret Key。 |
 
 ::: danger 請把主金鑰和資料庫一起備份

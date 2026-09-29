@@ -61,7 +61,7 @@ await comments.init()
 | `theme` | `'auto' \| 'light' \| 'dark'` | No | `'auto'` | Color scheme. `auto` follows the page's light/dark setting. |
 | `cssURL` | `string` | No | `''` | When empty, the default styles are injected. Any value (a stylesheet URL or `'none'`) stops the injection. See below. |
 
-Invalid options make the constructor or `init()` throw a `TypeError`.
+The constructor does not validate options; invalid options make `init()` throw a `TypeError`.
 
 The old option `apiBaseUrl` is an alias of `serverURL`. It still works but is deprecated.
 
@@ -90,6 +90,7 @@ Switches to another post's comment section. Call it after a route change in a si
 - If the page key is the same as the current one, only the comments are reloaded.
 - If it differs, in-flight requests are canceled, open reply boxes are closed, the comment box is cleared, and the first page of the new page is loaded.
 - **Pass the new post's title as the second argument.** If you omit it, the title is cleared rather than kept from the previous post; otherwise notifications for new comments would show the wrong post name. Call it after both the route and the title have been updated.
+- The title passed here is not truncated. If it is longer than 200 characters, the server rejects the comment submission.
 
 ### `reload()`
 

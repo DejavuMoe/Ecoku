@@ -9,7 +9,7 @@ Ecoku uses two values to identify "the comment section of one post":
 - **Site ID** (`siteId`): set when you register a site in the admin console. One instance can have multiple sites, and their comments, allowed origins, and settings are completely separate.
 - **Page key** (`pageKey`): provided by the embed code. It is usually the post's path on the site, such as `/posts/hello-world/`.
 
-Within one site, pages with the same page key share one comment section. A page key must be a relative path on the site, at most 512 characters long. It cannot be a full URL, and it cannot contain a `?` query string or a `#` fragment.
+Within one site, pages with the same page key share one comment section. A page key must be a relative path on the site, at most 512 characters long. It cannot be a full URL, and it cannot contain a `?` query string or a `#` fragment. A key that breaks these rules still displays the comment section, but posting comments is rejected.
 
 ::: warning Do not change a page key once it is in use
 Comments are stored by page key. If you later change your blog's permalink format, the page keys of old posts change with it, and their existing comments no longer appear (the data is still in the database). Pick a value that will not change as the page key.

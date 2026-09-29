@@ -1,6 +1,6 @@
 # 命令行
 
-镜像的入口程序是 `/app/ecoku-server`。不带参数时启动服务；带下面的子命令时执行一次性任务后退出。
+镜像的入口程序是 `/app/ecoku-server`。不带参数时启动服务；带下面的子命令时执行一次性任务后退出。子命令名写错时不会报错，而是照常启动服务，运行前请核对拼写。
 
 在部署目录中，用 `docker compose run` 以相同的配置和挂载运行子命令：
 
@@ -61,18 +61,27 @@ sudo docker compose up -d
 
 把 Twikoo 的 JSON 导出导入到一个没有任何评论的站点。
 
+先加 `--dry-run` 预检：
+
 ```bash
 sudo docker compose run --rm --no-deps ecoku \
-  import-twikoo --site=blog --file=/data/twikoo.json [--dry-run]
+  import-twikoo --site=blog --file=/data/twikoo.json --dry-run
+```
+
+确认结果后去掉 `--dry-run` 正式导入：
+
+```bash
+sudo docker compose run --rm --no-deps ecoku \
+  import-twikoo --site=blog --file=/data/twikoo.json
 ```
 
 | 参数 | 说明 |
 | --- | --- |
 | `--site` | 目标站点 ID，必须已在后台注册且没有任何评论（包括已删除的）。 |
-| `--file` | 容器内的导出文件路径。文件需要先放进 `data/` 目录，容器内路径为 `/data/...`。 |
+| `--file` | 容器内的导出文件路径。文件需要先放进 `data/` 目录（方法见[从 Twikoo 迁移](../self-hosting/twikoo)），容器内路径为 `/data/...`。 |
 | `--dry-run` | 完整执行一遍导入后回滚，只输出统计，不保存评论。 |
 
-成功时输出统计。预检显示“预检通过”，正式导入显示“完成”：
+成功时最后一行输出统计（行首带日期时间）。预检显示“预检通过”，正式导入显示“完成”，例如：
 
 ```text
 Twikoo 导入预检通过：评论=128 根评论=90 回复=38 页面=24 邮箱=110 网站=45 缺失父记录=0

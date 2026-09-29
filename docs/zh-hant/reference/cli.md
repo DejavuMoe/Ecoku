@@ -1,6 +1,6 @@
 # 命令列
 
-映像檔的進入點程式是 `/app/ecoku-server`。不帶參數時啟動服務；帶下面的子指令時，執行一次性工作後結束。
+映像檔的進入點程式是 `/app/ecoku-server`。不帶參數時啟動服務；帶下面的子指令時，執行一次性工作後結束。子指令名稱打錯時不會報錯，而是照常啟動服務，執行前請核對拼寫。
 
 在部署目錄中，用 `docker compose run` 以相同的設定和掛載執行子指令：
 
@@ -61,18 +61,27 @@ sudo docker compose up -d
 
 把 Twikoo 匯出的 JSON 匯入到一個沒有任何評論的站點。
 
+先加 `--dry-run` 預檢：
+
 ```bash
 sudo docker compose run --rm --no-deps ecoku \
-  import-twikoo --site=blog --file=/data/twikoo.json [--dry-run]
+  import-twikoo --site=blog --file=/data/twikoo.json --dry-run
+```
+
+確認結果後去掉 `--dry-run` 正式匯入：
+
+```bash
+sudo docker compose run --rm --no-deps ecoku \
+  import-twikoo --site=blog --file=/data/twikoo.json
 ```
 
 | 參數 | 說明 |
 | --- | --- |
 | `--site` | 目標站點 ID，必須已在後台註冊，且沒有任何評論（包括已刪除的）。 |
-| `--file` | 容器內的匯出檔案路徑。檔案需要先放進 `data/` 目錄，容器內的路徑為 `/data/...`。 |
+| `--file` | 容器內的匯出檔案路徑。檔案需要先放進 `data/` 目錄（方法見[從 Twikoo 遷移](../self-hosting/twikoo)），容器內的路徑為 `/data/...`。 |
 | `--dry-run` | 完整執行一遍匯入後回滾，只輸出統計，不保存評論。 |
 
-成功時輸出統計。預檢顯示「预检通过」，正式匯入顯示「完成」：
+成功時最後一行輸出統計（行首帶日期時間）。預檢顯示「预检通过」，正式匯入顯示「完成」，例如：
 
 ```text
 Twikoo 导入预检通过：评论=128 根评论=90 回复=38 页面=24 邮箱=110 网站=45 缺失父记录=0

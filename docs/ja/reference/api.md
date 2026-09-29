@@ -14,7 +14,7 @@
 { "code": 200, "message": "Success", "data": { } }
 ```
 
-`code` は HTTP ステータスコードと同じです。エラーの場合は `data` がなく、`message` は中国語の説明文になります。例：
+`code` は HTTP ステータスコードと同じです。エラーの場合は通常 `data` がなく（テスト通知の失敗は例外です。[通知](#notifications)を参照）、`message` は中国語の説明文になります。例：
 
 ```json
 { "code": 403, "message": "来源不属于当前站点" }
@@ -31,12 +31,13 @@
 | `401` | 管理 API でログインしていない、またはセッションが無効。 |
 | `403` | オリジンが許可リストにない、または権限がない。 |
 | `404` | サイト、コメント、API が存在しない。 |
+| `405` | パスは存在するが、そのリクエストメソッドに対応していない。 |
 | `409` | 状態の競合：親コメントが別のページに属している、削除済みのコメントに返信した、設定がほかのセッションで変更された、など。 |
 | `413` | リクエストボディが上限を超えている。 |
 | `422` | コメント一覧が読み込みの上限を超えた、または返信の階層が 16 を超えた。 |
 | `429` | レート制限に達した。レスポンスヘッダー `Retry-After` で待つべき秒数を示します。 |
 | `502` | テスト通知の送信に失敗した。 |
-| `503` | サービスが混雑している、読み込みがタイムアウトした、または CAPTCHA サービスが利用できない。 |
+| `503` | サービスが混雑している、読み込みがタイムアウトした、CAPTCHA サービスが利用できない、管理者セッションのストレージが利用できない、または認証情報の暗号化マスターキーが設定されていない。 |
 
 ### クロスオリジンとオリジン
 
@@ -186,7 +187,7 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&parentId=101&afterId=1
 | `afterId` | ID がこれより大きいコメントだけを返します。デフォルトは `0`。 |
 | `pageSize` | 1～100、デフォルトは `10`。 |
 
-結果は ID の昇順に並びます。このモードでは `page` や `sort` を同時に渡せず、渡すと `400` を返します。親コメントが存在しない、またはそのページに属していない場合は `404` を返します。
+結果は ID の昇順に並びます。`afterId` は `parentId` と一緒に使う必要があります。このモードでは `page` や `sort` を同時に渡せず、渡すと `400` を返します。親コメントが存在しない、またはそのページに属していない場合は `404` を返します。
 
 ```json
 {
@@ -256,7 +257,9 @@ Origin: https://blog.example.com
 | `403` | `Origin` がない、またはオリジンがそのサイトに属していない。 |
 | `404` | サイトまたは親コメントが存在しない。 |
 | `409` | 親コメントが別のページに属している、または親コメントが削除済み。 |
+| `413` | リクエストボディが 80 KiB を超えている。 |
 | `422` | 返信の階層が 16 を超えた。 |
+| `429` | `rate_limit.comment_submit`（デフォルトは IP ごとに 60 秒あたり 5 回）を超えた。 |
 | `503` | CAPTCHA サービスが利用できない。 |
 
 ## 管理 API
@@ -267,7 +270,7 @@ Origin: https://blog.example.com
 
 - **セッション Cookie**：`POST /api/admin/login` が成功すると、サーバーは `ecoku_admin_session` という名前の Cookie（HttpOnly、SameSite=Strict、Path=`/api/admin`、本番環境では Secure 付き）を設定します。有効期間は 8 時間です。ログインのレスポンスには token は含まれません。
 - ログインのリクエストと、Cookie で認証する GET 以外のリクエストには、`admin.allowed_origins` に含まれる `Origin` が必要です。
-- `Authorization: Bearer <認証情報>` で認証するリクエストでは `Origin` を確認しません。認証情報は現在有効でログアウトされていないセッションでなければなりません。v0.2.4 より前に発行された古い token は使えません。
+- `Authorization: Bearer <認証情報>` または管理キーで認証するリクエストには `Origin` を付けなくてもかまいません。付けた場合は `admin.allowed_origins` に含まれている必要があり、そうでなければ `403` を返します。Bearer の認証情報は現在有効でログアウトされていないセッションでなければなりません。v0.2.4 より前に発行された古い token は使えません。
 - ログインには HTTPS が必要で、HTTP を使えるのはループバックアドレスだけです。
 
 ### ログインとセッション
@@ -286,15 +289,17 @@ Origin: https://blog.example.com
 | `GET /api/admin/sites` | すべてのサイト。 |
 | `POST /api/admin/sites` | サイトを作成します。 |
 | `GET /api/admin/sites/:siteId` | 1 つのサイト。 |
-| `PUT /api/admin/sites/:siteId` | サイトを更新します。リクエストボディには読み込み時に得た `revision` を含める必要があります。その間にほかのセッションで変更されていた場合は `409` を返します。 |
+| `PUT /api/admin/sites/:siteId` | サイトを更新します。リクエストボディには読み込み時に得た `revision` を含める必要があり、ない場合は `400` を返します。その間にほかのセッションで変更されていた場合は `409` を返します。 |
 
-サイトのフィールド：`id`、`site_url`、`name`、`allowed_origins`、`default_sort`、`email_required`、`website_required`、`placeholder`、`comment_limit`、`empty_message`、`smoji_enabled`、`smoji_manifest_url`、`blogger_nickname`、`blogger_email`、`blogger_badge`、`blogger_passphrase`（書き込み専用）、`revision`。レスポンスでは `blogger_passphrase_set` で合言葉が設定済みかどうかを表します。
+サイトのフィールド：`id`、`site_url`、`name`、`allowed_origins`、`default_sort`、`email_required`、`website_required`、`placeholder`、`comment_limit`、`empty_message`、`smoji_enabled`、`smoji_manifest_url`、`blogger_nickname`、`blogger_email`、`blogger_badge`、`blogger_passphrase`（書き込み専用）、`revision`。レスポンスでは `blogger_passphrase_set` で合言葉が設定済みかどうかを表し、読み取り専用の `created_at`、`updated_at` も含みます。サイト一覧は `data.data` 配列に、1 つのサイトおよび作成・更新の結果は `data.site` に入ります。
+
+サイトの作成時に ID がすでに存在する場合や、`allowed_origins` が `admin.allowed_origins` と重複する場合は、いずれも `409` を返します。
 
 ### コメント
 
 | メソッドとパス | 説明 |
 | --- | --- |
-| `GET /api/admin/sites/:siteId/comments` | コメント一覧。パラメーター：`status`（`published` または `deleted`）、`page`、`pageSize`（デフォルト 20、最大 100）、`sort`（`newest` または `oldest`）。 |
+| `GET /api/admin/sites/:siteId/comments` | コメント一覧。パラメーター：`status`（`published` または `deleted`、デフォルトは `published`）、`page`（最大 1000000）、`pageSize`（デフォルト 20、最大 100）、`sort`（`newest` または `oldest`、デフォルトは `newest`）。レスポンスには `total`、`pageCount`、状態ごとの件数 `counts` が含まれます。 |
 | `GET /api/admin/sites/:siteId/comments/:commentId` | 1 件のコメント。非公開のメールアドレスを含みます。 |
 | `DELETE /api/admin/sites/:siteId/comments/:commentId` | 墓標削除。削除済みのコメントをもう一度削除すると成功を返し、`unchanged` が `true` になります。 |
 | `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent` | 完全削除。返信のない墓標にだけ使え、それ以外では `409` を返します。 |
@@ -310,7 +315,7 @@ Origin: https://blog.example.com
 
 `/api/admin/turnstile` は旧版の API で、引き続き使えますが、新しいコードでは `/api/admin/captcha` を使ってください。
 
-### 通知
+### 通知 {#notifications}
 
 | メソッドとパス | 説明 |
 | --- | --- |
@@ -326,7 +331,7 @@ Origin: https://blog.example.com
 
 サイト管理キーは、自前の管理システムから規約違反のコメントを削除するような、**信頼できるサーバー側の自動化**のためのものです。ブラウザに置いてはいけません。
 
-1. `app/config.yaml` の `sites` でサイトに `management_key_env` を設定し、`ecoku.env` に対応する環境変数を設定します。値は 32 文字以上で、サイト間で同じにしてはいけません。[設定リファレンス](./configuration#sites)を参照してください。
+1. `app/config.yaml` の `sites` でサイトに `management_key_env` を設定し、`ecoku.env` に対応する環境変数を設定します。値は 32 バイト以上で、サイト間で同じにしてはいけません。[設定リファレンス](./configuration#sites)を参照してください。
 2. リクエスト時に次を付けます。
 
    ```http
@@ -340,6 +345,6 @@ DELETE /api/admin/sites/blog/comments/102
 Authorization: EcokuSite <管理キー>
 ```
 
-コメントの一覧や詳細の読み取り、完全削除、ほかのサイトやインスタンス設定へのアクセスはできず、これらのリクエストには `403` を返します。管理キーを使う場合も `admin.enabled: true` が必要です。
+コメントの一覧や詳細の読み取り、完全削除、ほかのサイトやインスタンス設定へのアクセスはできず、これらのリクエストには `403` を返します。キーが無効な場合は `401` を返します。管理キーを使う場合も `admin.enabled: true` が必要です。
 
 `sites` のサイト設定はデータベースの初回初期化時にしか書き込まれませんが、`management_key_env` は起動のたびに読み込まれます。既存のインスタンスで管理キーを使うには、`sites` にエントリーを 1 つ追加します。`id` は管理画面にある既存のサイトと同じにし、設定の検証を通すために `site_url` と `allowed_origins` も書きます。このエントリーのほかのフィールドが管理画面の設定を上書きすることはありません。

@@ -67,7 +67,7 @@
 
 1. 页面解析完成后，加载器读取外壳上的属性。缺少 `data-server-url`、`data-site-id`、`data-page-key`，或缺少四个 `data-ecoku-*` 子元素中的任何一个时，它会**静默跳过**，页面上不出现任何内容。
 2. 加载器从自己所在的目录加载 `ecoku.umd.js`，并初始化评论区。加载期间不显示“正在加载”之类的文字。
-3. 脚本加载或初始化超过 12 秒、或者失败时，显示错误信息和「重新加载评论」按钮，访客可以点击重试。
+3. 脚本加载或初始化任一阶段超过 12 秒、或者失败时，显示错误信息和「重新加载评论」按钮，访客可以点击重试。
 
 一个页面上可以有多个外壳，每个都会独立初始化。
 
@@ -81,7 +81,8 @@
 
 - `script-src` 和 `connect-src`：Ecoku 的来源，如 `https://ecoku.example.com`；
 - 默认样式以 `<style>` 元素注入。CSP 不允许内联样式时，把 `data-css-url` 设为 `https://ecoku.example.com/client/ecoku.css`，改用外链样式表，并在 `style-src` 中放行该来源；
-- 启用了人机验证时，还要放行验证服务，见[人机验证 · 内容安全策略](../self-hosting/captcha#csp)。
+- 启用了人机验证时，还要放行验证服务，见[人机验证 · 内容安全策略](../self-hosting/captcha#csp)；
+- 启用了 [Smoji 表情](./smoji)时，在 `connect-src` 和 `img-src` 中放行表情清单所在的来源。
 
 ## 不用加载器
 
