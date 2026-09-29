@@ -3,7 +3,7 @@
 本目录保存 Ecoku 管理端的已批准设计证据、脱敏 fixture 与发送模板设计基线。
 `index-v13.html` 是管理端当前已批准的统一基线，覆盖登录、评论管理、站点管理、通知设置与安全：
 颜色、圆角与深色 token 与评论区 v17「纸与墨」一致，界面使用操作系统自带的 CJK 与英文无衬线字体栈，不加载网络字体。
-仅供服务端渲染参考的通知模板继续沿用 v5。v12 的关闭 / Cloudflare Turnstile / 自托管 Cap 三态语义与 Cap 官方组件几何在 v13 中保留，只映射 Ecoku token。停服恢复命令只属于自托管文档，不进入界面。原型文件本身不调用真实 API，也不进入运行时镜像。
+仅供服务端渲染参考的通知模板为 v6（`email-notification-v6.html`、`telegram-notification-v6.html`），与 v13 使用同一套纸墨 token 与系统字体栈。v12 的关闭 / Cloudflare Turnstile / 自托管 Cap 三态语义与 Cap 官方组件几何在 v13 中保留，只映射 Ecoku token。停服恢复命令只属于自托管文档，不进入界面。原型文件本身不调用真实 API，也不进入运行时镜像。
 
 ## 当前产品边界
 
@@ -54,7 +54,12 @@
 - `index-v6.html`：上一版已批准站点配置与博主身份设计证据；
 - `index-v5.html`、`styles-v5.css`、`prototype-v5.js`：当前评论管理和通知设置布局设计基线；
 - `fixtures-v5.js`：脱敏的站点、评论与通知配置 fixture；
-- `email-*-v5.html`、`telegram-notification-v5.html`：仅供开发验证的已批准发送模板设计基线，不进入管理端构件；
+- `email-notification-v6.html`、`telegram-notification-v6.html`、`notifications-v6.js`、`notifications-v6.test.mjs`：当前已批准的发送模板设计基线。
+  邮件改用评论区 v17 纸墨 token（含深色）、系统 CJK 无衬线字体栈与表格布局，Georgia 只用于 `Ecoku` 字标；主题附带文章标题，
+  时间按容器时区显示并注明 UTC 偏移，表情包按站点当前清单来源渲染为图片、其余显示为文字标签；Telegram 被回复评论放入引用块，
+  评论删除后已发出的消息改写为“这条评论已被删除”。`notifications-v6.js` 是两份预览与原型测试共用的参考渲染，服务端 `server/notifications` 按同一结构输出；
+  仅供开发验证，不进入管理端构件；
+- `email-*-v5.html`、`telegram-notification-v5.html`：上一版已批准发送模板设计证据；
 - `index.html`、`index-v2.html`、`index-v4.html` 及配套文件：历史设计证据；
 - `_d_meta.json`：设计审批元数据；
 - `ui-contract.json`：原型到生产实现的合同。
@@ -67,6 +72,8 @@
 
 ```text
 http://127.0.0.1:4311/admin-moderation/index-v13.html
+http://127.0.0.1:4311/admin-moderation/email-notification-v6.html
+http://127.0.0.1:4311/admin-moderation/telegram-notification-v6.html
 ```
 
 执行无依赖静态契约测试：
@@ -76,4 +83,5 @@ node designs/admin-moderation/index-v11.test.mjs
 node designs/admin-moderation/index-v10.test.mjs
 node designs/admin-moderation/index-v12.test.mjs
 node designs/admin-moderation/index-v13.test.mjs
+node designs/admin-moderation/notifications-v6.test.mjs
 ```

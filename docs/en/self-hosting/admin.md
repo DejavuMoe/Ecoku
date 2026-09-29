@@ -85,7 +85,7 @@ Setting or changing the passphrase does not change the blogger mark on existing 
 
 ### Tombstone delete
 
-**Tombstone delete** (墓碑删除) clears the comment's nickname, email, website, and body, but keeps its position in the discussion. On public pages it shows as "Deleted" (已删除) and "[This comment has been deleted]" ([该评论已删除]). Its replies stay as they are, and nobody can reply to it anymore. This cannot be undone.
+**Tombstone delete** (墓碑删除) clears the comment's nickname, email, website, and body, but keeps its position in the discussion. On public pages it shows as "Deleted" (已删除) and "[This comment has been deleted]" ([该评论已删除]). Its replies stay as they are, and nobody can reply to it anymore. This cannot be undone. For what happens to notifications that are pending or already sent, see [After a comment is deleted](./notifications#after-deletion).
 
 ### Permanent delete
 

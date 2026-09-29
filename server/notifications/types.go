@@ -6,9 +6,17 @@ const (
 	ChannelEmail    = "email"
 	ChannelTelegram = "telegram"
 
-	EventBloggerEmail    = "blogger_email_new"
-	EventBloggerTelegram = "blogger_telegram_new"
-	EventVisitorReply    = "visitor_reply"
+	EventBloggerEmail           = "blogger_email_new"
+	EventBloggerTelegram        = "blogger_telegram_new"
+	EventVisitorReply           = "visitor_reply"
+	EventBloggerTelegramRetract = "blogger_telegram_retract"
+
+	// maxDeliveryAttempts bounds retries; the row then becomes exhausted.
+	maxDeliveryAttempts = 8
+	// outboxRetention keeps finished rows long enough to retract a sent
+	// Telegram message when its comment is deleted later.
+	outboxRetention = 30 * 24 * time.Hour
+	pruneInterval   = 6 * time.Hour
 )
 
 type EmailConfig struct {
@@ -68,4 +76,6 @@ type outboxRow struct {
 	CreatedAt     time.Time  `gorm:"column:created_at"`
 	UpdatedAt     time.Time  `gorm:"column:updated_at"`
 	SentAt        *time.Time `gorm:"column:sent_at"`
+	// ProviderMessageID is the Telegram message_id of a sent blogger message.
+	ProviderMessageID *string `gorm:"column:provider_message_id"`
 }

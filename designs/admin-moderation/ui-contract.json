@@ -43,16 +43,28 @@
       "role": "previous approved comment management and notification settings layout, superseded by v13"
     },
     {
+      "path": "designs/admin-moderation/email-notification-v6.html",
+      "role": "current approved email notification baseline: paper-and-ink tokens, system CJK sans stack, table layout, dark mode"
+    },
+    {
+      "path": "designs/admin-moderation/telegram-notification-v6.html",
+      "role": "current approved Telegram message baseline including the retracted state"
+    },
+    {
+      "path": "designs/admin-moderation/notifications-v6.js",
+      "role": "reference renderer shared by the v6 previews and notifications-v6.test.mjs; server/notifications mirrors its structure"
+    },
+    {
       "path": "designs/admin-moderation/email-blogger-new-comment-v5.html",
-      "role": "current approved blogger new-comment email baseline"
+      "role": "previous approved blogger new-comment email baseline, superseded by notifications v6"
     },
     {
       "path": "designs/admin-moderation/email-visitor-reply-v5.html",
-      "role": "current approved visitor reply email baseline"
+      "role": "previous approved visitor reply email baseline, superseded by notifications v6"
     },
     {
       "path": "designs/admin-moderation/telegram-notification-v5.html",
-      "role": "current approved Telegram message baseline"
+      "role": "previous approved Telegram message baseline, superseded by notifications v6"
     },
     {
       "path": "D:/Forgejo/Blog/designs/twikoo-theme-styles/index.html",
@@ -250,15 +262,22 @@
     {
       "id": "notification-templates",
       "prototype": {
-        "entry": "email-blogger-new-comment-v5.html",
+        "entry": "email-notification-v6.html",
         "states": [
           "blogger-new-comment-email",
           "blogger-new-reply-email",
           "visitor-reply-email",
+          "test-email",
           "telegram-message",
+          "telegram-retracted-message",
           "site-name-domain-fallback",
-          "article-title",
+          "article-title-in-subject",
+          "smoji-image-or-label",
+          "display-time-zone",
+          "blogger-badge",
           "long-content",
+          "dark-mode",
+          "narrow-viewport",
           "safe-escaped-content"
         ]
       },
@@ -266,8 +285,10 @@
         "routeOrWindow": "internal outbound notifications only; no /admin/templates/* route",
         "status": "implemented",
         "referenceFiles": [
+          "server/notifications/email_layout.go",
           "server/notifications/templates.go",
-          "server/notifications/delivery.go"
+          "server/notifications/delivery.go",
+          "server/notifications/outbox.go"
         ]
       },
       "status": "implemented"

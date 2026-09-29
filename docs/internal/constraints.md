@@ -2,7 +2,7 @@
 
 面向实现与 Agent 的边界说明，不进入 VitePress 站点导航。公开运维文档见 `docs/self-hosting/`。
 
-> 状态：P0～P4 历史阶段已验收；评论区 index-v17、管理端统一视觉 index-v13 与服务端 v5 通知模板均已批准实施。
+> 状态：P0～P4 历史阶段已验收；评论区 index-v17、管理端统一视觉 index-v13 与服务端 v6 通知模板均已批准实施。
 > 历史验收记录只描述当时版本，不约束当前直接发布模型。
 
 ## 评论体验
@@ -75,7 +75,7 @@
 - 管理端包含登录、站点注册与评论表单配置、按 `published/deleted` 筛选的评论列表、详情、
   墓碑删除和无后代墓碑的彻底删除。不提供审核队列、用户管理、RBAC、Count 或站点密钥管理界面。
   另有实例级「安全」页，以三态单选配置关闭、Turnstile 或 Cap；Turnstile 保存 Sitekey/Secret，Cap 保存 HTTPS 实例地址、Site key/Secret。停服恢复命令只写入自托管文档，不在管理界面展示。
-- 管理端以 `designs/admin-moderation/index-v13.html` 为登录、评论管理、站点管理、通知设置与安全的当前已批准基线，发送模板沿用 v5 设计；对应 v5 通知模板只供服务端投递时渲染，管理端不展示模板预览，也不公开模板静态页面。浏览器管理员凭据仅通过 host-only HttpOnly Cookie 保存（Path=/api/admin、SameSite=Strict，生产 Secure，明确允许的回环 HTTP 开发 Origin 除外），不进入登录 JSON、JavaScript、localStorage、sessionStorage 或 URL。刷新及关闭重开恢复有效会话，恢复接口不续期。登录与 Cookie 写操作要求明确的管理端白名单 Origin；安全 GET 可无 Origin。退出只有服务端撤销成功或已失效才清空界面，失败保留会话并提示重试。
+- 管理端以 `designs/admin-moderation/index-v13.html` 为登录、评论管理、站点管理、通知设置与安全的当前已批准基线，发送模板以 `designs/admin-moderation/email-notification-v6.html`、`telegram-notification-v6.html` 为准；对应 v6 通知模板只供服务端投递时渲染，管理端不展示模板预览，也不公开模板静态页面。浏览器管理员凭据仅通过 host-only HttpOnly Cookie 保存（Path=/api/admin、SameSite=Strict，生产 Secure，明确允许的回环 HTTP 开发 Origin 除外），不进入登录 JSON、JavaScript、localStorage、sessionStorage 或 URL。刷新及关闭重开恢复有效会话，恢复接口不续期。登录与 Cookie 写操作要求明确的管理端白名单 Origin；安全 GET 可无 Origin。退出只有服务端撤销成功或已失效才清空界面，失败保留会话并提示重试。
 - 管理端配色默认 `auto`，跟随系统 `prefers-color-scheme`；浅色与深色的纸张、表面与正文 token 与评论区 v17 默认值逐值对齐。不提供主题切换器，也不把配色写入本地存储。界面字体使用系统 CJK 与英文无衬线字体栈（`-apple-system`、`Segoe UI`、`PingFang SC`、`Microsoft YaHei`、`Noto Sans CJK SC` 等），不加载网络字体。评论区前端继续 inherit 宿主字体。
 - 管理端是“评论管理”而非审核队列；已发布评论和公开墓碑使用
   `site_url + pageKey + #ecoku-comment-ID` 精确跳转。
@@ -97,14 +97,19 @@
 - 新评论与新回复的邮件或 Telegram 通知只投递给配置的博主收件人/目标；访客回复邮件只投递给
   被直接回复评论中私有保存的邮箱。通知只提供站点名称（空值回落域名）、评论人、必要的父评论语境、
   文章标题、纯文本正文和正确拼接的原文链接，不提供审核按钮、审核台链接、页面 key、IP、UA 或地区。
-  博主通知标题使用“您在 [站点名称] 上有新评论/新回复”；邮件页脚使用“此邮件由 [站点名称] 系统发送，请勿直接回复本邮件。”
-  文章标题为空时使用“这篇文章”，原文锚点为 `#ecoku-comment-ID`。
+  博主通知标题使用“您在 [站点名称] 上有新评论/新回复”，访客回复通知标题使用“你在 [站点名称] 的评论收到了回复”；
+  邮件主题在标题后追加“：[文章标题]”（折成一行，最多 60 个字符），文章标题为空时不追加；正文中文章标题为空时使用“这篇文章”。
+  邮件页脚使用“此邮件由 [站点名称] 系统发送，请勿直接回复本邮件。”，原文锚点为 `#ecoku-comment-ID`。
+  时间按与公开评论相同的显示时区（容器 `TZ`）渲染并注明 UTC 偏移。表情包标记只在站点已启用表情包且图片与当前清单同源时渲染为图片，
+  否则与纯文本邮件、Telegram 一样显示为“[表情：标签]”，不输出原始标记。邮件 HTML 使用评论区 v17 纸墨 token、系统 CJK 无衬线字体栈与表格布局，
+  不加载网络字体；发件人显示名为站点名称，并带 `Date`、`Message-ID`、`Auto-Submitted: auto-generated`。
 - 默认通知判定为：访客发表根评论时通知博主渠道；访客回复访客时通知博主渠道并邮件通知被直接回复者；
   访客回复博主时只通知博主渠道一次；博主发表根评论不通知；博主回复访客时只邮件通知被直接回复者；
   博主回复博主不通知。判定以存储的 `is_blogger` 为准。同一访客用同一邮箱回复自己时不发送访客回复邮件（只比较邮箱，不比较昵称）。
 - SMTP 密码与 Telegram Bot Token 使用独立环境主密钥进行 AES-256-GCM 加密后写入 SQLite；
   API 和 UI 只返回“已设置”状态，不明文回显。主密钥缺失或无法解密已保存密文时失败关闭。
-- 通知事件与评论事务共同写入 SQLite outbox，并按入队当时的收件人/目标拆成每目标一行；后台单进程 worker 有界重试，启动时把所有 `processing` 行收回。投递时不再重新检查渠道是否启用或评论是否仍为博主。日志与错误码不得包含凭据、评论正文或第三方响应正文；outbox 可以保存已快照的目标地址（邮箱或 Telegram chat id），以便按目标重试。
+- 通知事件与评论事务共同写入 SQLite outbox，并按入队当时的收件人/目标拆成每目标一行；后台单进程 worker 最多尝试 8 次，用完或遇到不可重试的拒绝（SMTP 55x、Telegram 400/403）即标为 `exhausted`，Telegram 429 按 `retry_after` 推迟；启动时把所有 `processing` 行收回。投递时不再重新检查渠道是否启用或评论是否仍为博主，但评论已成为墓碑时取消。日志与错误码不得包含凭据、评论正文或第三方响应正文；outbox 可以保存已快照的目标地址（邮箱或 Telegram chat id）与已发 Telegram 消息的 `message_id`，以便按目标重试和撤回。`sent`、`cancelled`、`exhausted` 行在最后更新 30 天后由 worker 自动清理，未完成的行不清理。
+- 评论删除为墓碑时，在同一事务中：取消该评论尚未发出的通知；删除发往其私有邮箱的访客回复邮件行（不再保留已抹除的地址）；为已发出或正在发出的博主 Telegram 消息排入撤回事件，worker 用 `editMessageText` 把原消息改写为“这条评论已被删除，通知内容已移除。”，只保留站点名称与文章标题。已离开 SMTP 服务器的邮件无法撤回。通知记录已被清理（超过 30 天）、墓碑在撤回完成前被彻底删除，或发送结果未能记录时，无法撤回。
 
 ## Twikoo 首次导入
 
@@ -156,7 +161,7 @@
   实例级通知渠道。配置文件中出现旧 MySQL、普通用户或 `drop_table` 字段会明确失败。
 - schema 带版本、名称和校验和，不使用 `AutoMigrate`。当前迁移链支持在同一个 SQLite 文件中把已完成
   v1 的数据库事务性升级到 v2、v3、v4、v5、v6，再升级到 v7、v8；v2 只为站点注册表增加博主昵称和博主邮箱，v3 增加评论区
-  博主标志，v4 增加实例级 `turnstile_settings`，v5 增加博主口令哈希、`comments.is_blogger` 并把通知 outbox 按目标拆行，v6 原位把该设置表重命名为 `captcha_settings` 并增加 provider 与 Cap 字段，v7 为站点增加 Smoji 启用状态和清单 URL，v8 仅增加管理员会话表及过期索引。成功后追加 `schema_migrations` 版本记录。升级不会生成或自动删除所谓“v1 数据库”，也不会删除数据库、配置、WAL、
+  博主标志，v4 增加实例级 `turnstile_settings`，v5 增加博主口令哈希、`comments.is_blogger` 并把通知 outbox 按目标拆行，v6 原位把该设置表重命名为 `captcha_settings` 并增加 provider 与 Cap 字段，v7 为站点增加 Smoji 启用状态和清单 URL，v8 仅增加管理员会话表及过期索引，v9 原位重建通知 outbox：增加 `exhausted` 状态、Telegram 撤回事件、`provider_message_id` 与按评论的索引，保留全部行、id 与自增序号，已用完 8 次尝试的 `failed` 行改为 `exhausted`。成功后追加 `schema_migrations` 版本记录。升级不会生成或自动删除所谓“v1 数据库”，也不会删除数据库、配置、WAL、
   业务数据或操作者备份。已写入 v8 的库不能只换回仅支持 v7 的旧镜像；回滚必须用停服前的整库备份恢复。
 - 空数据库可以按顺序初始化至最新版本；无版本、未知断层、未来版本、名称或校验和不匹配的数据库均失败关闭。
   操作者仍必须先停服并校验卷外备份；任何 DROP、覆盖或备份清理都需要针对目标环境的明确授权。

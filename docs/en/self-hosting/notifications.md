@@ -30,6 +30,7 @@ In addition:
 
 - No visitor email is sent if the visitor who was replied to left no email address, or if the replier and the person replied to have the same email address (replying to yourself).
 - If the comment that was replied to is deleted before the notification goes out, the visitor email is canceled.
+- If the comment itself is deleted before the notification goes out, the blogger's email and Telegram messages are canceled too. For notifications that were already sent, see [After a comment is deleted](#after-deletion).
 - Visitor reply notifications are sent only when the email channel is enabled. There is no separate switch. Turning the email channel off also stops visitor reply notifications.
 - Telegram never notifies visitors.
 
@@ -47,16 +48,22 @@ In addition:
 
 **Send test email** (发送测试邮件) sends a test email to the recipients using the values currently in the form (if the password is empty, the saved password is used). You do not need to save first. If it fails, the page gives the reason, such as a connection timeout, failed authentication, or a failed TLS handshake.
 
-Each email contains both a plain-text and an HTML version. The content depends on the type:
+Each email contains both a plain-text and an HTML version. The HTML version uses the same paper-and-ink colors as the comment area and the admin console. Text uses the sans-serif Chinese and Latin fonts installed on the reader's device; no web fonts are loaded. Mail clients that support dark mode switch to dark colors automatically. The content depends on the type:
 
-- New comment for the blogger: the commenter, the post title, the submission time (UTC), the comment body, and a "查看原文" (View original) link;
-- New reply for the blogger: the post title, the comment that was replied to, the reply body, and a "查看原文" (View original) link;
-- Reply for a visitor: the visitor's own comment, the reply body, and a "查看回复" (View reply) link.
+- New comment for the blogger: the post title, the publication time, the commenter and the comment body, and a "查看原文" (View original) link;
+- New reply for the blogger: the post title, the publication time, the comment that was replied to, the replier and the reply body, and a "查看原文" (View original) link;
+- Reply for a visitor: the post title, the reply time, the visitor's own comment, the reply body, and a "查看回复" (View reply) link.
+
+Times are shown in the container's `TZ`, the same as in the comment area, with the UTC offset, such as `2026/09/29 10:18 (UTC+8)`. Comments by the blogger show the site's blogger badge after the nickname.
+
+Smoji appear as images only when the site has Smoji enabled and the image has the same origin as the current Smoji manifest. The image is loaded from the Smoji server, the same as in the comment area. If the mail client blocks external images, `[表情：标签]` ([Smoji: label]) is shown instead. In every other case, and in the plain-text version, Smoji appear as `[表情：标签]`.
 
 Subject lines (sent in Chinese):
 
-- Blogger notification: "您在 [站点名称] 上有新评论" (You have a new comment on [site name]) or "您在 [站点名称] 上有新回复" (You have a new reply on [site name])
-- Visitor reply notification: "你在 [站点名称] 的评论收到了回复" (Your comment on [site name] got a reply)
+- Blogger notification: "您在 [站点名称] 上有新评论：[文章标题]" (You have a new comment on [site name]: [post title]) or "您在 [站点名称] 上有新回复：[文章标题]" (You have a new reply on [site name]: [post title])
+- Visitor reply notification: "你在 [站点名称] 的评论收到了回复：[文章标题]" (Your comment on [site name] got a reply: [post title])
+
+Post titles longer than 60 characters are truncated. If the page has no title, nothing is appended to the subject. The sender's display name is the site name; the address is still the From address. Emails carry an `Auto-Submitted: auto-generated` header, so auto-responders usually do not reply.
 
 ## Telegram
 
@@ -65,7 +72,7 @@ Subject lines (sent in Chinese):
 3. Find the ID of the target: a user ID is a string of digits, such as `123456789`; group and channel IDs usually start with `-100`, such as `-1001234567890`.
 4. Enter the bot token and target IDs (you can enter several) in the admin console, click **Send test message** (发送测试消息) to confirm, then save.
 
-Messages contain the site name, the commenter or replier, the post title, the original comment that was replied to (at most 400 characters), and the body (at most 1200 characters), with a "View original" (查看原文) link at the end. They do not include the submission time.
+Messages contain the site name, the post title, the publication time, the commenter or replier, the original comment that was replied to (shown as a quote, at most 400 characters), and the body (at most 1000 characters), with a "View original" (查看原文) link at the end. Smoji appear as `[表情：标签]` ([Smoji: label]).
 
 ## Delivery
 
@@ -74,10 +81,23 @@ Notifications are not sent synchronously when a comment is submitted. The commen
 - A mail server that is temporarily unreachable does not stop visitors from commenting.
 - Each recipient has its own record and is retried separately. A failure for one address does not affect other addresses.
 - After a failure, retries happen at intervals of 2, 4, 8, 16, 32, 64, and 128 minutes, for 8 attempts in total, and then Ecoku gives up.
+- Failures that a retry cannot fix are given up immediately: the mailbox does not exist or the server rejects the message (SMTP 55x), or Telegram cannot find the chat or the bot was removed or blocked (HTTP 400/403). When Telegram asks to slow down (HTTP 429), the retry waits for the time it gives.
+- Records that were sent, canceled, or given up are kept for 30 days and then removed automatically.
 - Recipients are fixed when a notification is queued. If you later disable a channel or change recipients, notifications already in the queue are still delivered as they were.
 - If the process crashes right after a message has been sent but before the result is recorded, it may be sent again after restart. In rare cases you may receive a duplicate notification.
 
 Logs record only the notification ID, error type, and attempt count. They do not record recipient addresses, comment content, or credentials.
+
+## After a comment is deleted {#after-deletion}
+
+After you delete a comment in the admin console:
+
+- Notifications that have not been sent yet are not sent, including the blogger's email and Telegram messages.
+- Replies to this comment no longer send email to its author, and the author's address is removed from the queue.
+- Telegram messages that were already sent are rewritten to "这条评论已被删除，通知内容已移除。" (This comment was deleted and the notification content has been removed.). Only the site name and post title remain.
+- Emails that were already sent cannot be recalled.
+
+A sent Telegram message cannot be rewritten if the notification was sent more than 30 days ago and its record has been removed, if the tombstone was permanently deleted before the retraction finished, or if the process crashed after the message was sent but before the result was recorded.
 
 ## Troubleshooting {#troubleshooting}
 

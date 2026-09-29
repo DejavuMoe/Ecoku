@@ -2,6 +2,7 @@ package admin
 
 import (
 	"ecoku-server/model"
+	"ecoku-server/notifications"
 	"ecoku-server/utils"
 	"errors"
 	"net/http"
@@ -80,6 +81,9 @@ func tombstoneComment(siteID string, commentID uint, deletedAt time.Time) (model
 		}
 		if result.RowsAffected != 1 {
 			return errCommentDeleteStateChanged
+		}
+		if err := notifications.CancelForDeletedComment(transaction, commentID); err != nil {
+			return err
 		}
 		if err := transaction.Where("id = ? AND site_id = ?", commentID, siteID).First(&updated).Error; err != nil {
 			return err
