@@ -48,7 +48,7 @@ sudo rmdir app/config.yaml
 
 ### Saving a site says "公开站点来源不能复用管理端来源" (a public site origin cannot reuse an admin origin)
 
-The site's allowed origins overlap with an address in `admin.allowed_origins`. The admin console must use a separate origin, usually Ecoku's own domain, such as `https://ecoku.example.com`. If you wrote `sites` in `app/config.yaml`, the same conflict is reported at startup as "管理员来源 … 不能复用公开站点来源" (admin origin cannot reuse a public site origin).
+The site's allowed origins overlap with the admin console's origin. The admin console's origin defaults to `notifications.instance_public_url`; if you set `admin.allowed_origins`, that list is used instead. The admin console must use a separate origin, usually Ecoku's own domain, such as `https://ecoku.example.com`. If you wrote `sites` in `app/config.yaml`, the same conflict is reported at startup as "管理员来源 … 不能复用公开站点来源" (admin origin cannot reuse a public site origin).
 
 ### The log says "管理员会话固定为 8 小时" (admin sessions are fixed at 8 hours)
 
@@ -103,7 +103,7 @@ The time zone comes from `TZ` in `ecoku.env`, such as `TZ='Asia/Tokyo'`. After c
 Check these in order:
 
 1. You are opening the admin console over HTTPS. Only `localhost` and `127.0.0.1` may use HTTP.
-2. The origin in the address bar is in `admin.allowed_origins` and matches the address you are visiting exactly (including the port).
+2. The origin in the address bar matches `notifications.instance_public_url` (or `admin.allowed_origins`, if you set it) exactly, including the port.
 3. The username and password are correct. Each IP may make at most 5 sign-in requests per minute (successful ones count too); beyond that, wait as prompted. Without [`trusted_proxies`](./reverse-proxy#trusted-proxies) configured, everyone shares this one allowance.
 4. The CAPTCHA widget completes normally. If the verification service has problems, turn it off temporarily with `captcha disable`. See [CAPTCHA](./captcha#disable).
 

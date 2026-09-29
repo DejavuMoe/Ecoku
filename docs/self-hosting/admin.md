@@ -9,7 +9,7 @@
 登录需要满足两个条件，否则会被拒绝：
 
 - 通过 HTTPS 访问。只有 `localhost`、`127.0.0.1` 这类回环地址可以用 HTTP，供本地开发使用。
-- 浏览器地址栏的来源已写在 `app/config.yaml` 的 `admin.allowed_origins` 中。
+- 浏览器地址栏的来源与 `app/config.yaml` 中的 `notifications.instance_public_url` 一致；另外写了 `admin.allowed_origins` 时，以它为准。
 
 登录后会话固定保持 8 小时：刷新页面、关闭再打开浏览器都不需要重新登录，但操作也不会延长这 8 小时。到期后页面提示重新登录。点击「退出登录」会在服务端注销当前会话；如果退出请求失败，页面会保留并提示重试，不会假装已经退出。
 
@@ -50,7 +50,7 @@
 
 - `https://blog.example.com` 与 `https://www.blog.example.com` 是两个不同的来源，两个域名都能访问博客时要都写上。
 - 本地预览博客时，把 `http://localhost:1313` 这样的地址也加进来，上线后可以删掉。
-- 不能写管理后台自己的来源（`admin.allowed_origins` 中的地址），两者必须分开。
+- 不能写管理后台自己的来源（`instance_public_url` 的地址，或另外写的 `admin.allowed_origins`），两者必须分开。
 
 保存站点时，如果有人在另一个浏览器标签里同时改过这个站点，会提示“站点配置已被其他会话更新”，刷新后重新编辑即可。
 

@@ -97,7 +97,7 @@ Find the gateway of the network Ecoku is on:
 sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
 ```
 
-If the output is `172.18.0.1`, add it to the config:
+If the output is `172.18.0.1`, add this to `app/config.yaml`:
 
 ```yaml
 site:

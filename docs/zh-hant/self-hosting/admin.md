@@ -9,7 +9,7 @@
 登入需要滿足兩個條件，否則會被拒絕：
 
 - 透過 HTTPS 存取。只有 `localhost`、`127.0.0.1` 這類迴路位址可以用 HTTP，供本機開發使用。
-- 瀏覽器網址列的來源已寫在 `app/config.yaml` 的 `admin.allowed_origins` 中。
+- 瀏覽器網址列的來源與 `app/config.yaml` 中的 `notifications.instance_public_url` 一致；另外寫了 `admin.allowed_origins` 時，以它為準。
 
 登入後工作階段固定維持 8 小時：重新整理頁面、關閉再開啟瀏覽器都不需要重新登入，但操作也不會延長這 8 小時。到期後頁面會提示重新登入。點擊「退出登录」會在伺服器端登出目前的工作階段；如果登出請求失敗，頁面會保留並提示重試，不會假裝已經登出。
 
@@ -50,7 +50,7 @@
 
 - `https://blog.example.com` 與 `https://www.blog.example.com` 是兩個不同的來源，兩個網域都能存取部落格時要兩個都寫上。
 - 在本機預覽部落格時，把 `http://localhost:1313` 這類位址也加進來，上線後可以刪除。
-- 不能填寫管理後台自己的來源（`admin.allowed_origins` 中的位址），兩者必須分開。
+- 不能填寫管理後台自己的來源（`instance_public_url` 的位址，或另外寫的 `admin.allowed_origins`），兩者必須分開。
 
 儲存站點時，如果有人在另一個瀏覽器分頁中同時修改過這個站點，會提示「站点配置已被其他会话更新」，重新整理後再編輯即可。
 

@@ -264,7 +264,7 @@ Origin: https://blog.example.com
 
 ## 管理 API
 
-管理 API 位於 `/api/admin/`，只在 `admin.enabled: true` 時存在。
+管理 API 位於 `/api/admin/`，只在啟用管理後台時存在（容器內預設啟用）。下文的 `admin.allowed_origins` 沒有填寫時，取 `notifications.instance_public_url` 的來源。
 
 ### 驗證方式
 
@@ -345,6 +345,6 @@ DELETE /api/admin/sites/blog/comments/102
 Authorization: EcokuSite <管理密钥>
 ```
 
-它不能讀取評論清單或詳細資訊，不能徹底刪除，也不能存取其他站點或實例設定，這些請求會回傳 `403`；金鑰無效時回傳 `401`。使用管理金鑰同樣要求 `admin.enabled: true`。
+它不能讀取評論清單或詳細資訊，不能徹底刪除，也不能存取其他站點或實例設定，這些請求會回傳 `403`；金鑰無效時回傳 `401`。使用管理金鑰同樣要求啟用管理後台。
 
 `sites` 中的站點設定只在資料庫首次初始化時寫入，但 `management_key_env` 每次啟動都會讀取。既有實例若要啟用管理金鑰，可以在 `sites` 中補寫一個項目：`id` 與後台中既有的站點一致，`site_url` 和 `allowed_origins` 也要填寫，才能通過設定檢查。這個項目的其他欄位不會覆寫後台中的設定。

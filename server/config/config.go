@@ -28,6 +28,20 @@ const (
 	DefaultCommentLimit             = 1000
 	DefaultEmptyMessage             = "还没有评论\n成为第一个留下评论的人。"
 	DefaultBloggerBadge             = "[博主]"
+
+	// The official image sets ECOKU_RUNTIME=container. Its fixed paths then
+	// become the defaults, so a mounted config.yaml only carries choices an
+	// operator actually makes.
+	runtimeEnvironment        = "ECOKU_RUNTIME"
+	containerRuntime          = "container"
+	containerLogPath          = "/var/log/ecoku/ecoku.log"
+	containerClientStaticDir  = "/app/client"
+	containerAdminStaticDir   = "/app/admin"
+	containerSQLitePath       = "/data/ecoku.sqlite3"
+	defaultAdminUsernameEnv   = "ECOKU_ADMIN_USERNAME"
+	defaultAdminPasswordEnv   = "ECOKU_ADMIN_PASSWORD_HASH"
+	defaultAdminTokenKeyEnv   = "ECOKU_ADMIN_TOKEN_KEY"
+	defaultNotificationKeyEnv = "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
 )
 
 var (
@@ -44,6 +58,10 @@ type Config struct {
 	Admin         AdminConfig            `yaml:"admin"`
 	Notifications NotificationsConfig    `yaml:"notifications"`
 	Database      DatabaseConfig         `yaml:"database"`
+
+	// adminEnabledSet records whether config.yaml wrote admin.enabled, so the
+	// container default can tell an omitted key from an explicit false.
+	adminEnabledSet bool
 }
 
 // ClientConfig controls the optional browser assets served by the Go process.
@@ -184,6 +202,15 @@ func LoadConfigFile(path string) error {
 		}
 		return fmt.Errorf("配置文件只允许一个 YAML 文档")
 	}
+	var presence struct {
+		Admin struct {
+			Enabled *bool `yaml:"enabled"`
+		} `yaml:"admin"`
+	}
+	if err := yaml.Unmarshal(data, &presence); err != nil {
+		return fmt.Errorf("解析 YAML: %w", err)
+	}
+	loaded.adminEnabledSet = presence.Admin.Enabled != nil
 
 	return ApplyConfig(&loaded)
 }
@@ -204,17 +231,27 @@ func ApplyConfig(loaded *Config) error {
 }
 
 func applyDefaults(loaded *Config) {
+	container := os.Getenv(runtimeEnvironment) == containerRuntime
 	if loaded.Site.Port == 0 {
 		loaded.Site.Port = 12123
 	}
 	loaded.Site.LogPath = strings.TrimSpace(loaded.Site.LogPath)
+	if container && loaded.Site.LogPath == "" {
+		loaded.Site.LogPath = containerLogPath
+	}
 	if strings.TrimSpace(loaded.Database.SQLite.Path) == "" {
 		loaded.Database.SQLite.Path = "./data/ecoku.bin"
+		if container {
+			loaded.Database.SQLite.Path = containerSQLitePath
+		}
 	}
 	for i := range loaded.Site.TrustedProxies {
 		loaded.Site.TrustedProxies[i] = strings.TrimSpace(loaded.Site.TrustedProxies[i])
 	}
 	loaded.Client.StaticDir = strings.TrimSpace(loaded.Client.StaticDir)
+	if container && loaded.Client.StaticDir == "" {
+		loaded.Client.StaticDir = containerClientStaticDir
+	}
 
 	if loaded.RateLimit.WindowSeconds == 0 {
 		loaded.RateLimit.WindowSeconds = 60
@@ -237,13 +274,19 @@ func applyDefaults(loaded *Config) {
 	if loaded.Admin.TokenTTLMinutes == 0 {
 		loaded.Admin.TokenTTLMinutes = defaultAdminTokenTTLMinutes
 	}
+	if container && !loaded.adminEnabledSet {
+		loaded.Admin.Enabled = true
+	}
 	loaded.Admin.StaticDir = strings.TrimSpace(loaded.Admin.StaticDir)
 	if loaded.Admin.Enabled && loaded.Admin.StaticDir == "" {
 		loaded.Admin.StaticDir = "./admin"
+		if container {
+			loaded.Admin.StaticDir = containerAdminStaticDir
+		}
 	}
-	loaded.Admin.UsernameEnv = strings.TrimSpace(loaded.Admin.UsernameEnv)
-	loaded.Admin.PasswordHashEnv = strings.TrimSpace(loaded.Admin.PasswordHashEnv)
-	loaded.Admin.TokenKeyEnv = strings.TrimSpace(loaded.Admin.TokenKeyEnv)
+	loaded.Admin.UsernameEnv = defaultString(loaded.Admin.UsernameEnv, defaultAdminUsernameEnv)
+	loaded.Admin.PasswordHashEnv = defaultString(loaded.Admin.PasswordHashEnv, defaultAdminPasswordEnv)
+	loaded.Admin.TokenKeyEnv = defaultString(loaded.Admin.TokenKeyEnv, defaultAdminTokenKeyEnv)
 
 	for i := range loaded.Sites {
 		loaded.Sites[i].ID = strings.TrimSpace(loaded.Sites[i].ID)
@@ -286,8 +329,22 @@ func applyDefaults(loaded *Config) {
 	for i := range loaded.Admin.AllowedOrigins {
 		loaded.Admin.AllowedOrigins[i] = strings.TrimSpace(loaded.Admin.AllowedOrigins[i])
 	}
-	loaded.Notifications.EncryptionKeyEnv = strings.TrimSpace(loaded.Notifications.EncryptionKeyEnv)
+	loaded.Notifications.EncryptionKeyEnv = defaultString(loaded.Notifications.EncryptionKeyEnv, defaultNotificationKeyEnv)
 	loaded.Notifications.InstancePublicURL = strings.TrimSpace(loaded.Notifications.InstancePublicURL)
+	// The admin console is served from the instance itself, so its public URL
+	// is the natural admin origin when none is listed explicitly.
+	if len(loaded.Admin.AllowedOrigins) == 0 && loaded.Notifications.InstancePublicURL != "" {
+		if parsed, err := url.Parse(loaded.Notifications.InstancePublicURL); err == nil && parsed.Host != "" {
+			loaded.Admin.AllowedOrigins = []string{parsed.Scheme + "://" + parsed.Host}
+		}
+	}
+}
+
+func defaultString(value, fallback string) string {
+	if trimmed := strings.TrimSpace(value); trimmed != "" {
+		return trimmed
+	}
+	return fallback
 }
 
 func validateConfig(loaded *Config) error {
@@ -417,7 +474,7 @@ func validateAdminConfig(loaded *Config, managementKeys map[string]string) error
 		return fmt.Errorf("管理员会话固定为 8 小时；请删除 admin.token_ttl_minutes 或设为 480")
 	}
 	if len(admin.AllowedOrigins) == 0 {
-		return fmt.Errorf("启用管理员认证时至少需要一个 admin.allowed_origins")
+		return fmt.Errorf("启用管理员认证时需要填写 notifications.instance_public_url 或 admin.allowed_origins")
 	}
 
 	publicOrigins := make(map[string]struct{})
