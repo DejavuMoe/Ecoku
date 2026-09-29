@@ -113,7 +113,7 @@ func TestV1DatabaseMigratesInPlaceWithoutLosingBusinessData(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7, 8}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7, 8, 9}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 	var turnstileCount int64
@@ -197,7 +197,7 @@ func TestV2DatabaseMigratesBloggerBadgeInPlace(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7, 8}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7, 8, 9}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 	var turnstileCount int64
@@ -261,7 +261,7 @@ func TestV3DatabaseMigratesTurnstileSettingsInPlace(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7, 8}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7, 8, 9}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 }
@@ -428,7 +428,7 @@ func TestV4DatabaseMigratesBloggerProofOutboxTargetsAndBackfill(t *testing.T) {
 	if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7, 8}) {
+	if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7, 8, 9}) {
 		t.Fatalf("migration history mismatch: %v", versions)
 	}
 }
@@ -506,7 +506,7 @@ WHERE id = 1`, fixture.enabled).Error; err != nil {
 			if err := database.Table("schema_migrations").Order("version ASC").Pluck("version", &versions).Error; err != nil {
 				t.Fatal(err)
 			}
-			if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7, 8}) {
+			if !reflect.DeepEqual(versions, []int{1, 2, 3, 4, 5, 6, 7, 8, 9}) {
 				t.Fatalf("migration history mismatch: %v", versions)
 			}
 		})
