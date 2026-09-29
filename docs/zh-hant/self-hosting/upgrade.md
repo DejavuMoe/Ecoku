@@ -17,11 +17,11 @@
 
 ## 升級步驟 {#steps}
 
-**1. 閱讀升級說明。**在下方的[版本清單](#versions)中找到目標版本，確認是否有設定變更、是否涉及 schema 遷移。
+**1. 閱讀升級說明**。在下方的[版本清單](#versions)中找到目標版本，確認是否有設定變更、是否涉及 schema 遷移。
 
-**2. 停止服務後冷備份。**依照[備份與還原](./backup#cold-backup)執行，確認輸出 `Verified backup`。
+**2. 停止服務後冷備份**。依照[備份與還原](./backup#cold-backup)執行，確認輸出 `Verified backup`。
 
-**3. 修改映像檔版本。**編輯 `~/Ecoku/compose.yaml`，把 `image` 改成目標版本，例如：
+**3. 修改映像檔版本**。編輯 `~/Ecoku/compose.yaml`，把 `image` 改成目標版本，例如：
 
 ```yaml
     image: "git.via.moe/dejavu/ecoku:v0.2.6"
