@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	LatestSchemaVersion               = 8
+	LatestSchemaVersion               = 9
 	freshSchemaVersion                = 1
 	freshSchemaName                   = "fresh_published_comments"
 	freshSchemaDefinition             = "sqlite3:fresh-v1:published-comments:site-display-config:notifications:tombstones"
@@ -236,14 +236,15 @@ func validateKnownSchemaHistory(database *gorm.DB) (int, error) {
 		name       string
 		definition string
 	}{
-		freshSchemaVersion:             {name: freshSchemaName, definition: freshSchemaDefinition},
-		bloggerIdentitySchemaVersion:   {name: bloggerIdentitySchemaName, definition: bloggerIdentitySchemaDefinition},
-		bloggerBadgeSchemaVersion:      {name: bloggerBadgeSchemaName, definition: bloggerBadgeSchemaDefinition},
-		turnstileSettingsSchemaVersion: {name: turnstileSettingsSchemaName, definition: turnstileSettingsSchemaDefinition},
-		bloggerProofSchemaVersion:      {name: bloggerProofSchemaName, definition: bloggerProofSchemaDefinition},
-		captchaProviderSchemaVersion:   {name: captchaProviderSchemaName, definition: captchaProviderSchemaDefinition},
-		smojiSiteSchemaVersion:         {name: smojiSiteSchemaName, definition: smojiSiteSchemaDefinition},
-		adminSessionSchemaVersion:      {name: adminSessionSchemaName, definition: adminSessionSchemaDefinition},
+		freshSchemaVersion:               {name: freshSchemaName, definition: freshSchemaDefinition},
+		bloggerIdentitySchemaVersion:     {name: bloggerIdentitySchemaName, definition: bloggerIdentitySchemaDefinition},
+		bloggerBadgeSchemaVersion:        {name: bloggerBadgeSchemaName, definition: bloggerBadgeSchemaDefinition},
+		turnstileSettingsSchemaVersion:   {name: turnstileSettingsSchemaName, definition: turnstileSettingsSchemaDefinition},
+		bloggerProofSchemaVersion:        {name: bloggerProofSchemaName, definition: bloggerProofSchemaDefinition},
+		captchaProviderSchemaVersion:     {name: captchaProviderSchemaName, definition: captchaProviderSchemaDefinition},
+		smojiSiteSchemaVersion:           {name: smojiSiteSchemaName, definition: smojiSiteSchemaDefinition},
+		adminSessionSchemaVersion:        {name: adminSessionSchemaName, definition: adminSessionSchemaDefinition},
+		outboxDeliveryStateSchemaVersion: {name: outboxDeliveryStateSchemaName, definition: outboxDeliveryStateSchemaDefinition},
 	}
 	for index, row := range rows {
 		version := index + 1
@@ -293,6 +294,10 @@ func migrateSchema(database *gorm.DB, currentVersion int) error {
 			}
 		case adminSessionSchemaVersion:
 			if err := migrateAdminSessions(database); err != nil {
+				return err
+			}
+		case outboxDeliveryStateSchemaVersion:
+			if err := migrateOutboxDeliveryState(database); err != nil {
 				return err
 			}
 		default:
@@ -607,9 +612,11 @@ func validateCurrentSchema(database *gorm.DB) error {
 	if err := database.Raw("SELECT COUNT(*) FROM pragma_table_info('comments') WHERE name = ?", "is_blogger").Scan(&bloggerFlag).Error; err != nil || bloggerFlag != 1 {
 		return fmt.Errorf("数据库缺少当前 schema 字段 comments.is_blogger")
 	}
-	var outboxTarget int64
-	if err := database.Raw("SELECT COUNT(*) FROM pragma_table_info('notification_outbox') WHERE name = ?", "target").Scan(&outboxTarget).Error; err != nil || outboxTarget != 1 {
-		return fmt.Errorf("数据库缺少当前 schema 字段 notification_outbox.target")
+	for _, column := range []string{"target", "provider_message_id"} {
+		var count int64
+		if err := database.Raw("SELECT COUNT(*) FROM pragma_table_info('notification_outbox') WHERE name = ?", column).Scan(&count).Error; err != nil || count != 1 {
+			return fmt.Errorf("数据库缺少当前 schema 字段 notification_outbox.%s", column)
+		}
 	}
 	for _, column := range []string{"provider", "cap_instance_url", "cap_sitekey", "cap_secret_cipher"} {
 		var count int64

@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Ecoku Telegram 消息模板 v6</title>
+  <style>
+    :root {
+      --paper: #f7f4ee;
+      --surface: #fbf9f5;
+      --ink: #1e1c19;
+      --ink-soft: #35312b;
+      --muted: #6b655b;
+      --line-soft: rgb(30 28 25 / 0.12);
+      --wash: #efebe3;
+      --accent: color-mix(in oklab, #c8553a 75%, var(--ink));
+      --radius: 6px;
+      --radius-sm: 3px;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", "Noto Sans SC", "Helvetica Neue", Arial, sans-serif;
+      --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Cascadia Code", Menlo, Consolas, "Roboto Mono", monospace;
+      --wordmark: Georgia, "Times New Roman", serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --paper: #1a1816;
+        --surface: #211f1c;
+        --ink: #eee8dd;
+        --ink-soft: #d3ccbf;
+        --muted: #a29a8c;
+        --line-soft: rgb(238 232 221 / 0.12);
+        --wash: #26231f;
+      }
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--paper); font-family: var(--sans); font-size: 14px; line-height: 1.6; }
+    button { color: inherit; font: inherit; cursor: pointer; }
+    :focus-visible { outline: 2px solid color-mix(in srgb, var(--ink) 40%, transparent); outline-offset: 2px; }
+    .bar { border-bottom: 1px solid var(--line-soft); background: var(--surface); }
+    .bar-inner { display: flex; flex-wrap: wrap; width: min(calc(100% - 32px), 920px); min-height: 56px; margin: 0 auto; align-items: center; gap: 10px 18px; padding: 10px 0; }
+    .brand { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+    .brand-mark { display: grid; width: 26px; height: 26px; place-items: center; border: 1.5px solid currentColor; border-radius: 50%; font-family: var(--wordmark); font-size: 15px; font-weight: 700; line-height: 1; }
+    .brand strong { font-size: 14px; }
+    .group { display: flex; flex-wrap: wrap; gap: 2px; padding: 2px; border: 1px solid var(--line-soft); border-radius: var(--radius); background: var(--paper); }
+    .group button { min-height: 28px; padding: 0 10px; border: 0; border-radius: var(--radius-sm); color: var(--muted); background: transparent; font-size: 12px; }
+    .group button[aria-pressed="true"] { color: var(--ink); background: var(--wash); font-weight: 600; }
+    .stage { display: grid; place-items: center; padding: 32px 16px; }
+    .conversation { width: min(100%, 560px); border: 1px solid var(--line-soft); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+    .conversation-head { display: flex; min-height: 60px; align-items: center; gap: 12px; padding: 0 18px; border-bottom: 1px solid var(--line-soft); }
+    .bot-mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 50%; color: var(--surface); background: var(--ink); font-family: var(--wordmark); font-weight: 700; }
+    .bot-copy { display: grid; line-height: 1.25; }
+    .bot-copy strong { font-size: 14px; }
+    .bot-copy small { color: var(--muted); font-size: 11px; }
+    .conversation-body { padding: 26px 18px 32px; background: var(--paper); }
+    .message { width: min(100%, 440px); padding: 14px 16px 10px; border: 1px solid var(--line-soft); border-radius: var(--radius-sm) var(--radius) var(--radius) var(--radius); background: var(--surface); }
+    .message-text { margin: 0; color: var(--ink-soft); font-size: 14px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .message-text b { color: var(--ink); }
+    .message-text blockquote { margin: 2px 0; padding: 2px 0 2px 10px; border-left: 3px solid var(--accent); color: var(--muted); white-space: pre-wrap; }
+    .message-text a { color: var(--accent); text-underline-offset: 3px; }
+    .message-time { display: block; margin-top: 6px; color: var(--muted); font-family: var(--mono); font-size: 10px; text-align: right; }
+    .note { width: min(100%, 560px); margin: 14px auto 0; color: var(--muted); font-size: 12px; }
+    @media (max-width: 620px) {
+      .stage { padding: 18px 10px; align-items: start; }
+      .conversation-body { padding: 20px 12px 28px; }
+      .message { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div class="bar-inner">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">E</span><strong>Telegram 消息模板 v6</strong></div>
+      <div class="group" role="group" aria-label="消息场景" id="variants"></div>
+    </div>
+  </header>
+  <main class="stage">
+    <section class="conversation" aria-label="Telegram 消息预览">
+      <header class="conversation-head"><span class="bot-mark" aria-hidden="true">E</span><span class="bot-copy"><strong>Ecoku Bot</strong><small>通知</small></span></header>
+      <div class="conversation-body">
+        <article class="message">
+          <p class="message-text" id="message"></p>
+          <time class="message-time" id="time">10:18</time>
+        </article>
+      </div>
+    </section>
+    <p class="note" id="note"></p>
+  </main>
+  <script type="module">
+    import { scenarios, renderTelegram, renderTelegramRetracted } from "./notifications-v6.js";
+
+    const variants = [
+      ["comment", "新评论", "访客发表根评论时发给博主。"],
+      ["reply", "新回复", "被回复的评论放在引用块里，新回复保持正文。"],
+      ["long", "长内容", "正文最多 1000 个字符、被回复评论最多 400 个字符，超出以“…”结尾；不属于当前表情包清单的表情显示为文字标签。"],
+      ["fallback", "名称回落", "站点名称为空时使用域名，文章标题为空时显示“这篇文章”。"],
+      ["retracted", "已删除", "评论在管理端删除后，已发出的消息被改写为这段文字，昵称与正文不再保留。"],
+    ];
+    const group = document.getElementById("variants");
+    for (const [id, label] of variants) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.variant = id;
+      button.textContent = label;
+      group.append(button);
+    }
+    function render(id) {
+      const scenario = id === "retracted" ? scenarios.reply : scenarios[id];
+      // 渲染结果只包含 Telegram 支持的 b / i / a / blockquote 与已转义文本。
+      // Telegram 把引用块渲染为独立块，紧随其后的换行只结束该块；预览里去掉它以免多出空行。
+      const message = id === "retracted" ? renderTelegramRetracted(scenario) : renderTelegram(scenario);
+      document.getElementById("message").innerHTML = message.replaceAll("</blockquote>\n", "</blockquote>");
+      document.getElementById("time").textContent = id === "retracted" ? "已编辑 11:02" : scenario.time.slice(11, 16);
+      document.getElementById("note").textContent = variants.find((item) => item[0] === id)[2];
+      for (const button of group.querySelectorAll("button")) button.setAttribute("aria-pressed", String(button.dataset.variant === id));
+    }
+    group.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (button) render(button.dataset.variant);
+    });
+    render("comment");
+  </script>
+</body>
+</html>

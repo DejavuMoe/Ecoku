@@ -132,8 +132,32 @@
           }
         }
       ]
+    },
+    "Ecoku notification templates": {
+      "versions": [
+        {
+          "path": "email-notification-v6.html",
+          "createdAt": "2026-09-29T00:00:00.000Z",
+          "status": "approved",
+          "subtitle": "Approved: paper-and-ink email notifications with system CJK sans stack, Smoji images, display time zone and article title in the subject",
+          "viewport": {
+            "width": 1200,
+            "height": 1100
+          }
+        },
+        {
+          "path": "telegram-notification-v6.html",
+          "createdAt": "2026-09-29T00:00:00.000Z",
+          "status": "approved",
+          "subtitle": "Approved: Telegram notifications with quoted parent context and retraction after deletion",
+          "viewport": {
+            "width": 1200,
+            "height": 900
+          }
+        }
+      ]
     }
   },
   "createdAt": "2026-08-12T22:31:10.516Z",
-  "updatedAt": "2026-09-28T00:00:00.000Z"
+  "updatedAt": "2026-09-29T00:00:00.000Z"
 }

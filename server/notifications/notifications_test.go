@@ -206,7 +206,7 @@ func TestNotificationTemplatesUseSiteNameArticleTitleAndEscapeText(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if blogger.Subject != "您在 Dejavu's Blog 上有新评论" || !strings.Contains(blogger.HTML, "文章标题") || strings.Contains(blogger.HTML, "<script>") {
+	if blogger.Subject != "您在 Dejavu's Blog 上有新评论：文章标题" || !strings.Contains(blogger.HTML, "文章标题") || strings.Contains(blogger.HTML, "<script>") {
 		t.Fatalf("blogger template=%#v", blogger)
 	}
 	if !strings.Contains(blogger.HTML, "此邮件由 Dejavu&#39;s Blog 系统发送，请勿直接回复本邮件。") {
@@ -214,11 +214,11 @@ func TestNotificationTemplatesUseSiteNameArticleTitleAndEscapeText(t *testing.T)
 	}
 	reply := model.Comment{ID: 2, SiteID: "site-a", Mark: "/post", PageTitle: "文章标题", ParentID: &root.ID, Username: "回复者", Content: "回复"}
 	message, err := renderBloggerEmail(reply, site)
-	if err != nil || message.Subject != "您在 Dejavu's Blog 上有新回复" {
+	if err != nil || message.Subject != "您在 Dejavu's Blog 上有新回复：文章标题" || !strings.Contains(message.HTML, "文章标题") {
 		t.Fatalf("reply=%#v err=%v", message, err)
 	}
 	visitor := renderReplyEmail(reply, root, site, "https://site.example/post")
-	if visitor.Subject != "你在 Dejavu's Blog 的评论收到了回复" {
+	if visitor.Subject != "你在 Dejavu's Blog 的评论收到了回复：文章标题" {
 		t.Fatalf("visitor subject=%q", visitor.Subject)
 	}
 	if !strings.Contains(blogger.HTML, "#ecoku-comment-1") || !strings.Contains(visitor.HTML, "#ecoku-comment-2") {
@@ -226,14 +226,14 @@ func TestNotificationTemplatesUseSiteNameArticleTitleAndEscapeText(t *testing.T)
 	}
 	emptyTitle := model.Comment{ID: 3, SiteID: "site-a", Mark: "/untitled", Username: "访客", Content: "无标题"}
 	untitled, err := renderBloggerEmail(emptyTitle, site)
-	if err != nil || !strings.Contains(untitled.HTML, "这篇文章") {
+	if err != nil || !strings.Contains(untitled.HTML, "这篇文章") || untitled.Subject != "您在 Dejavu's Blog 上有新评论" {
 		t.Fatalf("empty title=%#v err=%v", untitled, err)
 	}
 	telegram, err := renderTelegram(reply, site)
 	if err != nil || strings.Contains(telegram, "审核") || !strings.Contains(telegram, "您在 Dejavu&#39;s Blog 上有新回复") {
 		t.Fatalf("telegram=%q err=%v", telegram, err)
 	}
-	if !strings.Contains(telegram, "原评论") {
+	if !strings.Contains(telegram, "<b>&lt;作者&gt;</b> 的评论：\n<blockquote>&lt;script&gt;") {
 		t.Fatalf("telegram missing parent context: %q", telegram)
 	}
 }

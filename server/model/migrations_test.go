@@ -615,3 +615,128 @@ func TestV7ToV8PreservesDataAndMigrationHistory(t *testing.T) {
 		t.Fatal("v8 record missing or duplicated")
 	}
 }
+
+func TestV8ToV9RebuildsOutboxInPlace(t *testing.T) {
+	if err := config.ApplyConfig(&config.Config{Sites: []config.RegisteredSiteConfig{{ID: "site-a", SiteURL: "https://example.test", AllowedOrigins: []string{"https://example.test"}}}}); err != nil {
+		t.Fatal(err)
+	}
+	database, err := OpenSQLiteDatabase(t.TempDir() + "/v8.sqlite3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, _ := database.DB()
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	// Construct the actual released v8 schema without altering its history.
+	for _, migrate := range []func(*gorm.DB) error{createFreshSchema, migrateSiteBloggerIdentity, migrateSiteBloggerBadge, migrateTurnstileSettings, migrateBloggerProofAndOutboxTargets, migrateCaptchaProvider, migrateSiteSmoji, migrateAdminSessions} {
+		if err := migrate(database); err != nil {
+			t.Fatal(err)
+		}
+	}
+	now := time.Now().UTC()
+	if err := database.Exec(`INSERT INTO comments (id,site_id,mark,username,email,content,created_at,updated_at) VALUES (1,'site-a','/keep','guest','guest@example.test','keep',?,?)`, now, now).Error; err != nil {
+		t.Fatal(err)
+	}
+	rows := []struct {
+		id       int
+		event    string
+		target   string
+		status   string
+		attempts int
+	}{
+		{1, "blogger_email_new", "owner@example.test", "pending", 0},
+		{2, "blogger_email_new", "second@example.test", "failed", 8},
+		{3, "blogger_telegram_new", "123456", "failed", 3},
+		{4, "visitor_reply", "parent@example.test", "sent", 1},
+		{5, "blogger_telegram_new", "654321", "cancelled", 1},
+	}
+	for _, row := range rows {
+		if err := database.Exec(`INSERT INTO notification_outbox
+  (id, event_type, comment_id, target, status, attempts, available_at, locked_at, last_error_code, created_at, updated_at, sent_at)
+  VALUES (?, ?, 1, ?, ?, ?, ?, NULL, 'fixture', ?, ?, NULL)`, row.id, row.event, row.target, row.status, row.attempts, now, now, now).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The highest id was already deleted before the upgrade; it must not be reused.
+	if err := database.Exec(`DELETE FROM notification_outbox WHERE id = 5`).Error; err != nil {
+		t.Fatal(err)
+	}
+	var before []schemaMigration
+	if err := database.Table("schema_migrations").Order("version").Find(&before).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Exec(`CREATE TRIGGER fail_v9 BEFORE INSERT ON schema_migrations WHEN NEW.version = 9 BEGIN SELECT RAISE(ABORT,'fixture'); END`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := PrepareDatabaseForStartup(database); err == nil {
+		t.Fatal("migration failure ignored")
+	}
+	var column int64
+	database.Raw("SELECT COUNT(*) FROM pragma_table_info('notification_outbox') WHERE name = 'provider_message_id'").Scan(&column)
+	if column != 0 {
+		t.Fatal("failed migration left the rebuilt outbox")
+	}
+	if err := database.Exec("DROP TRIGGER fail_v9").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := PrepareDatabaseForStartup(database); err != nil {
+		t.Fatal(err)
+	}
+	if err := PrepareDatabaseForStartup(database); err != nil {
+		t.Fatal(err)
+	}
+
+	var after []schemaMigration
+	if err := database.Table("schema_migrations").Where("version <= 8").Order("version").Find(&after).Error; err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(before, after) {
+		t.Fatal("released history changed")
+	}
+	var count int64
+	database.Table("schema_migrations").Where("version = 9").Count(&count)
+	if count != 1 {
+		t.Fatal("v9 record missing or duplicated")
+	}
+	type migrated struct {
+		ID       int    `gorm:"column:id"`
+		Target   string `gorm:"column:target"`
+		Status   string `gorm:"column:status"`
+		Attempts int    `gorm:"column:attempts"`
+		Code     string `gorm:"column:last_error_code"`
+	}
+	var got []migrated
+	if err := database.Table("notification_outbox").Order("id").Find(&got).Error; err != nil {
+		t.Fatal(err)
+	}
+	want := []migrated{
+		{1, "owner@example.test", "pending", 0, "fixture"},
+		{2, "second@example.test", "exhausted", 8, "fixture"},
+		{3, "123456", "failed", 3, "fixture"},
+		{4, "parent@example.test", "sent", 1, "fixture"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("outbox rows=%+v", got)
+	}
+	database.Table("comments").Where("content = 'keep' AND email = 'guest@example.test'").Count(&count)
+	if count != 1 {
+		t.Fatal("business data lost")
+	}
+	if err := database.Exec(`INSERT INTO notification_outbox
+  (event_type, comment_id, target, status, attempts, available_at, created_at, updated_at, provider_message_id)
+  VALUES ('blogger_telegram_retract', 1, '123456', 'exhausted', 1, ?, ?, ?, '77')`, now, now, now).Error; err != nil {
+		t.Fatalf("v9 statuses or event types rejected: %v", err)
+	}
+	var nextID int
+	database.Raw("SELECT MAX(id) FROM notification_outbox").Scan(&nextID)
+	if nextID != 6 {
+		t.Fatalf("outbox id reused: %d", nextID)
+	}
+	var indexes int64
+	database.Raw("SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name IN ('idx_notification_outbox_ready', 'idx_notification_outbox_comment')").Scan(&indexes)
+	if indexes != 2 {
+		t.Fatalf("outbox indexes=%d", indexes)
+	}
+	if err := verifyForeignKeys(database); err != nil {
+		t.Fatal(err)
+	}
+}

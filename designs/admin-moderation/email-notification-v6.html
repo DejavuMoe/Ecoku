@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Ecoku 邮件通知模板 v6</title>
+  <style>
+    :root {
+      --paper: #f7f4ee;
+      --surface: #fbf9f5;
+      --ink: #1e1c19;
+      --ink-soft: #35312b;
+      --muted: #6b655b;
+      --line: #cbc3b5;
+      --line-soft: rgb(30 28 25 / 0.12);
+      --wash: #efebe3;
+      --radius: 6px;
+      --radius-sm: 3px;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", "Noto Sans SC", "Helvetica Neue", Arial, sans-serif;
+      --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Cascadia Code", Menlo, Consolas, "Roboto Mono", monospace;
+      --wordmark: Georgia, "Times New Roman", serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--paper); font-family: var(--sans); font-size: 14px; line-height: 1.6; }
+    button { color: inherit; font: inherit; cursor: pointer; }
+    :focus-visible { outline: 2px solid color-mix(in srgb, var(--ink) 40%, transparent); outline-offset: 2px; }
+    .bar { position: sticky; top: 0; z-index: 1; border-bottom: 1px solid var(--line-soft); background: var(--surface); }
+    .bar-inner { display: flex; flex-wrap: wrap; width: min(calc(100% - 32px), 1040px); min-height: 56px; margin: 0 auto; align-items: center; gap: 10px 18px; padding: 10px 0; }
+    .brand { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+    .brand-mark { display: grid; width: 26px; height: 26px; place-items: center; border: 1.5px solid currentColor; border-radius: 50%; font-family: var(--wordmark); font-size: 15px; font-weight: 700; line-height: 1; }
+    .brand strong { font-size: 14px; }
+    .group { display: flex; flex-wrap: wrap; gap: 2px; padding: 2px; border: 1px solid var(--line-soft); border-radius: var(--radius); background: var(--paper); }
+    .group button { min-height: 28px; padding: 0 10px; border: 0; border-radius: var(--radius-sm); color: var(--muted); background: transparent; font-size: 12px; }
+    .group button[aria-pressed="true"] { color: var(--ink); background: var(--wash); font-weight: 600; }
+    main { width: min(calc(100% - 32px), 1040px); margin: 24px auto 48px; }
+    .envelope { display: grid; gap: 4px; margin: 0 auto 14px; max-width: 640px; padding: 12px 14px; border: 1px solid var(--line-soft); border-radius: var(--radius); background: var(--surface); font-size: 13px; }
+    .envelope span { color: var(--muted); }
+    .envelope code { font-family: var(--mono); font-size: 12px; }
+    .frame { display: block; width: 640px; max-width: 100%; height: 900px; margin: 0 auto; border: 1px solid var(--line-soft); border-radius: var(--radius); background: var(--paper); }
+    .frame[data-width="narrow"] { width: 375px; }
+    pre.plain { max-width: 640px; margin: 0 auto; padding: 18px 20px; border: 1px solid var(--line-soft); border-radius: var(--radius); background: var(--surface); color: var(--ink-soft); font-family: var(--mono); font-size: 12.5px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div class="bar-inner">
+      <div class="brand"><span class="brand-mark" aria-hidden="true">E</span><strong>邮件通知模板 v6</strong></div>
+      <div class="group" role="group" aria-label="邮件场景" id="variants"></div>
+      <div class="group" role="group" aria-label="配色">
+        <button type="button" data-scheme="light" aria-pressed="true">浅色</button>
+        <button type="button" data-scheme="dark" aria-pressed="false">深色</button>
+      </div>
+      <div class="group" role="group" aria-label="宽度">
+        <button type="button" data-width="wide" aria-pressed="true">桌面</button>
+        <button type="button" data-width="narrow" aria-pressed="false">手机</button>
+      </div>
+      <div class="group" role="group" aria-label="内容">
+        <button type="button" data-part="html" aria-pressed="true">HTML</button>
+        <button type="button" data-part="text" aria-pressed="false">纯文本</button>
+      </div>
+    </div>
+  </header>
+  <main>
+    <div class="envelope"><div><span>主题：</span><strong id="subject"></strong></div><div><span>发件人：</span><code id="from"></code></div></div>
+    <iframe class="frame" id="frame" title="邮件预览" data-width="wide"></iframe>
+    <pre class="plain" id="plain" hidden></pre>
+  </main>
+  <script type="module">
+    import { scenarios, fixtureImages, darkRules, renderBloggerEmail, renderReplyEmail, renderTestEmail, siteName } from "./notifications-v6.js";
+
+    const variants = [
+      ["comment", "新评论"], ["reply", "新回复"], ["visitor", "访客收到回复"],
+      ["long", "长内容"], ["fallback", "名称回落"], ["test", "测试邮件"],
+    ];
+    const state = { variant: "comment", scheme: "light", width: "wide", part: "html" };
+    const resolveImage = (src) => fixtureImages[src] ?? src;
+    const variantGroup = document.getElementById("variants");
+    for (const [id, label] of variants) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.variant = id;
+      button.textContent = label;
+      variantGroup.append(button);
+    }
+
+    function render() {
+      const scenario = scenarios[state.variant];
+      let message;
+      if (state.variant === "test") message = renderTestEmail();
+      else if (state.variant === "visitor") message = renderReplyEmail(scenario, resolveImage);
+      else message = renderBloggerEmail(scenario, resolveImage);
+      const name = scenario ? siteName(scenario.site) : "Ecoku";
+      document.getElementById("subject").textContent = message.subject;
+      document.getElementById("from").textContent = `"${name}" <notify@example.com>`;
+      let html = message.html.replace("<head>", '<head><base href="' + location.href + '">');
+      if (state.scheme === "dark") html = html.replace("</head>", `<style>${darkRules}</style></head>`);
+      const frame = document.getElementById("frame");
+      frame.srcdoc = html;
+      frame.dataset.width = state.width;
+      frame.hidden = state.part !== "html";
+      const plain = document.getElementById("plain");
+      plain.textContent = message.text;
+      plain.hidden = state.part !== "text";
+      for (const button of document.querySelectorAll("button")) {
+        for (const key of ["variant", "scheme", "width", "part"]) {
+          if (button.dataset[key]) button.setAttribute("aria-pressed", String(button.dataset[key] === state[key]));
+        }
+      }
+    }
+
+    document.addEventListener("click", (event) => {
+      const button = event.target.closest("button");
+      if (!button) return;
+      for (const key of ["variant", "scheme", "width", "part"]) {
+        if (button.dataset[key]) state[key] = button.dataset[key];
+      }
+      render();
+    });
+    render();
+  </script>
+</body>
+</html>

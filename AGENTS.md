@@ -7,7 +7,7 @@
   `docs/progress/` 只是历史验收，不约束当前实现，也不进入文档站点。
 - 评论区基线 `designs/plain-thread-comments/index-v17.html`；管理端登录、评论管理、站点管理、
   通知设置与安全以 `designs/admin-moderation/index-v13.html` 为准（评论区 v17 纸墨 token、系统 CJK/英文字体栈），
-  服务端通知模板仍沿用 v5。生产管理端不得展示通知判定预览或通知模板预览。
+  服务端通知模板以 `designs/admin-moderation/email-notification-v6.html`、`telegram-notification-v6.html` 为准（`notifications-v6.js` 为参考渲染）。生产管理端不得展示通知判定预览或通知模板预览。
 - 边界不清时先查源码和上述文档，再集中向用户确认。不要把原型 mock、测试文案或设计标注带进生产。
 - 文档站点在 `docs/`（VitePress，pnpm workspace 包 `ecoku-docs`）。本地预览 `pnpm docs:dev`。
   本地开发见 `docs/contribute/local-dev.md`，文档站点自身的发布见 `docs/contribute/docs-deploy.md`。

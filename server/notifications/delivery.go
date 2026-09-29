@@ -3,7 +3,9 @@ package notifications
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/tls"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,25 +15,42 @@ import (
 	"mime/quotedprintable"
 	"net"
 	"net/http"
+	"net/mail"
 	"net/smtp"
 	"net/textproto"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 )
 
 var (
 	sendSMTPMessage     = deliverSMTP
 	sendTelegramMessage = deliverTelegram
+	editTelegramMessage = editTelegram
 	telegramAPIBaseURL  = "https://api.telegram.org"
 )
 
 type emailMessage struct {
-	Subject string
-	Text    string
-	HTML    string
+	Subject    string
+	SenderName string
+	Text       string
+	HTML       string
 }
+
+// deliveryFailure carries the outbox error code and whether a retry can help.
+// Its text never includes the remote response body.
+type deliveryFailure struct {
+	code       string
+	permanent  bool
+	retryAfter time.Duration
+	cause      error
+}
+
+func (failure *deliveryFailure) Error() string { return failure.code }
+
+func (failure *deliveryFailure) Unwrap() error { return failure.cause }
 
 func deliverSMTP(ctx context.Context, config EmailConfig, recipient string, message emailMessage) error {
 	address := net.JoinHostPort(config.Host, strconv.Itoa(config.Port))
@@ -77,7 +96,7 @@ func deliverSMTP(ctx context.Context, config EmailConfig, recipient string, mess
 		return err
 	}
 	if err := client.Rcpt(recipient); err != nil {
-		return err
+		return smtpRejection(err, "recipient_rejected")
 	}
 	writer, err := client.Data()
 	if err != nil {
@@ -93,9 +112,21 @@ func deliverSMTP(ctx context.Context, config EmailConfig, recipient string, mess
 		return err
 	}
 	if err := writer.Close(); err != nil {
-		return err
+		return smtpRejection(err, "message_rejected")
 	}
 	return client.Quit()
+}
+
+// smtpRejection marks 55x replies as permanent: the mailbox or the message was
+// refused, and sending the same message again will not change that. Other
+// replies, including authentication failures, stay retryable so a corrected
+// setting can still deliver queued notifications.
+func smtpRejection(err error, code string) error {
+	var reply *textproto.Error
+	if errors.As(err, &reply) && reply.Code >= 550 && reply.Code <= 559 {
+		return &deliveryFailure{code: code, permanent: true, cause: err}
+	}
+	return err
 }
 
 func buildSMTPPayload(from, recipient string, message emailMessage) ([]byte, error) {
@@ -110,14 +141,39 @@ func buildSMTPPayload(from, recipient string, message emailMessage) ([]byte, err
 	if err := multipartWriter.Close(); err != nil {
 		return nil, err
 	}
+	messageID, err := newMessageID(from)
+	if err != nil {
+		return nil, err
+	}
 	var payload bytes.Buffer
-	fmt.Fprintf(&payload, "From: %s\r\n", from)
-	fmt.Fprintf(&payload, "To: %s\r\n", recipient)
-	fmt.Fprintf(&payload, "Subject: %s\r\n", mime.QEncoding.Encode("UTF-8", message.Subject))
+	fmt.Fprintf(&payload, "From: %s\r\n", (&mail.Address{Name: headerText(message.SenderName), Address: from}).String())
+	fmt.Fprintf(&payload, "To: %s\r\n", (&mail.Address{Address: recipient}).String())
+	fmt.Fprintf(&payload, "Subject: %s\r\n", mime.QEncoding.Encode("UTF-8", headerText(message.Subject)))
+	fmt.Fprintf(&payload, "Date: %s\r\n", time.Now().Format(time.RFC1123Z))
+	fmt.Fprintf(&payload, "Message-ID: %s\r\n", messageID)
 	payload.WriteString("MIME-Version: 1.0\r\n")
+	payload.WriteString("Auto-Submitted: auto-generated\r\n")
+	payload.WriteString("X-Auto-Response-Suppress: All\r\n")
 	fmt.Fprintf(&payload, "Content-Type: multipart/alternative; boundary=%s\r\n\r\n", multipartWriter.Boundary())
 	payload.Write(parts.Bytes())
 	return payload.Bytes(), nil
+}
+
+// headerText keeps a header value on one line.
+func headerText(value string) string {
+	return strings.Join(strings.FieldsFunc(value, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }), " ")
+}
+
+func newMessageID(from string) (string, error) {
+	random := make([]byte, 16)
+	if _, err := rand.Read(random); err != nil {
+		return "", err
+	}
+	domain := "ecoku.invalid"
+	if at := strings.LastIndex(from, "@"); at >= 0 && at < len(from)-1 {
+		domain = from[at+1:]
+	}
+	return "<" + hex.EncodeToString(random) + "@" + domain + ">", nil
 }
 
 func writeQuotedPart(writer *multipart.Writer, contentType, body string) error {
@@ -136,41 +192,100 @@ func writeQuotedPart(writer *multipart.Writer, contentType, body string) error {
 	return encoder.Close()
 }
 
-func deliverTelegram(ctx context.Context, token, target, message string) error {
-	body, err := json.Marshal(map[string]any{
+type telegramResponse struct {
+	OK          bool            `json:"ok"`
+	Description string          `json:"description"`
+	Result      json.RawMessage `json:"result"`
+	Parameters  struct {
+		RetryAfter int `json:"retry_after"`
+	} `json:"parameters"`
+}
+
+// deliverTelegram returns the sent message_id so a later deletion can
+// retract the message. A missing id does not fail an accepted message.
+func deliverTelegram(ctx context.Context, token, target, message string) (string, error) {
+	response, err := callTelegram(ctx, token, "sendMessage", map[string]any{
 		"chat_id": target, "text": message, "parse_mode": "HTML",
-		"disable_web_page_preview": true,
+		"link_preview_options": map[string]any{"is_disabled": true},
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
-	endpoint := strings.TrimRight(telegramAPIBaseURL, "/") + "/bot" + url.PathEscape(token) + "/sendMessage"
+	var sent struct {
+		MessageID int64 `json:"message_id"`
+	}
+	if json.Unmarshal(response.Result, &sent) != nil || sent.MessageID == 0 {
+		return "", nil
+	}
+	return strconv.FormatInt(sent.MessageID, 10), nil
+}
+
+func editTelegram(ctx context.Context, token, target, messageID, message string) error {
+	id, err := strconv.ParseInt(messageID, 10, 64)
+	if err != nil {
+		return &deliveryFailure{code: "telegram_rejected", permanent: true, cause: err}
+	}
+	response, err := callTelegram(ctx, token, "editMessageText", map[string]any{
+		"chat_id": target, "message_id": id, "text": message, "parse_mode": "HTML",
+		"link_preview_options": map[string]any{"is_disabled": true},
+	})
+	if err != nil && strings.Contains(strings.ToLower(response.Description), "message is not modified") {
+		return nil
+	}
+	return err
+}
+
+func callTelegram(ctx context.Context, token, method string, payload map[string]any) (telegramResponse, error) {
+	var response telegramResponse
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return response, err
+	}
+	endpoint := strings.TrimRight(telegramAPIBaseURL, "/") + "/bot" + url.PathEscape(token) + "/" + method
 	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
-		return err
+		return response, err
 	}
 	request.Header.Set("Content-Type", "application/json")
 	client := &http.Client{Timeout: 15 * time.Second}
-	response, err := client.Do(request)
+	result, err := client.Do(request)
 	if err != nil {
-		return err
+		return response, err
 	}
-	defer response.Body.Close()
-	_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 64*1024))
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return fmt.Errorf("telegram returned status %d", response.StatusCode)
+	defer result.Body.Close()
+	raw, _ := io.ReadAll(io.LimitReader(result.Body, 64*1024))
+	_ = json.Unmarshal(raw, &response)
+	switch status := result.StatusCode; {
+	case status >= 200 && status < 300 && response.OK:
+		return response, nil
+	case status == http.StatusTooManyRequests:
+		return response, &deliveryFailure{code: "rate_limited", retryAfter: time.Duration(response.Parameters.RetryAfter) * time.Second}
+	case status == http.StatusUnauthorized || status == http.StatusNotFound:
+		// An invalid token can be fixed in settings; keep the event retryable.
+		return response, &deliveryFailure{code: "authentication_failed"}
+	case status == http.StatusBadRequest || status == http.StatusForbidden:
+		// Unknown chat, bot removed or blocked, or a message Telegram refuses.
+		return response, &deliveryFailure{code: "telegram_rejected", permanent: true}
+	default:
+		return response, fmt.Errorf("telegram returned status %d", status)
 	}
-	return nil
 }
 
+// deliveryErrorCode maps an error to the fixed codes shown by test delivery.
 func deliveryErrorCode(err error) string {
 	if err == nil {
 		return ""
+	}
+	var failure *deliveryFailure
+	if errors.As(err, &failure) && failure.code == "authentication_failed" {
+		return failure.code
 	}
 	var netErr net.Error
 	switch {
 	case errors.As(err, &netErr) && netErr.Timeout():
 		return "timeout"
+	case failure != nil:
+		return "delivery_failed"
 	case strings.Contains(strings.ToLower(err.Error()), "auth") || strings.Contains(err.Error(), "535"):
 		return "authentication_failed"
 	case strings.Contains(strings.ToLower(err.Error()), "certificate") || strings.Contains(strings.ToLower(err.Error()), "tls"):
@@ -178,4 +293,13 @@ func deliveryErrorCode(err error) string {
 	default:
 		return "delivery_failed"
 	}
+}
+
+// outboxErrorCode keeps the finer classification for the outbox and logs.
+func outboxErrorCode(err error) string {
+	var failure *deliveryFailure
+	if errors.As(err, &failure) {
+		return failure.code
+	}
+	return deliveryErrorCode(err)
 }
