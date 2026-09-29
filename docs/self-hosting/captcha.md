@@ -15,7 +15,7 @@ Ecoku 可以要求访客在发布评论前、管理员在登录前通过一次�
 - 浏览器在提交评论或登录时附带一个一次性 token，服务端向 Turnstile 或 Cap 核验后才继续处理。核验发生在检查博主口令之前，没通过验证就无法试探口令。
 - 核验失败、token 缺失，或者验证服务超时、不可用，请求都会被拒绝，不会自动放行，也不会改用另一种方式。
 - 服务端核验时只发送 token 和 Secret Key，不附带访客 IP。
-- Secret Key 用 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 加密后存进数据库，后台只显示“已设置”。没有配置这把密钥时无法保存验证设置。
+- Secret Key 用 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 加密后存进数据库，后台只显示“已设置，输入新值以更换”。没有配置这把密钥时，无法保存新的 Secret Key。
 - 切换或关闭验证方式时，另一种方式已填写的配置会保留，切回来不必重填。
 
 ## Cloudflare Turnstile
@@ -38,9 +38,9 @@ Cap 实例地址必须是**公网可访问的 HTTPS 地址**。`localhost`、内
 下面的示例在 `~/capjs` 中用 Docker Compose 运行 Cap 和它依赖的 Valkey，Cap 只监听本机 `127.0.0.1:3000`，再由反向代理提供 HTTPS。
 
 ```bash
-mkdir -p ~/capjs/data/cap ~/capjs/data/valkey && cd ~/capjs
-sudo chown -R 999:1000 data/valkey
-chmod 750 data/cap data/valkey
+mkdir -p ~/capjs/data && cd ~/capjs
+sudo install -d -o 1000 -g 1000 -m 750 data/cap
+sudo install -d -o 999 -g 1000 -m 750 data/valkey
 ```
 
 写入 `compose.yml`：

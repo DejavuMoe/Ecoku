@@ -16,15 +16,39 @@ sudo docker compose logs --tail=100 ecoku
 
 ```bash
 cd ~/Ecoku
-sudo chown -R 10001:10001 data app/logs app/config.yaml
+sudo chown -R 10001:10001 data app/logs
 sudo chmod 750 data app/logs
-sudo chmod 640 app/config.yaml
+sudo chown "$(id -u):$(id -g)" app app/config.yaml
+chmod 644 app/config.yaml
 sudo docker compose up -d
 ```
 
-### ログに「管理员来源 … 不能复用公开站点来源」と出る
+`app/config.yaml` にはシークレットが含まれないので、自分のアカウントの所有で問題ありません。あとで編集するときに `sudo` は不要です。
 
-（管理者オリジンを公開サイトのオリジンと共用できない、という意味です。）`admin.allowed_origins` のアドレスが、いずれかのサイトの許可オリジンと重複しています。管理画面には独立したオリジンを使う必要があり、通常は `https://ecoku.example.com` のような Ecoku 自身のドメインです。
+### app/config.yaml を編集しようとすると権限が足りないと表示される {#config-permission}
+
+以前のデプロイ手順では、`app/` と `app/config.yaml` の所有者を root または UID 10001 にしていました。これらを自分のアカウントに戻すだけでよく、コンテナを作り直す必要はありません。
+
+```bash
+cd ~/Ecoku
+sudo chown "$(id -u):$(id -g)" app app/config.yaml
+chmod 755 app
+chmod 644 app/config.yaml
+```
+
+### コンテナが再起動を繰り返し、ログに config.yaml is a directory と出る
+
+起動前に `app/config.yaml` が存在しなかったため、Docker がその場所に空のディレクトリを作成しました。サービスを停止し、このディレクトリを削除してから、[Docker デプロイ](./docker)の手順 3 に従って設定ファイルを書き直して起動します。
+
+```bash
+cd ~/Ecoku
+sudo docker compose down
+sudo rmdir app/config.yaml
+```
+
+### サイトの保存時に「公开站点来源不能复用管理端来源」と表示される
+
+（公開サイトのオリジンを管理画面のオリジンと共用できない、という意味です。）サイトの許可オリジンが `admin.allowed_origins` のアドレスと重複しています。管理画面には独立したオリジンを使う必要があり、通常は `https://ecoku.example.com` のような Ecoku 自身のドメインです。`app/config.yaml` に `sites` を書いている場合は、同じ競合があると起動時に「管理员来源 … 不能复用公开站点来源」（管理者オリジンを公開サイトのオリジンと共用できない）と出ます。
 
 ### ログに「管理员会话固定为 8 小时」と出る
 
@@ -80,12 +104,12 @@ Ecoku をリバースプロキシの背後に置いているのに `trusted_prox
 
 1. HTTPS で管理画面にアクセスしていること。HTTP を使えるのは `localhost` と `127.0.0.1` だけです。
 2. アドレスバーのオリジンが `admin.allowed_origins` に書かれていて、アクセスしているアドレスと完全に一致していること（ポートを含む）。
-3. ユーザー名とパスワードが正しいこと。5 回続けて失敗すると、1 分待つ必要があります。
+3. ユーザー名とパスワードが正しいこと。ログインのリクエストは同じ IP から 1 分あたり 5 回まで（成功したものも数えます）で、超えた場合は表示に従って待ちます。[`trusted_proxies`](./reverse-proxy#trusted-proxies) を設定していない場合は、全員がこの 1 つの枠を共有します。
 4. CAPTCHA の検証ウィジェットを正常に完了できること。検証サービスに問題がある場合は、`captcha disable` で一時的に無効にします。[CAPTCHA](./captcha#disable) を参照してください。
 
 ### 管理者パスワードを忘れた
 
-パスワードハッシュを生成し直し、`ecoku.env` の `ECOKU_ADMIN_PASSWORD_HASH` の値を置き換えて、コンテナを作り直します。
+パスワードハッシュを生成し直し、`ecoku.env` の `ECOKU_ADMIN_PASSWORD_HASH` の値を置き換えて（両側のシングルクォートは残してください。消すとハッシュ内の `$` が Compose に展開されます）、コンテナを作り直します。
 
 ```bash
 cd ~/Ecoku
@@ -104,7 +128,7 @@ unset P
 
 ### Cap の設定を保存するとアドレスが無効と表示される
 
-Cap インスタンスのアドレスは、インターネットからアクセスできる HTTPS アドレスで、末尾に `/` を付けない必要があります。`localhost`、`127.0.0.1`、プライベート IP はいずれも拒否されます。
+Cap インスタンスのアドレスは、インターネットからアクセスできる HTTPS アドレスで、ユーザー名とパスワード、クエリー文字列、`#` フラグメントは付けられません。`localhost`、`127.0.0.1`、プライベート IP はいずれも拒否されます。
 
 ### Cap を有効にしたら、ブラウザのコンソールに CSP エラーが出る
 

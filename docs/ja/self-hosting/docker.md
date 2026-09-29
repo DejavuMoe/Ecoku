@@ -27,10 +27,10 @@
 
 ## 1. ディレクトリを作成する
 
-コンテナは UID/GID `10001:10001` で動作し、ルートファイルシステムは読み取り専用です。書き込めるのはマウントした `app/logs` と `data` だけです。まずこの 2 つのディレクトリを作成し、所有者をこのユーザーにします。
+コンテナは UID/GID `10001:10001` で動作し、ルートファイルシステムは読み取り専用です。書き込めるのはマウントした `app/logs` と `data` だけです。デプロイ先のディレクトリと `app/` は自分のアカウントで作成するので、あとで設定を編集するときに `sudo` は不要です。`app/logs` と `data` は所有者をコンテナのユーザーにします。
 
 ```bash
-mkdir -p ~/Ecoku && cd ~/Ecoku
+mkdir -p ~/Ecoku/app && cd ~/Ecoku
 sudo install -d -o 10001 -g 10001 -m 750 app/logs data
 ```
 
@@ -130,14 +130,15 @@ admin:
     - "https://ecoku.example.com"
 EOF
 
-sudo chown 10001:10001 app/config.yaml
-sudo chmod 640 app/config.yaml
+chmod 644 app/config.yaml
 ```
+
+`config.yaml` にはパスワードやシークレットが含まれないので、自分のアカウントの所有のまま権限 `644` にしておけば十分です。コンテナはこれを読み取り専用でマウントし、ほかのユーザー向けの読み取り権限で読み込みます。あとで変更するときも `sudo` は不要です。
 
 自分の環境に合わせて変更が必要なのは次の 2 か所だけです。
 
 - `notifications.instance_public_url`：Ecoku の公開 URL です。メールまたは Telegram の通知を有効にする前に必ず設定してください。設定していないと、管理画面で通知設定を保存するときに失敗します。
-- `admin.allowed_origins`：管理画面を開いたときのブラウザのアドレスバーのオリジン（スキーム + ドメイン + 任意のポート）です。**どのサイトの許可オリジンとも重複してはいけません**。重複するとサービスは起動を拒否します。Ecoku に専用ドメインが必要なのはこのためです。
+- `admin.allowed_origins`：管理画面を開いたときのブラウザのアドレスバーのオリジン（スキーム + ドメイン + 任意のポート）です。**どのサイトの許可オリジンとも重複してはいけません**。管理画面でサイトを保存するときも、これと同じオリジンは拒否されます。Ecoku に専用ドメインが必要なのはこのためです。
 
 設定ファイルにはパスワードやシークレットを一切書かず、環境変数の名前だけを書きます。実際の値は次の手順の `ecoku.env` に置きます。未知のフィールドがあると起動に失敗します。すべてのフィールドの意味は[設定リファレンス](../reference/configuration)を参照してください。
 
@@ -158,7 +159,11 @@ if ! grep -q '^ECOKU_ADMIN_PASSWORD_HASH=' ecoku.env; then
   read -rsp '管理者パスワード: ' ADMIN_PASS; echo
   HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i "git.via.moe/dejavu/ecoku:v0.2.6" hash-password)
   unset ADMIN_PASS
-  echo "ECOKU_ADMIN_PASSWORD_HASH='$HASH'" >> ecoku.env
+  if [ -n "$HASH" ]; then
+    echo "ECOKU_ADMIN_PASSWORD_HASH='$HASH'" >> ecoku.env
+  else
+    echo 'パスワードハッシュの生成に失敗しました。このスクリプトをもう一度実行してください' >&2
+  fi
 fi
 
 # 管理者セッションの署名キー：16 進数 64 文字
@@ -177,7 +182,7 @@ grep -q '^ECOKU_NOTIFICATION_ENCRYPTION_KEY=' ecoku.env || \
 | `TZ` | コメントの日時はこのタイムゾーンで表示されます。`Asia/Tokyo` のような IANA 名を指定します。 |
 | `ECOKU_ADMIN_USERNAME` | 管理画面のログインユーザー名。1～80 文字。 |
 | `ECOKU_ADMIN_PASSWORD_HASH` | 管理画面パスワードの bcrypt ハッシュ。イメージに内蔵された `hash-password` コマンドで生成します。 |
-| `ECOKU_ADMIN_TOKEN_KEY` | 管理者セッションの署名キー。32 文字以上。変更すると、ログイン中のすべてのセッションが無効になります。 |
+| `ECOKU_ADMIN_TOKEN_KEY` | 管理者セッションの署名キー。32 バイト以上。変更すると、ログイン中のすべてのセッションが無効になります。 |
 | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | データベース内の SMTP パスワード、Telegram Bot Token、CAPTCHA の Secret Key を暗号化します。 |
 
 ::: danger マスターキーはデータベースと一緒にバックアップしてください

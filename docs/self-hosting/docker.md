@@ -27,10 +27,10 @@
 
 ## 1. 创建目录
 
-容器以 UID/GID `10001:10001` 运行，根文件系统只读，只有挂载进去的 `app/logs` 和 `data` 可写。先把这两个目录建好，并交给该用户：
+容器以 UID/GID `10001:10001` 运行，根文件系统只读，只有挂载进去的 `app/logs` 和 `data` 可写。部署目录和 `app/` 用你自己的账号创建，之后编辑配置不需要 `sudo`；`app/logs` 和 `data` 交给容器用户：
 
 ```bash
-mkdir -p ~/Ecoku && cd ~/Ecoku
+mkdir -p ~/Ecoku/app && cd ~/Ecoku
 sudo install -d -o 10001 -g 10001 -m 750 app/logs data
 ```
 
@@ -130,14 +130,15 @@ admin:
     - "https://ecoku.example.com"
 EOF
 
-sudo chown 10001:10001 app/config.yaml
-sudo chmod 640 app/config.yaml
+chmod 644 app/config.yaml
 ```
+
+`config.yaml` 不含密码或密钥，保持属于你自己、权限 `644` 即可：容器以只读方式挂载它，靠其他用户的读权限读取，以后修改也不需要 `sudo`。
 
 需要按自己的环境修改的只有两处：
 
 - `notifications.instance_public_url`：Ecoku 的公网地址。启用邮件或 Telegram 通知前必须填写，否则后台保存通知设置会失败。
-- `admin.allowed_origins`：打开管理后台时浏览器地址栏里的来源（协议 + 域名 + 可选端口）。它**不能与任何站点的允许来源重复**，否则服务拒绝启动。这就是 Ecoku 需要一个独立域名的原因。
+- `admin.allowed_origins`：打开管理后台时浏览器地址栏里的来源（协议 + 域名 + 可选端口）。它**不能与任何站点的允许来源重复**，后台保存站点时会拒绝与它相同的来源。这就是 Ecoku 需要一个独立域名的原因。
 
 配置文件不存放任何密码或密钥，只写环境变量的名字，真正的值放在下一步的 `ecoku.env`。未知字段会导致启动失败，所有字段的含义见[配置参考](../reference/configuration)。
 
@@ -158,7 +159,11 @@ if ! grep -q '^ECOKU_ADMIN_PASSWORD_HASH=' ecoku.env; then
   read -rsp '管理员密码: ' ADMIN_PASS; echo
   HASH=$(printf '%s\n' "$ADMIN_PASS" | sudo docker run --rm -i "git.via.moe/dejavu/ecoku:v0.2.6" hash-password)
   unset ADMIN_PASS
-  echo "ECOKU_ADMIN_PASSWORD_HASH='$HASH'" >> ecoku.env
+  if [ -n "$HASH" ]; then
+    echo "ECOKU_ADMIN_PASSWORD_HASH='$HASH'" >> ecoku.env
+  else
+    echo '生成密码哈希失败，请重新运行本段脚本' >&2
+  fi
 fi
 
 # 管理员会话签名密钥：64 个十六进制字符
@@ -177,7 +182,7 @@ grep -q '^ECOKU_NOTIFICATION_ENCRYPTION_KEY=' ecoku.env || \
 | `TZ` | 评论时间按这个时区显示，填 IANA 名称，如 `Asia/Tokyo`。 |
 | `ECOKU_ADMIN_USERNAME` | 后台登录用户名，1～80 个字符。 |
 | `ECOKU_ADMIN_PASSWORD_HASH` | 后台密码的 bcrypt 哈希，由镜像内置的 `hash-password` 命令生成。 |
-| `ECOKU_ADMIN_TOKEN_KEY` | 管理员会话的签名密钥，至少 32 个字符。更换后所有已登录会话失效。 |
+| `ECOKU_ADMIN_TOKEN_KEY` | 管理员会话的签名密钥，至少 32 字节。更换后所有已登录会话失效。 |
 | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 加密数据库里的 SMTP 密码、Telegram Bot Token 和人机验证 Secret Key。 |
 
 ::: danger 请把主密钥和数据库一起备份

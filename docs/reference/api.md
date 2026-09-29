@@ -14,7 +14,7 @@
 { "code": 200, "message": "Success", "data": { } }
 ```
 
-`code` 与 HTTP 状态码相同。出错时没有 `data`，`message` 是一句中文说明，例如：
+`code` 与 HTTP 状态码相同。出错时通常没有 `data`（测试通知失败例外，见[通知](#notifications)），`message` 是一句中文说明，例如：
 
 ```json
 { "code": 403, "message": "来源不属于当前站点" }
@@ -31,12 +31,13 @@
 | `401` | 管理接口未登录或会话已失效。 |
 | `403` | 来源不在允许列表中，或没有权限。 |
 | `404` | 站点、评论或接口不存在。 |
+| `405` | 路径存在，但不支持该请求方法。 |
 | `409` | 状态冲突：父评论属于其他页面、回复已删除的评论、配置已被其他会话修改等。 |
 | `413` | 请求体超过上限。 |
 | `422` | 评论列表超出读取上限，或回复层数超过 16 层。 |
 | `429` | 触发限流，响应头 `Retry-After` 给出需要等待的秒数。 |
 | `502` | 测试通知发送失败。 |
-| `503` | 服务繁忙、读取超时，或人机验证服务不可用。 |
+| `503` | 服务繁忙、读取超时、人机验证服务不可用、管理员会话存储不可用，或未配置凭据加密主密钥。 |
 
 ### 跨域与来源
 
@@ -186,7 +187,7 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&parentId=101&afterId=1
 | `afterId` | 只返回 ID 大于它的评论，默认 `0`。 |
 | `pageSize` | 1～100，默认 `10`。 |
 
-结果按 ID 升序排列。这种模式下不能同时传 `page` 或 `sort`，否则返回 `400`。父评论不存在或不属于该页面时返回 `404`。
+结果按 ID 升序排列。`afterId` 必须和 `parentId` 一起使用；这种模式下不能同时传 `page` 或 `sort`，否则返回 `400`。父评论不存在或不属于该页面时返回 `404`。
 
 ```json
 {
@@ -256,7 +257,9 @@ Origin: https://blog.example.com
 | `403` | 缺少 `Origin`，或来源不属于该站点。 |
 | `404` | 站点或父评论不存在。 |
 | `409` | 父评论属于其他页面，或父评论已删除。 |
+| `413` | 请求体超过 80 KiB。 |
 | `422` | 回复层数超过 16 层。 |
+| `429` | 超过 `rate_limit.comment_submit`（默认每个 IP 每 60 秒 5 次）。 |
 | `503` | 人机验证服务不可用。 |
 
 ## 管理接口
@@ -267,7 +270,7 @@ Origin: https://blog.example.com
 
 - **会话 Cookie**：`POST /api/admin/login` 成功后，服务端设置名为 `ecoku_admin_session` 的 Cookie（HttpOnly、SameSite=Strict、Path=`/api/admin`，生产环境带 Secure），有效期 8 小时。登录响应中不包含 token。
 - 登录请求，以及用 Cookie 认证的非 GET 请求，必须带有 `admin.allowed_origins` 中的 `Origin`。
-- 用 `Authorization: Bearer <凭据>` 认证的请求不检查 `Origin`。凭据必须是当前有效、未注销的会话；v0.2.4 之前签发的旧 token 不再有效。
+- 用 `Authorization: Bearer <凭据>` 或管理密钥认证的请求可以不带 `Origin`；如果带了，仍须在 `admin.allowed_origins` 中，否则返回 `403`。Bearer 凭据必须是当前有效、未注销的会话；v0.2.4 之前签发的旧 token 不再有效。
 - 登录要求 HTTPS，只有回环地址可以用 HTTP。
 
 ### 登录与会话
@@ -286,15 +289,17 @@ Origin: https://blog.example.com
 | `GET /api/admin/sites` | 所有站点。 |
 | `POST /api/admin/sites` | 新建站点。 |
 | `GET /api/admin/sites/:siteId` | 单个站点。 |
-| `PUT /api/admin/sites/:siteId` | 更新站点。请求体需带上读取时得到的 `revision`；期间被其他会话修改过时返回 `409`。 |
+| `PUT /api/admin/sites/:siteId` | 更新站点。请求体需带上读取时得到的 `revision`，缺少时返回 `400`；期间被其他会话修改过时返回 `409`。 |
 
-站点字段：`id`、`site_url`、`name`、`allowed_origins`、`default_sort`、`email_required`、`website_required`、`placeholder`、`comment_limit`、`empty_message`、`smoji_enabled`、`smoji_manifest_url`、`blogger_nickname`、`blogger_email`、`blogger_badge`、`blogger_passphrase`（只写）、`revision`。响应中用 `blogger_passphrase_set` 表示是否已设置口令。
+站点字段：`id`、`site_url`、`name`、`allowed_origins`、`default_sort`、`email_required`、`website_required`、`placeholder`、`comment_limit`、`empty_message`、`smoji_enabled`、`smoji_manifest_url`、`blogger_nickname`、`blogger_email`、`blogger_badge`、`blogger_passphrase`（只写）、`revision`。响应中用 `blogger_passphrase_set` 表示是否已设置口令，另含只读的 `created_at`、`updated_at`。站点列表在 `data.data` 数组中，单个站点以及创建、更新的结果在 `data.site` 中。
+
+新建站点时 ID 已存在，或 `allowed_origins` 与 `admin.allowed_origins` 重复，都返回 `409`。
 
 ### 评论
 
 | 方法与路径 | 说明 |
 | --- | --- |
-| `GET /api/admin/sites/:siteId/comments` | 评论列表。参数：`status`（`published` 或 `deleted`）、`page`、`pageSize`（默认 20，最大 100）、`sort`（`newest` 或 `oldest`）。 |
+| `GET /api/admin/sites/:siteId/comments` | 评论列表。参数：`status`（`published` 或 `deleted`，默认 `published`）、`page`（最大 1000000）、`pageSize`（默认 20，最大 100）、`sort`（`newest` 或 `oldest`，默认 `newest`）。响应含 `total`、`pageCount` 和各状态数量 `counts`。 |
 | `GET /api/admin/sites/:siteId/comments/:commentId` | 单条评论，含私有邮箱。 |
 | `DELETE /api/admin/sites/:siteId/comments/:commentId` | 墓碑删除。已删除的评论再次删除时返回成功，`unchanged` 为 `true`。 |
 | `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent` | 彻底删除。只能用于没有回复的墓碑，否则返回 `409`。 |
@@ -310,7 +315,7 @@ Origin: https://blog.example.com
 
 `/api/admin/turnstile` 是旧版接口，仍然可用，新代码请使用 `/api/admin/captcha`。
 
-### 通知
+### 通知 {#notifications}
 
 | 方法与路径 | 说明 |
 | --- | --- |
@@ -326,7 +331,7 @@ Origin: https://blog.example.com
 
 站点管理密钥用于**可信的服务端自动化**，例如在自己的后台系统中删除违规评论。它不能放进浏览器。
 
-1. 在 `app/config.yaml` 的 `sites` 中为站点配置 `management_key_env`，并在 `ecoku.env` 中设置对应的环境变量，值至少 32 个字符，各站点不能相同。见[配置参考](./configuration#sites)。
+1. 在 `app/config.yaml` 的 `sites` 中为站点配置 `management_key_env`，并在 `ecoku.env` 中设置对应的环境变量，值至少 32 字节，各站点不能相同。见[配置参考](./configuration#sites)。
 2. 请求时带上：
 
    ```http
@@ -340,6 +345,6 @@ DELETE /api/admin/sites/blog/comments/102
 Authorization: EcokuSite <管理密钥>
 ```
 
-它不能读取评论列表或详情，不能彻底删除，也不能访问其他站点或实例设置，这些请求返回 `403`。使用管理密钥同样要求 `admin.enabled: true`。
+它不能读取评论列表或详情，不能彻底删除，也不能访问其他站点或实例设置，这些请求返回 `403`；密钥无效返回 `401`。使用管理密钥同样要求 `admin.enabled: true`。
 
 `sites` 中的站点设置只在数据库首次初始化时写入，但 `management_key_env` 每次启动都会读取。已有实例要启用管理密钥，可以在 `sites` 中补写一个条目：`id` 与后台中已有的站点一致，`site_url` 和 `allowed_origins` 也要填写以通过配置校验。这个条目的其他字段不会覆盖后台中的设置。

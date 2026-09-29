@@ -37,7 +37,7 @@
 
 | 変数 | デフォルト値 | 用途 |
 | --- | --- | --- |
-| `--ecoku-theme` | `var(--theme, #f7f4ee)` | 紙面の地色、メインボタンの文字 |
+| `--ecoku-theme` | `var(--theme, #f7f4ee)` | メインボタンの文字、Cap のチェックボックスの地色 |
 | `--ecoku-entry` | `var(--entry, #fbf9f5)` | 投稿カード、並び替えメニュー、スタンプパネル、エラーメッセージの地色 |
 | `--ecoku-primary` | `var(--primary, #1e1c19)` | 見出し、ニックネーム、入力文字、メインボタンの地色、フォーカス時の下線 |
 | `--ecoku-secondary` | `var(--secondary, #6b655b)` | 日時、文字数、項目のラベル、文字だけのボタン |

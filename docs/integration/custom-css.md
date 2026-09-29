@@ -37,7 +37,7 @@
 
 | 变量 | 默认值 | 用于 |
 | --- | --- | --- |
-| `--ecoku-theme` | `var(--theme, #f7f4ee)` | 纸面底色；主按钮文字 |
+| `--ecoku-theme` | `var(--theme, #f7f4ee)` | 主按钮文字；Cap 复选框底色 |
 | `--ecoku-entry` | `var(--entry, #fbf9f5)` | 发表卡片、排序菜单、表情面板、错误提示的底色 |
 | `--ecoku-primary` | `var(--primary, #1e1c19)` | 标题、昵称、输入文字、主按钮底色、聚焦下划线 |
 | `--ecoku-secondary` | `var(--secondary, #6b655b)` | 时间、字数、字段标签、文字按钮 |

@@ -40,14 +40,18 @@ In addition:
 | SMTP server (SMTP 服务器) | Such as `smtp.example.com`. |
 | Port (端口) | Use what your mail provider requires, usually 465 (SSL/TLS) or 587 (STARTTLS). |
 | Encryption (加密方式) | `SSL/TLS`: encrypted from the moment the connection opens. `STARTTLS`: opens a plain connection and then upgrades it. Unencrypted SMTP is not supported. |
-| Username (用户名) | May be empty. If empty, no SMTP authentication is performed. |
+| Username (用户名) | May be empty. If empty, no SMTP authentication is performed. The password is still required; for a server that needs no authentication, enter any value. |
 | Password (密码) | After saving, it is shown only as Set (已设置). Leaving it empty keeps it unchanged. |
 | From address (发件人地址) | The From address of the email. Many providers require it to match the sign-in account. |
 | Recipients (通知收件人) | Email addresses that receive blogger notifications. You can enter several, separated by Enter or commas. |
 
 **Send test email** (发送测试邮件) sends a test email to the recipients using the values currently in the form (if the password is empty, the saved password is used). You do not need to save first. If it fails, the page gives the reason, such as a connection timeout, failed authentication, or a failed TLS handshake.
 
-Each email contains both a plain-text and an HTML version, with the site name, the commenter, the post title, the submission time, the comment body, and a link to the original comment. Reply notifications also include the comment that was replied to. Times in emails are in UTC.
+Each email contains both a plain-text and an HTML version. The content depends on the type:
+
+- New comment for the blogger: the commenter, the post title, the submission time (UTC), the comment body, and a "查看原文" (View original) link;
+- New reply for the blogger: the post title, the comment that was replied to, the reply body, and a "查看原文" (View original) link;
+- Reply for a visitor: the visitor's own comment, the reply body, and a "查看回复" (View reply) link.
 
 Subject lines (sent in Chinese):
 
@@ -61,7 +65,7 @@ Subject lines (sent in Chinese):
 3. Find the ID of the target: a user ID is a string of digits, such as `123456789`; group and channel IDs usually start with `-100`, such as `-1001234567890`.
 4. Enter the bot token and target IDs (you can enter several) in the admin console, click **Send test message** (发送测试消息) to confirm, then save.
 
-Messages have the same content as emails. Long messages are truncated (at most 1200 characters of the comment body), with a "View original" (查看原文) link at the end.
+Messages contain the site name, the commenter or replier, the post title, the original comment that was replied to (at most 400 characters), and the body (at most 1200 characters), with a "View original" (查看原文) link at the end. They do not include the submission time.
 
 ## Delivery
 
@@ -77,8 +81,8 @@ Logs record only the notification ID, error type, and attempt count. They do not
 
 ## Troubleshooting {#troubleshooting}
 
-**Saving shows "实例公开网址尚未配置" (instance public URL is not configured)**: set `notifications.instance_public_url` in `app/config.yaml` and recreate the container.
+**Enabling a channel fails to save with "请求参数不符合要求，请检查后重试。" (the request parameters are invalid; check and try again)**: if the form is filled in correctly, the instance public URL is most likely not set. Set `notifications.instance_public_url` in `app/config.yaml` and recreate the container.
 
-**Saving shows "通知加密密钥尚未配置" (notification encryption key is not configured)**: set `ECOKU_NOTIFICATION_ENCRYPTION_KEY` in `ecoku.env` and recreate the container. See [Docker deployment](./docker#env).
+**Saving shows "服务端暂时无法完成操作，数据没有被修改。" (the server cannot complete the operation right now; no data was changed)**: most likely the encryption master key is not configured. Set `ECOKU_NOTIFICATION_ENCRYPTION_KEY` in `ecoku.env` and recreate the container. See [Docker deployment](./docker#env).
 
 **The test email times out**: usually the server's outbound SMTP port is blocked. First confirm connectivity on the server with `nc -vz smtp.example.com 465`, then check that the port matches the encryption mode (465 goes with SSL/TLS, 587 with STARTTLS).

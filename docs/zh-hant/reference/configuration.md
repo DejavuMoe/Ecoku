@@ -86,12 +86,12 @@ cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 
 - 三個 `*_env` 必須是不同的環境變數，且值都不能為空；
 - 密碼雜湊必須是有效的 bcrypt，cost 不低於 10（`hash-password` 產生的雜湊符合要求）；
-- 簽章金鑰至少 32 個字元，且不能與密碼雜湊或任何站點管理金鑰相同；
-- `allowed_origins` 不能與任何站點的允許來源重複。
+- 簽章金鑰至少 32 位元組，且不能與密碼雜湊或任何站點管理金鑰相同；
+- `allowed_origins` 不能與 `sites` 中任何站點的允許來源重複。在後台新增或修改站點時，也不能使用管理端來源，否則儲存失敗。
 
 ## sites（選填） {#sites}
 
-`sites` 用於在**全新資料庫第一次初始化時**預先寫入站點。資料庫一旦建立，站點就以資料庫為準，之後修改 YAML 中的站點設定不會再生效，請在後台管理站點。唯一的例外是 `management_key_env`，每次啟動都會讀取。大多數部署不需要寫這一節。
+`sites` 用於在**全新資料庫第一次初始化時**預先寫入站點。資料庫一旦建立，站點就以資料庫為準，之後修改 YAML 中的站點設定不會再生效，請在後台管理站點。唯一的例外是 `management_key_env`，每次啟動都會讀取。YAML 中的站點項目每次啟動仍會檢查，寫錯同樣會拒絕啟動。大多數部署不需要寫這一節。
 
 ```yaml
 sites:
@@ -111,10 +111,10 @@ sites:
 | 欄位 | 說明 |
 | --- | --- |
 | `id` | 站點 ID，1～100 個字元，以字母或數字開頭，只能包含字母、數字、`.`、`_`、`-`。 |
-| `site_url` | 站點的標準網址，用來組成通知中的原文連結。 |
+| `site_url` | 站點的標準網址，用來組成通知中的原文連結。只能是 `http`/`https`，不能帶查詢字串或片段。省略時取 `allowed_origins` 的第一項。 |
 | `name` | 站點名稱，最多 120 個字元。留空時顯示網域。 |
 | `allowed_origins` | 允許嵌入評論區的來源，至少一個。 |
-| `management_key_env` | 選填。存放該站點管理金鑰的環境變數名稱，值至少 32 個字元，各站點不能共用。管理金鑰的用途見 [REST API](./api#management-key)。 |
+| `management_key_env` | 選填。存放該站點管理金鑰的環境變數名稱，值至少 32 位元組，各站點不能共用。管理金鑰的用途見 [REST API](./api#management-key)。 |
 | `comment.default_sort` | `newest`（預設）或 `oldest`。 |
 | `comment.email_required` | 信箱是否必填，預設為 `true`。 |
 | `comment.website_required` | 網址是否必填，預設為 `false`。 |
@@ -128,9 +128,10 @@ sites:
 | --- | --- | --- |
 | `ECOKU_ADMIN_USERNAME` | 啟用後台時 | 管理員使用者名稱，1～80 個字元。變數名稱由 `admin.username_env` 決定。 |
 | `ECOKU_ADMIN_PASSWORD_HASH` | 啟用後台時 | 管理員密碼的 bcrypt 雜湊。用 `hash-password` 指令產生，見[命令列](./cli#hash-password)。 |
-| `ECOKU_ADMIN_TOKEN_KEY` | 啟用後台時 | 工作階段簽章金鑰，至少 32 個字元。可用 `openssl rand -hex 32` 產生。 |
+| `ECOKU_ADMIN_TOKEN_KEY` | 啟用後台時 | 工作階段簽章金鑰，至少 32 位元組。可用 `openssl rand -hex 32` 產生。 |
 | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 儲存憑據時 | Base64 編碼的 32 位元組金鑰（有無填補皆可）。可用 `openssl rand -base64 32` 產生。 |
-| `TZ` | 否 | 評論時間的顯示時區，填 IANA 名稱，例如 `Asia/Shanghai`。未設定時取決於容器的系統時區，建議明確填寫。 |
+| `TZ` | 否 | 評論時間的顯示時區，填 IANA 名稱，例如 `Asia/Shanghai`。未設定或名稱無效時回退到容器的系統時區，無法辨識時使用 `Asia/Shanghai`。建議明確填寫。 |
+| 站點管理金鑰 | 否 | 變數名稱由 `sites[].management_key_env` 決定，例如 `ECOKU_BLOG_MANAGEMENT_KEY`。設定了該欄位時值必須存在，至少 32 位元組。 |
 | `GIN_MODE` | 否 | 映像檔內已設為 `release`，不需要修改。 |
 
 `ecoku.env` 中的每個值建議用單引號包住，避免 bcrypt 雜湊中的 `$` 被 Compose 展開。

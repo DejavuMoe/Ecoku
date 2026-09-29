@@ -62,13 +62,26 @@ printf 'Snapshot: %s\n' "$snapshot"
 )
 ```
 
-結果は 1 つのディレクトリで、データベースのスナップショット `database.sqlite3`（所有者 root、権限 600）と設定のアーカイブ `config.tar.gz` が入っています。形式はコールドバックアップと異なり、後述の復元スクリプトにはそのまま使えません。復元するときは、`database.sqlite3` を手動で `data/ecoku.sqlite3` に戻し、設定のアーカイブを展開する必要があります。スナップショットの取得中に設定を変更すると、データベースと設定が食い違うことがあります。両者を厳密に一致させる必要がある場合は、コールドバックアップを使ってください。
+結果は 1 つのディレクトリで、データベースのスナップショット `database.sqlite3`（所有者 root、権限 600）と設定のアーカイブ `config.tar.gz` が入っています。形式はコールドバックアップと異なり、後述の復元スクリプトにはそのまま使えません。スナップショットの取得中に設定を変更すると、データベースと設定が食い違うことがあります。両者を厳密に一致させる必要がある場合は、コールドバックアップを使ってください。
+
+スナップショットから復元するときは、まずサービスを停止し、残っている WAL ファイルを削除してから、コンテナのユーザーを所有者にしてデータベースを戻します（`snapshot=` はスナップショットのディレクトリに書き換えてください）。
+
+```bash
+cd ~/Ecoku
+snapshot="$HOME/backups/ecoku-snapshot-XXXXXXXX"
+sudo docker compose down
+sudo rm -f data/ecoku.sqlite3-wal data/ecoku.sqlite3-shm
+sudo install -o 10001 -g 10001 -m 600 "$snapshot/database.sqlite3" data/ecoku.sqlite3
+sudo docker compose up -d
+```
+
+設定も復元する場合は、起動する前に `config.tar.gz` を展開し、後述の復元スクリプトに従って所有者と権限を直してください。
 
 ## コールドバックアップから復元する {#restore}
 
 復元すると、現在のデータベースと設定がバックアップ時点の状態に置き換わり、バックアップ後に投稿されたコメントや設定の変更は失われます。
 
-まずスクリプト内の `archive=` を、復元するアーカイブのパスに書き換えます。スクリプトは次のことを行います。
+まずスクリプト内の `archive=` を、復元するアーカイブのパスに書き換えます。スクリプトは元のデプロイ先のディレクトリで実行します。新しいホストで復元する場合は、先に [Docker デプロイ](./docker)の手順 1 で `~/Ecoku` を作成してください。スクリプトは次のことを行います。
 
 1. アーカイブに必要なファイルが含まれているか確認します。
 2. サービスを停止します。
@@ -89,15 +102,20 @@ done
 sudo docker compose down
 saved="recovery-before-$(date +%Y%m%d_%H%M%S)"
 mkdir -m 700 "$saved"
-sudo mv data app/config.yaml ecoku.env compose.yaml "$saved/"
+for item in data app/config.yaml ecoku.env compose.yaml; do
+  [ ! -e "$item" ] || sudo mv "$item" "$saved/"
+done
 sudo tar -xzf "$archive" --no-same-owner
-sudo chown -R 10001:10001 data app/config.yaml
+sudo chown -R 10001:10001 data
 sudo chmod 750 data
-sudo chmod 640 app/config.yaml
-sudo chown "$(id -u):$(id -g)" ecoku.env compose.yaml
+sudo install -d -o 10001 -g 10001 -m 750 app/logs
+sudo chown "$(id -u):$(id -g)" app app/config.yaml ecoku.env compose.yaml
+chmod 755 app
+chmod 644 app/config.yaml
 chmod 600 ecoku.env
 sudo docker compose up -d
-curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+curl --fail --silent --show-error --retry 15 --retry-delay 2 --retry-all-errors \
+  http://127.0.0.1:12123/api/health
 )
 ```
 

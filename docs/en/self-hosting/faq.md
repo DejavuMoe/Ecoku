@@ -16,15 +16,39 @@ The container runs as UID/GID `10001:10001`. It must be able to read `app/config
 
 ```bash
 cd ~/Ecoku
-sudo chown -R 10001:10001 data app/logs app/config.yaml
+sudo chown -R 10001:10001 data app/logs
 sudo chmod 750 data app/logs
-sudo chmod 640 app/config.yaml
+sudo chown "$(id -u):$(id -g)" app app/config.yaml
+chmod 644 app/config.yaml
 sudo docker compose up -d
 ```
 
-### The log says "管理员来源 … 不能复用公开站点来源" (admin origin cannot reuse a public site origin)
+`app/config.yaml` holds no secrets, so it can belong to your own account, and later edits do not need `sudo`.
 
-An address in `admin.allowed_origins` is also in some site's allowed origins. The admin console must use a separate origin, usually Ecoku's own domain, such as `https://ecoku.example.com`.
+### Permission denied when editing app/config.yaml {#config-permission}
+
+Earlier deployment steps handed `app/` and `app/config.yaml` to root or UID 10001. Give them back to your own account; you do not need to recreate the container:
+
+```bash
+cd ~/Ecoku
+sudo chown "$(id -u):$(id -g)" app app/config.yaml
+chmod 755 app
+chmod 644 app/config.yaml
+```
+
+### The container keeps restarting and the log says config.yaml is a directory
+
+`app/config.yaml` did not exist before startup, so Docker created an empty directory in its place. Stop the service, delete that directory, write the config file again as in step 3 of [Docker deployment](./docker), and then start:
+
+```bash
+cd ~/Ecoku
+sudo docker compose down
+sudo rmdir app/config.yaml
+```
+
+### Saving a site says "公开站点来源不能复用管理端来源" (a public site origin cannot reuse an admin origin)
+
+The site's allowed origins overlap with an address in `admin.allowed_origins`. The admin console must use a separate origin, usually Ecoku's own domain, such as `https://ecoku.example.com`. If you wrote `sites` in `app/config.yaml`, the same conflict is reported at startup as "管理员来源 … 不能复用公开站点来源" (admin origin cannot reuse a public site origin).
 
 ### The log says "管理员会话固定为 8 小时" (admin sessions are fixed at 8 hours)
 
@@ -80,12 +104,12 @@ Check these in order:
 
 1. You are opening the admin console over HTTPS. Only `localhost` and `127.0.0.1` may use HTTP.
 2. The origin in the address bar is in `admin.allowed_origins` and matches the address you are visiting exactly (including the port).
-3. The username and password are correct. After 5 failed attempts in a row, you have to wait one minute.
+3. The username and password are correct. Each IP may make at most 5 sign-in requests per minute (successful ones count too); beyond that, wait as prompted. Without [`trusted_proxies`](./reverse-proxy#trusted-proxies) configured, everyone shares this one allowance.
 4. The CAPTCHA widget completes normally. If the verification service has problems, turn it off temporarily with `captcha disable`. See [CAPTCHA](./captcha#disable).
 
 ### Forgot the admin password
 
-Generate a new password hash, replace the value of `ECOKU_ADMIN_PASSWORD_HASH` in `ecoku.env`, and recreate the container:
+Generate a new password hash, replace the value of `ECOKU_ADMIN_PASSWORD_HASH` in `ecoku.env` (keep the single quotes around it, or Compose expands the `$` characters in the hash), and recreate the container:
 
 ```bash
 cd ~/Ecoku
@@ -104,7 +128,7 @@ See [Notifications](./notifications#troubleshooting).
 
 ### Saving Cap settings says the URL is invalid
 
-The Cap instance URL must be a publicly reachable HTTPS URL with no trailing `/`. `localhost`, `127.0.0.1`, and private-network IPs are all rejected.
+The Cap instance URL must be a publicly reachable HTTPS URL without a username and password, query string, or `#` fragment. `localhost`, `127.0.0.1`, and private-network IPs are all rejected.
 
 ### After enabling Cap, the browser console shows CSP errors
 

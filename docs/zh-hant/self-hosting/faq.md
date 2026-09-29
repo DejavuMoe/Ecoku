@@ -16,15 +16,39 @@ sudo docker compose logs --tail=100 ecoku
 
 ```bash
 cd ~/Ecoku
-sudo chown -R 10001:10001 data app/logs app/config.yaml
+sudo chown -R 10001:10001 data app/logs
 sudo chmod 750 data app/logs
-sudo chmod 640 app/config.yaml
+sudo chown "$(id -u):$(id -g)" app app/config.yaml
+chmod 644 app/config.yaml
 sudo docker compose up -d
 ```
 
-### 日誌提示「管理员来源 … 不能复用公开站点来源」
+`app/config.yaml` 不含金鑰，屬於你自己的帳號即可，之後編輯不需要 `sudo`。
 
-`admin.allowed_origins` 中的位址與某個站點的允許來源重複了。管理後台必須使用一個獨立的來源，通常就是 Ecoku 自己的網域，例如 `https://ecoku.example.com`。
+### 編輯 app/config.yaml 時提示權限不足 {#config-permission}
+
+早期的部署步驟把 `app/` 和 `app/config.yaml` 的擁有者設為 root 或 UID 10001。把它們改回自己的帳號即可，不需要重建容器：
+
+```bash
+cd ~/Ecoku
+sudo chown "$(id -u):$(id -g)" app app/config.yaml
+chmod 755 app
+chmod 644 app/config.yaml
+```
+
+### 容器反覆重新啟動，日誌提示 config.yaml is a directory
+
+啟動前 `app/config.yaml` 不存在，Docker 在這個位置建立了一個空目錄。停止服務，刪除這個目錄，依照 [Docker 部署](./docker)第 3 步重新寫入設定檔後再啟動：
+
+```bash
+cd ~/Ecoku
+sudo docker compose down
+sudo rmdir app/config.yaml
+```
+
+### 儲存站點時提示「公开站点来源不能复用管理端来源」
+
+站點的允許來源與 `admin.allowed_origins` 中的位址重複了。管理後台必須使用一個獨立的來源，通常就是 Ecoku 自己的網域，例如 `https://ecoku.example.com`。如果在 `app/config.yaml` 中寫了 `sites`，同樣的衝突會在啟動時提示「管理员来源 … 不能复用公开站点来源」。
 
 ### 日誌提示「管理员会话固定为 8 小时」
 
@@ -80,12 +104,12 @@ Ecoku 放在反向代理後面，但沒有設定 `trusted_proxies`，所有訪�
 
 1. 透過 HTTPS 存取後台。只有 `localhost`、`127.0.0.1` 可以用 HTTP。
 2. 網址列中的來源已寫入 `admin.allowed_origins`，而且與存取的位址完全一致（包括連接埠）。
-3. 使用者名稱和密碼正確。連續失敗 5 次後需等待一分鐘。
+3. 使用者名稱和密碼正確。同一 IP 每分鐘最多 5 次登入請求（成功的也計入），超出後依提示等待。沒有設定 [`trusted_proxies`](./reverse-proxy#trusted-proxies) 時，所有人共用這一個額度。
 4. 人機驗證元件能正常完成驗證。驗證服務出問題時，用 `captcha disable` 暫時關閉，見[人機驗證](./captcha#disable)。
 
 ### 忘記了管理員密碼
 
-重新產生密碼雜湊，取代 `ecoku.env` 中 `ECOKU_ADMIN_PASSWORD_HASH` 的值，再重建容器：
+重新產生密碼雜湊，取代 `ecoku.env` 中 `ECOKU_ADMIN_PASSWORD_HASH` 的值（保留兩側的單引號，否則雜湊中的 `$` 會被 Compose 展開），再重建容器：
 
 ```bash
 cd ~/Ecoku
@@ -104,7 +128,7 @@ unset P
 
 ### 儲存 Cap 設定時提示位址無效
 
-Cap 實例位址必須是可從公開網路存取的 HTTPS 位址，結尾不加 `/`。`localhost`、`127.0.0.1` 和內部網路 IP 都會被拒絕。
+Cap 實例位址必須是可從公開網路存取的 HTTPS 位址，不能帶使用者名稱密碼、查詢字串或 `#` 片段。`localhost`、`127.0.0.1` 和內部網路 IP 都會被拒絕。
 
 ### 啟用 Cap 後，瀏覽器主控台出現 CSP 錯誤
 

@@ -71,7 +71,7 @@ comments: false
 
 ## 外观
 
-默认样式会读取 PaperMod 的颜色变量（`--theme`、`--entry`、`--primary`、`--secondary`、`--content`、`--border`、`--code-bg`），并跟随主题的明暗切换，通常不需要额外设置。
+默认样式会读取 PaperMod 的颜色变量（`--theme`、`--entry`、`--primary`、`--secondary`、`--content`、`--border`），并跟随主题的明暗切换，通常不需要额外设置。
 
 想进一步统一圆角、字号或强调色，可以在 `assets/css/extended/` 下新建一个 CSS 文件，PaperMod 会自动把它打包进站点样式：
 

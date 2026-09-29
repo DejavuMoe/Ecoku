@@ -62,13 +62,26 @@ printf 'Snapshot: %s\n' "$snapshot"
 )
 ```
 
-結果是一個目錄，裡面有資料庫快照 `database.sqlite3`（擁有者為 root，權限 600）和設定封存檔 `config.tar.gz`。它的格式與冷備份不同，不能直接用於下面的還原腳本；要還原時，需要手動把 `database.sqlite3` 放回 `data/ecoku.sqlite3`，並解開設定封存檔。如果在快照期間修改了設定，資料庫和設定可能不一致。需要兩者嚴格對應時，請使用冷備份。
+結果是一個目錄，裡面有資料庫快照 `database.sqlite3`（擁有者為 root，權限 600）和設定封存檔 `config.tar.gz`。它的格式與冷備份不同，不能直接用於下面的還原腳本。如果在快照期間修改了設定，資料庫和設定可能不一致。需要兩者嚴格對應時，請使用冷備份。
+
+從快照還原時，先停止服務，刪除殘留的 WAL 檔案，再以容器使用者為擁有者放回資料庫（`snapshot=` 改成快照目錄）：
+
+```bash
+cd ~/Ecoku
+snapshot="$HOME/backups/ecoku-snapshot-XXXXXXXX"
+sudo docker compose down
+sudo rm -f data/ecoku.sqlite3-wal data/ecoku.sqlite3-shm
+sudo install -o 10001 -g 10001 -m 600 "$snapshot/database.sqlite3" data/ecoku.sqlite3
+sudo docker compose up -d
+```
+
+需要同時還原設定時，在啟動前解開 `config.tar.gz`，並依照下文的還原腳本修正擁有者和權限。
 
 ## 從冷備份還原 {#restore}
 
 還原會用備份中的狀態取代目前的資料庫和設定，備份之後產生的評論和設定修改都會遺失。
 
-先把腳本中的 `archive=` 改成要還原的封存檔路徑。腳本會：
+先把腳本中的 `archive=` 改成要還原的封存檔路徑。腳本在原部署目錄中執行；在新主機上還原時，先依照 [Docker 部署](./docker)第 1 步建立 `~/Ecoku`。腳本會：
 
 1. 檢查封存檔中包含必要檔案；
 2. 停止服務；
@@ -89,15 +102,20 @@ done
 sudo docker compose down
 saved="recovery-before-$(date +%Y%m%d_%H%M%S)"
 mkdir -m 700 "$saved"
-sudo mv data app/config.yaml ecoku.env compose.yaml "$saved/"
+for item in data app/config.yaml ecoku.env compose.yaml; do
+  [ ! -e "$item" ] || sudo mv "$item" "$saved/"
+done
 sudo tar -xzf "$archive" --no-same-owner
-sudo chown -R 10001:10001 data app/config.yaml
+sudo chown -R 10001:10001 data
 sudo chmod 750 data
-sudo chmod 640 app/config.yaml
-sudo chown "$(id -u):$(id -g)" ecoku.env compose.yaml
+sudo install -d -o 10001 -g 10001 -m 750 app/logs
+sudo chown "$(id -u):$(id -g)" app app/config.yaml ecoku.env compose.yaml
+chmod 755 app
+chmod 644 app/config.yaml
 chmod 600 ecoku.env
 sudo docker compose up -d
-curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+curl --fail --silent --show-error --retry 15 --retry-delay 2 --retry-all-errors \
+  http://127.0.0.1:12123/api/health
 )
 ```
 

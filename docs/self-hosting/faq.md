@@ -16,15 +16,39 @@ sudo docker compose logs --tail=100 ecoku
 
 ```bash
 cd ~/Ecoku
-sudo chown -R 10001:10001 data app/logs app/config.yaml
+sudo chown -R 10001:10001 data app/logs
 sudo chmod 750 data app/logs
-sudo chmod 640 app/config.yaml
+sudo chown "$(id -u):$(id -g)" app app/config.yaml
+chmod 644 app/config.yaml
 sudo docker compose up -d
 ```
 
-### 日志提示“管理员来源 … 不能复用公开站点来源”
+`app/config.yaml` 不含密钥，属于你自己的账号即可，以后编辑不需要 `sudo`。
 
-`admin.allowed_origins` 中的地址与某个站点的允许来源重复了。管理后台必须使用一个独立的来源，通常就是 Ecoku 自己的域名，如 `https://ecoku.example.com`。
+### 编辑 app/config.yaml 时提示权限不足 {#config-permission}
+
+早期的部署步骤把 `app/` 和 `app/config.yaml` 交给了 root 或 UID 10001。把它们改回自己的账号即可，不需要重建容器：
+
+```bash
+cd ~/Ecoku
+sudo chown "$(id -u):$(id -g)" app app/config.yaml
+chmod 755 app
+chmod 644 app/config.yaml
+```
+
+### 容器反复重启，日志提示 config.yaml is a directory
+
+启动前 `app/config.yaml` 不存在，Docker 在这个位置创建了一个空目录。停止服务，删掉这个目录，按 [Docker 部署](./docker)第 3 步重新写入配置文件后再启动：
+
+```bash
+cd ~/Ecoku
+sudo docker compose down
+sudo rmdir app/config.yaml
+```
+
+### 保存站点时提示“公开站点来源不能复用管理端来源”
+
+站点的允许来源与 `admin.allowed_origins` 中的地址重复了。管理后台必须使用一个独立的来源，通常就是 Ecoku 自己的域名，如 `https://ecoku.example.com`。如果在 `app/config.yaml` 中写了 `sites`，同样的冲突会在启动时报“管理员来源 … 不能复用公开站点来源”。
 
 ### 日志提示“管理员会话固定为 8 小时”
 
@@ -80,12 +104,12 @@ Ecoku 放在反向代理后面，但没有配置 `trusted_proxies`，所有访�
 
 1. 通过 HTTPS 访问后台。只有 `localhost`、`127.0.0.1` 可以用 HTTP。
 2. 地址栏中的来源已写入 `admin.allowed_origins`，且与访问地址完全一致（包括端口）。
-3. 用户名和密码正确。连续失败 5 次后需等待一分钟。
+3. 用户名和密码正确。同一 IP 每分钟最多 5 次登录请求（成功的也计入），超出后按提示等待。没有配置 [`trusted_proxies`](./reverse-proxy#trusted-proxies) 时，所有人共用这一个额度。
 4. 人机验证组件能正常完成。验证服务出问题时，用 `captcha disable` 临时关闭，见[人机验证](./captcha#disable)。
 
 ### 忘记了管理员密码
 
-重新生成密码哈希，替换 `ecoku.env` 中 `ECOKU_ADMIN_PASSWORD_HASH` 的值，再重建容器：
+重新生成密码哈希，替换 `ecoku.env` 中 `ECOKU_ADMIN_PASSWORD_HASH` 的值（保留两侧的单引号，否则哈希里的 `$` 会被 Compose 展开），再重建容器：
 
 ```bash
 cd ~/Ecoku
@@ -104,7 +128,7 @@ unset P
 
 ### 保存 Cap 设置时提示地址无效
 
-Cap 实例地址必须是公网可访问的 HTTPS 地址，末尾不带 `/`。`localhost`、`127.0.0.1` 和内网 IP 都会被拒绝。
+Cap 实例地址必须是公网可访问的 HTTPS 地址，不能带用户名密码、查询串或 `#` 片段。`localhost`、`127.0.0.1` 和内网 IP 都会被拒绝。
 
 ### 启用 Cap 后，浏览器控制台报 CSP 错误
 

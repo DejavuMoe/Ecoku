@@ -67,7 +67,7 @@ These are for reference only. Look at the generated HTML in your browser and con
 
 1. After the page is parsed, the loader reads the attributes on the wrapper. If `data-server-url`, `data-site-id`, or `data-page-key` is missing, or any of the four `data-ecoku-*` child elements is missing, it **skips silently**, and nothing appears on the page.
 2. The loader loads `ecoku.umd.js` from its own directory and initializes the comment section. No "Loading" text is shown while it loads.
-3. If loading or initializing the script takes longer than 12 seconds or fails, an error message and the **Reload comments** button are shown, and the visitor can click to retry.
+3. If either stage, loading or initializing the script, takes longer than 12 seconds or fails, an error message and the **Reload comments** button are shown, and the visitor can click to retry.
 
 A page can have more than one wrapper. Each one is initialized independently.
 
@@ -81,7 +81,8 @@ If your blog sets a Content Security Policy (CSP), you need to allow:
 
 - `script-src` and `connect-src`: the Ecoku origin, such as `https://ecoku.example.com`;
 - The default styles are injected as a `<style>` element. If your CSP does not allow inline styles, set `data-css-url` to `https://ecoku.example.com/client/ecoku.css` to use an external stylesheet instead, and allow that origin in `style-src`;
-- When CAPTCHA is enabled, you also need to allow the verification service. See [CAPTCHA · Content Security Policy](../self-hosting/captcha#csp).
+- When CAPTCHA is enabled, you also need to allow the verification service. See [CAPTCHA · Content Security Policy](../self-hosting/captcha#csp);
+- When [Smoji stickers](./smoji) are enabled, allow the origin that hosts the sticker manifest in `connect-src` and `img-src`.
 
 ## Without the loader
 
