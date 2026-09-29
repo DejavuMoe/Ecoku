@@ -11,7 +11,8 @@ Ecoku 的配置分两处：
 
 - 配置文件只能包含一个 YAML 文档，出现未知字段会拒绝启动。旧版本遗留的 MySQL、普通用户等字段也会导致启动失败。
 - 数值类字段写 `0` 或省略时，使用下表中的默认值。
-- 表中的“默认值”是程序在字段省略时的取值。[Docker 部署](../self-hosting/docker)中的模板显式写出了容器内路径，请保留这些值。
+- 表中的“默认值”是程序在字段省略时的取值。官方镜像内的端口、目录、日志和数据库路径已经内置（表中标“容器内”），[Docker 部署](../self-hosting/docker)时 `config.yaml` 通常只需要 `notifications.instance_public_url`，配置反向代理后再加 `site.trusted_proxies`。
+- 已经显式写出的字段仍然有效，旧的完整配置文件不需要删减。
 - 配置文件里只写环境变量的**名字**（`*_env` 字段），密钥本身放在 `ecoku.env`。
 
 修改 `config.yaml` 或 `ecoku.env` 后，执行下面的命令重建容器：
@@ -27,7 +28,7 @@ cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
 | `port` | `12123` | 容器内监听端口，范围 1～65535。改动后要同步修改 `compose.yaml` 的端口映射。 |
-| `log_path` | 空 | 日志总是写到 stdout，可用 `docker compose logs` 查看。填一个文件路径时，另外保存一份到该文件，单个文件满 10 MB 轮转，保留 5 个压缩旧文件、最长 28 天。空值、`stdout`、`-` 或 `/dev/stdout` 表示只写 stdout。 |
+| `log_path` | 空；容器内 `/var/log/ecoku/ecoku.log` | 日志总是写到 stdout，可用 `docker compose logs` 查看。填一个文件路径时，另外保存一份到该文件，单个文件满 10 MB 轮转，保留 5 个压缩旧文件、最长 28 天。空值、`stdout`、`-` 或 `/dev/stdout` 表示只写 stdout。 |
 | `trusted_proxies` | `[]` | 允许其转发 `X-Forwarded-For` 的直连对端，写 IP 或 CIDR。通常只填 Docker 网关，如 `172.18.0.1/32`。禁止 `0.0.0.0/0` 与 `::/0`。详见[反向代理](../self-hosting/reverse-proxy#trusted-proxies)。 |
 
 日志不包含 IP、User-Agent、评论正文或凭据。访问日志只记录路由模板（如 `/api/admin/sites/:siteId`），不记录实际路径参数。
@@ -36,7 +37,7 @@ cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
-| `static_dir` | 空 | 浏览器资源所在目录。容器内固定为 `/app/client`。填写后，Ecoku 在 `/client/` 下提供 `ecoku-loader.js`、`ecoku.umd.js`、`ecoku.css`、`ecoku.unstyled.css`，缺少任一文件会拒绝启动。留空则不提供这些文件。 |
+| `static_dir` | 空；容器内 `/app/client` | 浏览器资源所在目录。填写后，Ecoku 在 `/client/` 下提供 `ecoku-loader.js`、`ecoku.umd.js`、`ecoku.css`、`ecoku.unstyled.css`，缺少任一文件会拒绝启动。留空则不提供这些文件。 |
 
 ## rate_limit {#rate-limit}
 
@@ -59,14 +60,14 @@ cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
-| `encryption_key_env` | 空 | 存放凭据加密主密钥的环境变量名。在后台保存 SMTP 密码、Telegram Bot Token 或人机验证 Secret Key 时需要它。 |
-| `instance_public_url` | 空 | Ecoku 的公网地址，如 `https://ecoku.example.com`。启用邮件或 Telegram 通知前必须填写。通知里的原文链接由站点 URL 和页面路径拼接，不使用此地址。 |
+| `encryption_key_env` | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 存放凭据加密主密钥的环境变量名，一般不需要修改。在后台保存 SMTP 密码、Telegram Bot Token 或人机验证 Secret Key 时需要它。 |
+| `instance_public_url` | 空 | Ecoku 的公网地址，如 `https://ecoku.example.com`。启用邮件或 Telegram 通知前必须填写。没有写 `admin.allowed_origins` 时，它的来源（协议 + 域名 + 可选端口）也是管理后台的来源。通知里的原文链接由站点 URL 和页面路径拼接，不使用此地址。 |
 
 ## database
 
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
-| `sqlite.path` | `./data/ecoku.bin` | SQLite 数据库文件路径。容器模板使用 `/data/ecoku.sqlite3`，对应宿主机的 `data/ecoku.sqlite3`。 |
+| `sqlite.path` | `./data/ecoku.bin`；容器内 `/data/ecoku.sqlite3` | SQLite 数据库文件路径。容器内的默认值对应宿主机的 `data/ecoku.sqlite3`。 |
 
 数据库以 WAL 模式运行，运行时同目录下会有 `-wal` 和 `-shm` 文件，备份时需要整个 `data/` 目录一起保存。
 
@@ -74,13 +75,13 @@ cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
-| `enabled` | `false` | 是否启用管理后台和管理 API。部署模板中为 `true`。关闭时 `/admin/` 与 `/api/admin/*` 都不存在。 |
-| `static_dir` | `./admin` | 管理后台静态文件目录，容器内为 `/app/admin`。缺少 `index.html` 或 `assets/` 会拒绝启动。 |
-| `username_env` | — | 存放管理员用户名的环境变量名。启用后台时必填。 |
-| `password_hash_env` | — | 存放管理员密码 bcrypt 哈希的环境变量名。启用后台时必填。 |
-| `token_key_env` | — | 存放会话签名密钥的环境变量名。启用后台时必填。 |
+| `enabled` | `false`；容器内 `true` | 是否启用管理后台和管理 API。关闭时 `/admin/` 与 `/api/admin/*` 都不存在。 |
+| `static_dir` | `./admin`；容器内 `/app/admin` | 管理后台静态文件目录。缺少 `index.html` 或 `assets/` 会拒绝启动。 |
+| `username_env` | `ECOKU_ADMIN_USERNAME` | 存放管理员用户名的环境变量名，一般不需要修改。 |
+| `password_hash_env` | `ECOKU_ADMIN_PASSWORD_HASH` | 存放管理员密码 bcrypt 哈希的环境变量名，一般不需要修改。 |
+| `token_key_env` | `ECOKU_ADMIN_TOKEN_KEY` | 存放会话签名密钥的环境变量名，一般不需要修改。 |
 | `token_ttl_minutes` | `480` | 兼容保留的字段。会话固定为登录后 8 小时，只能省略或写 `480`，写其他值会拒绝启动。 |
-| `allowed_origins` | — | 允许访问管理 API 的浏览器来源，即打开后台时地址栏中的 `协议://域名[:端口]`。启用后台时至少填一个。 |
+| `allowed_origins` | `notifications.instance_public_url` 的来源 | 允许访问管理 API 的浏览器来源，即打开后台时地址栏中的 `协议://域名[:端口]`。只有用多个地址打开后台时才需要填写。启用后台时，它和 `instance_public_url` 至少要有一个。 |
 
 启用后台时，Ecoku 在启动阶段还会检查：
 
@@ -126,15 +127,16 @@ sites:
 
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |
-| `ECOKU_ADMIN_USERNAME` | 启用后台时 | 管理员用户名，1～80 个字符。变量名由 `admin.username_env` 决定。 |
+| `ECOKU_ADMIN_USERNAME` | 启用后台时 | 管理员用户名，1～80 个字符。 |
 | `ECOKU_ADMIN_PASSWORD_HASH` | 启用后台时 | 管理员密码的 bcrypt 哈希。用 `hash-password` 命令生成，见[命令行](./cli#hash-password)。 |
 | `ECOKU_ADMIN_TOKEN_KEY` | 启用后台时 | 会话签名密钥，至少 32 字节。可用 `openssl rand -hex 32` 生成。 |
 | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 保存凭据时 | Base64 编码的 32 字节密钥（带或不带填充均可）。可用 `openssl rand -base64 32` 生成。 |
 | `TZ` | 否 | 评论时间的显示时区，IANA 名称，如 `Asia/Shanghai`。不设置或名称无效时回退到容器的系统时区，无法识别时使用 `Asia/Shanghai`。建议显式填写。 |
 | 站点管理密钥 | 否 | 变量名由 `sites[].management_key_env` 决定，例如 `ECOKU_BLOG_MANAGEMENT_KEY`。配置了该字段时值必须存在，至少 32 字节。 |
-| `GIN_MODE` | 否 | 镜像内已设为 `release`，无需修改。 |
 
-`ecoku.env` 中每个值建议用单引号包住，避免 bcrypt 哈希中的 `$` 被 Compose 展开。
+`ecoku.env` 中每个值建议用单引号包住，避免 bcrypt 哈希中的 `$` 被 Compose 展开。填写示例与生成命令见 [Docker 部署](../self-hosting/docker#env)。
+
+镜像内已设置 `GIN_MODE=release` 与 `ECOKU_RUNTIME=container`（启用上文的“容器内”默认值），不要在 `ecoku.env` 中修改。
 
 更换 `ECOKU_ADMIN_TOKEN_KEY` 或密码哈希后重建容器，所有已登录的管理员会话都会失效。
 

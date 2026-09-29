@@ -48,7 +48,7 @@ sudo rmdir app/config.yaml
 
 ### 儲存站點時提示「公开站点来源不能复用管理端来源」
 
-站點的允許來源與 `admin.allowed_origins` 中的位址重複了。管理後台必須使用一個獨立的來源，通常就是 Ecoku 自己的網域，例如 `https://ecoku.example.com`。如果在 `app/config.yaml` 中寫了 `sites`，同樣的衝突會在啟動時提示「管理员来源 … 不能复用公开站点来源」。
+站點的允許來源與管理後台的來源重複了。管理後台的來源預設取 `notifications.instance_public_url`，另外寫了 `admin.allowed_origins` 時以它為準。管理後台必須使用一個獨立的來源，通常就是 Ecoku 自己的網域，例如 `https://ecoku.example.com`。如果在 `app/config.yaml` 中寫了 `sites`，同樣的衝突會在啟動時提示「管理员来源 … 不能复用公开站点来源」。
 
 ### 日誌提示「管理员会话固定为 8 小时」
 
@@ -103,7 +103,7 @@ Ecoku 放在反向代理後面，但沒有設定 `trusted_proxies`，所有訪�
 請依序排查：
 
 1. 透過 HTTPS 存取後台。只有 `localhost`、`127.0.0.1` 可以用 HTTP。
-2. 網址列中的來源已寫入 `admin.allowed_origins`，而且與存取的位址完全一致（包括連接埠）。
+2. 網址列中的來源與 `notifications.instance_public_url`（或另外寫的 `admin.allowed_origins`）完全一致，包括連接埠。
 3. 使用者名稱和密碼正確。同一 IP 每分鐘最多 5 次登入請求（成功的也計入），超出後依提示等待。沒有設定 [`trusted_proxies`](./reverse-proxy#trusted-proxies) 時，所有人共用這一個額度。
 4. 人機驗證元件能正常完成驗證。驗證服務出問題時，用 `captcha disable` 暫時關閉，見[人機驗證](./captcha#disable)。
 

@@ -347,3 +347,80 @@ func TestLegacyPlaintextAdminConfigurationIsRejected(t *testing.T) {
 		t.Fatal("legacy plaintext administrator fields were accepted")
 	}
 }
+
+func TestContainerRuntimeFillsImagePathsAndDerivesAdminOrigin(t *testing.T) {
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte("container-admin-password"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ECOKU_RUNTIME", "container")
+	t.Setenv("ECOKU_ADMIN_USERNAME", "admin")
+	t.Setenv("ECOKU_ADMIN_PASSWORD_HASH", string(passwordHash))
+	t.Setenv("ECOKU_ADMIN_TOKEN_KEY", strings.Repeat("k", 32))
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(path, []byte("notifications:\n  instance_public_url: \"https://Ecoku.Example.com/\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := LoadConfigFile(path); err != nil {
+		t.Fatalf("minimal container config rejected: %v", err)
+	}
+	loaded := GlobalConfig
+	if !IsAdminEnabled() || GetAdminStaticDir() != "/app/admin" || GetClientStaticDir() != "/app/client" {
+		t.Fatalf("admin=%v adminDir=%q clientDir=%q", IsAdminEnabled(), GetAdminStaticDir(), GetClientStaticDir())
+	}
+	if LogFilePath != "/var/log/ecoku/ecoku.log" || GetSQLiteConfig().Path != "/data/ecoku.sqlite3" || Port != "12123" {
+		t.Fatalf("log=%q db=%q port=%q", LogFilePath, GetSQLiteConfig().Path, Port)
+	}
+	if got := GetAdminAllowedOrigins(); len(got) != 1 || got[0] != "https://ecoku.example.com" {
+		t.Fatalf("admin origins=%v", got)
+	}
+	if loaded.Notifications.EncryptionKeyEnv != "ECOKU_NOTIFICATION_ENCRYPTION_KEY" || loaded.Admin.TokenTTLMinutes != 480 {
+		t.Fatalf("notifications=%+v ttl=%d", loaded.Notifications, loaded.Admin.TokenTTLMinutes)
+	}
+	credentials, ok := GetAdminCredentials()
+	if !ok || credentials.Username != "admin" {
+		t.Fatal("standard admin environment variables were not used")
+	}
+
+	// Explicit values still win, including a disabled admin console.
+	if err := os.WriteFile(path, []byte("site:\n  log_path: \"stdout\"\nadmin:\n  enabled: false\ndatabase:\n  sqlite:\n    path: \"/data/custom.sqlite3\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := LoadConfigFile(path); err != nil {
+		t.Fatal(err)
+	}
+	if IsAdminEnabled() || LogFilePath != "stdout" || GetSQLiteConfig().Path != "/data/custom.sqlite3" {
+		t.Fatalf("explicit values overridden: admin=%v log=%q db=%q", IsAdminEnabled(), LogFilePath, GetSQLiteConfig().Path)
+	}
+}
+
+func TestSourceRuntimeKeepsAdminDisabledByDefault(t *testing.T) {
+	t.Setenv("ECOKU_RUNTIME", "")
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(path, []byte("notifications:\n  instance_public_url: \"https://ecoku.example.com\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := LoadConfigFile(path); err != nil {
+		t.Fatal(err)
+	}
+	if IsAdminEnabled() || GetClientStaticDir() != "" || LogFilePath != "" || GetSQLiteConfig().Path != "./data/ecoku.bin" {
+		t.Fatalf("source defaults changed: admin=%v client=%q log=%q db=%q", IsAdminEnabled(), GetClientStaticDir(), LogFilePath, GetSQLiteConfig().Path)
+	}
+}
+
+func TestDeploymentTemplateLoadsInContainerRuntime(t *testing.T) {
+	passwordHash, err := bcrypt.GenerateFromPassword([]byte("template-admin-password"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ECOKU_RUNTIME", "container")
+	t.Setenv("ECOKU_ADMIN_USERNAME", "admin")
+	t.Setenv("ECOKU_ADMIN_PASSWORD_HASH", string(passwordHash))
+	t.Setenv("ECOKU_ADMIN_TOKEN_KEY", strings.Repeat("k", 32))
+	if err := LoadConfigFile("../../deploy/config.yaml.example"); err != nil {
+		t.Fatalf("deploy template rejected: %v", err)
+	}
+	if !IsAdminEnabled() || len(GetAdminAllowedOrigins()) != 1 {
+		t.Fatalf("admin=%v origins=%v", IsAdminEnabled(), GetAdminAllowedOrigins())
+	}
+}

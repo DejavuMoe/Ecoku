@@ -264,7 +264,7 @@ Origin: https://blog.example.com
 
 ## 管理接口
 
-管理接口位于 `/api/admin/`，只在 `admin.enabled: true` 时存在。
+管理接口位于 `/api/admin/`，只在启用管理后台时存在（容器内默认启用）。下文的 `admin.allowed_origins` 没有填写时，取 `notifications.instance_public_url` 的来源。
 
 ### 认证方式
 
@@ -345,6 +345,6 @@ DELETE /api/admin/sites/blog/comments/102
 Authorization: EcokuSite <管理密钥>
 ```
 
-它不能读取评论列表或详情，不能彻底删除，也不能访问其他站点或实例设置，这些请求返回 `403`；密钥无效返回 `401`。使用管理密钥同样要求 `admin.enabled: true`。
+它不能读取评论列表或详情，不能彻底删除，也不能访问其他站点或实例设置，这些请求返回 `403`；密钥无效返回 `401`。使用管理密钥同样要求启用管理后台。
 
 `sites` 中的站点设置只在数据库首次初始化时写入，但 `management_key_env` 每次启动都会读取。已有实例要启用管理密钥，可以在 `sites` 中补写一个条目：`id` 与后台中已有的站点一致，`site_url` 和 `allowed_origins` 也要填写以通过配置校验。这个条目的其他字段不会覆盖后台中的设置。

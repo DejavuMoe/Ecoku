@@ -67,7 +67,8 @@
 ## 管理员与评论管理
 
 - P1 只有一个实例级管理员，可管理全部已注册站点；站点运营员和细粒度 RBAC 后置。
-- 管理员能力默认关闭。启用时，用户名、bcrypt 密码哈希和独立 token 签名密钥必须从三个不同的环境变量读取；仓库没有默认密码或明文凭据。
+- 源码运行时管理员能力默认关闭；官方镜像（`ECOKU_RUNTIME=container`）在 `admin.enabled` 未写出时默认启用，显式 `false` 仍然关闭。启用时，用户名、bcrypt 密码哈希和独立 token 签名密钥必须从三个不同的环境变量读取（变量名默认 `ECOKU_ADMIN_USERNAME`、`ECOKU_ADMIN_PASSWORD_HASH`、`ECOKU_ADMIN_TOKEN_KEY`）；仓库没有默认密码或明文凭据。
+- `admin.allowed_origins` 未填写时取 `notifications.instance_public_url` 的来源；两者都没有时，启用管理员能力的服务必须启动失败。管理端来源不得与任何站点允许来源重复。
 - 管理员会话有效期固定为登录后 8 小时，不滚动续期，不提供 refresh token。SQLite 仅保存随机化签名凭据的 SHA-256 摘要与绝对到期时间；认证同时检查签名、凭据版本与未过期会话记录。退出撤销当前会话，Cookie 与 Bearer 均不能绕过撤销；旧版未登记 token 升级后失效。兼容配置键 `admin.token_ttl_minutes` 省略或为 0 时回退至 480；非零值只能为 480。轮换密码哈希或签名密钥并重启服务会使旧 token 失效。
 - 管理端浏览器只使用管理员会话。每站点 management key 只供可信服务端自动化，并且只能管理所属站点；不得进入浏览器、响应或日志。management key 对评论 GET 列表/详情返回 403，只保留所属站点的墓碑删除。
 - 管理端浏览器来源使用独立精确白名单，不能复用公开评论站点来源；无 `Origin` 的 CLI/服务端请求仍必须通过认证。
@@ -168,6 +169,10 @@
 - 当前全新 schema 不创建 `users`、`email_verification_codes` 或 `counts` 遗留表。
 - P4 的默认交付拓扑是单个非 root 运行容器：Go 进程同时提供 API 和 `/admin/` 静态管理端，SQLite 数据与配置从容器外持久化；
   管理端静态文件缺失时，启用管理员能力的服务必须启动失败。
+- 镜像以 `GIN_MODE=release`、`ECOKU_RUNTIME=container` 运行；后者只在对应配置键省略时提供容器内路径默认值
+  （`site.log_path` `/var/log/ecoku/ecoku.log`、`client.static_dir` `/app/client`、`admin.static_dir` `/app/admin`、
+  `database.sqlite.path` `/data/ecoku.sqlite3`），显式写出的值始终优先。部署模板只要求 `notifications.instance_public_url`，
+  `ecoku.env` 只放 `TZ`、管理员凭据与两把密钥，Compose 模板不再覆盖 Docker 日志驱动。
 - 应用日志始终写入 stdout，供 `docker compose logs` 跟随；`site.log_path` 指向普通文件时额外由进程内轮转保留副本。
   空值、`stdout`、`-` 或 `/dev/stdout` 只写标准输出。访问日志只记录路由模板，未匹配路由使用固定值；不写入实际路径参数。日志仍不得包含 IP、UA、凭据、token 或评论正文。
 - 浏览器 SDK 的 npm 包名为 `ecoku`，版本为 `0.1.0`，提供 ESM、CommonJS、UMD 和 TypeScript 声明；

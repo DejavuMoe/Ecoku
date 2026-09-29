@@ -9,7 +9,7 @@ The username comes from `ECOKU_ADMIN_USERNAME` in `ecoku.env`, and the password 
 Sign-in is rejected unless both of these hold:
 
 - You are connecting over HTTPS. Only loopback addresses such as `localhost` and `127.0.0.1` may use HTTP, for local development.
-- The origin in the browser's address bar is listed in `admin.allowed_origins` in `app/config.yaml`.
+- The origin in the browser's address bar matches `notifications.instance_public_url` in `app/config.yaml`; if you also set `admin.allowed_origins`, that list is used instead.
 
 After you sign in, the session lasts a fixed 8 hours. Reloading the page or closing and reopening the browser does not require signing in again, but activity does not extend those 8 hours either. When the session expires, the page asks you to sign in again. **Sign out** (退出登录) ends the current session on the server. If the sign-out request fails, the page stays open and asks you to try again; it does not pretend you are signed out.
 
@@ -50,7 +50,7 @@ An "origin" is `scheme://domain[:port]`, without a path. The origin of the page 
 
 - `https://blog.example.com` and `https://www.blog.example.com` are two different origins. If your blog is reachable on both domains, list both.
 - When you preview your blog locally, add addresses such as `http://localhost:1313` too. You can remove them after you go live.
-- You cannot list the admin console's own origin (an address in `admin.allowed_origins`). The two must be kept separate.
+- You cannot list the admin console's own origin (the address of `instance_public_url`, or of `admin.allowed_origins` if you set it). The two must be kept separate.
 
 If someone edited the same site in another browser tab while you were editing it, saving shows "Site configuration was updated by another session" (站点配置已被其他会话更新). Reload and edit again.
 

@@ -5,6 +5,17 @@
 
 ## [Unreleased]
 
+### 变更
+
+- 官方镜像内置容器路径：`site.log_path`、`client.static_dir`、`admin.static_dir`、`database.sqlite.path` 省略时分别取 `/var/log/ecoku/ecoku.log`、`/app/client`、`/app/admin`、`/data/ecoku.sqlite3`，`admin.enabled` 省略时为 `true`；源码运行的默认值不变，已显式写出的字段仍然优先，旧配置文件无需修改。
+- `admin.username_env`、`admin.password_hash_env`、`admin.token_key_env`、`notifications.encryption_key_env` 省略时使用标准变量名 `ECOKU_ADMIN_USERNAME`、`ECOKU_ADMIN_PASSWORD_HASH`、`ECOKU_ADMIN_TOKEN_KEY`、`ECOKU_NOTIFICATION_ENCRYPTION_KEY`。
+- `admin.allowed_origins` 省略时取 `notifications.instance_public_url` 的来源。
+- 部署模板精简：`app/config.yaml` 只需 `notifications.instance_public_url`；`ecoku.env` 去掉 `GIN_MODE`（镜像已设置）；`compose.yaml` 去掉 `logging` 段，改用 Docker 守护进程的日志设置。
+
+### 文档
+
+- Docker 部署页改为三个文件的填写说明：给出 `ecoku.env` 的字段与示例，只为密码哈希和两把密钥提供生成命令；配置参考标注容器内默认值。
+
 ## [0.2.7] - 2026-09-29
 
 ### 变更

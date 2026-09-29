@@ -97,7 +97,7 @@ Ecoku 这一侧的配置不变：`trusted_proxies` 仍然只填 Docker 网关，
 sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
 ```
 
-假设输出 `172.18.0.1`，把它写进配置：
+假设输出 `172.18.0.1`，在 `app/config.yaml` 中加上：
 
 ```yaml
 site:

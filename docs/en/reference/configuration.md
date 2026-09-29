@@ -11,7 +11,8 @@ Site, blogger, CAPTCHA, and notification settings are not in these two files. Th
 
 - The config file may contain only one YAML document. Any unknown field makes startup fail. Leftover fields from older releases, such as MySQL or regular-user settings, also make startup fail.
 - For numeric fields, `0` or omitting the field means the default in the tables below is used.
-- The "Default" in the tables is the value the program uses when the field is omitted. The template in [Docker deployment](../self-hosting/docker) spells out the in-container paths explicitly; keep those values.
+- The "Default" in the tables is the value the program uses when the field is omitted. The official image has the port, directories, log file and database path built in (marked "in the container" in the tables), so for a [Docker deployment](../self-hosting/docker) `config.yaml` usually needs only `notifications.instance_public_url`, plus `site.trusted_proxies` once the reverse proxy is set up.
+- Fields you have already written out still take effect; an older, complete config file does not need trimming.
 - The config file contains only the **names** of environment variables (the `*_env` fields). The secrets themselves go into `ecoku.env`.
 
 After changing `config.yaml` or `ecoku.env`, recreate the container with:
@@ -27,7 +28,7 @@ cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 | Field | Default | Description |
 | --- | --- | --- |
 | `port` | `12123` | Listening port inside the container, 1 to 65535. If you change it, update the port mapping in `compose.yaml` to match. |
-| `log_path` | Empty | Logs always go to stdout, and you can view them with `docker compose logs`. If you set a file path, a copy is also kept in that file, rotated when a file reaches 10 MB, keeping 5 compressed old files for at most 28 days. Empty, `stdout`, `-`, or `/dev/stdout` means stdout only. |
+| `log_path` | Empty; `/var/log/ecoku/ecoku.log` in the container | Logs always go to stdout, and you can view them with `docker compose logs`. If you set a file path, a copy is also kept in that file, rotated when a file reaches 10 MB, keeping 5 compressed old files for at most 28 days. Empty, `stdout`, `-`, or `/dev/stdout` means stdout only. |
 | `trusted_proxies` | `[]` | Direct peers allowed to forward `X-Forwarded-For`, as IPs or CIDRs. Usually just the Docker gateway, such as `172.18.0.1/32`. `0.0.0.0/0` and `::/0` are forbidden. See [Reverse proxy](../self-hosting/reverse-proxy#trusted-proxies). |
 
 Logs do not contain IP addresses, User-Agents, comment bodies, or credentials. Access logs record only the route template (such as `/api/admin/sites/:siteId`), not the actual path parameters.
@@ -36,7 +37,7 @@ Logs do not contain IP addresses, User-Agents, comment bodies, or credentials. A
 
 | Field | Default | Description |
 | --- | --- | --- |
-| `static_dir` | Empty | Directory of the browser assets. Inside the container it is always `/app/client`. When set, Ecoku serves `ecoku-loader.js`, `ecoku.umd.js`, `ecoku.css`, and `ecoku.unstyled.css` under `/client/`, and refuses to start if any of them is missing. When empty, these files are not served. |
+| `static_dir` | Empty; `/app/client` in the container | Directory of the browser assets. When set, Ecoku serves `ecoku-loader.js`, `ecoku.umd.js`, `ecoku.css`, and `ecoku.unstyled.css` under `/client/`, and refuses to start if any of them is missing. When empty, these files are not served. |
 
 ## rate_limit {#rate-limit}
 
@@ -59,14 +60,14 @@ If `trusted_proxies` is not configured correctly, all visitors behind the revers
 
 | Field | Default | Description |
 | --- | --- | --- |
-| `encryption_key_env` | Empty | Name of the environment variable holding the credential encryption master key. It is required when you save an SMTP password, Telegram bot token, or CAPTCHA secret key in the admin console. |
-| `instance_public_url` | Empty | The public URL of Ecoku, such as `https://ecoku.example.com`. You must set it before enabling email or Telegram notifications. The links to original posts in notifications are built from the site URL and page path, not from this address. |
+| `encryption_key_env` | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | Name of the environment variable holding the credential encryption master key; you rarely need to change it. It is required when you save an SMTP password, Telegram bot token, or CAPTCHA secret key in the admin console. |
+| `instance_public_url` | Empty | The public URL of Ecoku, such as `https://ecoku.example.com`. You must set it before enabling email or Telegram notifications. When `admin.allowed_origins` is not set, its origin (scheme + domain + optional port) is also the origin of the admin console. The links to original posts in notifications are built from the site URL and page path, not from this address. |
 
 ## database
 
 | Field | Default | Description |
 | --- | --- | --- |
-| `sqlite.path` | `./data/ecoku.bin` | Path of the SQLite database file. The container template uses `/data/ecoku.sqlite3`, which maps to `data/ecoku.sqlite3` on the host. |
+| `sqlite.path` | `./data/ecoku.bin`; `/data/ecoku.sqlite3` in the container | Path of the SQLite database file. The in-container default maps to `data/ecoku.sqlite3` on the host. |
 
 The database runs in WAL mode, so at runtime there are `-wal` and `-shm` files in the same directory. Back up the whole `data/` directory.
 
@@ -74,13 +75,13 @@ The database runs in WAL mode, so at runtime there are `-wal` and `-shm` files i
 
 | Field | Default | Description |
 | --- | --- | --- |
-| `enabled` | `false` | Whether to enable the admin console and admin API. The deployment template sets it to `true`. When disabled, neither `/admin/` nor `/api/admin/*` exists. |
-| `static_dir` | `./admin` | Directory of the admin console's static files; `/app/admin` inside the container. Startup fails if `index.html` or `assets/` is missing. |
-| `username_env` | — | Name of the environment variable holding the admin username. Required when the admin console is enabled. |
-| `password_hash_env` | — | Name of the environment variable holding the bcrypt hash of the admin password. Required when the admin console is enabled. |
-| `token_key_env` | — | Name of the environment variable holding the session signing key. Required when the admin console is enabled. |
+| `enabled` | `false`; `true` in the container | Whether to enable the admin console and admin API. When disabled, neither `/admin/` nor `/api/admin/*` exists. |
+| `static_dir` | `./admin`; `/app/admin` in the container | Directory of the admin console's static files. Startup fails if `index.html` or `assets/` is missing. |
+| `username_env` | `ECOKU_ADMIN_USERNAME` | Name of the environment variable holding the admin username; you rarely need to change it. |
+| `password_hash_env` | `ECOKU_ADMIN_PASSWORD_HASH` | Name of the environment variable holding the bcrypt hash of the admin password; you rarely need to change it. |
+| `token_key_env` | `ECOKU_ADMIN_TOKEN_KEY` | Name of the environment variable holding the session signing key; you rarely need to change it. |
 | `token_ttl_minutes` | `480` | Kept for compatibility. Sessions are fixed at 8 hours after sign-in. It can only be omitted or set to `480`; any other value makes startup fail. |
-| `allowed_origins` | — | Browser origins allowed to access the admin API, that is, the `scheme://domain[:port]` in the address bar when you open the admin console. At least one is required when the admin console is enabled. |
+| `allowed_origins` | Origin of `notifications.instance_public_url` | Browser origins allowed to access the admin API, that is, the `scheme://domain[:port]` in the address bar when you open the admin console. Set it only if you open the admin console from more than one address. When the admin console is enabled, at least one of this and `instance_public_url` is required. |
 
 When the admin console is enabled, Ecoku also checks at startup that:
 
@@ -126,15 +127,16 @@ sites:
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `ECOKU_ADMIN_USERNAME` | When the admin console is enabled | Admin username, 1 to 80 characters. The variable name is set by `admin.username_env`. |
+| `ECOKU_ADMIN_USERNAME` | When the admin console is enabled | Admin username, 1 to 80 characters. |
 | `ECOKU_ADMIN_PASSWORD_HASH` | When the admin console is enabled | bcrypt hash of the admin password. Generate it with the `hash-password` command. See [Command line](./cli#hash-password). |
 | `ECOKU_ADMIN_TOKEN_KEY` | When the admin console is enabled | Session signing key, at least 32 bytes. You can generate one with `openssl rand -hex 32`. |
 | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | When saving credentials | A 32-byte key, Base64-encoded (with or without padding). You can generate one with `openssl rand -base64 32`. |
 | `TZ` | No | Time zone for displaying comment times, as an IANA name such as `Asia/Shanghai`. If unset or the name is invalid, it falls back to the container's system time zone; if that cannot be determined, `Asia/Shanghai` is used. Setting it explicitly is recommended. |
 | Site management key | No | The variable name is set by `sites[].management_key_env`, for example `ECOKU_BLOG_MANAGEMENT_KEY`. When that field is configured, the value must exist and be at least 32 bytes. |
-| `GIN_MODE` | No | Already set to `release` in the image. You do not need to change it. |
 
-Wrap each value in `ecoku.env` in single quotes, so Compose does not expand the `$` characters in the bcrypt hash.
+Wrap each value in `ecoku.env` in single quotes, so Compose does not expand the `$` characters in the bcrypt hash. For an example and the commands that generate the values, see [Docker deployment](../self-hosting/docker#env).
+
+The image already sets `GIN_MODE=release` and `ECOKU_RUNTIME=container` (which enables the "in the container" defaults above). Do not change them in `ecoku.env`.
 
 After changing `ECOKU_ADMIN_TOKEN_KEY` or the password hash and recreating the container, all signed-in admin sessions stop working.
 
