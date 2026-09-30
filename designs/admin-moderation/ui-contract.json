@@ -7,7 +7,7 @@
   },
   "sourceReferences": [
     {
-      "path": "designs/admin-moderation/index-v15.html",
+      "path": "designs/admin-moderation/index-v13.html",
       "role": "current approved unified admin baseline for login, comment management, site management, notification settings and security: comment v17 paper-and-ink tokens, system CJK/Latin sans stack, no webfont"
     },
     {
@@ -91,7 +91,7 @@
     {
       "id": "admin-comment-management-workspace",
       "prototype": {
-        "entry": "index-v15.html",
+        "entry": "index-v13.html",
         "states": [
           "published",
           "deleted",
@@ -128,7 +128,7 @@
     {
       "id": "admin-site-management",
       "prototype": {
-        "entry": "index-v15.html",
+        "entry": "index-v13.html",
         "states": [
           "sites-list",
           "sites-new",
@@ -170,7 +170,7 @@
     {
       "id": "admin-security-captcha",
       "prototype": {
-        "entry": "index-v15.html",
+        "entry": "index-v13.html",
         "states": [
           "security-cap",
           "security-turnstile",
@@ -200,7 +200,7 @@
     {
       "id": "admin-login-captcha",
       "prototype": {
-        "entry": "index-v15.html",
+        "entry": "index-v13.html",
         "states": [
           "login-off",
           "login-turnstile",
@@ -230,7 +230,7 @@
     {
       "id": "admin-notification-settings",
       "prototype": {
-        "entry": "index-v15.html",
+        "entry": "index-v13.html",
         "states": [
           "notifications-empty",
           "notifications-configured",

@@ -60,29 +60,7 @@ function handleDocumentPointerDown(event: PointerEvent) {
   if (siteMenuOpen.value && !sitePicker.value?.contains(event.target as Node)) siteMenuOpen.value = false
 }
 onMounted(() => document.addEventListener('pointerdown', handleDocumentPointerDown))
-function handleKeyboard(event: KeyboardEvent) {
-  const target = event.target as HTMLElement | null
-  if (target?.matches('input, textarea, select, [contenteditable="true"]')) return
-  const index = comments.value.findIndex((item) => item.id === selectedComment.value?.id)
-  if (event.key === 'j') {
-    if (index < comments.value.length - 1) { event.preventDefault(); store.selectComment(comments.value[index + 1]!.id) }
-  } else if (event.key === 'k') {
-    if (index > 0) { event.preventDefault(); store.selectComment(comments.value[index - 1]!.id) }
-  } else if (event.key.toLowerCase() === 'o' && sourceURL.value) {
-    event.preventDefault(); window.open(sourceURL.value, '_blank', 'noopener,noreferrer')
-  } else if (event.key === 'Delete' && selectedComment.value && !actionBusy.value) {
-    event.preventDefault(); confirmKind.value = selectedComment.value.status === 'published' ? 'tombstone' : selectedComment.value.hasChildren ? null : 'permanent'
-  } else if (event.key.toLowerCase() === 'r') {
-    event.preventDefault(); void store.loadComments(true)
-  } else if (event.key === 'Escape') {
-    siteMenuOpen.value = false; closeConfirm()
-  }
-}
-onMounted(() => document.addEventListener('keydown', handleKeyboard))
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', handleDocumentPointerDown)
-  document.removeEventListener('keydown', handleKeyboard)
-})
+onBeforeUnmount(() => document.removeEventListener('pointerdown', handleDocumentPointerDown))
 
 async function toggleSiteMenu(open = !siteMenuOpen.value) {
   if (siteBusy.value || sites.value.length < 2) return
@@ -148,71 +126,118 @@ async function confirmAction() {
 </script>
 
 <template>
-  <section class="comment-ledger" :data-mobile-detail="mobileDetail" aria-labelledby="queue-title">
-    <header class="ledger-head">
-      <div ref="sitePicker" class="ledger-margin site-picker">
-        <button v-if="sites.length > 1" ref="siteTrigger" class="site-trigger" type="button" aria-haspopup="listbox" :aria-expanded="siteMenuOpen" :aria-label="`切换站点，当前 ${displayName}`" :disabled="siteBusy" @click="toggleSiteMenu()">
-          <span class="site-name"><span>{{ displayName }}</span><AdminIcon name="chevron" class="chevron" /></span><span class="site-id">{{ selectedSite?.id }}</span>
-        </button>
-        <div v-else class="site-static"><span class="site-name"><span>{{ displayName || '没有可用站点' }}</span></span><span v-if="selectedSite" class="site-id">{{ selectedSite.id }}</span></div>
-        <div v-show="siteMenuOpen" ref="siteMenu" class="site-menu" role="listbox" aria-label="选择站点" @keydown="handleSiteMenuKeydown">
-          <button v-for="site in sites" :key="site.id" class="site-option" type="button" role="option" :aria-selected="selectedSiteId === site.id" @click="chooseSite(site.id)"><strong>{{ siteLabel(site) }}</strong><small>{{ site.id }}</small><AdminIcon name="check" class="check" /></button>
-        </div>
-      </div>
-      <div class="ledger-main">
-        <div class="ledger-title-row">
-          <h1 id="queue-title"><span class="visually-hidden">评论管理：</span><span class="title-count">{{ total }}</span> 条评论</h1>
-          <div class="ledger-tools">
-            <button class="sort-button" type="button" :aria-label="`排序：${sort === 'oldest' ? '最早提交在前' : '最新提交在前'}，点击切换`" @click="store.toggleSort"><AdminIcon name="sort" /><span>{{ sort === 'oldest' ? '最早在前' : '最新在前' }}</span></button>
-            <button class="icon-button" :class="{ 'is-spinning': queueBusy }" type="button" aria-label="刷新评论" title="刷新评论（R）" :disabled="queueBusy" @click="store.loadComments(true)"><AdminIcon name="refresh" /></button>
+  <div class="moderation-layout" :data-mobile-detail="mobileDetail">
+    <section class="queue-pane" aria-labelledby="queue-title">
+      <h1 id="queue-title" class="visually-hidden">评论管理</h1>
+      <div class="queue-head">
+        <div ref="sitePicker" class="site-picker">
+          <button
+            v-if="sites.length > 1"
+            ref="siteTrigger"
+            class="site-trigger"
+            type="button"
+            aria-haspopup="listbox"
+            :aria-expanded="siteMenuOpen"
+            :aria-label="`切换站点，当前 ${displayName}`"
+            :disabled="siteBusy"
+            @click="toggleSiteMenu()"
+          >
+            <span class="site-name"><span>{{ displayName }}</span><AdminIcon name="chevron" class="chevron" /></span>
+            <span class="site-id">{{ selectedSite?.id }}</span>
+          </button>
+          <div v-else class="site-static">
+            <span class="site-name"><span>{{ displayName || '没有可用站点' }}</span></span>
+            <span v-if="selectedSite" class="site-id">{{ selectedSite.id }}</span>
+          </div>
+          <div v-show="siteMenuOpen" ref="siteMenu" class="site-menu" role="listbox" aria-label="选择站点" @keydown="handleSiteMenuKeydown">
+            <button
+              v-for="site in sites"
+              :key="site.id"
+              class="site-option"
+              type="button"
+              role="option"
+              :aria-selected="selectedSiteId === site.id"
+              @click="chooseSite(site.id)"
+            ><strong>{{ siteLabel(site) }}</strong><small>{{ site.id }}</small><AdminIcon name="check" class="check" /></button>
           </div>
         </div>
-        <div class="queue-toolbar status-tabs" role="tablist" aria-label="评论状态">
+        <button class="icon-button" :class="{ 'is-spinning': queueBusy }" type="button" aria-label="刷新评论" title="刷新评论" :disabled="queueBusy" @click="store.loadComments(true)"><AdminIcon name="refresh" /></button>
+      </div>
+      <div class="queue-toolbar">
+        <div class="status-tabs" role="tablist" aria-label="评论状态">
           <button v-for="item in statusOrder" :key="item" class="status-tab" type="button" role="tab" :aria-selected="status === item" @click="chooseStatus(item)">{{ statusMeta[item].label }} <span class="count">{{ counts[item] }}</span></button>
         </div>
+        <button class="sort-button" type="button" :aria-label="`排序：${sort === 'oldest' ? '最早提交在前' : '最新提交在前'}，点击切换`" @click="store.toggleSort"><AdminIcon name="sort" /><span>{{ sort === 'oldest' ? '最早在前' : '最新在前' }}</span></button>
       </div>
-    </header>
+      <div class="queue-scroll" :aria-busy="queueBusy">
+        <p v-if="queueMessage" class="notice notice-error" role="alert">{{ queueMessage }}<button class="button" type="button" :disabled="queueBusy" @click="store.loadComments()">重试</button></p>
+        <div v-if="queueBusy && !comments.length" aria-hidden="true">
+          <div v-for="index in 6" :key="index" class="skeleton-row"><span /><span /><span /></div>
+        </div>
+        <ul v-else-if="comments.length" ref="queueList" class="queue-list" role="listbox" aria-label="评论列表" @keydown="handleQueueKeydown">
+          <li v-for="comment in comments" :key="comment.id" class="queue-row" role="none">
+            <button class="queue-item" type="button" role="option" :data-comment-id="comment.id" :aria-selected="selectedComment?.id === comment.id" @click="chooseComment(comment.id)">
+              <span class="queue-item-line">
+                <span class="queue-author" :class="{ 'is-deleted': comment.deleted }" :title="comment.deleted ? '已删除' : comment.username">{{ comment.deleted ? '已删除' : comment.username }}</span>
+                <time class="queue-time">{{ formatDate(comment.createdAt) }}</time>
+              </span>
+              <span class="queue-summary" :class="{ 'is-deleted': comment.deleted }"><template v-if="comment.deleted">该评论已删除</template><SmojiContent v-else :content="comment.content" :enabled="selectedSite?.smojiEnabled === true" :manifest-url="selectedSite?.smojiManifestUrl || ''" compact /></span>
+              <span class="queue-item-line">
+                <span class="queue-path" :title="comment.mark">{{ comment.mark }}</span>
+                <span class="queue-ref">{{ comment.parent ? `回复 #${comment.parent}` : `#${comment.id}` }}</span>
+              </span>
+            </button>
+          </li>
+        </ul>
+        <p v-else-if="!queueBusy && !queueMessage" class="queue-empty">当前没有{{ statusMeta[status].label }}评论</p>
+      </div>
+      <nav class="pager" aria-label="评论列表分页">
+        <span>共 {{ total }} 条</span>
+        <span class="pager-controls">
+          <button class="icon-button" type="button" aria-label="上一页" :disabled="page <= 1" @click="store.selectPage(page - 1)"><AdminIcon name="left" /></button>
+          <span class="pager-status">{{ page }} / {{ Math.max(pageCount, 1) }}</span>
+          <button class="icon-button" type="button" aria-label="下一页" :disabled="page >= pageCount" @click="store.selectPage(page + 1)"><AdminIcon name="right" /></button>
+        </span>
+      </nav>
+    </section>
 
-    <div class="ledger-feed" :aria-busy="queueBusy">
-      <p v-if="queueMessage" class="notice notice-error ledger-notice" role="alert">{{ queueMessage }}<button class="button" type="button" :disabled="queueBusy" @click="store.loadComments()">重试</button></p>
-      <div v-if="queueBusy && !comments.length" class="ledger-main ledger-loading" aria-hidden="true"><div v-for="index in 6" :key="index" class="skeleton-row"><span /><span /><span /></div></div>
-      <ul v-else-if="comments.length" ref="queueList" class="queue-list ledger-main" role="listbox" aria-label="评论列表" @keydown="handleQueueKeydown">
-        <li v-for="(comment, index) in comments" :key="comment.id" class="queue-row feed-entry" :class="{ 'is-selected': selectedComment?.id === comment.id }" role="none">
-          <p v-if="index === 0 || formatDate(comment.createdAt).slice(0, 10) !== formatDate(comments[index - 1]!.createdAt).slice(0, 10)" class="feed-date">{{ formatDate(comment.createdAt).slice(0, 10) }}</p>
-          <button class="queue-item feed-row" type="button" role="option" :data-comment-id="comment.id" :aria-selected="selectedComment?.id === comment.id" @click="chooseComment(comment.id)">
-            <span class="feed-index">#{{ comment.id }}</span>
-            <span class="queue-item-line"><span class="queue-author" :class="{ 'is-deleted': comment.deleted }" :title="comment.deleted ? '已删除' : comment.username">{{ comment.deleted ? '已删除' : comment.username }}</span><time class="queue-time">{{ formatDate(comment.createdAt) }}</time></span>
-            <span class="queue-summary" :class="{ 'is-deleted': comment.deleted }"><template v-if="comment.deleted">该评论已删除</template><SmojiContent v-else :content="comment.content" :enabled="selectedSite?.smojiEnabled === true" :manifest-url="selectedSite?.smojiManifestUrl || ''" compact /></span>
-            <span class="feed-context"><span>{{ comment.pageTitle || comment.mark }}</span><span>{{ comment.parent ? `回复 #${comment.parent}` : '根评论' }}</span></span>
-          </button>
-
-          <section v-if="selectedComment?.id === comment.id" class="detail-pane inline-detail" aria-label="评论详情">
-            <div class="detail-toolbar">
-              <button class="button button-quiet mobile-back" type="button" @click="emit('mobileDetail', false)"><AdminIcon name="left" />评论列表</button>
-              <div class="detail-ref"><span class="badge" :class="statusMeta[selectedComment.status].className">{{ statusMeta[selectedComment.status].label }}</span><span>#{{ selectedComment.id }}</span><span aria-hidden="true">·</span><span>{{ selectedComment.parent ? `回复 #${selectedComment.parent}` : '根评论' }}</span></div>
-              <div class="detail-actions">
-                <a v-if="sourceURL" class="button button-quiet source-link" :href="sourceURL" target="_blank" rel="noopener noreferrer" :title="`查看原评论 #${selectedComment.id}`"><AdminIcon name="external" /><span class="label">查看原评论</span></a>
-                <button v-if="selectedComment.status === 'published'" class="button danger-button" type="button" :disabled="actionBusy" @click="confirmKind = 'tombstone'">墓碑删除</button>
-                <button v-else-if="!selectedComment.hasChildren" class="button danger-button" type="button" :disabled="actionBusy" @click="confirmKind = 'permanent'">彻底删除</button>
-                <span v-else class="hint">仍有回复，不能彻底删除</span>
-              </div>
-            </div>
-            <p v-if="actionMessage" class="notice notice-error" role="alert">{{ actionMessage }}</p>
-            <article class="review-sheet" :aria-busy="detailBusy" aria-labelledby="comment-detail-title">
-              <div class="detail-main"><header class="detail-heading"><h2 id="comment-detail-title" :class="{ 'is-deleted': selectedComment.deleted }" :title="selectedComment.deleted ? '已删除' : selectedComment.username">{{ selectedComment.deleted ? '已删除' : selectedComment.username }}</h2><time>{{ formatDate(selectedComment.createdAt) }}</time></header><p class="comment-body" :class="{ 'is-deleted-copy': selectedComment.deleted }"><template v-if="selectedComment.deleted">该评论已删除</template><SmojiContent v-else :content="selectedComment.content" :enabled="selectedSite?.smojiEnabled === true" :manifest-url="selectedSite?.smojiManifestUrl || ''" /></p></div>
-              <dl class="detail-facts detail-side" aria-label="评论信息"><div class="fact-row"><dt>私有邮箱</dt><dd :class="{ mono: selectedComment.email }" :title="selectedComment.email || '—'"><template v-if="selectedComment.email">{{ selectedComment.email }}</template><span v-else class="is-empty">—</span></dd></div><div class="fact-row"><dt>访客网站</dt><dd :class="{ mono: safeWebsite(selectedComment.url) }" :title="selectedComment.url || '—'"><a v-if="safeWebsite(selectedComment.url)" :href="safeWebsite(selectedComment.url)" target="_blank" rel="noopener noreferrer">{{ selectedComment.url }}</a><span v-else class="is-empty">—</span></dd></div><div class="fact-row"><dt>文章标题</dt><dd :title="selectedComment.pageTitle || '—'"><template v-if="selectedComment.pageTitle">{{ selectedComment.pageTitle }}</template><span v-else class="is-empty">—</span></dd></div><div class="fact-row"><dt>页面 key</dt><dd class="mono" :title="selectedComment.mark">{{ selectedComment.mark }}</dd></div><div class="fact-row"><dt>父评论</dt><dd><template v-if="selectedComment.parent">#{{ selectedComment.parent }}</template><span v-else class="is-empty">—</span></dd></div></dl>
-            </article>
-          </section>
-        </li>
-      </ul>
-      <p v-else-if="!queueBusy && !queueMessage" class="queue-empty ledger-main">当前没有{{ statusMeta[status].label }}评论</p>
-    </div>
-
-    <footer class="feed-foot ledger-main">
-      <p class="keys" aria-hidden="true"><kbd>J</kbd><kbd>K</kbd>上下条　<kbd>O</kbd>原评论　<kbd>Del</kbd>删除</p>
-      <nav class="pager" aria-label="评论列表分页"><button class="pager-button" type="button" :disabled="page <= 1" @click="store.selectPage(page - 1)">‹ 上一页</button><span class="pager-status">{{ page }} / {{ Math.max(pageCount, 1) }}</span><button class="pager-button" type="button" :disabled="page >= pageCount" @click="store.selectPage(page + 1)">下一页 ›</button></nav>
-    </footer>
-  </section>
+    <section class="detail-pane" aria-label="评论详情">
+      <p v-if="!selectedComment" class="detail-empty">{{ comments.length ? '从左侧选择一条评论' : '' }}</p>
+      <template v-else>
+        <div class="detail-toolbar">
+          <button class="button button-quiet back-button" type="button" @click="emit('mobileDetail', false)"><AdminIcon name="left" />评论列表</button>
+          <div class="detail-ref">
+            <span class="badge" :class="statusMeta[selectedComment.status].className">{{ statusMeta[selectedComment.status].label }}</span>
+            <span>#{{ selectedComment.id }}</span><span aria-hidden="true">·</span>
+            <span>{{ selectedComment.parent ? `回复 #${selectedComment.parent}` : '根评论' }}</span>
+          </div>
+          <div class="detail-actions">
+            <a v-if="sourceURL" class="button button-quiet source-link" :href="sourceURL" target="_blank" rel="noopener noreferrer" :title="`查看原评论 #${selectedComment.id}`"><AdminIcon name="external" /><span class="label">查看原评论</span></a>
+            <button v-if="selectedComment.status === 'published'" class="button danger-button" type="button" :disabled="actionBusy" @click="confirmKind = 'tombstone'">墓碑删除</button>
+            <button v-else-if="!selectedComment.hasChildren" class="button danger-button" type="button" :disabled="actionBusy" @click="confirmKind = 'permanent'">彻底删除</button>
+            <span v-else class="hint">仍有回复，不能彻底删除</span>
+          </div>
+        </div>
+        <p v-if="actionMessage" class="notice notice-error" role="alert">{{ actionMessage }}</p>
+        <article class="review-sheet" :aria-busy="detailBusy" aria-labelledby="comment-detail-title">
+          <div class="detail-main">
+            <header class="detail-heading">
+              <h2 id="comment-detail-title" :class="{ 'is-deleted': selectedComment.deleted }" :title="selectedComment.deleted ? '已删除' : selectedComment.username">{{ selectedComment.deleted ? '已删除' : selectedComment.username }}</h2>
+              <time>{{ formatDate(selectedComment.createdAt) }}</time>
+            </header>
+            <p class="comment-body" :class="{ 'is-deleted-copy': selectedComment.deleted }"><template v-if="selectedComment.deleted">该评论已删除</template><SmojiContent v-else :content="selectedComment.content" :enabled="selectedSite?.smojiEnabled === true" :manifest-url="selectedSite?.smojiManifestUrl || ''" /></p>
+          </div>
+          <dl class="detail-facts detail-side" aria-label="评论信息">
+            <div class="fact-row"><dt>私有邮箱</dt><dd :class="{ mono: selectedComment.email }" :title="selectedComment.email || '—'"><template v-if="selectedComment.email">{{ selectedComment.email }}</template><span v-else class="is-empty">—</span></dd></div>
+            <div class="fact-row"><dt>访客网站</dt><dd :class="{ mono: safeWebsite(selectedComment.url) }" :title="selectedComment.url || '—'"><a v-if="safeWebsite(selectedComment.url)" :href="safeWebsite(selectedComment.url)" target="_blank" rel="noopener noreferrer">{{ selectedComment.url }}</a><span v-else class="is-empty">—</span></dd></div>
+            <div class="fact-row"><dt>文章标题</dt><dd :title="selectedComment.pageTitle || '—'"><template v-if="selectedComment.pageTitle">{{ selectedComment.pageTitle }}</template><span v-else class="is-empty">—</span></dd></div>
+            <div class="fact-row"><dt>页面 key</dt><dd class="mono" :title="selectedComment.mark">{{ selectedComment.mark }}</dd></div>
+            <div class="fact-row"><dt>父评论</dt><dd><template v-if="selectedComment.parent">#{{ selectedComment.parent }}</template><span v-else class="is-empty">—</span></dd></div>
+          </dl>
+        </article>
+      </template>
+    </section>
+  </div>
 
   <dialog ref="confirmDialog" aria-labelledby="confirm-title" @cancel.prevent="closeConfirm" @click="handleDialogClick" @close="confirmKind = null">
     <div class="dialog-body">

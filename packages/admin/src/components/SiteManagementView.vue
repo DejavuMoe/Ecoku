@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAdminStore } from '../stores/admin'
 import type { SiteSummary, SiteWrite } from '../types'
@@ -10,7 +10,6 @@ const { sites, selectedSite, selectedSiteId, siteBusy, siteMessage } = storeToRe
 const creating = ref(false)
 const originsText = ref('')
 const errors = reactive<Record<string, string>>({})
-const baseline = ref('')
 const defaults = (): SiteWrite => ({ id: '', siteUrl: '', name: '', allowedOrigins: [], defaultSort: 'newest', emailRequired: true, websiteRequired: false, placeholder: '写下评论（仅支持纯文本）', commentLimit: 1000, emptyMessage: '还没有评论\n成为第一个留下评论的人。', smojiEnabled: false, smojiManifestUrl: '', bloggerNickname: '', bloggerEmail: '', bloggerBadge: '[博主]', bloggerPassphrase: '', bloggerPassphraseSet: false, revision: 0 })
 const draft = reactive<SiteWrite>(defaults())
 const clearErrors = () => Object.keys(errors).forEach((key) => delete errors[key])
@@ -20,14 +19,9 @@ function applySite(site: SiteSummary | null) {
   Object.assign(draft, { ...site, allowedOrigins: [...site.allowedOrigins], bloggerPassphrase: '' })
   originsText.value = site.allowedOrigins.join('\n')
   clearErrors()
-  baseline.value = snapshot()
 }
 watch(selectedSite, (site) => { if (!creating.value) applySite(site) }, { immediate: true })
-function snapshot() { return JSON.stringify({ ...draft, bloggerPassphrase: '', allowedOrigins: originsText.value.split(/[\r\n,]+/).map((value) => value.trim()).filter(Boolean) }) }
-const dirty = computed(() => creating.value || snapshot() !== baseline.value)
-watch(dirty, (value) => store.setDirty('sites', value), { immediate: true })
-onBeforeUnmount(() => store.setDirty('sites', false))
-function startCreating() { creating.value = true; Object.assign(draft, defaults()); originsText.value = ''; clearErrors(); baseline.value = snapshot() }
+function startCreating() { creating.value = true; Object.assign(draft, defaults()); originsText.value = ''; clearErrors() }
 function cancelCreating() { applySite(selectedSite.value ?? sites.value[0] ?? null) }
 async function chooseSite(site: SiteSummary) { creating.value = false; await store.selectSite(site.id); applySite(site) }
 function displayName(site: SiteSummary) { if (site.name) return site.name; try { return new URL(site.siteUrl).hostname } catch { return site.siteUrl } }
@@ -220,8 +214,8 @@ async function submit() {
             </div>
           </section>
 
-          <footer class="form-actions" :class="{ 'is-dirty': dirty }">
-            <span class="summary" :class="{ 'is-error': errorCount }" aria-live="polite">{{ errorCount ? `有 ${errorCount} 处需要修改` : dirty ? '有未保存的修改' : '' }}</span>
+          <footer class="form-actions">
+            <span class="summary" :class="{ 'is-error': errorCount }" aria-live="polite">{{ errorCount ? `有 ${errorCount} 处需要修改` : '' }}</span>
             <span class="push" />
             <button v-if="creating" class="button" type="button" @click="cancelCreating">取消</button>
             <button class="button button-primary" type="submit" :disabled="siteBusy || (!creating && !selectedSite)">{{ siteBusy ? '保存中…' : creating ? '创建站点' : '保存站点' }}</button>
