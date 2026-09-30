@@ -1,6 +1,20 @@
 {
   "version": 1,
   "skills": {
+    "baoyu-design": {
+      "source": "JimLiu/baoyu-design",
+      "sourceType": "github",
+      "ref": "6530033592bf7fa58bc1a5a2a2ad278da45213a9",
+      "skillPath": "skills/baoyu-design/SKILL.md",
+      "computedHash": "6513cebcd052ddbec2147ce0e9ea8aff0fa0398730d87eabd6ba71e2f767d9a0"
+    },
+    "prototype-first-ui": {
+      "source": "DejavuMoe/prototype-first-ui",
+      "sourceType": "github",
+      "ref": "ea5987e9fc18e4e9b6e7c729b406023ea45e4205",
+      "skillPath": "SKILL.md",
+      "computedHash": "50fc9d64f927413ea935553a98e9b077a2d6abb772393d745059cd39510af22f"
+    },
     "security-audit": {
       "source": "cloudflare/security-audit-skill",
       "sourceType": "github",

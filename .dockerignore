@@ -1,4 +1,6 @@
 .git
+.agents
+skills-lock.json
 .github
 .woodpecker
 .cache
