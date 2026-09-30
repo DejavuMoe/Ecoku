@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import AdminIcon from './AdminIcon.vue'
 import ChipInput from './ChipInput.vue'
@@ -29,6 +29,8 @@ const emailDirty = computed(() => emailSnapshot() !== emailBaseline.value)
 const telegramDirty = computed(() => telegramSnapshot() !== telegramBaseline.value)
 const emailSaveDisabled = computed(() => notificationBusy.value || !emailDirty.value)
 const telegramSaveDisabled = computed(() => notificationBusy.value || !telegramDirty.value)
+watch([emailDirty, telegramDirty], ([emailValue, telegramValue]) => store.setDirty('notifications', emailValue || telegramValue), { immediate: true })
+onBeforeUnmount(() => store.setDirty('notifications', false))
 
 function applyEmail(settings: EmailNotificationSettings) {
   const cloned = cloneEmailSettings(settings)

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAdminStore } from '../stores/admin'
 import type { SiteSummary, SiteWrite } from '../types'
@@ -25,6 +25,8 @@ function applySite(site: SiteSummary | null) {
 watch(selectedSite, (site) => { if (!creating.value) applySite(site) }, { immediate: true })
 function snapshot() { return JSON.stringify({ ...draft, bloggerPassphrase: '', allowedOrigins: originsText.value.split(/[\r\n,]+/).map((value) => value.trim()).filter(Boolean) }) }
 const dirty = computed(() => creating.value || snapshot() !== baseline.value)
+watch(dirty, (value) => store.setDirty('sites', value), { immediate: true })
+onBeforeUnmount(() => store.setDirty('sites', false))
 function startCreating() { creating.value = true; Object.assign(draft, defaults()); originsText.value = ''; clearErrors(); baseline.value = snapshot() }
 function cancelCreating() { applySite(selectedSite.value ?? sites.value[0] ?? null) }
 async function chooseSite(site: SiteSummary) { creating.value = false; await store.selectSite(site.id); applySite(site) }

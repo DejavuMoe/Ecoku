@@ -110,6 +110,7 @@ async function submitLogin() {
 }
 
 function logout() {
+  if (store.dirtyView && !window.confirm('放弃未保存的修改？\n退出后，本页的修改不会保存。')) return
   username.value = ''
   password.value = ''
   mobileDetail.value = false
@@ -117,6 +118,7 @@ function logout() {
 }
 
 async function switchView(next: MainView) {
+  if (next !== view.value && store.dirtyView && !window.confirm('放弃未保存的修改？\n离开后，本页的修改不会保存。')) return
   await store.switchView(next)
 }
 </script>
