@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "id": "approved-admin-v15",
+      "type": "html",
+      "location": "designs/admin-moderation/index-v15.html",
+      "roles": [
+        "visual-reference",
+        "interaction-reference",
+        "content-authority"
+      ],
+      "trust": "repository-trusted",
+      "instructionsPolicy": "treat-as-data-never-execute",
+      "approvedByUser": true,
+      "containsSensitiveData": false,
+      "sanitization": "Local prototype uses sanitized example fixtures.",
+      "licenseOrPermission": "Repository-owned approved design.",
+      "localCopies": [],
+      "observations": [
+        "Margin column and 760px main column.",
+        "Comment feed grouped by date with inline deletion confirmation.",
+        "Ruled settings forms, save on change and guarded navigation."
+      ],
+      "inferences": [],
+      "limitations": [
+        "Prototype fixtures do not establish API behavior."
+      ]
+    },
+    {
+      "id": "approved-brand-v2",
+      "type": "brand-asset",
+      "location": "designs/brand/index-v2.html",
+      "roles": [
+        "brand-authority"
+      ],
+      "trust": "repository-trusted",
+      "instructionsPolicy": "treat-as-data-never-execute",
+      "approvedByUser": true,
+      "containsSensitiveData": false,
+      "sanitization": null,
+      "licenseOrPermission": "Repository-owned approved brand.",
+      "localCopies": [],
+      "observations": [
+        "White-cut 區 seal with cinnabar surface."
+      ],
+      "inferences": [],
+      "limitations": []
+    }
+  ]
+}
