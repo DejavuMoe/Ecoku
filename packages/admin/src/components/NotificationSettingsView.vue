@@ -21,18 +21,26 @@ const emailErrors = reactive<Record<string, string>>({})
 const telegramErrors = reactive<Record<string, string>>({})
 const persistedEmailEnabled = ref(false)
 const persistedTelegramEnabled = ref(false)
-const emailSaveDisabled = computed(() => notificationBusy.value || (!email.enabled && email.enabled === persistedEmailEnabled.value))
-const telegramSaveDisabled = computed(() => notificationBusy.value || (!telegram.enabled && telegram.enabled === persistedTelegramEnabled.value))
+const emailBaseline = ref('')
+const telegramBaseline = ref('')
+function emailSnapshot() { return JSON.stringify({ ...email, password: '' }) }
+function telegramSnapshot() { return JSON.stringify({ ...telegram, token: '' }) }
+const emailDirty = computed(() => emailSnapshot() !== emailBaseline.value)
+const telegramDirty = computed(() => telegramSnapshot() !== telegramBaseline.value)
+const emailSaveDisabled = computed(() => notificationBusy.value || !emailDirty.value)
+const telegramSaveDisabled = computed(() => notificationBusy.value || !telegramDirty.value)
 
 function applyEmail(settings: EmailNotificationSettings) {
   const cloned = cloneEmailSettings(settings)
   Object.assign(email, { ...cloned, port: cloned.port || null })
   persistedEmailEnabled.value = cloned.enabled
+  emailBaseline.value = emailSnapshot()
 }
 
 function applyTelegram(settings: TelegramNotificationSettings) {
   Object.assign(telegram, cloneTelegramSettings(settings))
   persistedTelegramEnabled.value = settings.enabled
+  telegramBaseline.value = telegramSnapshot()
 }
 
 watch(notificationSettings, (settings) => {
@@ -104,7 +112,7 @@ async function sendTestTelegram() {
       <p v-if="notificationMessage" class="notice notice-error" role="alert">{{ notificationMessage }}</p>
 
       <div class="channel-stack">
-        <section class="settings-card channel-card" :data-enabled="email.enabled" aria-labelledby="email-title">
+          <section class="settings-card channel-card" :data-enabled="email.enabled" aria-labelledby="email-title">
           <header class="channel-head">
             <div>
               <h2 id="email-title">电子邮件</h2>
@@ -159,7 +167,8 @@ async function sendTestTelegram() {
             </div>
           </div>
           <p v-if="!email.enabled" class="channel-off">未开启，不会发送任何邮件，包括访客回复通知。</p>
-          <footer class="channel-actions">
+          <footer class="channel-actions" :class="{ 'is-dirty': emailDirty }">
+            <span v-if="emailDirty" class="dirty-label">有未保存的修改</span>
             <button v-if="email.enabled" class="button" type="button" :disabled="notificationBusy" @click="sendTestEmail">发送测试邮件</button>
             <span class="test-feedback" :class="{ 'is-success': email.enabled && emailTestState === 'success', 'is-failure': email.enabled && emailTestState === 'failure' }" aria-live="polite"><template v-if="email.enabled && emailTestMessage"><AdminIcon :name="emailTestState === 'success' ? 'check' : 'alert'" />{{ emailTestMessage }}</template><template v-else-if="!email.enabled && persistedEmailEnabled">关闭后需保存才会生效</template></span>
             <button class="button button-primary save-button push" type="button" :disabled="emailSaveDisabled" @click="saveEmail">保存</button>
@@ -192,7 +201,8 @@ async function sendTestTelegram() {
             </div>
           </div>
           <p v-if="!telegram.enabled" class="channel-off">未开启。</p>
-          <footer class="channel-actions">
+          <footer class="channel-actions" :class="{ 'is-dirty': telegramDirty }">
+            <span v-if="telegramDirty" class="dirty-label">有未保存的修改</span>
             <button v-if="telegram.enabled" class="button" type="button" :disabled="notificationBusy" @click="sendTestTelegram">发送测试消息</button>
             <span class="test-feedback" :class="{ 'is-success': telegram.enabled && telegramTestState === 'success', 'is-failure': telegram.enabled && telegramTestState === 'failure' }" aria-live="polite"><template v-if="telegram.enabled && telegramTestMessage"><AdminIcon :name="telegramTestState === 'success' ? 'check' : 'alert'" />{{ telegramTestMessage }}</template><template v-else-if="!telegram.enabled && persistedTelegramEnabled">关闭后需保存才会生效</template></span>
             <button class="button button-primary save-button push" type="button" :disabled="telegramSaveDisabled" @click="saveTelegram">保存</button>
@@ -203,4 +213,3 @@ async function sendTestTelegram() {
     </div>
   </section>
 </template>
-

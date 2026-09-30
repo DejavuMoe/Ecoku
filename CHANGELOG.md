@@ -11,6 +11,7 @@
 - `admin.username_env`、`admin.password_hash_env`、`admin.token_key_env`、`notifications.encryption_key_env` 省略时使用标准变量名 `ECOKU_ADMIN_USERNAME`、`ECOKU_ADMIN_PASSWORD_HASH`、`ECOKU_ADMIN_TOKEN_KEY`、`ECOKU_NOTIFICATION_ENCRYPTION_KEY`。
 - `admin.allowed_origins` 省略时取 `notifications.instance_public_url` 的来源。
 - 部署模板精简：`app/config.yaml` 只需 `notifications.instance_public_url`；`ecoku.env` 去掉 `GIN_MODE`（镜像已设置）；`compose.yaml` 去掉 `logging` 段，改用 Docker 守护进程的日志设置。
+- 管理端采用已批准的 v15 纸墨布局：评论改为连续管理流，站点、通知和安全统一为页边栏与正文栏，设置修改显示未保存提示，窄屏使用底部导航；新增「區」印章品牌标志，并同步后台与文档站 favicon。
 
 ### 文档
 

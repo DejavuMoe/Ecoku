@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAdminStore } from '../stores/admin'
 import { cloneCaptchaSettings, emptyCaptchaSettings } from '../ui'
@@ -9,10 +9,15 @@ const store = useAdminStore()
 const { captchaSettings, captchaBusy, captchaMessage } = storeToRefs(store)
 const draft = reactive<CaptchaSettings>(emptyCaptchaSettings())
 const errors = reactive<Record<string, string>>({})
+const baseline = ref('')
 
 function apply(settings: CaptchaSettings) {
   Object.assign(draft, cloneCaptchaSettings(settings))
+  baseline.value = snapshot()
 }
+
+function snapshot() { return JSON.stringify({ ...draft, turnstile: { ...draft.turnstile, secret: '' }, cap: { ...draft.cap, secret: '' } }) }
+const dirty = computed(() => snapshot() !== baseline.value)
 
 watch(captchaSettings, (settings) => {
   if (settings) apply(settings)
@@ -126,8 +131,9 @@ async function save() {
           </div>
         </div>
 
-        <footer class="channel-actions">
-          <button class="button button-primary save-button push" type="button" :disabled="captchaBusy" @click="save">保存</button>
+        <footer class="channel-actions" :class="{ 'is-dirty': dirty }">
+          <span v-if="dirty" class="dirty-label">有未保存的修改</span>
+          <button class="button button-primary save-button push" type="button" :disabled="captchaBusy || !dirty" @click="save">保存</button>
         </footer>
       </section>
       <div class="page-end" />
