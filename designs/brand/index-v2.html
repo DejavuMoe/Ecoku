@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Ecoku 品牌标识 · v2 已批准</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <style>
+    :root {
+      --paper: #f7f4ee; --surface: #fbf9f5; --ink: #1e1c19; --ink-soft: #35312b; --muted: #6b655b;
+      --line: #cbc3b5; --line-soft: rgb(30 28 25 / 0.12); --wash: #efebe3;
+      --seal: #b8472f; --carve: var(--paper);
+      --accent: color-mix(in oklab, #c8553a 75%, var(--ink));
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", sans-serif;
+      --mono: "Maple Mono Normal", ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+      --serif: Georgia, "Times New Roman", serif;
+      color-scheme: light dark;
+    }
+    html[data-theme="dark"] { --paper: #1a1816; --surface: #211f1c; --ink: #eee8dd; --ink-soft: #d3ccbf; --muted: #a29a8c; --line: #4b453d; --line-soft: rgb(238 232 221 / 0.12); --wash: #26231f; --seal: #c55a40; color-scheme: dark; }
+    @media (prefers-color-scheme: dark) { html[data-theme="auto"] { --paper: #1a1816; --surface: #211f1c; --ink: #eee8dd; --ink-soft: #d3ccbf; --muted: #a29a8c; --line: #4b453d; --line-soft: rgb(238 232 221 / 0.12); --wash: #26231f; --seal: #c55a40; } }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--paper); font: 15px/1.75 var(--sans); -webkit-font-smoothing: antialiased; }
+    h1, h2, h3, p, figure, figcaption { margin: 0; }
+    code { font: 0.86em var(--mono); color: var(--ink-soft); }
+    .sheet { width: min(100% - 48px, 1080px); margin: 0 auto; padding: 72px 0 120px; }
+    .kicker { color: var(--muted); font: 12px/1 var(--mono); letter-spacing: 0.08em; }
+    .mark { display: block; flex: 0 0 auto; }
+
+    /* hero: the seal pressed onto the page */
+    .hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: center; gap: 72px; padding-bottom: 88px; border-bottom: 1px solid var(--line-soft); }
+    .hero h1 { margin-top: 18px; font: 700 56px/1.02 var(--serif); letter-spacing: -0.01em; }
+    .hero h1 small { display: block; margin-top: 14px; color: var(--ink-soft); font: 400 22px/1.5 var(--sans); letter-spacing: 0.02em; }
+    .hero p { max-width: 34em; margin-top: 28px; color: var(--ink-soft); }
+    .hero p + p { margin-top: 12px; }
+    .impression { position: relative; display: grid; aspect-ratio: 1; place-items: center; }
+    .impression svg { width: 58%; height: auto; transform: rotate(-2.4deg); }
+    .impression .stamp { mix-blend-mode: multiply; }
+    html[data-theme="dark"] .impression .stamp { mix-blend-mode: normal; }
+    .impression figcaption { position: absolute; right: 6%; bottom: 0; color: var(--muted); font: 12px var(--mono); }
+
+    section { padding: 72px 0; border-bottom: 1px solid var(--line-soft); }
+    .section-head { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 48px; margin-bottom: 40px; }
+    .section-head h2 { font: 700 22px/1.3 var(--serif); }
+    .section-head h2 span { display: block; margin-top: 6px; color: var(--muted); font: 12px var(--mono); letter-spacing: 0.06em; }
+    .section-head p { max-width: 40em; color: var(--ink-soft); }
+
+    /* etymology */
+    .etymology { display: grid; grid-template-columns: repeat(5, auto); align-items: center; justify-content: start; gap: 28px; margin-left: 248px; }
+    .ety { display: grid; justify-items: center; gap: 14px; }
+    .ety svg { width: 132px; height: 132px; }
+    .ety figcaption { display: grid; justify-items: center; gap: 2px; }
+    .ety strong { font: 400 26px/1 var(--serif); }
+    .ety span { color: var(--muted); font-size: 13px; }
+    .op { color: var(--muted); font: 300 28px var(--serif); }
+    .ink-glyph { --carve: var(--ink); }
+
+    /* construction */
+    .construct { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 48px; }
+    .grid-art { position: relative; width: min(100%, 440px); aspect-ratio: 1; }
+    .grid-art svg { width: 100%; height: 100%; }
+    .measures { display: grid; align-content: start; gap: 0; margin: 0; padding: 0; list-style: none; }
+    .measures li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 16px; padding: 12px 0; border-top: 1px solid var(--line-soft); font-size: 14px; }
+    .measures li:last-child { border-bottom: 1px solid var(--line-soft); }
+    .measures b { font: 500 13px var(--mono); }
+    .measures span { color: var(--ink-soft); }
+    .construct-body { display: grid; grid-template-columns: minmax(0, 440px) minmax(0, 1fr); gap: 48px; align-items: start; }
+
+    /* sizes */
+    .sizes { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin-left: 248px; overflow: hidden; border: 1px solid var(--line-soft); border-radius: 6px; background: var(--line-soft); }
+    .size-row { display: flex; align-items: flex-end; gap: 36px; padding: 36px 32px 28px; }
+    .size-row.is-light { --paper: #f7f4ee; --ink: #1e1c19; --muted: #6b655b; --seal: #b8472f; --carve: #f7f4ee; background: #f7f4ee; color: #6b655b; }
+    .size-row.is-dark { --paper: #1a1816; --ink: #eee8dd; --muted: #a29a8c; --seal: #c55a40; --carve: #1a1816; background: #1a1816; color: #a29a8c; }
+    .size { display: grid; justify-items: center; gap: 10px; font: 11px var(--mono); }
+
+    /* lockups */
+    .lockups { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 16px; margin-left: 248px; }
+    .plate { display: grid; grid-template-rows: 180px auto; overflow: hidden; border: 1px solid var(--line-soft); border-radius: 6px; background: var(--surface); }
+    .plate .stage { display: grid; place-items: center; background: var(--paper); border-bottom: 1px solid var(--line-soft); }
+    .plate p { padding: 14px 18px 16px; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .plate p b { display: block; color: var(--ink); font-weight: 600; }
+    .lockup { display: inline-flex; align-items: center; gap: 0.36em; color: var(--ink); font: 700 30px/1 var(--serif); letter-spacing: -0.005em; }
+    .lockup .mark { width: 1.16em; height: 1.16em; margin-top: -0.06em; }
+    .stacked { display: grid; justify-items: center; gap: 12px; font: 700 22px/1 var(--serif); }
+    .stacked .mark { width: 52px; height: 52px; }
+    .colophon { display: grid; justify-items: end; gap: 6px; width: 78%; color: var(--ink-soft); font-size: 13px; line-height: 1.8; }
+    .colophon span { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font: 12px var(--mono); }
+    .colophon .mark { width: 22px; height: 22px; transform: rotate(-2deg); }
+
+    /* applications */
+    .apps { display: grid; gap: 16px; margin-left: 248px; }
+    .frame { overflow: hidden; border: 1px solid var(--line-soft); border-radius: 6px; background: var(--paper); }
+    .frame-label { padding: 9px 16px; border-bottom: 1px solid var(--line-soft); color: var(--muted); font: 12px var(--mono); background: var(--surface); }
+    .tabs { display: flex; padding: 8px 8px 0; background: #e2ddd3; }
+    .tab { display: inline-flex; width: 230px; height: 34px; align-items: center; gap: 9px; padding: 0 12px; border-radius: 8px 8px 0 0; color: #3a352f; font-size: 12px; }
+    .tab.on { background: #f7f4ee; }
+    .tab img { width: 16px; height: 16px; }
+    .tabs.is-dark { background: #0e0d0c; }
+    .tabs.is-dark .tab { color: #d3ccbf; }
+    .tabs.is-dark .tab.on { background: #26231f; }
+    .masthead { display: flex; height: 64px; align-items: center; gap: 36px; padding: 0 32px; }
+    .masthead .lockup { font-size: 19px; }
+    .masthead nav { display: flex; gap: 26px; font-size: 14px; }
+    .masthead nav span { color: var(--muted); }
+    .masthead nav span.on { color: var(--ink); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 8px; }
+    .masthead .end { margin-left: auto; color: var(--muted); font-size: 13px; }
+    .docs-hero { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: center; gap: 40px; padding: 48px 56px 60px; border-top: 1px solid var(--line-soft); }
+    .docs-hero h3 { font: 700 48px/1.05 var(--serif); }
+    .docs-hero p { margin-top: 14px; color: var(--ink-soft); font-size: 19px; line-height: 1.55; }
+    .docs-hero .actions { display: flex; gap: 12px; margin-top: 26px; }
+    .docs-hero .btn { display: inline-flex; height: 38px; align-items: center; padding: 0 18px; border-radius: 6px; font-size: 14px; font-weight: 500; }
+    .docs-hero .btn.primary { color: var(--paper); background: var(--ink); }
+    .docs-hero .btn.alt { border: 1px solid var(--line); }
+    .docs-hero .art { display: grid; place-items: center; }
+    .docs-hero .art svg { width: min(100%, 200px); height: auto; transform: rotate(-2.4deg); }
+
+    .tokens { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-left: 248px; }
+    .swatch { overflow: hidden; border: 1px solid var(--line-soft); border-radius: 6px; background: var(--surface); }
+    .swatch i { display: block; height: 72px; }
+    .swatch div { display: grid; padding: 10px 14px; font-size: 13px; }
+    .swatch code { color: var(--muted); font-size: 11.5px; }
+
+    .rules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; margin: 0 0 0 248px; padding: 0; list-style: none; }
+    .rules li { padding: 14px 0; border-top: 1px solid var(--line-soft); font-size: 14px; }
+    .rules b { display: block; font-weight: 600; }
+    .rules span { color: var(--muted); font-size: 13px; }
+    .files { margin-left: 248px; color: var(--ink-soft); font: 12.5px/2 var(--mono); }
+
+    .theme-switch { position: fixed; right: 16px; bottom: 16px; display: grid; gap: 4px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 6px; background: var(--surface); font-size: 12px; }
+    .theme-switch select { height: 28px; border: 1px solid var(--line); border-radius: 3px; background: var(--paper); color: var(--ink); font: inherit; }
+
+    @media (max-width: 960px) {
+      .hero, .docs-hero, .construct-body { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+      .section-head, .construct { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+      .etymology, .sizes, .lockups, .apps, .tokens, .rules, .files { margin-left: 0; }
+      .etymology { grid-template-columns: repeat(5, auto); gap: 12px; }
+      .ety svg { width: 76px; height: 76px; }
+      .sizes, .lockups, .tokens, .rules { grid-template-columns: minmax(0, 1fr); }
+      .masthead nav span:not(.on) { display: none; }
+      .docs-hero { padding: 32px 24px; }
+      .hero h1 { font-size: 44px; }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <filter id="press" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+        <feTurbulence type="fractalNoise" baseFrequency="1.7" numOctaves="2" seed="7" result="grain"/>
+        <feColorMatrix in="grain" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -18 14" result="speck"/>
+        <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="2" seed="11" result="mottle"/>
+        <feColorMatrix in="mottle" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -0.8 1.36" result="density"/>
+        <feComposite in="speck" in2="density" operator="in" result="mask"/>
+        <feComposite in="SourceGraphic" in2="mask" operator="in" result="inked"/>
+        <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="3" result="warp"/>
+        <feDisplacementMap in="inked" in2="warp" scale="1.2" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+    </defs>
+    <symbol id="mark" viewBox="0 0 64 64">
+      <path style="fill: var(--seal)" d="M13.4 4.3C25.8 3.8 38.6 3.8 50.7 4.3c5.3.2 8.9 3.7 9.1 9 .4 12.5.4 25 0 37.5-.2 5.4-3.8 8.9-9.1 9.1-12.4.4-25 .4-37.4 0-5.3-.2-8.8-3.7-9-9-.4-12.5-.4-25.1 0-37.6.2-5.3 3.8-8.8 9.1-9Z"/>
+      <path style="stroke: var(--carve)" d="M53.5 12.6H12.6v38.8h40.9" fill="none" stroke-width="4.2" stroke-linejoin="round"/>
+      <g style="stroke: var(--carve)" fill="none" stroke-width="3.6" stroke-linejoin="round">
+        <rect x="30.55" y="19.7" width="10.3" height="8.9"/>
+        <rect x="19.7" y="35.4" width="12.6" height="8.9"/>
+        <rect x="39.1" y="35.4" width="12.6" height="8.9"/>
+      </g>
+    </symbol>
+    <symbol id="enclosure" viewBox="0 0 64 64"><path d="M53.5 12.6H12.6v38.8h40.9" fill="none" stroke="currentColor" stroke-width="4.2" stroke-linejoin="round"/></symbol>
+    <symbol id="mouths" viewBox="0 0 64 64"><g fill="none" stroke="currentColor" stroke-width="3.6" stroke-linejoin="round"><rect x="30.55" y="19.7" width="10.3" height="8.9"/><rect x="19.7" y="35.4" width="12.6" height="8.9"/><rect x="39.1" y="35.4" width="12.6" height="8.9"/></g></symbol>
+  </svg>
+
+  <main class="sheet">
+    <header class="hero">
+      <div>
+        <p class="kicker">ECOKU · 品牌标识 · v2 已批准</p>
+        <h1>Ecoku<small>众口所在，一方朱印。</small></h1>
+        <p>Ecoku 的 ku，取自「区」。繁体写作「區」：外面是「匸」，一个三面合围、一面敞开的容器；里面是「品」，三个「口」。许多张口聚在同一处说话，这就是评论区。</p>
+        <p>标志把这个字刻成一方白文印。刻去的笔画露出纸色，印面保留朱砂。缺口朝右，和评论区里 <code>[-]</code>、<code>[博主]</code> 的方括号是同一个手势；三个口一上两下，也是一条评论和它下面的两条回复。</p>
+      </div>
+      <figure class="impression">
+        <svg viewBox="0 0 64 64" aria-label="Ecoku 印"><g class="stamp" filter="url(#press)"><use href="#mark"/></g></svg>
+        <figcaption>印蜕 · 1:1.8</figcaption>
+      </figure>
+    </header>
+
+    <section aria-labelledby="ety-title">
+      <div class="section-head">
+        <h2 id="ety-title">字源<span>匸 + 品 = 區</span></h2>
+        <p>标志没有另造图形，直接用「區」的字形结构。笔画按篆书的方法处理：横平竖直，转角微圆，三口大小相近、上口略窄，让“品”字站得稳。</p>
+      </div>
+      <div class="etymology">
+        <figure class="ety"><svg class="ink-glyph" viewBox="0 0 64 64" style="color: var(--ink)"><use href="#enclosure"/></svg><figcaption><strong>匸</strong><span>容器，一面敞开</span></figcaption></figure>
+        <span class="op" aria-hidden="true">+</span>
+        <figure class="ety"><svg viewBox="0 0 64 64" style="color: var(--ink)"><use href="#mouths"/></svg><figcaption><strong>品</strong><span>三口，众人之言</span></figcaption></figure>
+        <span class="op" aria-hidden="true">=</span>
+        <figure class="ety"><svg viewBox="0 0 64 64"><use href="#mark"/></svg><figcaption><strong>區</strong><span>ku，评论所在</span></figcaption></figure>
+      </div>
+    </section>
+
+    <section aria-labelledby="grid-title">
+      <div class="section-head">
+        <h2 id="grid-title">印稿<span>64 × 64 网格</span></h2>
+        <p>篆刻讲“布白”：笔画与笔画之间的红，要和笔画本身一样有分量。印稿里边距、笔画和字距只用三个尺寸，缩到 16px 时三个口仍然分得开。</p>
+      </div>
+      <div class="construct-body" style="margin-left: 248px">
+        <div class="grid-art">
+          <svg viewBox="-4 -4 72 72" aria-hidden="true">
+            <use href="#mark" x="0" y="0" width="64" height="64"/>
+            <g fill="none" stroke="var(--accent)" stroke-width="0.18">
+              <path d="M10.5 -2v68M53.5 -2v68M-2 10.5h68M-2 53.5h68" stroke-dasharray="0.8 0.8"/>
+              <path d="M17.9 -2v68M-2 17.9h68M-2 46.1h68M35.7 -2v68" stroke-dasharray="0.4 0.9" opacity="0.8"/>
+            </g>
+            <g fill="var(--accent)" font-family="ui-monospace, monospace" font-size="1.9">
+              <text x="4.4" y="-1">6.5</text><text x="11.2" y="-1">4.2</text><text x="54.5" y="-1">外沿</text>
+              <text x="36.3" y="66.5">中轴</text><text x="-3.6" y="16">3.2</text>
+            </g>
+          </svg>
+        </div>
+        <ul class="measures">
+          <li><b>6.5</b><span>印边：印面边缘到笔画的距离，比字距略宽，像石章留下的一圈边。</span></li>
+          <li><b>4.2</b><span>「匸」的笔画，是全印最重的一笔。</span></li>
+          <li><b>3.6</b><span>「口」的笔画，稍细一级，让三个口在小尺寸下不糊成一团。</span></li>
+          <li><b>3.2</b><span>字距：笔画之间的红，与口内的留白相同。</span></li>
+          <li><b>轮廓</b><span>印面四边微微起伏，四角半径不完全相同，模仿石章的边。放大看得出，缩小看不出。</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section aria-labelledby="size-title">
+      <div class="section-head">
+        <h2 id="size-title">尺寸<span>16 – 96 px</span></h2>
+        <p>刻去的笔画始终是所在页面的纸色：浅色页面上是米白，深色页面上是墨黑，印面在深色下提亮一级。所以无论在哪种背景上，标志都像是盖在纸上的。</p>
+      </div>
+      <div class="sizes">
+        <div class="size-row is-light">
+          <div class="size"><svg class="mark" width="96" height="96"><use href="#mark"/></svg>96</div>
+          <div class="size"><svg class="mark" width="48" height="48"><use href="#mark"/></svg>48</div>
+          <div class="size"><svg class="mark" width="32" height="32"><use href="#mark"/></svg>32</div>
+          <div class="size"><svg class="mark" width="24" height="24"><use href="#mark"/></svg>24</div>
+          <div class="size"><svg class="mark" width="16" height="16"><use href="#mark"/></svg>16</div>
+        </div>
+        <div class="size-row is-dark">
+          <div class="size"><svg class="mark" width="96" height="96"><use href="#mark"/></svg>96</div>
+          <div class="size"><svg class="mark" width="48" height="48"><use href="#mark"/></svg>48</div>
+          <div class="size"><svg class="mark" width="32" height="32"><use href="#mark"/></svg>32</div>
+          <div class="size"><svg class="mark" width="24" height="24"><use href="#mark"/></svg>24</div>
+          <div class="size"><svg class="mark" width="16" height="16"><use href="#mark"/></svg>16</div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="lockup-title">
+      <div class="section-head">
+        <h2 id="lockup-title">组合<span>印 + 字标</span></h2>
+        <p>字标用 Georgia Bold，和评论区的衬线标题同一气质，不加载网络字体。印的高度是字标大写高度的 1.16 倍，底边与字母基线对齐。</p>
+      </div>
+      <div class="lockups">
+        <div class="plate"><div class="stage"><span class="lockup"><svg class="mark"><use href="#mark"/></svg>Ecoku</span></div><p><b>横排</b>后台页头、文档导航。</p></div>
+        <div class="plate"><div class="stage"><span class="stacked"><svg class="mark"><use href="#mark"/></svg>Ecoku</span></div><p><b>竖排</b>登录页。</p></div>
+        <div class="plate"><div class="stage"><div class="colophon">评论由 Ecoku 提供，数据保存在你自己的服务器。<span>Ecoku v0.2.7 <svg class="mark"><use href="#mark"/></svg></span></div></div><p><b>落款</b>页脚与关于页，像书画末尾的一方印。</p></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="app-title">
+      <div class="section-head">
+        <h2 id="app-title">应用<span>后台 · 文档 · 标签页</span></h2>
+        <p>后台与文档站共用这枚印和 favicon。文档站同时从青绿配色改为纸墨：纸色背景、墨色按钮、朱砂链接。已批准的 v6 邮件模板不动。</p>
+      </div>
+      <div class="apps">
+        <div class="frame">
+          <p class="frame-label">浏览器标签页 · favicon.svg 跟随系统明暗</p>
+          <div class="tabs"><span class="tab on"><img src="favicon.svg" alt="">Ecoku 评论管理</span><span class="tab"><img src="favicon.svg" alt="">Docker 部署 · Ecoku</span></div>
+          <div style="height: 14px; background: #f7f4ee"></div>
+          <div class="tabs is-dark"><span class="tab on"><img src="favicon.svg" alt="">Ecoku 评论管理</span><span class="tab"><img src="favicon.svg" alt="">Docker 部署 · Ecoku</span></div>
+          <div style="height: 14px; background: #26231f"></div>
+        </div>
+        <div class="frame">
+          <p class="frame-label">管理后台页头</p>
+          <div class="masthead">
+            <span class="lockup"><svg class="mark"><use href="#mark"/></svg>Ecoku</span>
+            <nav><span class="on">评论</span><span>站点</span><span>通知</span><span>安全</span></nav>
+            <span class="end">退出</span>
+          </div>
+        </div>
+        <div class="frame">
+          <p class="frame-label">文档站首页（配色提案）</p>
+          <div class="masthead">
+            <span class="lockup"><svg class="mark"><use href="#mark"/></svg>Ecoku</span>
+            <nav><span>指南</span><span>自托管</span><span>接入</span><span>参考</span></nav>
+            <span class="end">简体中文</span>
+          </div>
+          <div class="docs-hero">
+            <div>
+              <h3>Ecoku</h3>
+              <p>自托管的纯文本评论系统。<br>一个 SQLite 文件，多个站点。</p>
+              <div class="actions"><span class="btn primary">开始部署</span><span class="btn alt">接入博客</span></div>
+            </div>
+            <div class="art"><svg viewBox="0 0 64 64" aria-hidden="true"><g class="stamp" filter="url(#press)"><use href="#mark"/></g></svg></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="color-title">
+      <div class="section-head">
+        <h2 id="color-title">色值<span>朱砂 · 纸 · 墨</span></h2>
+        <p>朱砂只属于这枚印。界面里的危险操作使用评论区的强调色（朱砂与墨混合），比印色更沉，两者不混用。</p>
+      </div>
+      <div class="tokens">
+        <div class="swatch"><i style="background: #b8472f"></i><div>印 · 浅色<code>#b8472f</code></div></div>
+        <div class="swatch"><i style="background: #c55a40"></i><div>印 · 深色<code>#c55a40</code></div></div>
+        <div class="swatch"><i style="background: #f7f4ee"></i><div>纸 · 刻字<code>#f7f4ee / #1a1816</code></div></div>
+        <div class="swatch"><i style="background: var(--ink)"></i><div>墨 · 字标<code>--ink</code></div></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="rule-title">
+      <div class="section-head"><h2 id="rule-title">用法<span>Do · Don’t</span></h2><p>一方印的力量在于克制。</p></div>
+      <ul class="rules">
+        <li><b>一页一印</b><span>每个页面最多出现一次彩色印，不作装饰重复。</span></li>
+        <li><b>最小 16px</b><span>小于 24px 时使用 favicon.svg；再小就只用字标。</span></li>
+        <li><b>不描边、不投影</b><span>只有朱砂印和单色印两种；不加渐变、描边、阴影或背景框。</span></li>
+        <li><b>不改刀</b><span>不拉伸、不旋转笔画；印蜕的轻微倾斜只用于展示页与首页插图。</span></li>
+        <li><b>单色印</b><span>刻字镂空，只用一种颜色，用于打印、邮件页脚等单色场合。</span></li>
+        <li><b>字标</b><span>“Ecoku” 始终用 Georgia Bold，首字母大写，不配副标题。</span></li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="file-title" style="border-bottom: 0">
+      <div class="section-head"><h2 id="file-title">文件<span>批准后进入生产</span></h2><p>PNG 由 SVG 在构建时导出，不手工维护。</p></div>
+      <div class="files">
+        ecoku-mark.svg → docs/public/logo.svg<br>
+        favicon.svg → docs/public/favicon.svg、packages/admin/public/favicon.svg<br>
+        app-icon.svg → apple-touch-icon.png（180 × 180）<br>
+        ecoku-mark-mono.svg → 单色场合
+      </div>
+    </section>
+  </main>
+
+  <aside class="theme-switch" data-prototype-only="true">
+    <label for="theme">配色预览</label>
+    <select id="theme" onchange="document.documentElement.dataset.theme = this.value">
+      <option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option>
+    </select>
+  </aside>
+</body>
+</html>
