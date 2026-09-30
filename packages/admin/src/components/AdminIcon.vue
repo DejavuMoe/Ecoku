@@ -1,5 +1,5 @@
 <script setup lang="ts">
-export type AdminIconName = 'refresh' | 'chevron' | 'left' | 'right' | 'sort' | 'external' | 'check' | 'alert' | 'plus'
+export type AdminIconName = 'refresh' | 'chevron' | 'left' | 'right' | 'sort' | 'external' | 'check' | 'alert' | 'plus' | 'comments' | 'sites' | 'notify' | 'security'
 
 defineProps<{ name: AdminIconName }>()
 
@@ -13,6 +13,10 @@ const paths: Record<AdminIconName, string[]> = {
   check: ['m3 8.5 3 3 7-7'],
   alert: ['M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2Z', 'M8 5v3.5M8 11v.01'],
   plus: ['M8 3v10M3 8h10'],
+  comments: ['M3 4.5h10v7H7.5L5 14v-2.5H3z', 'M5.5 7h5M5.5 9.5h3.5'],
+  sites: ['M2.5 4h11v8h-11z', 'M2.5 7h11', 'M5 5.5h.01M7 5.5h.01'],
+  notify: ['M4.5 11.5h7L10.5 10V7a2.5 2.5 0 0 0-5 0v3z', 'M6.5 13h3'],
+  security: ['M8 2.5 13 4.3v3.9c0 3.1-2.1 5.4-5 6.5-2.9-1.1-5-3.4-5-6.5V4.3z', 'm5.8 8 1.5 1.5 3-3'],
 }
 </script>
 

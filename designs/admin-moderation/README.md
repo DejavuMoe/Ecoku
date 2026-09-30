@@ -1,7 +1,7 @@
 # Ecoku 管理端设计基线
 
 本目录保存 Ecoku 管理端的已批准设计证据、脱敏 fixture 与发送模板设计基线。
-`index-v13.html` 是管理端当前已批准的统一基线，覆盖登录、评论管理、站点管理、通知设置与安全：
+`index-v15.html` 是管理端当前已批准的统一基线，覆盖登录、评论管理、站点管理、通知设置与安全：
 颜色、圆角与深色 token 与评论区 v17「纸与墨」一致，界面使用操作系统自带的 CJK 与英文无衬线字体栈，不加载网络字体。
 仅供服务端渲染参考的通知模板为 v6（`email-notification-v6.html`、`telegram-notification-v6.html`），与 v13 使用同一套纸墨 token 与系统字体栈。v12 的关闭 / Cloudflare Turnstile / 自托管 Cap 三态语义与 Cap 官方组件几何在 v13 中保留，只映射 Ecoku token。停服恢复命令只属于自托管文档，不进入界面。原型文件本身不调用真实 API，也不进入运行时镜像。
 
@@ -43,7 +43,15 @@
 
 ## 文件
 
-- `index-v13.html`、`styles-v13.css`、`prototype-v13.js`：当前已批准的统一视觉基线（v0.2.6 实施）：颜色、圆角与阴影使用评论区 v17
+- `index-v15.html`、`styles-v15.css`、`prototype-v15.js`、`index-v15.test.mjs`：已批准并落地，完整重做布局与交互，功能与接口不变。
+  全站按“页边栏 + 正文栏”排版：页边栏放上下文（当前站点、日期、分节标题），正文栏宽 760px，与评论区阅读宽度接近；
+  评论管理改为按日分组的评论流，排版沿用评论区的作者行、正文字号、`‹ 上一页 ｜ 1/26 ｜ 下一页 ›` 分页与“N 条评论”标题，
+  每条直接列出私有邮箱、访客网站、文章标题、页面 key 与父评论（父评论在本页时引用其正文并可跳转），墓碑删除与彻底删除在该条评论下方就地确认；
+  支持 J/K、O、Delete、Esc、R 快捷键。站点、通知、安全三页使用评论区身份栏式的行式字段，允许来源用逐行横线的多行输入，
+  修改后才在底部出现保存栏（邮件与 Telegram 仍分别保存），离开前确认放弃修改；窄屏改为底部导航，日期栏吸顶。
+  换用 `designs/brand/` 的「區」印章标志与 favicon。不新增会话面板、接入代码或接口字段；
+- `index-v14.html`、`styles-v14.css`、`prototype-v14.js`、`index-v14.test.mjs`：已否决（通用的“列表栏 + 详情区”骨架，没有延续评论区的版式语言），仅作记录；
+- `index-v13.html`、`styles-v13.css`、`prototype-v13.js`：上一版已批准的统一视觉基线（v0.2.6 实施）：颜色、圆角与阴影使用评论区 v17
   纸墨 token（含深色），界面字体为系统 CJK 与英文字体栈，重排五个界面的布局与文案；不新增功能、不改接口；
 - `index-v12.html`：上一版已批准的实例级三态验证、Cap 配置与官方风格 Cap 登录组件；
 - `index-v11.html`：上一版已批准的管理端系统衬线栈（站点配置，沿用 v8 表单）；
@@ -72,6 +80,8 @@
 
 ```text
 http://127.0.0.1:4311/admin-moderation/index-v13.html
+http://127.0.0.1:4311/admin-moderation/index-v15.html
+http://127.0.0.1:4311/brand/index-v2.html
 http://127.0.0.1:4311/admin-moderation/email-notification-v6.html
 http://127.0.0.1:4311/admin-moderation/telegram-notification-v6.html
 ```
@@ -83,5 +93,6 @@ node designs/admin-moderation/index-v11.test.mjs
 node designs/admin-moderation/index-v10.test.mjs
 node designs/admin-moderation/index-v12.test.mjs
 node designs/admin-moderation/index-v13.test.mjs
+node designs/admin-moderation/index-v15.test.mjs
 node designs/admin-moderation/notifications-v6.test.mjs
 ```

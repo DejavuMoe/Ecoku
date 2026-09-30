@@ -130,6 +130,26 @@
             "width": 1440,
             "height": 900
           }
+        },
+        {
+          "path": "index-v14.html",
+          "createdAt": "2026-09-30T00:00:00.000Z",
+          "status": "rejected",
+          "subtitle": "Rejected: generic rail-and-pane workspace that did not carry the comment surface's language",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          }
+        },
+        {
+          "path": "index-v15.html",
+          "createdAt": "2026-09-30T00:00:00.000Z",
+          "status": "approved",
+          "subtitle": "Approved: ledger layout with a margin column, comment feed grouped by day in the comment surface's type, inline delete confirmation, ruled fields, save bar on change, mobile tab bar, 區 seal",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          }
         }
       ]
     },
@@ -159,5 +179,5 @@
     }
   },
   "createdAt": "2026-08-12T22:31:10.516Z",
-  "updatedAt": "2026-09-29T00:00:00.000Z"
+  "updatedAt": "2026-09-30T00:00:00.000Z"
 }
