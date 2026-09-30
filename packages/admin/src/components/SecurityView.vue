@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAdminStore } from '../stores/admin'
 import { cloneCaptchaSettings, emptyCaptchaSettings } from '../ui'
@@ -18,6 +18,8 @@ function apply(settings: CaptchaSettings) {
 
 function snapshot() { return JSON.stringify({ ...draft, turnstile: { ...draft.turnstile, secret: '' }, cap: { ...draft.cap, secret: '' } }) }
 const dirty = computed(() => snapshot() !== baseline.value)
+watch(dirty, (value) => store.setDirty('security', value), { immediate: true })
+onBeforeUnmount(() => store.setDirty('security', false))
 
 watch(captchaSettings, (settings) => {
   if (settings) apply(settings)

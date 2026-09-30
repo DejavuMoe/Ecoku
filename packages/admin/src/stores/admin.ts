@@ -44,6 +44,7 @@ export const useAdminStore = defineStore('admin', () => {
   const loginBusy = ref(false)
   const loginMessage = ref('')
   const view = ref<MainView>('comments')
+  const dirtyView = ref<MainView | null>(null)
   const sites = ref<SiteSummary[]>([])
   const selectedSiteId = ref('')
   const siteBusy = ref(false)
@@ -142,6 +143,10 @@ export const useAdminStore = defineStore('admin', () => {
     else if (next === 'sites') await loadSites(false)
     else if (next === 'security') await loadCaptcha()
     else await loadNotifications()
+  }
+  function setDirty(viewName: MainView, dirty: boolean) {
+    if (dirty) dirtyView.value = viewName
+    else if (dirtyView.value === viewName) dirtyView.value = null
   }
   async function loadSites(loadCommentsAfter = false) {
     if (!authenticated.value || siteBusy.value) return
@@ -254,10 +259,10 @@ export const useAdminStore = defineStore('admin', () => {
     } catch (error) { fail(error, 'security'); return null }
     finally { captchaBusy.value = false }
   }
-  return { sessionReady, logoutBusy, logoutMessage, expiresAt, loginBusy, loginMessage, authenticated, view, sites, selectedSiteId, selectedSite, siteBusy, siteMessage,
+  return { sessionReady, logoutBusy, logoutMessage, expiresAt, loginBusy, loginMessage, authenticated, view, dirtyView, sites, selectedSiteId, selectedSite, siteBusy, siteMessage,
     status, sort, page, pageSize, pageCount, total, counts, comments, selectedComment, queueBusy, detailBusy, actionBusy, queueMessage, actionMessage, toastMessage,
     notificationSettings, notificationBusy, notificationMessage, emailTestState, emailTestMessage, telegramTestState, telegramTestMessage,
     captchaSettings, captchaBusy, captchaMessage,
     login, logout, restoreSession, switchView, loadSites, saveSite, loadComments, loadDetail, selectSite, selectStatus, toggleSort, selectPage, selectComment, mutateCurrent,
-    loadNotifications, saveEmail, saveTelegram, testEmail, testTelegram, loadCaptcha, saveCaptcha }
+    loadNotifications, saveEmail, saveTelegram, testEmail, testTelegram, loadCaptcha, saveCaptcha, setDirty }
 })
