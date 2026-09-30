@@ -156,6 +156,38 @@ describe('administrator Smoji rendering', () => {
 })
 
 describe('administrator state', () => {
+  it('keeps a pending navigation behind the discard confirmation and preserves dirty state when cancelled', () => {
+    const store = useAdminStore()
+    const next = vi.fn()
+    store.setDirty('sites', true)
+    store.requestNavigation(next)
+    expect(store.discardRequested).toBe(true)
+    expect(next).not.toHaveBeenCalled()
+    store.resolveNavigation(false)
+    expect(store.dirtyView).toBe('sites')
+    expect(next).not.toHaveBeenCalled()
+    store.requestNavigation(next)
+    store.resolveNavigation(true)
+    expect(next).toHaveBeenCalledTimes(1)
+    store.resolveNavigation(true)
+    expect(next).toHaveBeenCalledTimes(1)
+  })
+
+  it('deletes the confirmed ID even if the selected comment changes', async () => {
+    const store = useAdminStore()
+    store.authenticated = true; store.selectedSiteId = 'site-a'
+    store.comments = [comment(), comment({ id: 8 })]; store.selectedComment = comment({ id: 8 })
+    const tombstone = vi.spyOn(adminApi, 'tombstone').mockResolvedValue({ comment: comment({ deleted: true, status: 'deleted' }), unchanged: false })
+    vi.spyOn(adminApi, 'listComments').mockResolvedValue(page([]))
+    await store.mutateCurrent('tombstone', 7)
+    expect(tombstone).toHaveBeenCalledWith('site-a', 7)
+    store.comments = [comment({ deleted: true, status: 'deleted', hasChildren: false })]
+    store.selectedComment = comment({ deleted: true, status: 'deleted', hasChildren: true })
+    const permanent = vi.spyOn(adminApi, 'permanentlyDelete')
+    expect(await store.mutateCurrent('permanent', 7)).toBe(false)
+    expect(permanent).not.toHaveBeenCalled()
+    expect(store.actionMessage).toBe('仍有回复，不能彻底删除')
+  })
   it('suppresses duplicate destructive actions and reloads after the first succeeds', async () => {
     const store = useAdminStore()
     store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'; store.selectedComment = comment(); store.comments = [comment()]
@@ -180,6 +212,117 @@ describe('administrator state', () => {
 })
 
 describe('approved production surface', () => {
+  it('shows every comment and its parent context without opening a detail pane, and cancels inline deletion', async () => {
+    const store = useAdminStore()
+    store.authenticated = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
+    store.comments = [comment({ id: 8, parent: 7, content: '子评论' }), comment()]
+    vi.spyOn(adminApi, 'getComment').mockResolvedValue(comment({ id: 8, parent: 7, content: '子评论' }))
+    const remove = vi.spyOn(adminApi, 'tombstone')
+    const wrapper = mount(CommentManagementView, { global: { plugins: [pinia] } })
+    expect(wrapper.findAll('.entry')).toHaveLength(2)
+    expect(wrapper.get('#c-8 .entry-copy').text()).toBe('子评论')
+    expect(wrapper.get('#c-7 .entry-copy').text()).toContain('<script>')
+    expect(wrapper.get('#c-8 .entry-quote').attributes('href')).toBe('#c-7')
+    await wrapper.get('#c-8 .is-danger').trigger('click')
+    expect(wrapper.get('#c-8 [role="alertdialog"]').text()).toContain('下面的回复保留不变')
+    await wrapper.get('#c-8 .entry-confirm .button-quiet').trigger('click')
+    expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false)
+    expect(remove).not.toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('shows the save bar only after editing and restores the persisted site on discard', async () => {
+    const store = useAdminStore(); store.sites = [site()]; store.selectedSiteId = 'site-a'
+    const wrapper = mount(SiteManagementView, { global: { plugins: [pinia] } })
+    expect(wrapper.find('.savebar').exists()).toBe(false)
+    await wrapper.get('#site-name').setValue('新名称')
+    expect(wrapper.find('.savebar').exists()).toBe(true)
+    expect(store.dirtyView).toBe('sites')
+    await wrapper.get('.savebar .button-quiet').trigger('click')
+    expect((wrapper.get('#site-name').element as HTMLInputElement).value).toBe("Dejavu's Blog")
+    expect(wrapper.find('.savebar').exists()).toBe(false)
+    expect(store.dirtyView).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('preserves the edited site and write-only passphrase when saving fails', async () => {
+    const store = useAdminStore(); store.authenticated = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
+    vi.spyOn(adminApi, 'updateSite').mockRejectedValue(new ApiError(409, 'conflict'))
+    const wrapper = mount(SiteManagementView, { global: { plugins: [pinia] } })
+    await wrapper.get('#site-name').setValue('尚未保存的名称')
+    await wrapper.get('#blogger-passphrase').setValue('new-private-passphrase')
+    await wrapper.get('.save-button').trigger('click')
+    await vi.waitFor(() => expect(store.siteBusy).toBe(false))
+    await wrapper.vm.$nextTick()
+    expect(store.siteMessage).toBe(messages.conflict)
+    expect((wrapper.get('#site-name').element as HTMLInputElement).value).toBe('尚未保存的名称')
+    expect((wrapper.get('#blogger-passphrase').element as HTMLInputElement).value).toBe('new-private-passphrase')
+    expect(wrapper.find('.savebar').exists()).toBe(true)
+    expect(store.dirtyView).toBe('sites')
+    wrapper.unmount()
+  })
+
+  it('locks unloaded instance settings and provides retry after loading fails', async () => {
+    const store = useAdminStore()
+    store.notificationMessage = messages.serverError; store.captchaMessage = messages.serverError
+    const notificationsRetry = vi.spyOn(store, 'loadNotifications').mockResolvedValue()
+    const captchaRetry = vi.spyOn(store, 'loadCaptcha').mockResolvedValue()
+    const notificationView = mount(NotificationSettingsView, { global: { plugins: [pinia] } })
+    const securityView = mount(SecurityView, { global: { plugins: [pinia] } })
+    expect(notificationView.get('#email-form > fieldset').attributes('disabled')).toBeDefined()
+    expect(notificationView.get('#telegram-form > fieldset').attributes('disabled')).toBeDefined()
+    expect(securityView.get('#captcha-form > fieldset').attributes('disabled')).toBeDefined()
+    expect(notificationView.find('.savebar').exists()).toBe(false)
+    expect(securityView.find('.savebar').exists()).toBe(false)
+    await notificationView.get('.notice button').trigger('click')
+    await securityView.get('.notice button').trigger('click')
+    expect(notificationsRetry).toHaveBeenCalledTimes(1)
+    expect(captchaRetry).toHaveBeenCalledTimes(1)
+    notificationView.unmount(); securityView.unmount()
+  })
+
+  it('saves a valid notification channel while retaining the other channel draft and secret', async () => {
+    const store = useAdminStore(); store.authenticated = true; store.notificationSettings = notifications()
+    const saveEmail = vi.spyOn(store, 'saveEmail').mockResolvedValue({ ...notifications().email, username: 'changed', revision: 3 })
+    const saveTelegram = vi.spyOn(store, 'saveTelegram')
+    const wrapper = mount(NotificationSettingsView, { global: { plugins: [pinia] } })
+    expect(wrapper.find('.savebar').exists()).toBe(false)
+    await wrapper.get('#email-user').setValue('changed')
+    await wrapper.get('#telegram-token').setValue('new-private-token')
+    await wrapper.get('#telegram-targets-input').setValue('@invalid')
+    await wrapper.get('#telegram-targets-input').trigger('blur')
+    await wrapper.get('.save-button').trigger('click')
+    await vi.waitFor(() => expect(saveEmail).toHaveBeenCalledTimes(1))
+    expect(saveTelegram).not.toHaveBeenCalled()
+    expect((wrapper.get('#telegram-token').element as HTMLInputElement).value).toBe('new-private-token')
+    expect(wrapper.text()).toContain('接收目标 ID 格式错误')
+    expect(store.dirtyView).toBe('notifications')
+    wrapper.unmount()
+  })
+
+  it('protects an unfinished recipient chip and clears it when changes are discarded', async () => {
+    const store = useAdminStore(); store.notificationSettings = notifications()
+    const wrapper = mount(NotificationSettingsView, { global: { plugins: [pinia] } })
+    await wrapper.get('#email-recipients-input').setValue('draft@example.test')
+    expect(store.dirtyView).toBe('notifications')
+    expect(wrapper.find('.savebar').exists()).toBe(true)
+    await wrapper.get('.savebar .button-quiet').trigger('click')
+    expect((wrapper.get('#email-recipients-input').element as HTMLInputElement).value).toBe('')
+    expect(store.dirtyView).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('marks an empty recipient list invalid without sending the settings', async () => {
+    const store = useAdminStore(); store.authenticated = true; store.notificationSettings = notifications()
+    const save = vi.spyOn(store, 'saveEmail')
+    const wrapper = mount(NotificationSettingsView, { global: { plugins: [pinia] } })
+    await wrapper.get('#email-form .chip-remove').trigger('click')
+    await wrapper.get('.save-button').trigger('click')
+    expect(save).not.toHaveBeenCalled()
+    expect(wrapper.get('#email-recipients-input').attributes('aria-invalid')).toBe('true')
+    expect(wrapper.text()).toContain('邮箱格式错误')
+    wrapper.unmount()
+  })
   it('formats administrator timestamps as UTC+8 with a four-digit year and 24-hour time', () => {
     expect(formatDate('2026-08-13T01:02:03Z')).toBe('2026/08/13 09:02')
     expect(formatDate('not-a-date')).toBe('时间未知')
@@ -187,23 +330,26 @@ describe('approved production surface', () => {
 
   it('renders published/deleted management only, escapes comments, and links to the original page', () => {
     const store = useAdminStore()
-    store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'; store.comments = [comment()]; store.selectedComment = comment(); store.counts = { published: 1, deleted: 0 }; store.total = 1; store.pageCount = 1
-    const wrapper = mount(CommentManagementView, { props: { mobileDetail: false }, global: { plugins: [pinia] } })
+    store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'; store.comments = [comment(), comment({ id: 8, createdAt: 'not-a-date' })]; store.selectedComment = comment(); store.counts = { published: 2, deleted: 0 }; store.total = 2; store.pageCount = 1
+    const wrapper = mount(CommentManagementView, { global: { plugins: [pinia] } })
     expect(wrapper.text()).toContain('评论管理')
-    expect(wrapper.text()).toContain('已发布 1')
+    expect(wrapper.text()).toContain('已发布 2')
     expect(wrapper.text()).toContain('已删除 0')
     expect(wrapper.text()).not.toContain('待审核')
     expect(wrapper.text()).not.toContain('批准')
     expect(wrapper.find('script').exists()).toBe(false)
-    expect(wrapper.find('.comment-body').text()).toContain('<script>alert("xss")</script>')
+    expect(wrapper.find('.entry-copy').text()).toContain('<script>alert("xss")</script>')
     expect(wrapper.find<HTMLAnchorElement>('a[href="https://blog.example.test/article/test#ecoku-comment-7"]').exists()).toBe(true)
-    expect(wrapper.find('.detail-actions .danger-button').text()).toBe('墓碑删除')
-    expect(wrapper.find('.queue-toolbar').exists()).toBe(true)
-    expect(wrapper.find('.queue-row').exists()).toBe(true)
+    expect(wrapper.find('.entry-actions .is-danger').text()).toBe('墓碑删除')
+    expect(wrapper.find('.tabs').exists()).toBe(true)
+    expect(wrapper.find('.entry').exists()).toBe(true)
     expect(wrapper.find('.pager').exists()).toBe(true)
-    expect(wrapper.find('.detail-main').exists()).toBe(true)
-    expect(wrapper.find('.detail-side').exists()).toBe(true)
-    expect(wrapper.find('.queue-time').text()).toBe('2026/08/13 09:02')
+    expect(wrapper.get('.entry-who').text()).toContain('private@example.com')
+    expect(wrapper.get('.entry-page').text()).toContain('文章标题')
+    expect(wrapper.find('dialog').exists()).toBe(false)
+    expect(wrapper.find('.entry-time').text()).toBe('09:02')
+    expect(wrapper.find('.entry-time').attributes('title')).toBe('2026/08/13 09:02')
+    expect(wrapper.get('#c-8 .entry-time').text()).toBe('时间未知')
   })
 
   it('renders the approved off/Turnstile/Cap selector without operational copy or plaintext secrets', () => {
@@ -235,7 +381,7 @@ describe('approved production surface', () => {
     expect(wrapper.text()).not.toContain('Pre-clearance')
     expect(wrapper.text()).not.toContain('captcha disable')
     expect(wrapper.text()).not.toContain('服务器恢复说明')
-    expect(wrapper.find('h2').exists()).toBe(false)
+    expect(wrapper.find('h2').text()).toBe('人机验证')
   })
 
   it('submits newly entered Cap credentials without clearing the write-only secret', async () => {
@@ -281,7 +427,7 @@ describe('approved production surface', () => {
     expect(wrapper.text()).toContain('评论区标志')
     expect(wrapper.text()).toContain('留空则不显示')
     expect(wrapper.text()).toContain('表情包')
-    expect(wrapper.get('#smoji-enabled').attributes('type')).toBe('checkbox')
+    expect(wrapper.get('#smoji-enabled').attributes('type')).toBe('radio')
     expect(wrapper.get('#smoji-manifest-url').attributes('type')).toBe('url')
     expect(wrapper.text()).toContain('可能向该站点暴露访客 IP')
     expect(wrapper.text()).not.toContain('通知判定预览')
@@ -293,7 +439,7 @@ describe('approved production surface', () => {
     const store = useAdminStore()
     store.authenticated = true; store.sessionReady = true; store.sites = [site(), site({ id: 'site-b', name: '', siteUrl: 'https://notes.example.test' })]; store.selectedSiteId = 'site-a'
     const select = vi.spyOn(store, 'selectSite').mockResolvedValue()
-    const wrapper = mount(CommentManagementView, { props: { mobileDetail: false }, global: { plugins: [pinia] }, attachTo: document.body })
+    const wrapper = mount(CommentManagementView, { global: { plugins: [pinia] }, attachTo: document.body })
     const trigger = wrapper.get('.site-trigger')
     expect(trigger.text()).toContain("Dejavu's Blog")
     await trigger.trigger('click')
@@ -312,12 +458,12 @@ describe('approved production surface', () => {
     const store = useAdminStore()
     const tombstone = comment({ status: 'deleted', deleted: true, hasChildren: true, username: '', content: '' })
     store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'; store.status = 'deleted'; store.comments = [tombstone]; store.selectedComment = tombstone
-    const wrapper = mount(CommentManagementView, { props: { mobileDetail: false }, global: { plugins: [pinia] } })
-    expect(wrapper.find('.detail-actions .danger-button').exists()).toBe(false)
+    const wrapper = mount(CommentManagementView, { global: { plugins: [pinia] } })
+    expect(wrapper.find('.entry-actions .is-danger').exists()).toBe(false)
     expect(wrapper.text()).toContain('仍有回复，不能彻底删除')
-    store.selectedComment = { ...tombstone, hasChildren: false }
+    store.selectedComment = { ...tombstone, hasChildren: false }; store.comments = [store.selectedComment]
     await wrapper.vm.$nextTick()
-    expect(wrapper.get('.detail-actions .danger-button').text()).toBe('彻底删除')
+    expect(wrapper.get('.entry-actions .is-danger').text()).toBe('彻底删除')
   })
 
   it('collapses a disabled channel and asks to save only after turning a saved channel off', async () => {
@@ -325,7 +471,7 @@ describe('approved production surface', () => {
     const wrapper = mount(NotificationSettingsView, { global: { plugins: [pinia] } })
     expect(wrapper.text()).toContain('发送测试邮件')
     expect(wrapper.find('input[type="checkbox"][disabled][checked]').exists()).toBe(false)
-    await wrapper.get('input[aria-label="启用电子邮件通知"]').setValue(false)
+    await wrapper.get('input[name="email-enabled"][value="false"]').setValue(true)
     expect(wrapper.text()).not.toContain('发送测试邮件')
     expect(wrapper.text()).toContain('未开启，不会发送任何邮件，包括访客回复通知。')
     expect(wrapper.text()).toContain('关闭后需保存才会生效')
@@ -368,8 +514,8 @@ describe('approved production surface', () => {
     const text = wrapper.text()
     for (const forbidden of ['用户注册', 'Count', 'management key', '站点管理密钥', '待审核', '批准所选', '拒绝所选', '配色预览']) expect(text).not.toContain(forbidden)
     expect(text).toContain('评论管理')
-    expect(text).toContain('站点管理')
-    expect(text).toContain('通知设置')
+    expect(text).toContain('站点')
+    expect(text).toContain('通知')
     expect(text).toContain('安全')
   })
 
@@ -392,7 +538,7 @@ describe('approved production surface', () => {
     expect(css).toContain('--accent: color-mix(in oklab, #c8553a 75%, var(--ink))')
     expect(css).toContain('--sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC"')
     expect(css).not.toMatch(/"Songti SC"|"STSong"|"Noto Serif SC"|@font-face|@import/)
-    expect(css).toContain('.provider-group')
+    expect(css).toContain('.options-list')
     expect(css).toContain('.admin-cap-widget')
     expect(css).toContain('--cap-widget-width: 260px')
     expect(css).toContain('--cap-widget-height: 58px')

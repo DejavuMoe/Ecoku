@@ -1,22 +1,32 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useAdminStore } from '../stores/admin'
 import { cloneCaptchaSettings, emptyCaptchaSettings } from '../ui'
 import type { CaptchaSettings } from '../types'
+import SaveBar from './SaveBar.vue'
 
 const store = useAdminStore()
 const { captchaSettings, captchaBusy, captchaMessage } = storeToRefs(store)
 const draft = reactive<CaptchaSettings>(emptyCaptchaSettings())
 const errors = reactive<Record<string, string>>({})
+const baseline = ref('')
+const form = ref<HTMLFormElement | null>(null)
+const dirty = computed(() => Boolean(baseline.value) && JSON.stringify(draft) !== baseline.value)
+const errorCount = computed(() => Object.keys(errors).length)
 
 function apply(settings: CaptchaSettings) {
   Object.assign(draft, cloneCaptchaSettings(settings))
+  baseline.value = JSON.stringify(draft)
 }
 
 watch(captchaSettings, (settings) => {
   if (settings) apply(settings)
 }, { immediate: true })
+
+watch(dirty, value => store.setDirty('security', value), { immediate: true, flush: 'sync' })
+onBeforeUnmount(() => store.setDirty('security', false))
+function discard() { if (captchaSettings.value) apply(captchaSettings.value); for (const key of Object.keys(errors)) delete errors[key] }
 
 watch(() => draft.provider, () => {
   for (const key of Object.keys(errors)) delete errors[key]
@@ -48,7 +58,7 @@ async function save() {
     if (!draft.cap.sitekey) errors.capSitekey = 'Site key 不能为空'
     if (!draft.cap.secretSet && !draft.cap.secret) errors.capSecret = 'Secret key 不能为空'
   }
-  if (Object.keys(errors).length) return
+  if (Object.keys(errors).length) { await nextTick(); form.value?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(); return }
   const saved = await store.saveCaptcha({
     ...draft,
     turnstile: { ...draft.turnstile },
@@ -59,78 +69,59 @@ async function save() {
 </script>
 
 <template>
-  <section class="page-layout" aria-labelledby="security-title">
-    <div class="page-column is-narrow">
-      <header class="page-heading">
-        <div>
-          <h1 id="security-title">安全</h1>
-          <p>人机验证对整个实例生效，同时用于访客评论和管理员登录，不按站点分开。</p>
-        </div>
-      </header>
-      <p v-if="captchaMessage" class="notice notice-error" role="alert">{{ captchaMessage }}</p>
-
-      <section class="settings-card" aria-label="验证方式">
-        <fieldset class="provider-group" role="radiogroup" aria-label="验证方式">
-          <label class="provider-option">
-            <input v-model="draft.provider" type="radio" name="captcha-provider" value="off" :disabled="captchaBusy">
-            <strong>关闭</strong>
-            <small>不显示验证组件</small>
-          </label>
-          <label class="provider-option">
-            <input v-model="draft.provider" type="radio" name="captcha-provider" value="turnstile" :disabled="captchaBusy">
-            <strong>Cloudflare Turnstile</strong>
-            <small>由 Cloudflare 托管的验证</small>
-          </label>
-          <label class="provider-option">
-            <input v-model="draft.provider" type="radio" name="captcha-provider" value="cap" :disabled="captchaBusy">
-            <strong>Cap</strong>
-            <small>连接自托管的 Cap 实例</small>
-          </label>
-        </fieldset>
-
-        <div v-if="draft.provider === 'off'" class="provider-panel">
-          <p class="notice notice-warn">关闭后，访客评论和管理员登录都不再要求额外验证；现有限流仍然生效。</p>
-        </div>
-
-        <div v-else-if="draft.provider === 'turnstile'" class="provider-panel">
-          <div class="field">
-            <label class="field-label" for="turnstile-sitekey">Sitekey</label>
-            <input id="turnstile-sitekey" v-model="draft.turnstile.sitekey" class="input input-mono" type="text" maxlength="255" spellcheck="false" :disabled="captchaBusy" :aria-invalid="Boolean(errors.turnstileSitekey)">
-            <p v-if="errors.turnstileSitekey" class="field-error">{{ errors.turnstileSitekey }}</p>
+<section class="view" aria-labelledby="security-title">
+        <header class="page-head layout">
+          <div class="in-margin head-margin"><p class="scope">实例设置</p></div>
+          <div class="in-main head-main">
+            <div class="title-row"><h1 id="security-title" class="page-title" tabindex="-1">安全</h1></div>
+            <p class="page-lede">人机验证对整个实例生效，同时用于访客评论和管理员登录，不按站点分开。</p>
           </div>
-          <div class="field">
-            <label class="field-label" for="turnstile-secret">Secret key</label>
-            <input id="turnstile-secret" v-model="draft.turnstile.secret" class="input input-mono" type="password" autocomplete="new-password" :placeholder="draft.turnstile.secretSet ? '已设置，输入新值以更换' : ''" :disabled="captchaBusy" :aria-invalid="Boolean(errors.turnstileSecret)">
-            <p v-if="errors.turnstileSecret" class="field-error">{{ errors.turnstileSecret }}</p>
-          </div>
-        </div>
+        </header>
+        <div class="layout page-note"><p v-if="captchaMessage" class="in-main notice notice-error" role="alert">{{ captchaMessage }}<button v-if="!captchaSettings" class="button" type="button" :disabled="captchaBusy" @click="store.loadCaptcha">重试</button></p></div>
 
-        <div v-else class="provider-panel">
-          <div class="field">
-            <label class="field-label" for="cap-instance-url">实例地址</label>
-            <input id="cap-instance-url" v-model="draft.cap.instanceUrl" class="input input-mono" type="url" inputmode="url" spellcheck="false" placeholder="https://cap.example.com" maxlength="2048" :disabled="captchaBusy" :aria-invalid="Boolean(errors.capInstanceUrl)">
-            <p v-if="errors.capInstanceUrl" class="field-error">{{ errors.capInstanceUrl }}</p>
-            <p class="field-help">自托管 Cap 的 HTTPS 地址，不带查询参数。</p>
-          </div>
-          <div class="field-grid">
-            <div class="field">
-              <label class="field-label" for="cap-sitekey">Site key</label>
-              <input id="cap-sitekey" v-model="draft.cap.sitekey" class="input input-mono" type="text" maxlength="255" spellcheck="false" :disabled="captchaBusy" :aria-invalid="Boolean(errors.capSitekey)">
-              <p v-if="errors.capSitekey" class="field-error">{{ errors.capSitekey }}</p>
+        <form ref="form" @submit.prevent="save" id="captcha-form" class="doc" novalidate aria-labelledby="captcha-title"><fieldset :disabled="captchaBusy || !captchaSettings">
+          <section class="doc-section layout">
+            <div class="in-margin section-margin"><h2 id="captcha-title">人机验证</h2><p>三种方式互斥，切换后保存才会生效。</p></div>
+            <div class="in-main section-body">
+              <fieldset class="options-list" aria-labelledby="captcha-title">
+                <label class="option-row"><input v-model="draft.provider" type="radio" name="captcha-provider" value="off"><span class="option-mark" aria-hidden="true"></span><strong>关闭</strong><small>不显示验证组件</small></label>
+                <label class="option-row"><input v-model="draft.provider" type="radio" name="captcha-provider" value="turnstile"><span class="option-mark" aria-hidden="true"></span><strong>Cloudflare Turnstile</strong><small>由 Cloudflare 托管的验证</small></label>
+                <label class="option-row"><input v-model="draft.provider" type="radio" name="captcha-provider" value="cap"><span class="option-mark" aria-hidden="true"></span><strong>Cap</strong><small>连接自托管的 Cap 实例</small></label>
+              </fieldset>
+
+              <div v-if="draft.provider === 'off'" id="panel-off" class="provider-panel">
+                <p class="notice notice-warn">关闭后，访客评论和管理员登录都不再要求额外验证；现有限流仍然生效。</p>
+              </div>
+
+              <div v-else-if="draft.provider === 'turnstile'" id="panel-turnstile" class="provider-panel">
+                <div class="field">
+                  <label class="rule"><span class="rule-label">Sitekey</span><input id="turnstile-sitekey" class="mono" type="text" maxlength="255" spellcheck="false" v-model="draft.turnstile.sitekey" :aria-invalid="Boolean(errors.turnstileSitekey)"></label>
+                  <p v-if="errors.turnstileSitekey" class="field-error">{{ errors.turnstileSitekey }}</p>
+                </div>
+                <div class="field">
+                  <label class="rule"><span class="rule-label">Secret key</span><input id="turnstile-secret" class="mono" type="password" autocomplete="new-password" v-model="draft.turnstile.secret" :aria-invalid="Boolean(errors.turnstileSecret)" :placeholder="draft.turnstile.secretSet ? '已设置，输入新值以更换' : ''"></label>
+                  <p v-if="errors.turnstileSecret" class="field-error">{{ errors.turnstileSecret }}</p>
+                </div>
+              </div>
+
+              <div v-else id="panel-cap" class="provider-panel">
+                <div class="field">
+                  <label class="rule"><span class="rule-label">实例地址</span><input id="cap-instance-url" class="mono" type="url" inputmode="url" spellcheck="false" placeholder="https://cap.example.com" maxlength="2048" v-model="draft.cap.instanceUrl" :aria-invalid="Boolean(errors.capInstanceUrl)"></label>
+                  <p class="help">自托管 Cap 的 HTTPS 地址，不带查询参数。</p>
+                  <p v-if="errors.capInstanceUrl" class="field-error">{{ errors.capInstanceUrl }}</p>
+                </div>
+                <div class="field">
+                  <label class="rule"><span class="rule-label">Site key</span><input id="cap-sitekey" class="mono" type="text" maxlength="255" spellcheck="false" v-model="draft.cap.sitekey" :aria-invalid="Boolean(errors.capSitekey)"></label>
+                  <p v-if="errors.capSitekey" class="field-error">{{ errors.capSitekey }}</p>
+                </div>
+                <div class="field">
+                  <label class="rule"><span class="rule-label">Secret key</span><input id="cap-secret" class="mono" type="password" autocomplete="new-password" v-model="draft.cap.secret" :aria-invalid="Boolean(errors.capSecret)" :placeholder="draft.cap.secretSet ? '已设置，输入新值以更换' : ''"></label>
+                  <p v-if="errors.capSecret" class="field-error">{{ errors.capSecret }}</p>
+                </div>
+              </div>
             </div>
-            <div class="field">
-              <label class="field-label" for="cap-secret">Secret key</label>
-              <input id="cap-secret" v-model="draft.cap.secret" class="input input-mono" type="password" autocomplete="new-password" :placeholder="draft.cap.secretSet ? '已设置，输入新值以更换' : ''" :disabled="captchaBusy" :aria-invalid="Boolean(errors.capSecret)">
-              <p v-if="errors.capSecret" class="field-error">{{ errors.capSecret }}</p>
-            </div>
-          </div>
-        </div>
-
-        <footer class="channel-actions">
-          <button class="button button-primary save-button push" type="button" :disabled="captchaBusy" @click="save">保存</button>
-        </footer>
-      </section>
-      <div class="page-end" />
-    </div>
-  </section>
+          </section>
+        </fieldset></form>
+      <SaveBar v-if="dirty" :busy="captchaBusy" :error-count="errorCount" @save="save" @discard="discard" />
+</section>
 </template>

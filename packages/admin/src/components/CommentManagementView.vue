@@ -1,253 +1,162 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { statusMeta, statusOrder } from '../messages'
 import { useAdminStore } from '../stores/admin'
 import { formatDate, safeWebsite } from '../ui'
-import type { CommentStatus, SiteSummary } from '../types'
+import type { CommentReview, CommentStatus } from '../types'
 import AdminIcon from './AdminIcon.vue'
+import SitePicker from './SitePicker.vue'
 import SmojiContent from './SmojiContent.vue'
 
-const emit = defineEmits<{ mobileDetail: [open: boolean] }>()
-defineProps<{ mobileDetail: boolean }>()
 const store = useAdminStore()
-const {
-  status, sort, page, pageCount, total, counts, comments, selectedComment, queueBusy, detailBusy, actionBusy,
-  queueMessage, actionMessage, sites, selectedSiteId, selectedSite, siteBusy,
-} = storeToRefs(store)
-const confirmKind = ref<'tombstone' | 'permanent' | null>(null)
-const confirmDialog = ref<HTMLDialogElement | null>(null)
-const queueList = ref<HTMLElement | null>(null)
-const sitePicker = ref<HTMLElement | null>(null)
-const siteTrigger = ref<HTMLButtonElement | null>(null)
-const siteMenu = ref<HTMLElement | null>(null)
-const siteMenuOpen = ref(false)
-
-function siteLabel(site: SiteSummary | null): string {
-  if (!site) return ''
-  if (site.name) return site.name
-  try { return new URL(site.siteUrl).hostname } catch { return site.id }
-}
-
-const displayName = computed(() => siteLabel(selectedSite.value))
-const sourceURL = computed(() => {
-  if (!selectedComment.value || !selectedSite.value) return ''
+const { status, sort, page, pageCount, total, counts, comments, selectedComment, queueBusy, actionBusy, queueMessage, actionMessage, selectedSite, selectedSiteId, siteBusy, siteMessage } = storeToRefs(store)
+const feed = ref<HTMLElement | null>(null)
+const sortPicker = ref<HTMLElement | null>(null)
+const sortTrigger = ref<HTMLButtonElement | null>(null)
+const sortOpen = ref(false)
+const confirmation = ref<{ id: number; kind: 'tombstone' | 'permanent' } | null>(null)
+const actionErrorId = ref<number | null>(null)
+const rows = computed(() => comments.value.map(c => selectedComment.value?.id === c.id ? selectedComment.value ?? c : c))
+const groups = computed(() => {
+  const result: { key: string; name: string; sub: string; comments: CommentReview[] }[] = []
+  const today = formatDate(new Date().toISOString()).slice(0, 10)
+  const yesterday = formatDate(new Date(Date.now() - 86400000).toISOString()).slice(0, 10)
+  for (const comment of rows.value) {
+    const key = formatDate(comment.createdAt).slice(0, 10)
+    let group = result.at(-1)
+    if (!group || group.key !== key) {
+      const [year, month, day] = key.split('/')
+      const date = new Date(comment.createdAt)
+      const valid = !Number.isNaN(date.getTime())
+      const md = valid ? `${Number(month)}月${Number(day)}日` : '时间未知'
+      const week = valid ? new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', weekday: 'short' }).format(date) : ''
+      group = { key, name: key === today ? '今天' : key === yesterday ? '昨天' : md, sub: !valid ? '' : key === today || key === yesterday ? `${md} ${week}` : `${year === today.slice(0, 4) ? '' : `${year} · `}${week}`, comments: [] }
+      result.push(group)
+    }
+    group.comments.push(comment)
+  }
+  return result
+})
+const parents = computed(() => new Map(rows.value.map(c => [c.id, c])))
+function sourceURL(comment: CommentReview): string {
+  if (!selectedSite.value) return ''
   try {
-    const result = new URL(selectedComment.value.mark.replace(/^\/+/, ''), `${selectedSite.value.siteUrl.replace(/\/+$/, '')}/`)
-    result.hash = `ecoku-comment-${selectedComment.value.id}`
-    return result.toString()
-  } catch {
-    return ''
-  }
-})
-const confirmTarget = computed(() => {
-  const comment = selectedComment.value
-  if (!comment) return ''
-  if (confirmKind.value === 'permanent' || comment.deleted) return `#${comment.id} · ${comment.mark}`
-  const excerpt = [...comment.content.replace(/\s+/g, ' ').trim()]
-  return `#${comment.id} · ${comment.username} · ${excerpt.slice(0, 40).join('')}${excerpt.length > 40 ? '…' : ''}`
-})
-
-watch(confirmKind, async (value) => {
-  await nextTick()
-  const dialog = confirmDialog.value
-  if (!dialog) return
-  if (value && !dialog.open) dialog.showModal()
-  if (!value && dialog.open) dialog.close()
-})
-
-function handleDocumentPointerDown(event: PointerEvent) {
-  if (siteMenuOpen.value && !sitePicker.value?.contains(event.target as Node)) siteMenuOpen.value = false
+    const base = new URL(`${selectedSite.value.siteUrl.replace(/\/+$/, '')}/`)
+    const url = new URL(comment.mark.replace(/^\/+/, ''), base)
+    if (!['https:', 'http:'].includes(url.protocol) || url.origin !== base.origin) return ''
+    url.hash = `ecoku-comment-${comment.id}`
+    return url.href
+  } catch { return '' }
 }
-onMounted(() => document.addEventListener('pointerdown', handleDocumentPointerDown))
-onBeforeUnmount(() => document.removeEventListener('pointerdown', handleDocumentPointerDown))
-
-async function toggleSiteMenu(open = !siteMenuOpen.value) {
-  if (siteBusy.value || sites.value.length < 2) return
-  siteMenuOpen.value = open
-  if (!open) return
-  await nextTick()
-  siteMenu.value?.querySelector<HTMLButtonElement>('[aria-selected="true"]')?.focus()
+function entry(id: number) { return feed.value?.querySelector<HTMLElement>(`#c-${id}`) }
+function select(comment: CommentReview, focus = false) {
+  if (selectedComment.value?.id !== comment.id) store.selectComment(comment.id)
+  if (focus) { entry(comment.id)?.focus({ preventScroll: true }); entry(comment.id)?.scrollIntoView?.({ block: 'nearest', behavior: 'auto' }) }
 }
-
-async function chooseSite(siteId: string) {
-  siteMenuOpen.value = false
-  emit('mobileDetail', false)
-  await store.selectSite(siteId)
-  await nextTick()
-  siteTrigger.value?.focus()
+function jump(id: number) { const comment = rows.value.find(c => c.id === id); if (comment) select(comment, true) }
+async function openConfirm(comment: CommentReview) {
+  if (actionBusy.value || queueBusy.value || (comment.deleted && comment.hasChildren)) return
+  select(comment)
+  actionErrorId.value = null; store.actionMessage = ''
+  confirmation.value = { id: comment.id, kind: comment.deleted ? 'permanent' : 'tombstone' }
+  await nextTick(); entry(comment.id)?.querySelector<HTMLButtonElement>('.entry-confirm button')?.focus()
 }
-
-function handleSiteMenuKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape') {
-    event.preventDefault()
-    siteMenuOpen.value = false
-    siteTrigger.value?.focus()
-    return
-  }
-  if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return
-  event.preventDefault()
-  const options = Array.from(siteMenu.value?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [])
-  if (!options.length) return
-  const currentIndex = options.indexOf(document.activeElement as HTMLButtonElement)
-  const nextIndex = event.key === 'Home'
-    ? 0
-    : event.key === 'End'
-      ? options.length - 1
-      : (currentIndex + (event.key === 'ArrowDown' ? 1 : -1) + options.length) % options.length
-  options[nextIndex]?.focus()
-}
-
-function handleQueueKeydown(event: KeyboardEvent) {
-  if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return
-  const items = Array.from(queueList.value?.querySelectorAll<HTMLButtonElement>('.queue-item') ?? [])
-  const index = items.indexOf(document.activeElement as HTMLButtonElement)
-  if (index < 0) return
-  event.preventDefault()
-  const next = items[index + (event.key === 'ArrowDown' ? 1 : -1)]
-  if (!next) return
-  store.selectComment(Number(next.dataset.commentId))
-  next.focus()
-}
-
-async function chooseStatus(next: CommentStatus) { await store.selectStatus(next); emit('mobileDetail', false) }
-function chooseComment(id: number) { store.selectComment(id); emit('mobileDetail', true) }
-function closeConfirm() { confirmKind.value = null }
-function handleDialogClick(event: MouseEvent) {
-  if (event.target === event.currentTarget) closeConfirm()
+async function closeConfirm() {
+  const id = confirmation.value?.id
+  confirmation.value = null
+  await nextTick(); if (id) entry(id)?.querySelector<HTMLButtonElement>('.is-danger')?.focus()
 }
 async function confirmAction() {
-  if (!confirmKind.value) return
-  const kind = confirmKind.value
-  closeConfirm()
-  await store.mutateCurrent(kind)
-  emit('mobileDetail', false)
+  const target = confirmation.value
+  if (!target || actionBusy.value) return
+  const index = rows.value.findIndex(c => c.id === target.id)
+  const nextId = rows.value[index + 1]?.id ?? rows.value[index - 1]?.id
+  actionErrorId.value = target.id
+  const succeeded = await store.mutateCurrent(target.kind, target.id)
+  if (succeeded) { confirmation.value = null; actionErrorId.value = null; if (nextId) jump(nextId) }
 }
+async function chooseStatus(next: CommentStatus) { confirmation.value = null; actionErrorId.value = null; await store.selectStatus(next) }
+async function chooseSort(next: 'newest' | 'oldest') {
+  sortOpen.value = false; sortTrigger.value?.focus()
+  if (next !== sort.value) await store.toggleSort()
+}
+async function toggleSortMenu() {
+  sortOpen.value = !sortOpen.value
+  if (sortOpen.value) { await nextTick(); sortPicker.value?.querySelector<HTMLButtonElement>('[aria-selected="true"]')?.focus() }
+}
+function sortKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') { event.preventDefault(); sortOpen.value = false; sortTrigger.value?.focus(); return }
+  if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return
+  event.preventDefault()
+  const options = [...(sortPicker.value?.querySelectorAll<HTMLButtonElement>('[role="option"]') ?? [])]
+  const current = options.indexOf(document.activeElement as HTMLButtonElement)
+  options[event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 : (current + 1) % options.length]?.focus()
+}
+function outside(event: PointerEvent) { if (!sortPicker.value?.contains(event.target as Node)) sortOpen.value = false }
+function keyboard(event: KeyboardEvent) {
+  if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || (event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable="true"], [role="listbox"]'))) return
+  if (event.key === 'Escape') { sortOpen.value = false; void closeConfirm(); return }
+  if (queueBusy.value || actionBusy.value || confirmation.value) return
+  const key = event.key.toLowerCase()
+  if (['j', 'k', 'arrowdown', 'arrowup'].includes(key)) {
+    event.preventDefault()
+    const current = rows.value.findIndex(c => c.id === selectedComment.value?.id)
+    const index = current < 0 ? 0 : Math.max(0, Math.min(rows.value.length - 1, current + (key === 'j' || key === 'arrowdown' ? 1 : -1)))
+    const comment = rows.value[index]; if (comment) select(comment, true)
+  } else if (key === 'o' && selectedComment.value) {
+    const url = sourceURL(selectedComment.value); if (url) { event.preventDefault(); window.open(url, '_blank', 'noopener,noreferrer') }
+  } else if (event.key === 'Delete' && selectedComment.value) { event.preventDefault(); void openConfirm(selectedComment.value) }
+  else if (key === 'r' && selectedSite.value) { event.preventDefault(); void store.loadComments(true) }
+}
+watch(() => [selectedSiteId.value, status.value, sort.value, page.value], () => { confirmation.value = null; actionErrorId.value = null })
+watch(queueBusy, value => { if (value && !actionBusy.value) { confirmation.value = null; actionErrorId.value = null } })
+onMounted(() => { document.addEventListener('keydown', keyboard); document.addEventListener('pointerdown', outside) })
+onBeforeUnmount(() => { document.removeEventListener('keydown', keyboard); document.removeEventListener('pointerdown', outside) })
 </script>
 
 <template>
-  <div class="moderation-layout" :data-mobile-detail="mobileDetail">
-    <section class="queue-pane" aria-labelledby="queue-title">
-      <h1 id="queue-title" class="visually-hidden">评论管理</h1>
-      <div class="queue-head">
-        <div ref="sitePicker" class="site-picker">
-          <button
-            v-if="sites.length > 1"
-            ref="siteTrigger"
-            class="site-trigger"
-            type="button"
-            aria-haspopup="listbox"
-            :aria-expanded="siteMenuOpen"
-            :aria-label="`切换站点，当前 ${displayName}`"
-            :disabled="siteBusy"
-            @click="toggleSiteMenu()"
-          >
-            <span class="site-name"><span>{{ displayName }}</span><AdminIcon name="chevron" class="chevron" /></span>
-            <span class="site-id">{{ selectedSite?.id }}</span>
-          </button>
-          <div v-else class="site-static">
-            <span class="site-name"><span>{{ displayName || '没有可用站点' }}</span></span>
-            <span v-if="selectedSite" class="site-id">{{ selectedSite.id }}</span>
-          </div>
-          <div v-show="siteMenuOpen" ref="siteMenu" class="site-menu" role="listbox" aria-label="选择站点" @keydown="handleSiteMenuKeydown">
-            <button
-              v-for="site in sites"
-              :key="site.id"
-              class="site-option"
-              type="button"
-              role="option"
-              :aria-selected="selectedSiteId === site.id"
-              @click="chooseSite(site.id)"
-            ><strong>{{ siteLabel(site) }}</strong><small>{{ site.id }}</small><AdminIcon name="check" class="check" /></button>
+  <section class="view" aria-labelledby="comments-title">
+    <header class="page-head layout">
+      <div class="in-margin head-margin"><SitePicker @select="store.selectSite" /></div>
+      <div class="in-main head-main">
+        <div class="title-row">
+          <h1 id="comments-title" class="page-title" tabindex="-1"><span class="visually-hidden">评论管理：</span><span class="num">{{ total }}</span> {{ status === 'deleted' ? '条已删除评论' : '条评论' }}</h1>
+          <div v-if="selectedSite" class="head-tools">
+            <div ref="sortPicker" class="menu-anchor">
+              <button ref="sortTrigger" class="quiet-trigger" type="button" aria-haspopup="listbox" :aria-expanded="sortOpen" :aria-label="`评论排序：${sort === 'newest' ? '最新在前' : '最早在前'}`" :disabled="queueBusy || actionBusy" @click="toggleSortMenu">{{ sort === 'newest' ? '最新在前' : '最早在前' }}<AdminIcon name="chevron" class="chevron" /></button>
+              <div v-if="sortOpen" class="menu menu-end" role="listbox" aria-label="评论排序" @keydown="sortKeydown"><button v-for="order in (['newest', 'oldest'] as const)" :key="order" class="menu-option" type="button" role="option" :aria-selected="sort === order" @click="chooseSort(order)">{{ order === 'newest' ? '最新在前' : '最早在前' }}</button></div>
+            </div>
+            <button class="icon-button" :class="{ 'is-spinning': queueBusy }" type="button" aria-label="刷新评论" title="刷新评论（R）" :disabled="queueBusy || actionBusy" @click="store.loadComments(true)"><AdminIcon name="refresh" /></button>
           </div>
         </div>
-        <button class="icon-button" :class="{ 'is-spinning': queueBusy }" type="button" aria-label="刷新评论" title="刷新评论" :disabled="queueBusy" @click="store.loadComments(true)"><AdminIcon name="refresh" /></button>
+        <div v-if="selectedSite" class="tabs" role="tablist" aria-label="评论状态">
+          <button class="tab" type="button" role="tab" :aria-selected="status === 'published'" :disabled="queueBusy || actionBusy" @click="chooseStatus('published')">已发布 <span class="count">{{ counts.published }}</span></button><span class="tab-sep" aria-hidden="true">｜</span><button class="tab" type="button" role="tab" :aria-selected="status === 'deleted'" :disabled="queueBusy || actionBusy" @click="chooseStatus('deleted')">已删除 <span class="count">{{ counts.deleted }}</span></button>
+        </div>
       </div>
-      <div class="queue-toolbar">
-        <div class="status-tabs" role="tablist" aria-label="评论状态">
-          <button v-for="item in statusOrder" :key="item" class="status-tab" type="button" role="tab" :aria-selected="status === item" @click="chooseStatus(item)">{{ statusMeta[item].label }} <span class="count">{{ counts[item] }}</span></button>
+    </header>
+    <div ref="feed" class="feed" :aria-busy="queueBusy || siteBusy">
+      <div v-if="siteMessage || queueMessage" class="layout feed-state"><section class="in-main service-error" role="alert"><h3>评论列表没有加载出来</h3><p>{{ siteMessage || queueMessage }}</p><button class="button" type="button" :disabled="queueBusy || siteBusy" @click="siteMessage ? store.loadSites(true) : store.loadComments()">重试</button></section></div>
+      <div v-else-if="queueBusy || siteBusy" class="layout day"><div class="in-main"><div v-for="index in 5" :key="index" class="skeleton-entry" aria-hidden="true"><span /><span /><span /></div><span class="visually-hidden">正在加载评论…</span></div></div>
+      <div v-else-if="!selectedSite" class="layout feed-state"><p class="in-main feed-empty">当前实例还没有站点。<button class="quiet-link" type="button" @click="store.switchView('sites')">新增站点</button></p></div>
+      <section v-for="group in groups" v-else-if="comments.length" :key="group.key" class="day layout" :aria-label="group.name">
+        <header class="in-margin day-label"><p class="day-name">{{ group.name }}</p><p class="day-date">{{ group.sub }}</p><p class="day-count">{{ group.comments.length }} 条</p></header>
+        <div class="in-main day-entries">
+          <article v-for="comment in group.comments" :id="`c-${comment.id}`" :key="comment.id" class="entry" :class="{ 'is-tombstone': comment.deleted }" tabindex="-1" :aria-current="selectedComment?.id === comment.id ? 'true' : undefined" :aria-label="`#${comment.id} ${comment.deleted ? '已删除' : comment.username}`" @pointerdown="select(comment)">
+            <header class="entry-head"><div class="entry-who"><span class="entry-author">{{ comment.deleted ? '已删除' : comment.username }}</span><span v-if="!comment.deleted && comment.email" class="entry-mail" title="私有邮箱"><span class="visually-hidden">私有邮箱 </span>{{ comment.email }}</span><a v-if="!comment.deleted && safeWebsite(comment.url)" class="entry-site" :href="safeWebsite(comment.url)" target="_blank" rel="noopener noreferrer" :title="`访客网站 ${comment.url}`"><span class="visually-hidden">访客网站 </span>{{ comment.url?.replace(/^https?:\/\//, '').replace(/\/$/, '') }}</a></div><time class="entry-time" :datetime="comment.createdAt" :title="formatDate(comment.createdAt)">{{ formatDate(comment.createdAt).slice(11) || '时间未知' }}</time></header>
+            <a v-if="comment.parent && parents.get(comment.parent) && !comment.deleted" class="entry-quote" :href="`#c-${comment.parent}`" @click.prevent="jump(comment.parent)"><span class="quote-ref">回复 {{ parents.get(comment.parent)?.username }}</span><span class="quote-text">{{ parents.get(comment.parent)?.content.replace(/\s+/g, ' ') }}</span></a>
+            <p v-else-if="comment.parent" class="entry-quote"><span class="quote-ref"><span class="visually-hidden">父评论 </span>回复 #{{ comment.parent }}</span><span v-if="!comment.deleted" class="quote-text">不在当前页</span></p>
+            <p class="entry-copy"><template v-if="comment.deleted">该评论已删除</template><SmojiContent v-else :content="comment.content" :enabled="selectedSite?.smojiEnabled === true" :manifest-url="selectedSite?.smojiManifestUrl || ''" /></p>
+            <footer class="entry-foot"><span class="entry-page" :title="`${comment.pageTitle ? `${comment.pageTitle} · ` : ''}${comment.mark}`"><span v-if="comment.pageTitle" class="entry-title"><span class="visually-hidden">文章标题 </span>《{{ comment.pageTitle }}》</span><span class="entry-key"><span class="visually-hidden">页面 key </span>{{ comment.mark }}</span></span><span class="entry-actions"><span class="entry-id">#{{ comment.id }}</span><a v-if="sourceURL(comment)" class="quiet-link" :href="sourceURL(comment)" target="_blank" rel="noopener noreferrer" :title="`查看原评论 #${comment.id}`">查看原评论</a><button v-if="!comment.deleted || !comment.hasChildren" class="quiet-link is-danger" type="button" :disabled="actionBusy || queueBusy" @click="openConfirm(comment)">{{ comment.deleted ? '彻底删除' : '墓碑删除' }}</button><span v-else class="entry-hint">仍有回复，不能彻底删除</span></span></footer>
+            <p v-if="actionErrorId === comment.id && actionMessage" class="notice notice-error" role="alert">{{ actionMessage }}</p>
+            <div v-if="confirmation?.id === comment.id" class="entry-confirm" role="alertdialog" :aria-labelledby="`confirm-${comment.id}-title`" :aria-describedby="`confirm-${comment.id}-copy`">
+              <p><strong :id="`confirm-${comment.id}-title`">{{ confirmation.kind === 'tombstone' ? '墓碑删除这条评论？' : '彻底删除这条墓碑？' }}</strong><span :id="`confirm-${comment.id}-copy`">{{ confirmation.kind === 'tombstone' ? '昵称、私有邮箱、网站和正文会被清除，公开页面改为显示“已删除”，下面的回复保留不变。此操作无法撤销。' : '这条墓碑会从数据库中移除。此操作无法撤销。' }}</span></p>
+              <div class="confirm-actions"><button class="button button-quiet" type="button" :disabled="actionBusy" @click="closeConfirm">取消</button><button class="button button-danger" type="button" :disabled="actionBusy" @click="confirmAction">{{ actionBusy ? '处理中…' : confirmation.kind === 'tombstone' ? '墓碑删除' : '彻底删除' }}</button></div>
+            </div>
+          </article>
         </div>
-        <button class="sort-button" type="button" :aria-label="`排序：${sort === 'oldest' ? '最早提交在前' : '最新提交在前'}，点击切换`" @click="store.toggleSort"><AdminIcon name="sort" /><span>{{ sort === 'oldest' ? '最早在前' : '最新在前' }}</span></button>
-      </div>
-      <div class="queue-scroll" :aria-busy="queueBusy">
-        <p v-if="queueMessage" class="notice notice-error" role="alert">{{ queueMessage }}<button class="button" type="button" :disabled="queueBusy" @click="store.loadComments()">重试</button></p>
-        <div v-if="queueBusy && !comments.length" aria-hidden="true">
-          <div v-for="index in 6" :key="index" class="skeleton-row"><span /><span /><span /></div>
-        </div>
-        <ul v-else-if="comments.length" ref="queueList" class="queue-list" role="listbox" aria-label="评论列表" @keydown="handleQueueKeydown">
-          <li v-for="comment in comments" :key="comment.id" class="queue-row" role="none">
-            <button class="queue-item" type="button" role="option" :data-comment-id="comment.id" :aria-selected="selectedComment?.id === comment.id" @click="chooseComment(comment.id)">
-              <span class="queue-item-line">
-                <span class="queue-author" :class="{ 'is-deleted': comment.deleted }" :title="comment.deleted ? '已删除' : comment.username">{{ comment.deleted ? '已删除' : comment.username }}</span>
-                <time class="queue-time">{{ formatDate(comment.createdAt) }}</time>
-              </span>
-              <span class="queue-summary" :class="{ 'is-deleted': comment.deleted }"><template v-if="comment.deleted">该评论已删除</template><SmojiContent v-else :content="comment.content" :enabled="selectedSite?.smojiEnabled === true" :manifest-url="selectedSite?.smojiManifestUrl || ''" compact /></span>
-              <span class="queue-item-line">
-                <span class="queue-path" :title="comment.mark">{{ comment.mark }}</span>
-                <span class="queue-ref">{{ comment.parent ? `回复 #${comment.parent}` : `#${comment.id}` }}</span>
-              </span>
-            </button>
-          </li>
-        </ul>
-        <p v-else-if="!queueBusy && !queueMessage" class="queue-empty">当前没有{{ statusMeta[status].label }}评论</p>
-      </div>
-      <nav class="pager" aria-label="评论列表分页">
-        <span>共 {{ total }} 条</span>
-        <span class="pager-controls">
-          <button class="icon-button" type="button" aria-label="上一页" :disabled="page <= 1" @click="store.selectPage(page - 1)"><AdminIcon name="left" /></button>
-          <span class="pager-status">{{ page }} / {{ Math.max(pageCount, 1) }}</span>
-          <button class="icon-button" type="button" aria-label="下一页" :disabled="page >= pageCount" @click="store.selectPage(page + 1)"><AdminIcon name="right" /></button>
-        </span>
-      </nav>
-    </section>
-
-    <section class="detail-pane" aria-label="评论详情">
-      <p v-if="!selectedComment" class="detail-empty">{{ comments.length ? '从左侧选择一条评论' : '' }}</p>
-      <template v-else>
-        <div class="detail-toolbar">
-          <button class="button button-quiet back-button" type="button" @click="emit('mobileDetail', false)"><AdminIcon name="left" />评论列表</button>
-          <div class="detail-ref">
-            <span class="badge" :class="statusMeta[selectedComment.status].className">{{ statusMeta[selectedComment.status].label }}</span>
-            <span>#{{ selectedComment.id }}</span><span aria-hidden="true">·</span>
-            <span>{{ selectedComment.parent ? `回复 #${selectedComment.parent}` : '根评论' }}</span>
-          </div>
-          <div class="detail-actions">
-            <a v-if="sourceURL" class="button button-quiet source-link" :href="sourceURL" target="_blank" rel="noopener noreferrer" :title="`查看原评论 #${selectedComment.id}`"><AdminIcon name="external" /><span class="label">查看原评论</span></a>
-            <button v-if="selectedComment.status === 'published'" class="button danger-button" type="button" :disabled="actionBusy" @click="confirmKind = 'tombstone'">墓碑删除</button>
-            <button v-else-if="!selectedComment.hasChildren" class="button danger-button" type="button" :disabled="actionBusy" @click="confirmKind = 'permanent'">彻底删除</button>
-            <span v-else class="hint">仍有回复，不能彻底删除</span>
-          </div>
-        </div>
-        <p v-if="actionMessage" class="notice notice-error" role="alert">{{ actionMessage }}</p>
-        <article class="review-sheet" :aria-busy="detailBusy" aria-labelledby="comment-detail-title">
-          <div class="detail-main">
-            <header class="detail-heading">
-              <h2 id="comment-detail-title" :class="{ 'is-deleted': selectedComment.deleted }" :title="selectedComment.deleted ? '已删除' : selectedComment.username">{{ selectedComment.deleted ? '已删除' : selectedComment.username }}</h2>
-              <time>{{ formatDate(selectedComment.createdAt) }}</time>
-            </header>
-            <p class="comment-body" :class="{ 'is-deleted-copy': selectedComment.deleted }"><template v-if="selectedComment.deleted">该评论已删除</template><SmojiContent v-else :content="selectedComment.content" :enabled="selectedSite?.smojiEnabled === true" :manifest-url="selectedSite?.smojiManifestUrl || ''" /></p>
-          </div>
-          <dl class="detail-facts detail-side" aria-label="评论信息">
-            <div class="fact-row"><dt>私有邮箱</dt><dd :class="{ mono: selectedComment.email }" :title="selectedComment.email || '—'"><template v-if="selectedComment.email">{{ selectedComment.email }}</template><span v-else class="is-empty">—</span></dd></div>
-            <div class="fact-row"><dt>访客网站</dt><dd :class="{ mono: safeWebsite(selectedComment.url) }" :title="selectedComment.url || '—'"><a v-if="safeWebsite(selectedComment.url)" :href="safeWebsite(selectedComment.url)" target="_blank" rel="noopener noreferrer">{{ selectedComment.url }}</a><span v-else class="is-empty">—</span></dd></div>
-            <div class="fact-row"><dt>文章标题</dt><dd :title="selectedComment.pageTitle || '—'"><template v-if="selectedComment.pageTitle">{{ selectedComment.pageTitle }}</template><span v-else class="is-empty">—</span></dd></div>
-            <div class="fact-row"><dt>页面 key</dt><dd class="mono" :title="selectedComment.mark">{{ selectedComment.mark }}</dd></div>
-            <div class="fact-row"><dt>父评论</dt><dd><template v-if="selectedComment.parent">#{{ selectedComment.parent }}</template><span v-else class="is-empty">—</span></dd></div>
-          </dl>
-        </article>
-      </template>
-    </section>
-  </div>
-
-  <dialog ref="confirmDialog" aria-labelledby="confirm-title" @cancel.prevent="closeConfirm" @click="handleDialogClick" @close="confirmKind = null">
-    <div class="dialog-body">
-      <h2 id="confirm-title">{{ confirmKind === 'tombstone' ? '墓碑删除这条评论？' : '彻底删除这条墓碑？' }}</h2>
-      <p>{{ confirmKind === 'tombstone' ? '昵称、私有邮箱、网站和正文会被清除，公开页面改为显示“已删除”，下面的回复保留不变。此操作无法撤销。' : '这条墓碑会从数据库中移除。此操作无法撤销。' }}</p>
-      <p v-if="confirmTarget" class="dialog-target">{{ confirmTarget }}</p>
+      </section>
+      <div v-else class="layout feed-state"><p class="in-main feed-empty">当前没有{{ status === 'published' ? '已发布' : '已删除' }}评论</p></div>
     </div>
-    <div class="dialog-actions">
-      <button class="button" type="button" @click="closeConfirm">取消</button>
-      <button class="button danger-button is-solid" type="button" :disabled="actionBusy" @click="confirmAction">{{ confirmKind === 'tombstone' ? '墓碑删除' : '彻底删除' }}</button>
-    </div>
-  </dialog>
+    <footer v-if="selectedSite" class="feed-foot layout"><p class="in-margin keys" aria-hidden="true"><kbd>J</kbd><kbd>K</kbd>上下条　<kbd>O</kbd>原评论　<kbd>Del</kbd>删除</p><nav class="in-main pager" aria-label="评论列表分页"><button class="pager-button" type="button" :disabled="page <= 1 || queueBusy || actionBusy" @click="store.selectPage(page - 1)">‹ 上一页</button><span class="pager-sep" aria-hidden="true">｜</span><span class="pager-status" aria-live="polite">{{ page }}/{{ Math.max(pageCount, 1) }}</span><span class="pager-sep" aria-hidden="true">｜</span><button class="pager-button" type="button" :disabled="page >= pageCount || queueBusy || actionBusy" @click="store.selectPage(page + 1)">下一页 ›</button></nav></footer>
+  </section>
 </template>

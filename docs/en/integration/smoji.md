@@ -24,7 +24,7 @@ Sticker images are sent to the visitor's browser directly by the server that hos
 
 ## Enable
 
-On **Sites** (站点管理) in the admin console, edit the site, check **Enable sticker pack** (启用表情包), enter the manifest URL, and save.
+On **Sites** (站点) in the admin console, edit the site, select 「启用」 (enable) under 「表情包」 (sticker packs), enter the manifest URL, and save.
 
 - The manifest URL must use HTTPS. Only loopback addresses such as `localhost` and `127.0.0.1` may use HTTP, for local development.
 - The URL cannot contain a username or password, a `?` query string, or a `#` fragment.
@@ -38,10 +38,10 @@ On **Sites** (站点管理) in the admin console, edit the site, check **Enable 
   "packs": [
     {
       "id": "paopao",
-      "label": "Paopao",
+      "label": "泡泡",
       "items": [
-        { "id": "smile", "label": "Smile", "src": "https://stickers.example.com/paopao/smile.png" },
-        { "id": "thumbsup", "label": "Thumbs up", "src": "thumbsup.png" }
+        { "id": "smile", "label": "微笑", "src": "https://stickers.example.com/paopao/smile.png" },
+        { "id": "thumbsup", "label": "赞", "src": "thumbsup.png" }
       ]
     }
   ]
@@ -77,10 +77,10 @@ When you have many stickers, you can use a `base` template instead of writing `s
   "packs": [
     {
       "id": "douyin",
-      "label": "Douyin",
+      "label": "抖音",
       "items": [
-        { "id": "smile", "label": "Smile" },
-        { "id": "cool", "label": "Cool", "src": "https://stickers.example.com/smoji/extra/cool.png" }
+        { "id": "smile", "label": "微笑" },
+        { "id": "cool", "label": "酷", "src": "https://stickers.example.com/smoji/extra/cool.png" }
       ]
     }
   ]
@@ -104,7 +104,7 @@ Comments store the **full image URL**. When you update your assets:
 ## Marker format
 
 ```text
-![smoji:name](image-url)
+![smoji:名称](图片地址)
 ```
 
 `(` and `)` in the image URL are encoded as `%28` and `%29`. `formConfig.smoji` in the public API returns whether the site has sticker packs enabled and the manifest URL. A custom frontend can use it to build its own picker and rendering, following the same rules as above.

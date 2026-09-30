@@ -1,6 +1,8 @@
 # Notifications
 
-Ecoku can notify the blogger when a new comment arrives, and email a visitor when someone replies to their comment. You configure notifications on the **Notifications** (通知设置) page of the admin console. The settings apply to every site on the instance.
+Ecoku can notify the blogger when a new comment arrives, and email a visitor when someone replies to their comment. You configure notifications on the **Notifications** (通知) page of the admin console. The settings apply to every site on the instance.
+
+After changing a channel, click 「保存」 (save) in the bottom save bar. Email and Telegram are validated and saved separately. If one channel has an error, the other valid channel can still be saved; unsaved changes remain on the page.
 
 | Channel | Recipients |
 | --- | --- |

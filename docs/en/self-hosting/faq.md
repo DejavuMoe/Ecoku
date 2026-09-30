@@ -78,7 +78,7 @@ When the loader cannot find a required attribute, it skips silently without show
 
 ### The comment section shows "评论暂时不可用" (comments are temporarily unavailable) or reports no permission
 
-Usually the post page's origin is not registered. On **Sites** (站点管理) in the admin console, add the `scheme://domain[:port]` shown in the browser's address bar to the site's allowed origins. With and without `www` are two different origins.
+Usually the post page's origin is not registered. On **Sites** (站点) in the admin console, add the `scheme://domain[:port]` shown in the browser's address bar to the site's allowed origins. With and without `www` are two different origins.
 
 ### Visitors often see "提交过于频繁" (submitting too frequently)
 
@@ -113,7 +113,7 @@ Generate a new password hash, replace the value of `ECOKU_ADMIN_PASSWORD_HASH` i
 
 ```bash
 cd ~/Ecoku
-read -rsp 'New password: ' P; echo
+read -rsp '新密码: ' P; echo
 printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.7 hash-password
 unset P
 ```
