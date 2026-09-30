@@ -4,9 +4,14 @@
   "capture": {
     "method": "rendered-dom",
     "sources": [
-      "index-v15.html"
+      "index-v15.html",
+      "packages/admin/src/App.vue",
+      "packages/admin/src/components/CommentManagementView.vue",
+      "packages/admin/src/components/SiteManagementView.vue",
+      "packages/admin/src/components/NotificationSettingsView.vue",
+      "packages/admin/src/components/SecurityView.vue"
     ],
-    "capturedAt": "2026-09-30T14:18:15.233790+00:00",
+    "capturedAt": "2026-09-30T16:08:21.865364+00:00",
     "surfaces": [
       "comments",
       "comments-error",
@@ -16,14 +21,21 @@
       "notifications-errors",
       "security-cap-errors",
       "sites-discard",
-      "confirm-tombstone"
+      "confirm-tombstone",
+      "production-comments",
+      "production-inline-confirmation",
+      "production-sites",
+      "production-notifications-validation",
+      "production-security",
+      "production-login",
+      "production-queue-error-and-retry"
     ],
     "limitations": [
       "Read-only DOM collector adapted to the browser tool; ordinary form values were not read.",
       "Prototype-only controls, sanitized comment/site/badge fixture values and variable counts were excluded.",
       "Hidden-state copy is included. Closed shadow roots, external frames, native dialogs and pseudo-elements are not covered.",
-      "Production implementation has not been captured.",
-      "The inventory deduplicates copy across states; per-state visibility and duplicate channels are not retained."
+      "The inventory deduplicates copy across states; per-state visibility and duplicate channels are not retained.",
+      "Production captures use an isolated fixture API. Live backend, CAPTCHA services, SMTP and Telegram were not exercised."
     ]
   },
   "briefSources": [],
@@ -4445,6 +4457,126 @@
       "evidence": {
         "source": "index-v15.html / prototype-v15.js",
         "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "006bef4da739a57b",
+      "text": "跳到主要内容",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "packages/admin/src/App.vue"
+      ],
+      "visibility": [
+        "visible"
+      ],
+      "captures": [
+        "production DOM"
+      ],
+      "purpose": "navigation",
+      "origin": "production-behavior",
+      "decision": "allow",
+      "evidence": {
+        "source": "packages/admin/src/App.vue",
+        "reference": "Rendered interface with isolated fixture data."
+      },
+      "flags": []
+    },
+    {
+      "id": "a6db2954e4b6a349",
+      "text": "评论管理：",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "packages/admin/src/components/CommentManagementView.vue"
+      ],
+      "visibility": [
+        "visible"
+      ],
+      "captures": [
+        "production DOM"
+      ],
+      "purpose": "orientation",
+      "origin": "production-behavior",
+      "decision": "allow",
+      "evidence": {
+        "source": "packages/admin/src/components/CommentManagementView.vue",
+        "reference": "Rendered interface with isolated fixture data."
+      },
+      "flags": []
+    },
+    {
+      "id": "067eca2cd96ede63",
+      "text": "有 1 处需要修改",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "packages/admin/src/components/SaveBar.vue"
+      ],
+      "visibility": [
+        "visible"
+      ],
+      "captures": [
+        "production DOM"
+      ],
+      "purpose": "validation",
+      "origin": "production-behavior",
+      "decision": "allow",
+      "evidence": {
+        "source": "packages/admin/src/components/SaveBar.vue",
+        "reference": "Rendered interface with isolated fixture data."
+      },
+      "flags": []
+    },
+    {
+      "id": "3f58e12bd7e7747b",
+      "text": "服务端暂时无法完成操作，数据没有被修改。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "packages/admin/src/messages.ts"
+      ],
+      "visibility": [
+        "visible"
+      ],
+      "captures": [
+        "production DOM"
+      ],
+      "purpose": "error",
+      "origin": "production-behavior",
+      "decision": "allow",
+      "evidence": {
+        "source": "packages/admin/src/messages.ts",
+        "reference": "Rendered interface with isolated fixture data."
+      },
+      "flags": []
+    },
+    {
+      "id": "119c3079cd8a502b",
+      "text": "不在当前页",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "packages/admin/src/components/CommentManagementView.vue"
+      ],
+      "visibility": [
+        "visible"
+      ],
+      "captures": [
+        "production DOM"
+      ],
+      "purpose": "state",
+      "origin": "production-behavior",
+      "decision": "allow",
+      "evidence": {
+        "source": "packages/admin/src/components/CommentManagementView.vue",
+        "reference": "Rendered interface with isolated fixture data."
       },
       "flags": []
     }

@@ -7,8 +7,12 @@
   },
   "sourceReferences": [
     {
+      "path": "designs/admin-moderation/index-v15.html",
+      "role": "current approved admin layout and interaction baseline"
+    },
+    {
       "path": "designs/admin-moderation/index-v13.html",
-      "role": "current approved unified admin baseline for login, comment management, site management, notification settings and security: comment v17 paper-and-ink tokens, system CJK/Latin sans stack, no webfont"
+      "role": "previous approved admin v13 baseline, superseded by v15"
     },
     {
       "path": "designs/admin-moderation/index-v12.html",
@@ -65,11 +69,6 @@
     {
       "path": "designs/admin-moderation/telegram-notification-v5.html",
       "role": "previous approved Telegram message baseline, superseded by notifications v6"
-    },
-    {
-      "path": "D:/Forgejo/Blog/designs/twikoo-theme-styles/index.html",
-      "role": "visual reference only",
-      "productionMappingInherited": false
     }
   ],
   "prototypeOnly": {
@@ -88,217 +87,6 @@
     ]
   },
   "surfaces": [
-    {
-      "id": "admin-comment-management-workspace",
-      "prototype": {
-        "entry": "index-v13.html",
-        "states": [
-          "published",
-          "deleted",
-          "unselected",
-          "extreme-text",
-          "desktop-split-view",
-          "mobile-list",
-          "mobile-detail",
-          "site-switcher-in-queue",
-          "single-site-static-label",
-          "queue-loading",
-          "queue-error-retry",
-          "tombstone-with-replies-hint",
-          "confirm-names-target",
-          "keyboard-queue-navigation"
-        ],
-        "assetPath": "index-v13.html",
-        "files": [],
-        "stableIds": []
-      },
-      "production": {
-        "routeOrWindow": "/admin/",
-        "status": "implemented",
-        "files": [
-          "packages/admin/index.html",
-          "packages/admin/src/style.css",
-          "packages/admin/src/App.vue",
-          "packages/admin/src/components/CommentManagementView.vue",
-          "packages/admin/src/api.ts",
-          "packages/admin/src/stores/admin.ts",
-          "server/handle/admin/deletion.go",
-          "packages/admin/src/components/AdminIcon.vue"
-        ],
-        "interfaces": [],
-        "tests": [
-          "packages/admin/src/admin.test.ts"
-        ]
-      },
-      "status": "implemented",
-      "contentProfile": "operational-strict"
-    },
-    {
-      "id": "admin-site-management",
-      "prototype": {
-        "entry": "index-v13.html",
-        "states": [
-          "sites-list",
-          "sites-new",
-          "site-validation",
-          "site-display-name-fallback",
-          "per-site-comment-sort",
-          "per-site-comment-limit",
-          "per-site-empty-copy",
-          "blogger-identity-empty",
-          "blogger-identity-configured",
-          "blogger-identity-validation",
-          "blogger-badge",
-          "theme-auto",
-          "theme-light",
-          "theme-dark",
-          "grouped-sections",
-          "sticky-save-bar",
-          "error-count-summary",
-          "system-sans-stack"
-        ],
-        "assetPath": "index-v13.html",
-        "files": [],
-        "stableIds": []
-      },
-      "production": {
-        "routeOrWindow": "/admin/",
-        "status": "implemented",
-        "files": [
-          "packages/admin/index.html",
-          "packages/admin/src/style.css",
-          "packages/admin/src/components/SiteManagementView.vue",
-          "packages/admin/src/api.ts",
-          "packages/admin/src/types.ts",
-          "server/handle/admin/sites.go",
-          "server/model/site.go",
-          "server/model/migrations.go",
-          "server/notifications/outbox.go"
-        ],
-        "interfaces": [],
-        "tests": [
-          "packages/admin/src/admin.test.ts"
-        ]
-      },
-      "status": "implemented",
-      "contentProfile": "operational-strict"
-    },
-    {
-      "id": "admin-security-captcha",
-      "prototype": {
-        "entry": "index-v13.html",
-        "states": [
-          "security-cap",
-          "security-turnstile",
-          "security-off",
-          "security-cap-validation",
-          "theme-auto",
-          "theme-light",
-          "theme-dark",
-          "provider-tiles"
-        ],
-        "assetPath": "index-v13.html",
-        "files": [],
-        "stableIds": []
-      },
-      "production": {
-        "routeOrWindow": "/admin/",
-        "status": "implemented",
-        "files": [
-          "packages/admin/src/App.vue",
-          "packages/admin/src/style.css",
-          "packages/admin/src/components/SecurityView.vue",
-          "packages/admin/src/api.ts",
-          "packages/admin/src/stores/admin.ts",
-          "server/handle/admin/turnstile.go",
-          "server/captcha/settings.go"
-        ],
-        "interfaces": [],
-        "tests": [
-          "packages/admin/src/admin.test.ts"
-        ]
-      },
-      "status": "implemented",
-      "contentProfile": "operational-strict"
-    },
-    {
-      "id": "admin-login-captcha",
-      "prototype": {
-        "entry": "index-v13.html",
-        "states": [
-          "login-off",
-          "login-turnstile",
-          "login-cap-idle",
-          "login-cap-solving",
-          "login-cap-solved",
-          "login-cap-failed",
-          "login-card"
-        ],
-        "assetPath": "index-v13.html",
-        "files": [],
-        "stableIds": []
-      },
-      "production": {
-        "routeOrWindow": "/admin/",
-        "status": "implemented",
-        "files": [
-          "packages/admin/src/App.vue",
-          "packages/admin/src/style.css",
-          "packages/admin/src/api.ts",
-          "packages/admin/src/captcha.ts",
-          "packages/admin/src/cap.ts",
-          "packages/admin/src/turnstile.ts",
-          "server/handle/admin/auth.go",
-          "server/captcha/verify.go"
-        ],
-        "interfaces": [],
-        "tests": [
-          "packages/admin/src/admin.test.ts"
-        ]
-      },
-      "status": "implemented",
-      "contentProfile": "operational-strict"
-    },
-    {
-      "id": "admin-notification-settings",
-      "prototype": {
-        "entry": "index-v13.html",
-        "states": [
-          "notifications-empty",
-          "notifications-configured",
-          "notifications-validation",
-          "channel-disabled",
-          "chip-multiple-values",
-          "test-success",
-          "test-failure",
-          "encryption-segmented",
-          "collapsed-disabled-channel",
-          "save-to-disable-hint"
-        ],
-        "assetPath": "index-v13.html",
-        "files": [],
-        "stableIds": []
-      },
-      "production": {
-        "routeOrWindow": "/admin/",
-        "status": "implemented",
-        "files": [
-          "packages/admin/index.html",
-          "packages/admin/src/style.css",
-          "packages/admin/src/components/NotificationSettingsView.vue",
-          "packages/admin/src/components/ChipInput.vue",
-          "server/handle/admin/notifications.go",
-          "server/notifications/settings.go",
-          "server/notifications/outbox.go"
-        ],
-        "interfaces": [],
-        "tests": [
-          "packages/admin/src/admin.test.ts"
-        ]
-      },
-      "status": "implemented",
-      "contentProfile": "operational-strict"
-    },
     {
       "id": "notification-templates",
       "prototype": {
@@ -376,7 +164,10 @@
           "security-turnstile",
           "security-off",
           "mobile-navigation",
-          "keyboard-navigation"
+          "keyboard-navigation",
+          "site-save-failure-retains-draft",
+          "notification-settings-load-error-retry",
+          "security-settings-load-error-retry"
         ],
         "stableIds": [
           "view-comments",
@@ -388,7 +179,7 @@
       },
       "production": {
         "routeOrWindow": "/admin/",
-        "status": "planned",
+        "status": "implemented",
         "files": [
           "packages/admin/src/App.vue",
           "packages/admin/src/style.css",
@@ -396,7 +187,13 @@
           "packages/admin/src/components/SiteManagementView.vue",
           "packages/admin/src/components/NotificationSettingsView.vue",
           "packages/admin/src/components/SecurityView.vue",
-          "packages/admin/src/stores/admin.ts"
+          "packages/admin/src/stores/admin.ts",
+          "packages/admin/src/components/SitePicker.vue",
+          "packages/admin/src/components/SaveBar.vue",
+          "packages/admin/src/components/ChipInput.vue",
+          "packages/admin/src/components/AdminIcon.vue",
+          "packages/admin/index.html",
+          "packages/admin/public/favicon.svg"
         ],
         "interfaces": [
           "adminApi.listComments",
@@ -413,7 +210,7 @@
           "designs/admin-moderation/index-v15.test.mjs"
         ]
       },
-      "status": "approved"
+      "status": "implemented"
     }
   ],
   "content": {

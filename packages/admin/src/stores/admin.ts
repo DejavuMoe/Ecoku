@@ -44,6 +44,9 @@ export const useAdminStore = defineStore('admin', () => {
   const loginBusy = ref(false)
   const loginMessage = ref('')
   const view = ref<MainView>('comments')
+  const dirtyView = ref<MainView | null>(null)
+  const discardRequested = ref(false)
+  let pendingNavigation: (() => void | Promise<unknown>) | null = null
   const sites = ref<SiteSummary[]>([])
   const selectedSiteId = ref('')
   const siteBusy = ref(false)
@@ -89,7 +92,7 @@ export const useAdminStore = defineStore('admin', () => {
     authenticated.value = false; expiresAt.value = ''; sites.value = []; selectedSiteId.value = ''
     comments.value = []; selectedComment.value = null; counts.value = emptyCounts()
     notificationSettings.value = null; captchaSettings.value = null
-    view.value = 'comments'; loginMessage.value = reason
+    view.value = 'comments'; dirtyView.value = null; discardRequested.value = false; pendingNavigation = null; loginMessage.value = reason
   }
   function armExpiry(value: string) {
     if (expiryTimer) clearTimeout(expiryTimer)
@@ -137,11 +140,26 @@ export const useAdminStore = defineStore('admin', () => {
     } finally { logoutBusy.value = false }
   }
   async function switchView(next: MainView) {
+    if (next === view.value) return
     view.value = next
     if (next === 'comments') await loadComments()
     else if (next === 'sites') await loadSites(false)
     else if (next === 'security') await loadCaptcha()
     else await loadNotifications()
+  }
+  function setDirty(owner: MainView, dirty: boolean) {
+    if (dirty) dirtyView.value = owner
+    else if (dirtyView.value === owner) dirtyView.value = null
+  }
+  function requestNavigation(action: () => void | Promise<unknown>) {
+    if (!dirtyView.value) { void action(); return }
+    pendingNavigation = action
+    discardRequested.value = true
+  }
+  function resolveNavigation(discard: boolean) {
+    const action = pendingNavigation
+    pendingNavigation = null; discardRequested.value = false
+    if (discard && action) void action()
   }
   async function loadSites(loadCommentsAfter = false) {
     if (!authenticated.value || siteBusy.value) return
@@ -176,7 +194,7 @@ export const useAdminStore = defineStore('admin', () => {
       if (generation !== queueGeneration) return
       comments.value = result.data; counts.value = result.counts; total.value = result.total
       page.value = result.page; pageSize.value = result.pageSize; pageCount.value = result.pageCount
-      const next = comments.value.find((item) => item.id === selectedComment.value?.id) ?? comments.value[0] ?? null
+      const next = comments.value.find((item) => item.id === selectedComment.value?.id) ?? null
       selectedComment.value = next; if (next) void loadDetail(next.id)
       if (announce) toastMessage.value = messages.refreshed
     } catch (error) { if (generation === queueGeneration && !(error instanceof DOMException && error.name === 'AbortError')) fail(error, 'queue') }
@@ -195,12 +213,18 @@ export const useAdminStore = defineStore('admin', () => {
   async function toggleSort() { sort.value = sort.value === 'oldest' ? 'newest' : 'oldest'; page.value = 1; await loadComments() }
   async function selectPage(next: number) { if (next < 1 || next > pageCount.value) return; page.value = next; await loadComments() }
   function selectComment(id: number) { const value = comments.value.find((item) => item.id === id); if (value) { selectedComment.value = value; void loadDetail(id) } }
-  async function mutateCurrent(kind: 'tombstone' | 'permanent') {
-    if (!selectedComment.value || actionBusy.value) return false
+  async function mutateCurrent(kind: 'tombstone' | 'permanent', id = selectedComment.value?.id) {
+    const target = selectedComment.value?.id === id ? selectedComment.value : comments.value.find((item) => item.id === id)
+    if (!target || actionBusy.value) return false
+    if (kind === 'permanent' && (!target.deleted || target.hasChildren)) {
+      actionMessage.value = target.hasChildren ? '仍有回复，不能彻底删除' : messages.invalidRequest
+      return false
+    }
+    const siteId = selectedSiteId.value
     actionBusy.value = true; actionMessage.value = ''
     try {
-      if (kind === 'tombstone') await adminApi.tombstone(selectedSiteId.value, selectedComment.value.id)
-      else await adminApi.permanentlyDelete(selectedSiteId.value, selectedComment.value.id)
+      if (kind === 'tombstone') await adminApi.tombstone(siteId, target.id)
+      else await adminApi.permanentlyDelete(siteId, target.id)
       toastMessage.value = kind === 'tombstone' ? messages.tombstoned : messages.permanentlyDeleted
       selectedComment.value = null; await loadComments(); return true
     } catch (error) { fail(error, 'action'); return false }
@@ -254,10 +278,10 @@ export const useAdminStore = defineStore('admin', () => {
     } catch (error) { fail(error, 'security'); return null }
     finally { captchaBusy.value = false }
   }
-  return { sessionReady, logoutBusy, logoutMessage, expiresAt, loginBusy, loginMessage, authenticated, view, sites, selectedSiteId, selectedSite, siteBusy, siteMessage,
+  return { sessionReady, logoutBusy, logoutMessage, expiresAt, loginBusy, loginMessage, authenticated, view, dirtyView, discardRequested, sites, selectedSiteId, selectedSite, siteBusy, siteMessage,
     status, sort, page, pageSize, pageCount, total, counts, comments, selectedComment, queueBusy, detailBusy, actionBusy, queueMessage, actionMessage, toastMessage,
     notificationSettings, notificationBusy, notificationMessage, emailTestState, emailTestMessage, telegramTestState, telegramTestMessage,
     captchaSettings, captchaBusy, captchaMessage,
     login, logout, restoreSession, switchView, loadSites, saveSite, loadComments, loadDetail, selectSite, selectStatus, toggleSort, selectPage, selectComment, mutateCurrent,
-    loadNotifications, saveEmail, saveTelegram, testEmail, testTelegram, loadCaptcha, saveCaptcha }
+    loadNotifications, saveEmail, saveTelegram, testEmail, testTelegram, loadCaptcha, saveCaptcha, setDirty, requestNavigation, resolveNavigation }
 })

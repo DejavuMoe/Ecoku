@@ -7,10 +7,15 @@
 
 ### 变更
 
+- 管理后台改为按日期分组的评论流与就地删除确认；设置表单采用行式字段，只在有修改时显示保存栏，并在离开前确认；增加键盘快捷键与窄屏底部导航。管理后台与文档站更新为「區」印章标识。
 - 官方镜像内置容器路径：`site.log_path`、`client.static_dir`、`admin.static_dir`、`database.sqlite.path` 省略时分别取 `/var/log/ecoku/ecoku.log`、`/app/client`、`/app/admin`、`/data/ecoku.sqlite3`，`admin.enabled` 省略时为 `true`；源码运行的默认值不变，已显式写出的字段仍然优先，旧配置文件无需修改。
 - `admin.username_env`、`admin.password_hash_env`、`admin.token_key_env`、`notifications.encryption_key_env` 省略时使用标准变量名 `ECOKU_ADMIN_USERNAME`、`ECOKU_ADMIN_PASSWORD_HASH`、`ECOKU_ADMIN_TOKEN_KEY`、`ECOKU_NOTIFICATION_ENCRYPTION_KEY`。
 - `admin.allowed_origins` 省略时取 `notifications.instance_public_url` 的来源。
 - 部署模板精简：`app/config.yaml` 只需 `notifications.instance_public_url`；`ecoku.env` 去掉 `GIN_MODE`（镜像已设置）；`compose.yaml` 去掉 `logging` 段，改用 Docker 守护进程的日志设置。
+
+### 修复
+
+- 站点保存失败时保留未保存的名称、博主口令等草稿，不再恢复为旧配置；通知和安全设置加载失败时禁用表单并提供重试。
 
 ### 文档
 

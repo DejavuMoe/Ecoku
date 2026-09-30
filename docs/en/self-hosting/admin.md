@@ -19,18 +19,22 @@ If a CAPTCHA misconfiguration keeps you from signing in, see [CAPTCHA](./captcha
 
 ## Layout
 
-There are four pages along the top:
+The top navigation has four pages: 「评论」 (comments), 「站点」 (sites), 「通知」 (notifications), and 「安全」 (security). On narrow screens, navigation moves to the bottom.
 
-- **Comments** (评论管理): view and delete comments for the current site.
-- **Sites** (站点管理): add and edit sites.
-- **Notifications** (通知设置): email and Telegram notifications, for the whole instance.
-- **Security** (安全): CAPTCHA, for the whole instance.
+- **评论** (comments): view and delete comments for the current site.
+- **站点** (sites): add and edit sites.
+- **通知** (notifications): email and Telegram notifications for the whole instance.
+- **安全** (security): CAPTCHA for the whole instance.
 
-The top-left corner of **Comments** (评论管理) shows the current site. If you have more than one site, click the site name to switch. **Notifications** (通知设置) and **Security** (安全) apply to the whole instance and do not change with the site.
+「评论」 and 「站点」 show the current site at the top left. Click its name to switch when there are multiple sites; a single site is shown as a static name. 「通知」 and 「安全」 apply to the whole instance.
+
+The save bar appears at the bottom after you change settings. 「撤销修改」 (discard changes) restores the saved values. Before switching pages or sites or logging out, the console asks whether to discard unsaved changes.
+
+If saving fails, your inputs remain so you can correct them and retry. Notification and security forms cannot be edited before their settings load. Use 「重试」 (retry) beside the error message, then edit after loading succeeds.
 
 ## Register a site {#sites}
 
-A "site" is one website that embeds the comment section. On **Sites** (站点管理), click **Add site** (新增站点) and fill in:
+A "site" is one website that embeds the comment section. On **Sites** (站点), click **Add site** (新增站点) and fill in:
 
 | Field | Description |
 | --- | --- |
@@ -56,7 +60,7 @@ If someone edited the same site in another browser tab while you were editing it
 
 ### Sticker packs
 
-After you turn on the **Enable sticker pack** (启用表情包) switch and enter a Smoji manifest URL, the comment box shows a **Stickers** (表情) button. The manifest URL must use HTTPS (except for loopback addresses). Sticker images are served to the visitor's browser directly by the server that hosts the manifest, and that server can see the visitor's IP address. See [Smoji sticker packs](../integration/smoji) for the manifest format and how to host one.
+After you select 「启用」 (enable) under 「表情包」 (sticker packs) and enter a Smoji manifest URL, the comment box shows a **Stickers** (表情) button. The manifest URL must use HTTPS (except for loopback addresses). Sticker images are served to the visitor's browser directly by the server that hosts the manifest, and that server can see the visitor's IP address. See [Smoji sticker packs](../integration/smoji) for the manifest format and how to host one.
 
 ### Blogger identity {#blogger}
 
@@ -65,21 +69,23 @@ After you fill in the blogger nickname, blogger email, and blogger passphrase, y
 | Field | Description |
 | --- | --- |
 | Blogger nickname (博主昵称) | The publicly shown name, up to 80 characters. |
-| Blogger email (博主邮箱) | Not public. Stored as the private email of blogger comments. During a Twikoo import it is used together with the nickname to recognize past blogger comments. Blogger notifications go to the recipients set on **Notifications** (通知设置), not to this address. |
+| Blogger email (博主邮箱) | Not public. Stored as the private email of blogger comments. During a Twikoo import it is used together with the nickname to recognize past blogger comments. Blogger notifications go to the recipients set on **Notifications** (通知), not to this address. |
 | Blogger passphrase (博主口令) | 12 to 80 characters, no more than 72 bytes in UTF-8, no line breaks. Only a bcrypt hash is stored, and it is never shown again after saving. When one is already set, leaving the field empty keeps it unchanged. |
 | Badge text (评论区标志) | Text shown after the blogger nickname, up to 16 characters. If empty, no badge is shown. |
 
 Fill in both the nickname and the email, or leave both empty. When both are filled in, a passphrase is required. Clearing the nickname and email turns off the blogger identity and also clears the passphrase.
 
 ::: warning If you mistype the passphrase
-When the passphrase does not match, the text in the nickname field is just an ordinary nickname. If the site makes email optional, the comment is published with the passphrase text as its nickname. If that happens, delete it on **Comments** (评论管理) and change the passphrase.
+When the passphrase does not match, the text in the nickname field is just an ordinary nickname. If the site makes email optional, the comment is published with the passphrase text as its nickname. If that happens, delete it on **Comments** (评论) and change the passphrase.
 :::
 
 Setting or changing the passphrase does not change the blogger mark on existing comments. See [How it works](../guide/concepts#blogger) for the backfill rules.
 
 ## Manage comments
 
-**Comments** (评论管理) has two lists by status, **Published** (已发布) and **Deleted** (已删除), with 20 comments per page. You can switch between newest-first and oldest-first by submission time. Click a comment to see its details: private email, visitor website, post title, page key, submission time, and parent comment.
+「评论」 (comments) has 「已发布」 (published) and 「已删除」 (deleted) lists with 20 items per page. Choose 「最新在前」 (newest first) or 「最早在前」 (oldest first). Comments are grouped by date and show their body, time, post title and page key directly, together with any private email and visitor website. A reply quotes its parent when that parent is on the current page; click the quote to jump to it. Otherwise, the parent ID is shown.
+
+Tombstone and permanent deletion are confirmed beside the relevant comment. Outside input fields, J/K or the up/down arrows move between comments, O opens the original comment, Delete opens the deletion confirmation, Esc cancels it, and R refreshes the list. On settings pages with changes, Ctrl+S or ⌘+S saves.
 
 **View original comment** (查看原评论) opens the post in a new tab, scrolled to this comment (`site URL + page key + #ecoku-comment-<comment ID>`).
 
@@ -89,7 +95,7 @@ Setting or changing the passphrase does not change the blogger mark on existing 
 
 ### Permanent delete
 
-In the **Deleted** (已删除) list, a tombstone with **no replies at all** can be removed from the database with **Permanent delete** (彻底删除). A tombstone that still has replies cannot be permanently deleted, so the replies do not lose their context; its details show 仍有回复，不能彻底删除 (it still has replies and cannot be permanently deleted).
+In the **Deleted** (已删除) list, a tombstone with **no replies at all** can be removed from the database with **Permanent delete** (彻底删除). A tombstone that still has replies cannot be permanently deleted, so the replies do not lose their context; the comment shows 仍有回复，不能彻底删除 (it still has replies and cannot be permanently deleted).
 
 ## Notifications and CAPTCHA
 

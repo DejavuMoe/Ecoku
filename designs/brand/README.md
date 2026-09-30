@@ -2,7 +2,7 @@
 
 `index-v2.html` 是已批准的品牌标识稿：把「區」刻成一方白文朱印。外框「匸」三面合围、向右敞开，
 与评论区的 `[-]`、`[博主]` 方括号同一手势；里面「品」的三个口，也是一条评论和它下面的两条回复。
-字标沿用 Georgia 衬线 Ecoku。管理后台与文档站共用这一枚标志与 favicon；已批准的 v6 邮件模板不受影响。
+字标沿用 Georgia 衬线 Ecoku。管理后台与文档站已使用这一枚标志与 favicon；已批准的 v6 邮件模板不受影响。
 
 `index-v1.html`（评论气泡印章内刻衬线 E）已被否决，仅作记录保留，不再使用。
 
@@ -19,6 +19,6 @@
 
 - `ecoku-mark.svg` → `docs/public/logo.svg`
 - `favicon.svg` → `docs/public/favicon.svg`、`packages/admin/public/favicon.svg`
-- `app-icon.svg` → `apple-touch-icon.png`
+- `app-icon.svg`：保留的应用图标导出资源，当前未接入管理后台。
 
 批准前不修改生产文件。

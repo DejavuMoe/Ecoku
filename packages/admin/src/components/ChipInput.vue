@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps<{
   id?: string
@@ -7,9 +7,11 @@ const props = defineProps<{
   kind: 'email' | 'telegram'
   label: string
   disabled?: boolean
+  error?: string
 }>()
-const emit = defineEmits<{ 'update:modelValue': [value: string[]] }>()
+const emit = defineEmits<{ 'update:modelValue': [value: string[]]; 'draft-change': [pending: boolean] }>()
 const input = ref('')
+watch(input, value => emit('draft-change', Boolean(value.trim())))
 
 function valid(value: string): boolean {
   return props.kind === 'telegram'
@@ -17,7 +19,7 @@ function valid(value: string): boolean {
     : /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 254
 }
 
-const invalid = computed(() => props.modelValue.some((value) => !valid(value)))
+const invalid = computed(() => Boolean(props.error) || props.modelValue.some((value) => !valid(value)))
 
 function add(raw: string) {
   const next = raw.split(/[，,\n]+/).map((value) => value.trim()).filter(Boolean)
@@ -66,11 +68,12 @@ defineExpose({ invalid })
       type="text"
       autocomplete="off"
       :aria-label="label"
+      :aria-invalid="invalid"
       :disabled="disabled"
       @keydown="handleKeydown"
       @paste="handlePaste"
       @blur="input.trim() && add(input)"
     >
   </div>
-  <p v-if="invalid" class="field-error">{{ kind === 'email' ? '邮箱格式错误' : '接收目标 ID 格式错误' }}</p>
+  <p v-if="invalid" class="field-error">{{ error || (kind === 'email' ? '邮箱格式错误' : '接收目标 ID 格式错误') }}</p>
 </template>
