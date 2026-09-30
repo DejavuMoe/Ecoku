@@ -32,7 +32,6 @@ const loginSlot = ref<HTMLElement | null>(null)
 const loginCaptcha = ref<CaptchaPublicConfig>({ provider: 'off', sitekey: '', instanceUrl: '' })
 let loginWidget: ChallengeWidget | null = null
 const mobileDetail = ref(false)
-const brandMark = '/admin/ecoku-mark.svg'
 const visibleToast = ref('')
 let toastTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -110,7 +109,6 @@ async function submitLogin() {
 }
 
 function logout() {
-  if (store.dirtyView && !window.confirm('放弃未保存的修改？\n退出后，本页的修改不会保存。')) return
   username.value = ''
   password.value = ''
   mobileDetail.value = false
@@ -118,7 +116,6 @@ function logout() {
 }
 
 async function switchView(next: MainView) {
-  if (next !== view.value && store.dirtyView && !window.confirm('放弃未保存的修改？\n离开后，本页的修改不会保存。')) return
   await store.switchView(next)
 }
 </script>
@@ -128,7 +125,7 @@ async function switchView(next: MainView) {
 
   <main v-if="sessionReady && !authenticated" id="main-content" class="auth-screen">
     <section class="auth-shell" aria-labelledby="login-title">
-      <span class="brand" aria-hidden="true"><img class="brand-seal" :src="brandMark" alt=""><span class="brand-name">Ecoku</span></span>
+      <span class="brand" aria-hidden="true"><span class="brand-mark">E</span><span class="brand-name">Ecoku</span></span>
       <form class="login-card" novalidate @submit.prevent="submitLogin">
         <h1 id="login-title">管理员登录</h1>
         <p v-if="loginMessage" class="notice notice-error" role="alert">{{ loginMessage }}</p>
@@ -150,7 +147,7 @@ async function switchView(next: MainView) {
     <header class="app-header">
       <div class="header-inner">
         <button class="brand" type="button" aria-label="Ecoku 评论管理首页" @click="switchView('comments')">
-          <img class="brand-seal" :src="brandMark" alt=""><span class="brand-name" aria-hidden="true">Ecoku</span>
+          <span class="brand-mark" aria-hidden="true">E</span><span class="brand-name" aria-hidden="true">Ecoku</span>
         </button>
         <nav ref="primaryNav" class="primary-nav" aria-label="主导航">
           <button
@@ -175,13 +172,6 @@ async function switchView(next: MainView) {
       <NotificationSettingsView v-else-if="view === 'notifications'" />
       <SecurityView v-else />
     </main>
-
-    <nav class="mobile-tabbar" aria-label="主导航（底部）">
-      <button v-for="item in views" :key="`mobile-${item.id}`" class="mobile-tab" type="button" :aria-current="view === item.id ? 'page' : undefined" @click="switchView(item.id)">
-        <AdminIcon :name="item.id === 'comments' ? 'comments' : item.id === 'sites' ? 'sites' : item.id === 'notifications' ? 'notify' : 'security'" />
-        <span>{{ item.label.replace('管理', '').replace('设置', '') }}</span>
-      </button>
-    </nav>
   </div>
 
   <div class="sr-status" aria-live="polite">{{ visibleToast }}</div>
