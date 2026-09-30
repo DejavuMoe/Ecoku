@@ -1,0 +1,4452 @@
+{
+  "schemaVersion": 1,
+  "profile": "operational-strict",
+  "capture": {
+    "method": "rendered-dom",
+    "sources": [
+      "index-v15.html"
+    ],
+    "capturedAt": "2026-09-30T14:18:15.233790+00:00",
+    "surfaces": [
+      "comments",
+      "comments-error",
+      "comments-loading",
+      "comments-no-sites",
+      "sites-errors",
+      "notifications-errors",
+      "security-cap-errors",
+      "sites-discard",
+      "confirm-tombstone"
+    ],
+    "limitations": [
+      "Read-only DOM collector adapted to the browser tool; ordinary form values were not read.",
+      "Prototype-only controls, sanitized comment/site/badge fixture values and variable counts were excluded.",
+      "Hidden-state copy is included. Closed shadow roots, external frames, native dialogs and pseudo-elements are not covered.",
+      "Production implementation has not been captured.",
+      "The inventory deduplicates copy across states; per-state visibility and duplicate channels are not retained."
+    ]
+  },
+  "briefSources": [],
+  "approvedCopySources": [
+    "index-v15.html",
+    "prototype-v15.js"
+  ],
+  "items": [
+    {
+      "id": "4696f74ed8bab5e2",
+      "text": "Ecoku",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "c454c61e78abc289",
+      "text": "管理员登录",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "e79cc8970e9254f4",
+      "text": "Ecoku 评论管理首页",
+      "channels": [
+        "aria-label"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "9bae680405099fc8",
+      "text": "主导航",
+      "channels": [
+        "aria-label"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "6849b8254d20c4ab",
+      "text": "评论",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "a59fe62777ff25ae",
+      "text": "站点",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "4b6ded8a7f181397",
+      "text": "通知",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "afb63a620bdcff15",
+      "text": "安全",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "c169cb1c5cb06f11",
+      "text": "评论列表分页",
+      "channels": [
+        "aria-label"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "f0cac3fe1a619862",
+      "text": "站点设置",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "e8df058725699a17",
+      "text": "基本信息",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "eb14a05b0a5717dd",
+      "text": "评论区",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "4efaa366c9195876",
+      "text": "表情包",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "3026866df0a8bda1",
+      "text": "博主身份",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "cb5c4d21c9d75f2f",
+      "text": "实例设置",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "247ca01ae2808bf7",
+      "text": "通知设置",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "1b2714b812d42f77",
+      "text": "电子邮件",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "acdd1e734125f341",
+      "text": "Telegram",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "36fbc1da5545d9c8",
+      "text": "人机验证",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "dff16515e7d73f81",
+      "text": "主导航（底部）",
+      "channels": [
+        "aria-label"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "navigation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "1a3f0617d6de8e52",
+      "text": "用户名",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "a621ab606db2a11f",
+      "text": "密码",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "60985a584f74f502",
+      "text": "评论排序",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "150ed73d6dc9f56f",
+      "text": "评论状态",
+      "channels": [
+        "aria-label"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "15a9aec0ea0626a4",
+      "text": "站点 ID",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "d237d407232724cf",
+      "text": "data-site-id",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "fb952476c71285e1",
+      "text": "站点 URL",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "8ac4f0447b99c5e4",
+      "text": "站点名称",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "377edabf5176c436",
+      "text": "允许来源",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "face2aae94755913",
+      "text": "访客邮箱",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "fec792dc0a2845bd",
+      "text": "访客网站",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "b11d049c532b1389",
+      "text": "评论占位文案",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "42bc1754cd562c3a",
+      "text": "评论长度上限",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "fbd0122936559968",
+      "text": "无评论文案",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "3a8c1a4c0ad5441c",
+      "text": "Smoji 清单",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "1c5eb4108d35a705",
+      "text": "博主昵称",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "09fc46d1348d4c81",
+      "text": "博主邮箱",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "32e69da0b91b96a3",
+      "text": "博主口令",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "bf2f79df6a454c28",
+      "text": "评论区标志",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "2fb23b012630e3fa",
+      "text": "邮件通知",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "6a85554c141a6383",
+      "text": "SMTP 服务器",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "e71ac32b544b0ebf",
+      "text": "端口",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "c211bd317edf2a15",
+      "text": "加密方式",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "c2c26a6fa4d0c201",
+      "text": "发件人地址",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "b836608abe7a5e84",
+      "text": "通知收件人",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "cf8c0ac670d1ba16",
+      "text": "Bot Token",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "b1fc2c7f3f0e4670",
+      "text": "接收目标 ID",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "c3a86a45531d0db0",
+      "text": "Sitekey",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "f47a99ebcf29c1db",
+      "text": "Secret key",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "ca7e5595fa523afe",
+      "text": "实例地址",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "1d2d9d1676cf682e",
+      "text": "Site key",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "09303d426097d686",
+      "text": "私有邮箱",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "7e4d4717658d9007",
+      "text": "文章标题",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "f57577da2f7daf92",
+      "text": "页面 key",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "698758088b326ed2",
+      "text": "父评论",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-field",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "09fec677e3bec65f",
+      "text": "Cloudflare Turnstile",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "f78f2bc9c1035af9",
+      "text": "Turnstile",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "1257ac04471db97b",
+      "text": "Cap",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "c2fb4c34d47102c9",
+      "text": "最新在前",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "c7a4163933cfbf71",
+      "text": "最早在前",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "49609a1ee25da246",
+      "text": "最新评论",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "1c7232b6274083dd",
+      "text": "最早评论",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "11da9dc4428537c4",
+      "text": "必填",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "ebdcbdcf9c998d72",
+      "text": "选填",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "537352400c495fb8",
+      "text": "可选",
+      "channels": [
+        "placeholder"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "25dcebd656bbe8f5",
+      "text": "字符",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "0fb512e0efc5f0b1",
+      "text": "SSL/TLS",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "8487724bc34b8bc3",
+      "text": "STARTTLS",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "83f8b5ca069ad23e",
+      "text": "https://blog.example.com",
+      "channels": [
+        "placeholder"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "8b20846908096d0c",
+      "text": "https://static.example.com/smoji.json",
+      "channels": [
+        "placeholder"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "7d1881f10ed94462",
+      "text": "smtp.example.com",
+      "channels": [
+        "placeholder"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "ad3b83575249b68a",
+      "text": "465",
+      "channels": [
+        "placeholder"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "51aacad52a78f387",
+      "text": "https://cap.example.com",
+      "channels": [
+        "placeholder"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "a722353a12f7199d",
+      "text": "｜",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "6da43b944e494e88",
+      "text": "J",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "86be9a55762d316a",
+      "text": "K",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "c4694f2e93d5c4e7",
+      "text": "O",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "730ead39c4cd4aaa",
+      "text": "Del",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "8db71ed28b0f2f14",
+      "text": "×",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "domain-value",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "1dd0812b61b619c7",
+      "text": "确认您是真人",
+      "channels": [
+        "aria-label"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "af9ca65b163909f3",
+      "text": "点击进行真人验证",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "1e2df9c3075ae9e4",
+      "text": "登录",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "3ab8cc15939f3b5c",
+      "text": "退出登录",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "f09b5068ac3f12c8",
+      "text": "刷新评论",
+      "channels": [
+        "aria-label"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "5d707c0045f44bd2",
+      "text": "‹ 上一页",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "ea36ef28dfcd9674",
+      "text": "下一页 ›",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "4811df62b27db4f3",
+      "text": "新增站点",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "f4f0ead1116b5b62",
+      "text": "启用",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "3fd47edce45b3603",
+      "text": "关闭",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "8da97ddda990e7c4",
+      "text": "开启",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "f9ae1a31638daa35",
+      "text": "发送测试邮件",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "15041725283e7e92",
+      "text": "发送测试消息",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "991bb7cfe5a81550",
+      "text": "保存修改",
+      "channels": [
+        "aria-label"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "b5a929dae5ba9e62",
+      "text": "撤销修改",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "a3030bf8f16dc63c",
+      "text": "保存",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "fd4b9e3b6c685bae",
+      "text": "继续编辑",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "9b7824cefa1e8b16",
+      "text": "放弃修改",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "b8784c8dd5636ff2",
+      "text": "重试",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "ea1548e102b81350",
+      "text": "保存站点",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "99fbe3f191b1fc0c",
+      "text": "查看原评论",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "c6c37a353101de01",
+      "text": "墓碑删除",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "2cd0f3be8738a86c",
+      "text": "取消",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "d29c800ecbff7690",
+      "text": "条评论",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "state",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "d334724d6b2fa32e",
+      "text": "已发布",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "state",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "077a6d37719a0e21",
+      "text": "已删除",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "state",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "d5f5a7a010731feb",
+      "text": "今天",
+      "channels": [
+        "aria-label"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "state",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "0c184871f658375a",
+      "text": "昨天",
+      "channels": [
+        "aria-label"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "state",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "351d887e75e88d69",
+      "text": "未开启，不会发送任何邮件，包括访客回复通知。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "state",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "76f7edf09f79f6d5",
+      "text": "未开启。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "state",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "d1cd12c4dcb5b317",
+      "text": "不显示验证组件",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "state",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "c2277872cdcec9e0",
+      "text": "有未保存的修改",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "state",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "85e88cc4527e7440",
+      "text": "有 3 处需要修改",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "state",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "67e4ceb17b000b49",
+      "text": "有 2 处需要修改",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "state",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "8461ee20b0bfffc3",
+      "text": "站点 ID 格式无效",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "45ef4e8045bf7bcd",
+      "text": "站点 URL 格式无效",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "02853954fafe3b85",
+      "text": "站点名称不能超过 120 个字符",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "4964cb8dbec2aded",
+      "text": "允许来源格式无效",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "b2f89ba41c06e77f",
+      "text": "评论占位文案需为 1 至 80 个字符",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "baeb138b75a3c1cc",
+      "text": "评论长度上限需为 1 至 10000",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "bdd86fed562a92a9",
+      "text": "无评论文案需为 1 至 240 个字符",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "ff43e9fa57a14de8",
+      "text": "清单 URL 无效；生产环境需使用 HTTPS",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "0ed6452f8fd67c47",
+      "text": "博主昵称不能超过 80 个字符",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "29a0549d350f9905",
+      "text": "博主邮箱格式无效",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "0b345ad5925ac8c1",
+      "text": "博主昵称与邮箱需同时填写",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "2c6b3712c141d961",
+      "text": "启用博主身份时必须设置口令",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "054a0b95245be08f",
+      "text": "评论区标志不能超过 16 个字符",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "d780c72c364d00b3",
+      "text": "SMTP 服务器无效",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "cc7fcd5fae4acbbf",
+      "text": "端口无效",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "fc48cd29e8816f7a",
+      "text": "密码为空",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "b2ddd42eeb53c7aa",
+      "text": "发件人地址格式错误",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "fc1b83bab33ca8b2",
+      "text": "Bot Token 为空",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "3292a0b9f61b8d05",
+      "text": "Sitekey 不能为空",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "a1fb048527b04ec9",
+      "text": "Secret key 不能为空",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "3d1ee94c87b79df0",
+      "text": "请输入有效的 HTTPS 实例地址",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "69a73ec0d285da15",
+      "text": "Site key 不能为空",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "a3b2a29ab5b1415e",
+      "text": "邮箱格式错误",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "6f88b60a04043f75",
+      "text": "接收目标 ID 格式错误",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "30cfd17a6b8f9b6a",
+      "text": "退出失败，请重试。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "error",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "1b59adeb8b2b9990",
+      "text": "评论列表没有加载出来",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "error",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "5276a945542c58a0",
+      "text": "无法连接到 Ecoku，请检查网络后重试。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "error",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "dded3fba072c9727",
+      "text": "正在加载评论…",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "progress",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "dc94b0d440fab5bd",
+      "text": "当前实例还没有站点。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "empty-state",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "01aeaa37eedefb79",
+      "text": "放弃未保存的修改？",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "confirmation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "90069544fad46263",
+      "text": "离开后，本页的修改不会保存。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "confirmation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "e604da482264987a",
+      "text": "墓碑删除这条评论？",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "confirmation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "d7ac81883de1eb8f",
+      "text": "昵称、私有邮箱、网站和正文会被清除，公开页面改为显示“已删除”，下面的回复保留不变。此操作无法撤销。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "confirmation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "a25b05ecb6657f5d",
+      "text": "评论排序：最新在前",
+      "channels": [
+        "aria-label"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "000bc73d973b52b8",
+      "text": "刷新评论（R）",
+      "channels": [
+        "title"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "bd1ec7c6622da4ea",
+      "text": "上下条",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "8d79edfdb25be8be",
+      "text": "原评论",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "2f9daa828907b93f",
+      "text": "删除",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "0c149472a4d2f57e",
+      "text": "每个接入评论区的网站对应一个站点。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "79e3b6dc3c39ff4c",
+      "text": "站点 ID 写在接入代码里，站点 URL 用于拼出文章链接。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "4d89fc2e1d8356f9",
+      "text": "对应接入代码中的",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "96c12f2ad0397b86",
+      "text": "，创建后不能修改。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "4c6b91fcdca28b89",
+      "text": "「查看原评论」和通知中的文章链接由它加上页面 key 拼成。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "d4831760d5ff06f3",
+      "text": "留空时使用站点 URL 的域名。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "2085a152cb4160ed",
+      "text": "每行一个完整来源，例如",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "f11d26c30006d313",
+      "text": "；最多 32 个。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "78486474c81cbf15",
+      "text": "访客在评论区看到的默认行为与文案。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "5fabd6c70dcad637",
+      "text": "访客可以在评论区临时切换。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "6234fe91722a07d7",
+      "text": "昵称始终必填。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "9ca1f07ca2d93ad7",
+      "text": "1–10000。中文、日文、韩文与其他 Unicode 字符均按一个字符计数。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "fba309ee374f2a9a",
+      "text": "还没有评论时显示，可以换行。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "eb476d6256ca3f6e",
+      "text": "表情图片由清单所在的服务器直接提供，可能向该站点暴露访客 IP 等请求信息。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "ebf5cff1d26ae522",
+      "text": "HTTPS 地址，图片须与清单同源。关闭表情包时可以保留此地址。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "7e13d593633098e4",
+      "text": "在评论区昵称栏输入口令即可以博主身份发言。昵称与邮箱需同时填写或同时留空。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "eca221645559acc6",
+      "text": "公开显示，并链接到站点 URL。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "07bd881b5eb9437e",
+      "text": "仅用于通知去重与历史评论回填，不会公开。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "921a64f5ebf48dc8",
+      "text": "12–80 个字符，UTF-8 编码不超过 72 字节。保存后不再显示，已设置时留空表示不更改。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "98e25f2a7a3572ca",
+      "text": "显示在博主昵称之后，例如 [博主] 或 [OP]。留空则不显示。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "582a5f63fca0e6e9",
+      "text": "对所有站点生效，保存后立即使用新配置。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "46fac52d34529b4f",
+      "text": "有新评论时发给通知收件人；访客留了邮箱时，他的评论被别人回复也会收到邮件。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "18abdb0d85dfb41c",
+      "text": "已设置，输入新值以更换",
+      "channels": [
+        "placeholder"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "759d802af76e0037",
+      "text": "按 Enter、逗号或换行添加多个邮箱",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "9bf74abce2945343",
+      "text": "有新评论时由机器人发到下列用户、群组或频道。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "001a695cb003784c",
+      "text": "通过 @BotFather 获取。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "a8111eda80254893",
+      "text": "按 Enter、逗号或换行添加；支持用户、群组、频道 ID，如 123456789 或 -1001234567890",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "e59c1f6353c2f0b2",
+      "text": "人机验证对整个实例生效，同时用于访客评论和管理员登录，不按站点分开。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "39698cb79c51199e",
+      "text": "三种方式互斥，切换后保存才会生效。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "ab175c3a1e00ceae",
+      "text": "由 Cloudflare 托管的验证",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "5d4d4976b7bae19b",
+      "text": "连接自托管的 Cap 实例",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "12758bcc58909bee",
+      "text": "关闭后，访客评论和管理员登录都不再要求额外验证；现有限流仍然生效。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    },
+    {
+      "id": "0013cb3fe454be90",
+      "text": "自托管 Cap 的 HTTPS 地址，不带查询参数。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v15.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v15.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v15.html / prototype-v15.js",
+        "reference": "Approved asset metadata and rendered DOM capture."
+      },
+      "flags": []
+    }
+  ]
+}

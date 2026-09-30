@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "project": {
     "name": "Ecoku admin",
     "slug": "admin-moderation",
@@ -107,12 +107,15 @@
           "tombstone-with-replies-hint",
           "confirm-names-target",
           "keyboard-queue-navigation"
-        ]
+        ],
+        "assetPath": "index-v13.html",
+        "files": [],
+        "stableIds": []
       },
       "production": {
         "routeOrWindow": "/admin/",
         "status": "implemented",
-        "referenceFiles": [
+        "files": [
           "packages/admin/index.html",
           "packages/admin/src/style.css",
           "packages/admin/src/App.vue",
@@ -121,9 +124,14 @@
           "packages/admin/src/stores/admin.ts",
           "server/handle/admin/deletion.go",
           "packages/admin/src/components/AdminIcon.vue"
+        ],
+        "interfaces": [],
+        "tests": [
+          "packages/admin/src/admin.test.ts"
         ]
       },
-      "status": "implemented"
+      "status": "implemented",
+      "contentProfile": "operational-strict"
     },
     {
       "id": "admin-site-management",
@@ -148,12 +156,15 @@
           "sticky-save-bar",
           "error-count-summary",
           "system-sans-stack"
-        ]
+        ],
+        "assetPath": "index-v13.html",
+        "files": [],
+        "stableIds": []
       },
       "production": {
         "routeOrWindow": "/admin/",
         "status": "implemented",
-        "referenceFiles": [
+        "files": [
           "packages/admin/index.html",
           "packages/admin/src/style.css",
           "packages/admin/src/components/SiteManagementView.vue",
@@ -163,9 +174,14 @@
           "server/model/site.go",
           "server/model/migrations.go",
           "server/notifications/outbox.go"
+        ],
+        "interfaces": [],
+        "tests": [
+          "packages/admin/src/admin.test.ts"
         ]
       },
-      "status": "implemented"
+      "status": "implemented",
+      "contentProfile": "operational-strict"
     },
     {
       "id": "admin-security-captcha",
@@ -180,12 +196,15 @@
           "theme-light",
           "theme-dark",
           "provider-tiles"
-        ]
+        ],
+        "assetPath": "index-v13.html",
+        "files": [],
+        "stableIds": []
       },
       "production": {
         "routeOrWindow": "/admin/",
         "status": "implemented",
-        "referenceFiles": [
+        "files": [
           "packages/admin/src/App.vue",
           "packages/admin/src/style.css",
           "packages/admin/src/components/SecurityView.vue",
@@ -193,9 +212,14 @@
           "packages/admin/src/stores/admin.ts",
           "server/handle/admin/turnstile.go",
           "server/captcha/settings.go"
+        ],
+        "interfaces": [],
+        "tests": [
+          "packages/admin/src/admin.test.ts"
         ]
       },
-      "status": "implemented"
+      "status": "implemented",
+      "contentProfile": "operational-strict"
     },
     {
       "id": "admin-login-captcha",
@@ -209,12 +233,15 @@
           "login-cap-solved",
           "login-cap-failed",
           "login-card"
-        ]
+        ],
+        "assetPath": "index-v13.html",
+        "files": [],
+        "stableIds": []
       },
       "production": {
         "routeOrWindow": "/admin/",
         "status": "implemented",
-        "referenceFiles": [
+        "files": [
           "packages/admin/src/App.vue",
           "packages/admin/src/style.css",
           "packages/admin/src/api.ts",
@@ -223,9 +250,14 @@
           "packages/admin/src/turnstile.ts",
           "server/handle/admin/auth.go",
           "server/captcha/verify.go"
+        ],
+        "interfaces": [],
+        "tests": [
+          "packages/admin/src/admin.test.ts"
         ]
       },
-      "status": "implemented"
+      "status": "implemented",
+      "contentProfile": "operational-strict"
     },
     {
       "id": "admin-notification-settings",
@@ -242,12 +274,15 @@
           "encryption-segmented",
           "collapsed-disabled-channel",
           "save-to-disable-hint"
-        ]
+        ],
+        "assetPath": "index-v13.html",
+        "files": [],
+        "stableIds": []
       },
       "production": {
         "routeOrWindow": "/admin/",
         "status": "implemented",
-        "referenceFiles": [
+        "files": [
           "packages/admin/index.html",
           "packages/admin/src/style.css",
           "packages/admin/src/components/NotificationSettingsView.vue",
@@ -255,9 +290,14 @@
           "server/handle/admin/notifications.go",
           "server/notifications/settings.go",
           "server/notifications/outbox.go"
+        ],
+        "interfaces": [],
+        "tests": [
+          "packages/admin/src/admin.test.ts"
         ]
       },
-      "status": "implemented"
+      "status": "implemented",
+      "contentProfile": "operational-strict"
     },
     {
       "id": "notification-templates",
@@ -279,19 +319,110 @@
           "dark-mode",
           "narrow-viewport",
           "safe-escaped-content"
-        ]
+        ],
+        "assetPath": "email-notification-v6.html",
+        "files": [],
+        "stableIds": []
       },
       "production": {
         "routeOrWindow": "internal outbound notifications only; no /admin/templates/* route",
         "status": "implemented",
-        "referenceFiles": [
+        "files": [
           "server/notifications/email_layout.go",
           "server/notifications/templates.go",
           "server/notifications/delivery.go",
           "server/notifications/outbox.go"
+        ],
+        "interfaces": [],
+        "tests": [
+          "packages/admin/src/admin.test.ts"
         ]
       },
-      "status": "implemented"
+      "status": "implemented",
+      "contentProfile": "operational-strict"
+    },
+    {
+      "id": "admin-v15-workspace",
+      "contentProfile": "operational-strict",
+      "prototype": {
+        "entry": "index-v15.html",
+        "assetPath": "index-v15.html",
+        "files": [
+          "index-v15.html",
+          "styles-v15.css",
+          "prototype-v15.js"
+        ],
+        "states": [
+          "login-off",
+          "login-turnstile",
+          "login-cap",
+          "session-expired",
+          "comments",
+          "comments-deleted",
+          "comments-loading",
+          "comments-error",
+          "comments-empty",
+          "comments-no-sites",
+          "confirm-tombstone",
+          "confirm-permanent",
+          "sites",
+          "sites-create",
+          "sites-errors",
+          "sites-discard",
+          "notifications",
+          "notifications-off",
+          "notifications-errors",
+          "security-cap",
+          "security-turnstile",
+          "security-off",
+          "mobile-navigation",
+          "keyboard-navigation"
+        ],
+        "stableIds": [
+          "view-comments",
+          "view-sites",
+          "view-notifications",
+          "view-security",
+          "confirm-dialog"
+        ]
+      },
+      "production": {
+        "routeOrWindow": "/admin/",
+        "status": "planned",
+        "files": [
+          "packages/admin/src/App.vue",
+          "packages/admin/src/style.css",
+          "packages/admin/src/components/CommentManagementView.vue",
+          "packages/admin/src/components/SiteManagementView.vue",
+          "packages/admin/src/components/NotificationSettingsView.vue",
+          "packages/admin/src/components/SecurityView.vue",
+          "packages/admin/src/stores/admin.ts"
+        ],
+        "interfaces": [
+          "adminApi.listComments",
+          "adminApi.tombstone",
+          "adminApi.permanentlyDelete",
+          "adminApi.createSite",
+          "adminApi.updateSite",
+          "adminApi.saveEmail",
+          "adminApi.saveTelegram",
+          "adminApi.saveCaptcha"
+        ],
+        "tests": [
+          "packages/admin/src/admin.test.ts",
+          "designs/admin-moderation/index-v15.test.mjs"
+        ]
+      },
+      "status": "approved"
     }
-  ]
+  ],
+  "content": {
+    "defaultProfile": "operational-strict",
+    "inventory": "content-inventory.json",
+    "approvedCopySources": [
+      "index-v15.html",
+      "prototype-v15.js"
+    ]
+  },
+  "designSources": "design-sources.json"
 }
