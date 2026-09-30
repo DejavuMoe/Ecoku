@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Ecoku 品牌标识 · v1 待审</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <style>
+    :root {
+      --paper: #f7f4ee; --surface: #fbf9f5; --ink: #1e1c19; --ink-soft: #35312b; --muted: #6b655b;
+      --line: #cbc3b5; --line-soft: rgb(30 28 25 / 0.12); --wash: #efebe3; --code-bg: #ece7de;
+      --seal: #b8472f; --seal-glyph: #fbf6ee;
+      --accent: color-mix(in oklab, #c8553a 75%, var(--ink));
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", "Noto Sans SC", "Helvetica Neue", Arial, sans-serif;
+      --mono: ui-monospace, "SF Mono", "Cascadia Mono", "Cascadia Code", Menlo, Consolas, "Roboto Mono", monospace;
+      --wordmark: Georgia, "Times New Roman", serif;
+      color-scheme: light dark;
+    }
+    html[data-theme="dark"] { --paper: #1a1816; --surface: #211f1c; --ink: #eee8dd; --ink-soft: #d3ccbf; --muted: #a29a8c; --line: #4b453d; --line-soft: rgb(238 232 221 / 0.12); --wash: #26231f; --code-bg: #2a2723; --seal: #cf5e43; color-scheme: dark; }
+    @media (prefers-color-scheme: dark) { html[data-theme="auto"] { --paper: #1a1816; --surface: #211f1c; --ink: #eee8dd; --ink-soft: #d3ccbf; --muted: #a29a8c; --line: #4b453d; --line-soft: rgb(238 232 221 / 0.12); --wash: #26231f; --code-bg: #2a2723; --seal: #cf5e43; } }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--paper); font: 14px/1.65 var(--sans); -webkit-font-smoothing: antialiased; }
+    h1, h2, h3, p { margin: 0; }
+    .sheet { width: min(100% - 48px, 1120px); margin: 0 auto; padding: 56px 0 96px; }
+    .eyebrow { color: var(--muted); font-size: 12px; letter-spacing: 0.08em; }
+    section { padding: 40px 0; border-top: 1px solid var(--line-soft); }
+    section > header { display: grid; gap: 4px; margin-bottom: 24px; }
+    section > header h2 { font-size: 17px; font-weight: 600; }
+    section > header p { max-width: 64ch; color: var(--muted); font-size: 13px; }
+
+    /* the mark, drawn once and reused */
+    /* <use> clones the symbol into a shadow tree, so colours travel in as inherited custom properties. */
+    .mark { display: block; flex: 0 0 auto; }
+    .seal { fill: var(--m-fill, var(--seal)); stroke: var(--m-stroke, none); stroke-width: 1.2; stroke-dasharray: var(--m-dash, none); }
+    .glyph { fill: var(--m-glyph, var(--seal-glyph)); stroke: var(--m-glyph-stroke, none); stroke-width: 1; }
+    .mark.is-ink { --m-fill: var(--ink); --m-glyph: var(--paper); }
+    .lockup { display: inline-flex; align-items: center; gap: 0.42em; color: var(--ink); font-family: var(--wordmark); font-weight: 700; letter-spacing: 0.005em; line-height: 1; }
+    .lockup .mark { width: 1.18em; height: 1.18em; }
+
+    .hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 48px; padding-bottom: 48px; }
+    .hero-art { display: grid; aspect-ratio: 4 / 3; place-items: center; border: 1px solid var(--line-soft); border-radius: 6px; background: var(--surface); }
+    .hero-art .mark { width: 38%; height: auto; }
+    .hero h1 { margin-top: 10px; font-family: var(--wordmark); font-size: 44px; font-weight: 700; line-height: 1.1; }
+    .hero p { margin-top: 16px; max-width: 46ch; color: var(--ink-soft); font-size: 15px; line-height: 1.8; }
+    .hero .meta { margin-top: 20px; color: var(--muted); font-size: 12.5px; }
+
+    .anatomy { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .card { display: grid; align-content: start; gap: 14px; padding: 20px; border: 1px solid var(--line-soft); border-radius: 6px; background: var(--surface); }
+    .card h3 { font-size: 14px; font-weight: 600; }
+    .card p { color: var(--muted); font-size: 12.5px; }
+    .card .stage { display: grid; height: 132px; place-items: center; border-radius: 3px; background: var(--paper); }
+    .ghost { --m-fill: none; --m-stroke: var(--line); --m-dash: 3 3; --m-glyph: var(--line); }
+    .only-seal { --m-glyph: transparent; }
+    .only-glyph { --m-fill: none; --m-stroke: var(--line); --m-dash: 3 3; --m-glyph: var(--ink); }
+    .ghost { --m-glyph: none; --m-glyph-stroke: var(--line); }
+    .guide { stroke: var(--accent); stroke-width: 0.6; stroke-dasharray: 2 2; fill: none; }
+
+    .sizes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .size-row { display: flex; align-items: flex-end; gap: 28px; padding: 24px; border: 1px solid var(--line-soft); border-radius: 6px; }
+    .size-row.is-light { --paper: #f7f4ee; --ink: #1e1c19; --muted: #6b655b; --seal: #b8472f; color: #1e1c19; background: #f7f4ee; }
+    .size-row.is-dark { --paper: #1a1816; --ink: #eee8dd; --muted: #a29a8c; --seal: #cf5e43; color: #eee8dd; background: #1a1816; border-color: #3a352f; }
+    .size-cell { display: grid; justify-items: center; gap: 8px; color: var(--muted); font: 11px var(--mono); }
+
+    .lockups { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 16px; }
+    .lockups .stage { height: 160px; }
+    .stacked { display: grid; justify-items: center; gap: 12px; font-family: var(--wordmark); font-size: 22px; font-weight: 700; }
+    .stacked .mark { width: 48px; height: 48px; }
+
+    .apps { display: grid; gap: 16px; }
+    .frame { overflow: hidden; border: 1px solid var(--line-soft); border-radius: 6px; background: var(--paper); }
+    .frame-label { padding: 8px 14px; border-bottom: 1px solid var(--line-soft); color: var(--muted); font-size: 12px; background: var(--surface); }
+
+    .admin-head { display: flex; height: 56px; align-items: center; gap: 28px; padding: 0 24px; border-bottom: 1px solid var(--line-soft); background: var(--paper); }
+    .admin-head .lockup { font-size: 18px; }
+    .admin-head nav { display: flex; height: 100%; gap: 2px; }
+    .admin-head nav span { position: relative; display: inline-flex; align-items: center; padding: 0 12px; color: var(--muted); font-size: 14px; }
+    .admin-head nav span.on { color: var(--ink); font-weight: 600; }
+    .admin-head nav span.on::after { position: absolute; right: 12px; bottom: -1px; left: 12px; height: 2px; background: var(--ink); content: ""; }
+    .admin-head .end { margin-left: auto; color: var(--muted); font-size: 13px; }
+
+    .tabs { display: flex; gap: 0; padding: 8px 8px 0; background: #dedad2; }
+    .tab { display: inline-flex; width: 220px; height: 34px; align-items: center; gap: 8px; padding: 0 12px; border-radius: 8px 8px 0 0; color: #3a352f; font-size: 12px; }
+    .tab.on { background: #f7f4ee; }
+    .tab img { width: 16px; height: 16px; }
+    .tabs.is-dark { background: #0f0e0d; }
+    .tabs.is-dark .tab { color: #d3ccbf; }
+    .tabs.is-dark .tab.on { background: #26231f; }
+    .tab-body { height: 18px; background: #f7f4ee; }
+    .tabs.is-dark + .tab-body { background: #26231f; }
+
+    .docs { --vp-bg: var(--paper); }
+    .docs-nav { display: flex; height: 60px; align-items: center; gap: 24px; padding: 0 32px; border-bottom: 1px solid var(--line-soft); }
+    .docs-nav .lockup { font-size: 18px; }
+    .docs-nav .search { width: 200px; height: 34px; margin-left: 16px; padding: 0 12px; border-radius: 8px; color: var(--muted); background: var(--wash); font-size: 12.5px; line-height: 34px; }
+    .docs-nav .links { display: flex; margin-left: auto; gap: 22px; color: var(--ink-soft); font-size: 13.5px; }
+    .docs-hero { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: center; gap: 40px; padding: 56px 64px 64px; }
+    .docs-hero h3 { font-family: var(--wordmark); font-size: 52px; font-weight: 700; line-height: 1.05; }
+    .docs-hero h3 em { color: var(--accent); font-style: normal; }
+    .docs-hero p { margin-top: 14px; color: var(--ink-soft); font-size: 20px; line-height: 1.5; }
+    .docs-hero .actions { display: flex; gap: 12px; margin-top: 28px; }
+    .docs-hero .btn { display: inline-flex; height: 40px; align-items: center; padding: 0 20px; border-radius: 20px; font-size: 14px; font-weight: 600; }
+    .docs-hero .btn.primary { color: var(--paper); background: var(--ink); }
+    .docs-hero .btn.alt { color: var(--ink); background: var(--wash); }
+    .docs-hero .art { display: grid; place-items: center; }
+    .docs-hero .art .mark { width: min(100%, 220px); height: auto; }
+    .docs-link { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+
+    .tokens { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .swatch { overflow: hidden; border: 1px solid var(--line-soft); border-radius: 6px; background: var(--surface); }
+    .swatch i { display: block; height: 64px; }
+    .swatch div { display: grid; padding: 10px 12px; font-size: 12.5px; }
+    .swatch code { color: var(--muted); font: 11.5px var(--mono); }
+
+    .rules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 32px; margin: 0; padding: 0; list-style: none; }
+    .rules li { padding: 12px 0; border-bottom: 1px solid var(--line-soft); font-size: 13.5px; }
+    .rules strong { display: block; margin-bottom: 2px; font-weight: 600; }
+    .rules span { color: var(--muted); font-size: 12.5px; }
+    .files { font: 12.5px/1.9 var(--mono); color: var(--ink-soft); }
+
+    .theme-switch { position: fixed; right: 16px; bottom: 16px; display: grid; gap: 4px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 6px; background: var(--surface); font-size: 12px; }
+    .theme-switch select { height: 28px; border: 1px solid var(--line); border-radius: 3px; background: var(--paper); color: var(--ink); font: inherit; }
+
+    @media (max-width: 900px) {
+      .hero, .docs-hero { grid-template-columns: minmax(0, 1fr); }
+      .anatomy, .lockups, .sizes, .tokens, .rules { grid-template-columns: minmax(0, 1fr); }
+      .docs-hero { padding: 36px 24px; }
+      .docs-nav .search, .docs-nav .links { display: none; }
+      .admin-head nav span:not(.on) { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="ecoku-mark" viewBox="0 0 64 64">
+      <path class="seal" d="M18 6h28a12 12 0 0 1 12 12v22a12 12 0 0 1-12 12H30l-11.4 7.4c-1.8 1.2-3.8-.3-3.3-2.3L17.6 52A12 12 0 0 1 6 40V18A12 12 0 0 1 18 6Z"/>
+      <path class="glyph" d="M19 15h24l.5 8H42c-.6-2.6-2.3-3.5-6-3.5h-7V27h5c2 0 2.8-.9 3.2-2.5h1.3v9h-1.3c-.4-1.6-1.2-2.5-3.2-2.5h-5v7.5h8c3.5 0 5-1.3 5.8-4h1.5l-.5 8.5H19v-2h4V17h-4Z"/>
+    </symbol>
+  </svg>
+
+  <main class="sheet">
+    <div class="hero">
+      <div>
+        <p class="eyebrow">ECOKU 品牌标识 · v1 待审</p>
+        <h1>一方朱印，<br>一个 E。</h1>
+        <p>标志是一枚朱砂色的印章，外形是一个带尾巴的评论气泡。印面阴刻一个衬线 E，粗竖细横、笔端带喙形衬线，和 Georgia 字标是同一种字形。纸墨界面里只保留这一处颜色，就像书画上落款的那方印。</p>
+        <p class="meta">朱砂 <code>#b8472f</code> · 刻字 <code>#fbf6ee</code> · 字标 Georgia Bold · 不加载网络字体</p>
+      </div>
+      <div class="hero-art"><svg class="mark" viewBox="0 0 64 64" aria-label="Ecoku 标志"><use href="#ecoku-mark"/></svg></div>
+    </div>
+
+    <section>
+      <header><h2>构成</h2><p>三层意思共用一个轮廓：去掉任何一层，另外两层仍然成立。</p></header>
+      <div class="anatomy">
+        <div class="card">
+          <div class="stage"><svg class="mark only-seal" width="88" height="88" viewBox="0 0 64 64"><use href="#ecoku-mark"/></svg></div>
+          <h3>印</h3><p>12 / 64 的圆角延续界面 6px 圆角的比例。朱砂取自评论区 v17 的强调色，比界面危险色略亮，作为唯一的品牌色。</p>
+        </div>
+        <div class="card">
+          <div class="stage"><svg class="mark ghost" width="88" height="88" viewBox="0 0 64 64"><use href="#ecoku-mark"/><path class="guide" d="M30 52 18.6 59.4M17.6 52 16.4 58"/></svg></div>
+          <h3>评论</h3><p>尾巴从左下角伸出，像回复的引线。尾巴不超过印面宽度的四分之一，缩到 16px 仍能认出是气泡。</p>
+        </div>
+        <div class="card">
+          <div class="stage"><svg class="mark only-glyph" width="88" height="88" viewBox="0 0 64 64"><use href="#ecoku-mark"/><path class="guide" d="M8 15h48M8 43h48M23 8v48M29 8v48"/></svg></div>
+          <h3>衬线 E</h3><p>竖干 6、横笔 4～4.5，右端喙形衬线向内收，左侧上下各出一段衬线。横笔之间留白大于笔画，缩到 16px 仍能看清三横。</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <header><h2>尺寸</h2><p>16px 与 32px 使用 <code>favicon.svg</code>：同一图形放大到几乎贴边，并随系统深色模式提亮印面；其余尺寸使用 <code>ecoku-mark.svg</code>。</p></header>
+      <div class="sizes">
+        <div class="size-row is-light">
+          <div class="size-cell"><svg class="mark" width="96" height="96" viewBox="0 0 64 64"><use href="#ecoku-mark"/></svg>96</div>
+          <div class="size-cell"><svg class="mark" width="48" height="48" viewBox="0 0 64 64"><use href="#ecoku-mark"/></svg>48</div>
+          <div class="size-cell"><img src="favicon.svg" width="32" height="32" alt="">32</div>
+          <div class="size-cell"><svg class="mark" width="22" height="22" viewBox="0 0 64 64"><use href="#ecoku-mark"/></svg>22</div>
+          <div class="size-cell"><img src="favicon.svg" width="16" height="16" alt="">16</div>
+        </div>
+        <div class="size-row is-dark">
+          <div class="size-cell"><svg class="mark" width="96" height="96" viewBox="0 0 64 64"><use href="#ecoku-mark"/></svg>96</div>
+          <div class="size-cell"><svg class="mark" width="48" height="48" viewBox="0 0 64 64"><use href="#ecoku-mark"/></svg>48</div>
+          <div class="size-cell"><img src="favicon.svg" width="32" height="32" alt="">32</div>
+          <div class="size-cell"><svg class="mark" width="22" height="22" viewBox="0 0 64 64"><use href="#ecoku-mark"/></svg>22</div>
+          <div class="size-cell"><img src="favicon.svg" width="16" height="16" alt="">16</div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <header><h2>组合</h2><p>横排用于后台页头与文档导航；竖排用于登录页；单色墨版用于只能印一种颜色的地方（例如邮件页脚、打印）。</p></header>
+      <div class="lockups">
+        <div class="card"><div class="stage"><span class="lockup" style="font-size: 34px"><svg class="mark" viewBox="0 0 64 64"><use href="#ecoku-mark"/></svg>Ecoku</span></div><h3>横排</h3><p>标志高度为字标大写高度的 1.18 倍，间距 0.42em，标志与 E 顶端齐平。</p></div>
+        <div class="card"><div class="stage"><span class="stacked"><svg class="mark" viewBox="0 0 64 64"><use href="#ecoku-mark"/></svg>Ecoku</span></div><h3>竖排</h3><p>登录页卡片上方居中。</p></div>
+        <div class="card"><div class="stage"><span class="lockup" style="font-size: 28px"><svg class="mark is-ink" viewBox="0 0 64 64"><use href="#ecoku-mark"/></svg>Ecoku</span></div><h3>单色墨版</h3><p>印面用墨色，刻字用纸色。</p></div>
+      </div>
+    </section>
+
+    <section>
+      <header><h2>应用</h2><p>后台与文档共用同一枚标志与字标。文档站配色从青绿改为纸墨：背景用纸色，主按钮用墨色，链接与强调用朱砂。</p></header>
+      <div class="apps">
+        <div class="frame">
+          <p class="frame-label">浏览器标签页（favicon.svg 随系统明暗切换印面亮度）</p>
+          <div class="tabs"><span class="tab on"><img src="favicon.svg" alt="">Ecoku 评论管理</span><span class="tab"><img src="favicon.svg" alt="">Ecoku 文档</span></div>
+          <div class="tab-body"></div>
+          <div class="tabs is-dark"><span class="tab on"><img src="favicon.svg" alt="">Ecoku 评论管理</span><span class="tab"><img src="favicon.svg" alt="">Ecoku 文档</span></div>
+          <div class="tab-body"></div>
+        </div>
+
+        <div class="frame">
+          <p class="frame-label">管理后台页头</p>
+          <div class="admin-head">
+            <span class="lockup"><svg class="mark" viewBox="0 0 64 64"><use href="#ecoku-mark"/></svg>Ecoku</span>
+            <nav><span class="on">评论管理</span><span>站点管理</span><span>通知设置</span><span>安全</span></nav>
+            <span class="end">退出登录</span>
+          </div>
+        </div>
+
+        <div class="frame docs">
+          <p class="frame-label">文档站导航与首页（配色提案）</p>
+          <div class="docs-nav">
+            <span class="lockup"><svg class="mark" viewBox="0 0 64 64"><use href="#ecoku-mark"/></svg>Ecoku</span>
+            <span class="search">搜索文档</span>
+            <span class="links"><span>指南</span><span>自托管</span><span>接入</span><span>参考</span><span>简体中文</span></span>
+          </div>
+          <div class="docs-hero">
+            <div>
+              <h3>Ecoku</h3>
+              <p>自托管的纯文本评论系统。<br>一个 SQLite 文件，多个站点。</p>
+              <div class="actions"><span class="btn primary">开始部署</span><span class="btn alt">接入博客</span></div>
+              <p style="margin-top: 22px; font-size: 14px">正文链接示例：<span class="docs-link">配置 trusted_proxies</span></p>
+            </div>
+            <div class="art"><svg class="mark" viewBox="0 0 64 64"><use href="#ecoku-mark"/></svg></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <header><h2>色值</h2><p>印面在深色背景上提亮一级，刻字始终是纸色，这样印章在两种模式下都“盖在纸上”。</p></header>
+      <div class="tokens">
+        <div class="swatch"><i style="background: #b8472f"></i><div>朱砂（浅色）<code>#b8472f</code></div></div>
+        <div class="swatch"><i style="background: #cf5e43"></i><div>朱砂（深色）<code>#cf5e43</code></div></div>
+        <div class="swatch"><i style="background: #fbf6ee"></i><div>刻字<code>#fbf6ee</code></div></div>
+        <div class="swatch"><i style="background: var(--ink)"></i><div>墨（字标）<code>--ink</code></div></div>
+      </div>
+    </section>
+
+    <section>
+      <header><h2>用法</h2></header>
+      <ul class="rules">
+        <li><strong>留白</strong><span>四周至少留出标志宽度的 1/4。</span></li>
+        <li><strong>最小尺寸</strong><span>16px；小于 24px 时使用 favicon.svg。</span></li>
+        <li><strong>不改颜色</strong><span>只有朱砂版和单色墨版两种；不加渐变、描边、阴影。</span></li>
+        <li><strong>不拆字标</strong><span>“Ecoku” 始终用 Georgia Bold，首字母大写，不加副标题。</span></li>
+        <li><strong>界面里只出现一次</strong><span>每个页面最多一枚彩色标志，朱砂不用于按钮或装饰。</span></li>
+        <li><strong>邮件模板</strong><span>已批准的 v6 邮件只用 Georgia 字标，本稿不改动邮件。</span></li>
+      </ul>
+    </section>
+
+    <section>
+      <header><h2>文件</h2><p>批准后按下列映射进入生产；PNG 在构建时由 SVG 导出，不手工维护。</p></header>
+      <div class="files">
+        designs/brand/ecoku-mark.svg → docs/public/logo.svg<br>
+        designs/brand/favicon.svg → docs/public/favicon.svg、packages/admin/public/favicon.svg<br>
+        designs/brand/app-icon.svg → apple-touch-icon.png（180×180）<br>
+        designs/brand/ecoku-mark-mono.svg → 单色场景备用
+      </div>
+    </section>
+  </main>
+
+  <aside class="theme-switch" data-prototype-only="true">
+    <label for="theme">配色预览</label>
+    <select id="theme" onchange="document.documentElement.dataset.theme = this.value">
+      <option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option>
+    </select>
+  </aside>
+</body>
+</html>

@@ -1,0 +1,33 @@
+{
+  "type": "design",
+  "designSystems": [],
+  "primaryDesignSystem": null,
+  "assets": {
+    "Ecoku brand mark": {
+      "versions": [
+        {
+          "path": "index-v1.html",
+          "createdAt": "2026-09-30T00:00:00.000Z",
+          "status": "rejected",
+          "subtitle": "Rejected: vermilion seal speech bubble with an incised serif E; read as a plain letter E",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          }
+        },
+        {
+          "path": "index-v2.html",
+          "createdAt": "2026-09-30T00:00:00.000Z",
+          "status": "approved",
+          "subtitle": "Approved: the character 區 carved as a white-text vermilion seal, open-right enclosure echoing the comment surface brackets; favicon, mono, app icon and lockups",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          }
+        }
+      ]
+    }
+  },
+  "createdAt": "2026-09-30T00:00:00.000Z",
+  "updatedAt": "2026-09-30T00:00:00.000Z"
+}

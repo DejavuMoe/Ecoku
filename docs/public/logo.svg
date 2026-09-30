@@ -1,33 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <!-- App-tile plate (matches prior nav logo presence) -->
-  <rect width="64" height="64" rx="14" fill="#0f766e"/>
-
-  <!-- Soft pedestal -->
-  <ellipse cx="28" cy="52" rx="14" ry="3.2" fill="#042f2e" opacity="0.35"/>
-
-  <!-- Database -->
-  <path d="M17 15c0-4.6 4.9-8.2 11-8.2s11 3.6 11 8.2v24.5c0 4.6-4.9 8.2-11 8.2s-11-3.6-11-8.2V15z" fill="#115e59"/>
-  <ellipse cx="28" cy="15" rx="11" ry="8.2" fill="#2dd4bf"/>
-  <!-- Yellow bands -->
-  <path d="M17 25.5c1.3 3 5.5 5.1 11 5.1s9.7-2.1 11-5.1" stroke="#facc15" stroke-width="2" stroke-linecap="round"/>
-  <path d="M17 35.5c1.3 3 5.5 5.1 11 5.1s9.7-2.1 11-5.1" stroke="#facc15" stroke-width="2" stroke-linecap="round"/>
-  <circle cx="28" cy="21" r="1.5" fill="#fde047"/>
-  <circle cx="28" cy="31" r="1.5" fill="#fde047"/>
-  <circle cx="28" cy="41" r="1.5" fill="#fde047"/>
-
-  <!-- Leaves — bottom-left only, clear silhouette -->
-  <path d="M9 48c0-7.5 4.8-12.8 11.5-14.2-1.8 6.5-5.5 11.2-11.5 14.2z" fill="#a3e635"/>
-  <path d="M10.2 46.5c2.8-4 6-6.8 9.8-8.5" stroke="#ecfccb" stroke-width="1.2" stroke-linecap="round"/>
-  <path d="M12.5 50c.2-6 4.2-10.2 9.2-11.5-1.5 5.2-4.5 9-9.2 11.5z" fill="#65a30d"/>
-  <path d="M13.6 48.5c2.2-3.2 4.8-5.5 7.8-6.8" stroke="#bef264" stroke-width="1" stroke-linecap="round"/>
-
-  <!-- Connector -->
-  <path d="M39 24c4.5-1.5 8 0 10.5 4" stroke="#134e4a" stroke-width="2.2" stroke-linecap="round"/>
-  <circle cx="39" cy="23.5" r="1.8" fill="#a3e635"/>
-
-  <!-- Comment bubble -->
-  <rect x="41" y="8" width="17" height="13.5" rx="4" fill="#f0fdfa"/>
-  <path d="M46 21.5l2.8-3.5h4.2c1 0 1.8.8 1.8 1.8v1.7H46z" fill="#f0fdfa"/>
-  <path d="M45 12.2h9M45 15.8h6.5M45 19.2h4.5" stroke="#0f766e" stroke-width="1.6" stroke-linecap="round"/>
-  <circle cx="54.5" cy="19.2" r="1.2" fill="#84cc16"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Ecoku">
+  <path fill="#b8472f" d="M13.4 4.3C25.8 3.8 38.6 3.8 50.7 4.3c5.3.2 8.9 3.7 9.1 9 .4 12.5.4 25 0 37.5-.2 5.4-3.8 8.9-9.1 9.1-12.4.4-25 .4-37.4 0-5.3-.2-8.8-3.7-9-9-.4-12.5-.4-25.1 0-37.6.2-5.3 3.8-8.8 9.1-9Z"/>
+  <path d="M53.5 12.6H12.6v38.8h40.9" fill="none" stroke="#f7f4ee" stroke-width="4.2" stroke-linejoin="round"/>
+  <g fill="none" stroke="#f7f4ee" stroke-width="3.6" stroke-linejoin="round">
+    <rect x="30.55" y="19.7" width="10.3" height="8.9"/>
+    <rect x="19.7" y="35.4" width="12.6" height="8.9"/>
+    <rect x="39.1" y="35.4" width="12.6" height="8.9"/>
+  </g>
 </svg>
