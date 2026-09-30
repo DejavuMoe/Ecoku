@@ -10,7 +10,7 @@ You need:
 - A domain dedicated to Ecoku, such as `ecoku.example.com`. You reach the admin console through it, and your blog loads the comment section script from it. It cannot be the same as your blog's domain. See [step 3](#config) for why.
 - Caddy or Nginx running on this host to terminate HTTPS.
 
-On this page, `ecoku.example.com` and `blog.example.com` are placeholders. Replace them with your own domains. The image is the current release, `git.via.moe/dejavu/ecoku:v0.2.7`.
+On this page, `ecoku.example.com` and `blog.example.com` are placeholders. Replace them with your own domains. The image is the current release, `git.via.moe/dejavu/ecoku:v0.2.8`.
 
 After deployment, the directory layout looks like this:
 
@@ -41,7 +41,7 @@ Create `compose.yaml` in `~/Ecoku` with this content:
 ```yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.2.7"
+    image: "git.via.moe/dejavu/ecoku:v0.2.8"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -136,7 +136,7 @@ Generate the password hash. The password is not echoed while you type it; put th
 
 ```bash
 read -rsp 'Admin password: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.7 hash-password
+printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.8 hash-password
 unset P
 ```
 

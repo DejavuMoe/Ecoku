@@ -10,7 +10,7 @@
 - 一個專門給 Ecoku 使用的網域，例如 `ecoku.example.com`。管理後台透過它存取，部落格透過它載入評論區腳本。它不能與部落格網域相同，原因見[第 3 步](#config)。
 - 在這台主機上執行的 Caddy 或 Nginx，用來終止 HTTPS。
 
-本頁中的 `ecoku.example.com`、`blog.example.com` 都是預留位置，請換成自己的網域。映像檔使用目前的發布版本 `git.via.moe/dejavu/ecoku:v0.2.7`。
+本頁中的 `ecoku.example.com`、`blog.example.com` 都是預留位置，請換成自己的網域。映像檔使用目前的發布版本 `git.via.moe/dejavu/ecoku:v0.2.8`。
 
 部署完成後，目錄結構如下：
 
@@ -41,7 +41,7 @@ sudo install -d -o 10001 -g 10001 -m 750 app/logs data
 ```yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.2.7"
+    image: "git.via.moe/dejavu/ecoku:v0.2.8"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -136,7 +136,7 @@ chmod 600 ~/Ecoku/ecoku.env
 
 ```bash
 read -rsp '管理員密碼: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.7 hash-password
+printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.8 hash-password
 unset P
 ```
 
