@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.2.8] - 2026-10-01
+
 ### 变更
 
 - 管理后台改为按日期分组的评论流与就地删除确认；设置表单采用行式字段，只在有修改时显示保存栏，并在离开前确认；增加键盘快捷键与窄屏底部导航。管理后台与文档站更新为「區」印章标识。
@@ -20,6 +22,7 @@
 ### 文档
 
 - Docker 部署页改为三个文件的填写说明：给出 `ecoku.env` 的字段与示例，只为密码哈希和两把密钥提供生成命令；配置参考标注容器内默认值。
+- 管理后台操作说明同步评论流、设置保存与快捷键；新增四语言 v0.2.8 升级说明，注明 schema v9 不变，以及采用精简配置后的回滚步骤。
 
 ## [0.2.7] - 2026-09-29
 
@@ -498,4 +501,5 @@
 [0.2.5]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.5
 [0.2.6]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.6
 [0.2.7]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.7
-[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.2.7...master
+[0.2.8]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.8
+[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.2.8...master

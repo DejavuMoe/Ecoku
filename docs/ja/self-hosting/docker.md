@@ -10,7 +10,7 @@
 - Ecoku 専用のドメイン（例：`ecoku.example.com`）。管理画面はこのドメインでアクセスし、ブログはこのドメインからコメント欄のスクリプトを読み込みます。ブログと同じドメインは使えません。理由は[手順 3](#config) を参照してください。
 - HTTPS を終端するための、このホスト上で動く Caddy または Nginx。
 
-このページに出てくる `ecoku.example.com` と `blog.example.com` はプレースホルダーです。自分のドメインに置き換えてください。イメージは現在のリリースバージョン `git.via.moe/dejavu/ecoku:v0.2.7` を使います。
+このページに出てくる `ecoku.example.com` と `blog.example.com` はプレースホルダーです。自分のドメインに置き換えてください。イメージは現在のリリースバージョン `git.via.moe/dejavu/ecoku:v0.2.8` を使います。
 
 デプロイ後のディレクトリ構成は次のとおりです。
 
@@ -41,7 +41,7 @@ sudo install -d -o 10001 -g 10001 -m 750 app/logs data
 ```yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.2.7"
+    image: "git.via.moe/dejavu/ecoku:v0.2.8"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -136,7 +136,7 @@ chmod 600 ~/Ecoku/ecoku.env
 
 ```bash
 read -rsp '管理者パスワード: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.7 hash-password
+printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.8 hash-password
 unset P
 ```
 

@@ -10,7 +10,7 @@
 - 一个专门给 Ecoku 用的域名，例如 `ecoku.example.com`。管理后台通过它访问，博客通过它加载评论区脚本。它不能与博客域名相同，原因见[第 3 步](#config)。
 - 在这台主机上运行的 Caddy 或 Nginx，用来终止 HTTPS。
 
-本页中的 `ecoku.example.com`、`blog.example.com` 都是占位，请替换成自己的域名。镜像使用当前发布版本 `git.via.moe/dejavu/ecoku:v0.2.7`。
+本页中的 `ecoku.example.com`、`blog.example.com` 都是占位，请替换成自己的域名。镜像使用当前发布版本 `git.via.moe/dejavu/ecoku:v0.2.8`。
 
 部署完成后，目录结构如下：
 
@@ -41,7 +41,7 @@ sudo install -d -o 10001 -g 10001 -m 750 app/logs data
 ```yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.2.7"
+    image: "git.via.moe/dejavu/ecoku:v0.2.8"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -136,7 +136,7 @@ chmod 600 ~/Ecoku/ecoku.env
 
 ```bash
 read -rsp '管理员密码: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.7 hash-password
+printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.8 hash-password
 unset P
 ```
 

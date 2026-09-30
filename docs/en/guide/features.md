@@ -1,6 +1,6 @@
 # Features
 
-This page lists the features of the current Ecoku release (v0.2.7), grouped by who uses them. The link after each item points to the details.
+This page lists the features of the current Ecoku release (v0.2.8), grouped by who uses them. The link after each item points to the details.
 
 ## Visitors
 

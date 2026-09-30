@@ -150,7 +150,8 @@ export function sidebar(prefix: string, t: SidebarCopy): DefaultTheme.SidebarIte
           link: `${p}/self-hosting/upgrade`,
           collapsed: true,
           items: [
-            { text: `v0.2.7${t.versionLatest}`, link: `${p}/self-hosting/upgrades/v0.2.7` },
+            { text: `${t.versionCurrent}${t.versionLatest}`, link: `${p}/self-hosting/upgrades/v0.2.8` },
+            { text: 'v0.2.7', link: `${p}/self-hosting/upgrades/v0.2.7` },
             { text: 'v0.2.6', link: `${p}/self-hosting/upgrades/v0.2.6` },
             { text: 'v0.2.5', link: `${p}/self-hosting/upgrades/v0.2.5` },
             { text: 'v0.2.4', link: `${p}/self-hosting/upgrades/v0.2.4` },
@@ -246,5 +247,6 @@ export interface SidebarCopy extends NavCopy {
   cli: string
   api: string
   earlierVersions: string
+  versionCurrent: string
   versionLatest: string
 }

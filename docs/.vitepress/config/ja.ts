@@ -27,6 +27,7 @@ const copy: SidebarCopy & NavCopy = {
   cli: 'コマンドライン',
   api: 'REST API',
   earlierVersions: '以前のリリース候補',
+  versionCurrent: 'v0.2.8',
   versionLatest: '（最新）',
 }
 
