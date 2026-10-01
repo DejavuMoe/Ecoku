@@ -266,7 +266,7 @@ func postJSON(t *testing.T, router http.Handler, body map[string]any) *httptest.
 
 func enableCommentTurnstile(t *testing.T, successToken string) {
 	t.Helper()
-	t.Setenv("ECOKU_COMMENT_TURNSTILE_KEY", base64.RawStdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef")))
+	t.Setenv(config.EncryptionKeyEnv, base64.RawStdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef")))
 	emailOptional := false
 	websiteRequired := true
 	if err := config.ApplyConfig(&config.Config{
@@ -274,7 +274,6 @@ func enableCommentTurnstile(t *testing.T, successToken string) {
 			{ID: "site-a", SiteURL: "https://a.example", AllowedOrigins: []string{"https://a.example"}, ManagementKeyEnv: "ECOKU_COMMENT_SITE_A_KEY", Comment: config.CommentConfig{LengthLimit: 4}},
 			{ID: "site-b", SiteURL: "https://b.example", AllowedOrigins: []string{"https://b.example"}, ManagementKeyEnv: "ECOKU_COMMENT_SITE_B_KEY", Comment: config.CommentConfig{EmailRequired: &emailOptional, WebsiteRequired: &websiteRequired, Placeholder: "分享你的想法", DefaultSort: "oldest", LengthLimit: 321, EmptyMessage: "暂时没有评论"}},
 		},
-		Notifications: config.NotificationsConfig{EncryptionKeyEnv: "ECOKU_COMMENT_TURNSTILE_KEY"},
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -296,13 +295,12 @@ func enableCommentTurnstile(t *testing.T, successToken string) {
 
 func enableCommentCap(t *testing.T, successToken string) {
 	t.Helper()
-	t.Setenv("ECOKU_COMMENT_CAPTCHA_KEY", base64.RawStdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef")))
+	t.Setenv(config.EncryptionKeyEnv, base64.RawStdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef")))
 	if err := config.ApplyConfig(&config.Config{
 		Sites: []config.RegisteredSiteConfig{
 			{ID: "site-a", SiteURL: "https://a.example", AllowedOrigins: []string{"https://a.example"}, ManagementKeyEnv: "ECOKU_COMMENT_SITE_A_KEY", Comment: config.CommentConfig{LengthLimit: 4}},
 			{ID: "site-b", SiteURL: "https://b.example", AllowedOrigins: []string{"https://b.example"}, ManagementKeyEnv: "ECOKU_COMMENT_SITE_B_KEY"},
 		},
-		Notifications: config.NotificationsConfig{EncryptionKeyEnv: "ECOKU_COMMENT_CAPTCHA_KEY"},
 	}); err != nil {
 		t.Fatal(err)
 	}

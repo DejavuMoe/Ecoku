@@ -204,11 +204,9 @@ func TestUserAndCountRoutesAreNotRegistered(t *testing.T) {
 		t.Fatalf("new router: %v", err)
 	}
 
-	for _, path := range []string{"/api/admin/login", "/api/user/login", "/api/user/register", "/api/count/batch", "/api/increment/batch"} {
+	for _, path := range []string{"/api/user/login", "/api/user/register", "/api/count/batch", "/api/increment/batch"} {
 		request := httptest.NewRequest(http.MethodPost, path, strings.NewReader("{}"))
-		if path != "/api/admin/login" {
-			request.Header.Set("Origin", "https://a.example")
-		}
+		request.Header.Set("Origin", "https://a.example")
 		recorder := httptest.NewRecorder()
 		router.ServeHTTP(recorder, request)
 		if recorder.Code != http.StatusNotFound {

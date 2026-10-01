@@ -13,13 +13,15 @@ mkdir -p server/data
 
 マシン固有のビルド成果物、実行データ、一時的なリリース検証は、Git が無視するルートの `tmp/` に置き、ソースディレクトリには書き込まないでください。
 
-ローカルサービスは SQLite ファイルと `server/config.yaml` を使用します。必要に応じて管理画面を有効化し、許可 Origin を調整してください。秘密値は設定例の名前と要件に従って現在の shell にだけ設定し、コミットしないでください。
-
-初回起動前に、少なくともサンプルサイトの管理キーを設定します。
+ローカルサービスは SQLite ファイルと `server/config.yaml` を使用します。管理画面は常に有効なので、サーバーを起動する前に管理者の認証情報を現在の shell に設定してください。コミットはしないでください。下の例のログインパスワードは `local-dev-password` です。
 
 ```bash
-export ECOKU_EXAMPLE_SITE_MANAGEMENT_KEY="$(openssl rand -hex 32)"
+export ECOKU_ADMIN_USERNAME=admin
+export ECOKU_ADMIN_PASSWORD_HASH="$(printf '%s\n' 'local-dev-password' | (cd server && go run . hash-password))"
+export ECOKU_ADMIN_TOKEN_KEY="$(openssl rand -hex 32)"
 ```
+
+管理画面で SMTP パスワード、Telegram Bot Token、CAPTCHA のシークレットキーを保存する場合は、`ECOKU_NOTIFICATION_ENCRYPTION_KEY` も設定します（`openssl rand -base64 32` で生成できます）。
 
 ## 起動
 
@@ -32,8 +34,8 @@ pnpm docs:dev
 
 必要なコマンドを別々のターミナルで実行してください。
 
-サーバーの既定値は `http://127.0.0.1:12123`、コメント画面は `http://localhost:3000` です。Go から静的ファイルを配信する場合は、対象パッケージを先にビルドしてください。
+サーバーの既定値は `http://127.0.0.1:12123`、コメント画面は `http://localhost:3000` です。Go から静的ファイルを配信する場合は、対象パッケージを先にビルドし、`server/config.yaml` に `client.static_dir: ../packages/client/dist` または `admin.static_dir: ../packages/admin/dist` を書いてください。
 
 完全な検証は Woodpecker が実行します。ローカルでは、現在の変更に直接関係し、CI がカバーしない検証だけを実行します。
 
-開発用管理画面のオリジンを独立した `admin.allowed_origins` に追加し、Vite の同一オリジン `/api` プロキシを使います。明示的な HTTP localhost/ループバックのみ非 Secure Cookie を使い、本番は HTTPS が必要です。
+開発用管理画面のオリジン（設定例では `http://localhost:5174`）は独立した `admin.allowed_origins` に書く必要があり、開発画面は Vite の同一オリジン `/api` プロキシ経由でサーバーにアクセスします。明示的な HTTP localhost/ループバックのみ非 Secure Cookie を使い、本番は HTTPS が必要です。

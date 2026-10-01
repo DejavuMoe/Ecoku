@@ -208,17 +208,6 @@ func (site Site) IsBloggerComment(username string, email *string) bool {
 		strings.EqualFold(strings.TrimSpace(*email), configuredEmail)
 }
 
-func ListPublicOrigins() ([]string, error) {
-	if DB == nil {
-		return nil, fmt.Errorf("database unavailable")
-	}
-	var origins []string
-	if err := DB.Table("site_origins").Distinct().Order("origin ASC").Pluck("origin", &origins).Error; err != nil {
-		return nil, err
-	}
-	return origins, nil
-}
-
 func IsPublicOriginAllowedWithContext(ctx context.Context, origin string) (bool, error) {
 	if DB == nil {
 		return false, fmt.Errorf("database unavailable")
@@ -229,10 +218,6 @@ func IsPublicOriginAllowedWithContext(ctx context.Context, origin string) (bool,
 		return false, nil
 	}
 	return err == nil, err
-}
-
-func IsSiteOriginAllowed(siteID, normalizedOrigin string) (bool, error) {
-	return IsSiteOriginAllowedWithContext(context.Background(), siteID, normalizedOrigin)
 }
 
 func IsSiteOriginAllowedWithContext(ctx context.Context, siteID, normalizedOrigin string) (bool, error) {

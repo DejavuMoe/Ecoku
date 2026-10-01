@@ -50,10 +50,6 @@ sudo rmdir app/config.yaml
 
 站點的允許來源與管理後台的來源重複了。管理後台的來源預設取 `notifications.instance_public_url`，另外寫了 `admin.allowed_origins` 時以它為準。管理後台必須使用一個獨立的來源，通常就是 Ecoku 自己的網域，例如 `https://ecoku.example.com`。如果在 `app/config.yaml` 中寫了 `sites`，同樣的衝突會在啟動時提示「管理员来源 … 不能复用公开站点来源」。
 
-### 日誌提示「管理员会话固定为 8 小时」
-
-`app/config.yaml` 中的 `admin.token_ttl_minutes` 不是 480。刪除這一行或改為 `480`，再重建容器。
-
 ### 日誌提示「无法解密 … 凭据」
 
 資料庫中儲存過 SMTP、Telegram 或人機驗證的憑據，但 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 缺失或與儲存時不同。請從備份中找回原本的 `ecoku.env`，還原這把金鑰。金鑰無法找回時，只能從先前的備份還原整個實例。

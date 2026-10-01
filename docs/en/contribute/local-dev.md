@@ -13,13 +13,15 @@ mkdir -p server/data
 
 Keep machine-local build outputs, runtime data, and one-off release checks in the root `tmp/` directory, which Git ignores; do not write them into source directories.
 
-Local services use a SQLite file and `server/config.yaml`. Enable admin and adjust allowed origins when needed. Export secrets only in the current shell, following the names and requirements in the config example; never commit them.
-
-Before the first start, set at least the example site's management key:
+Local services use a SQLite file and `server/config.yaml`. The admin console is always enabled, so export the admin credentials in the current shell before starting the server; never commit them. The sign-in password below is `local-dev-password`:
 
 ```bash
-export ECOKU_EXAMPLE_SITE_MANAGEMENT_KEY="$(openssl rand -hex 32)"
+export ECOKU_ADMIN_USERNAME=admin
+export ECOKU_ADMIN_PASSWORD_HASH="$(printf '%s\n' 'local-dev-password' | (cd server && go run . hash-password))"
+export ECOKU_ADMIN_TOKEN_KEY="$(openssl rand -hex 32)"
 ```
+
+To save an SMTP password, Telegram bot token, or CAPTCHA secret key in the admin console, also export `ECOKU_NOTIFICATION_ENCRYPTION_KEY` (generate one with `openssl rand -base64 32`).
 
 ## Run
 
@@ -32,8 +34,8 @@ pnpm docs:dev
 
 Run the commands you need in separate terminals.
 
-The server defaults to `http://127.0.0.1:12123`; the comment client defaults to `http://localhost:3000`. Build a package first when Go needs to serve its static files.
+The server defaults to `http://127.0.0.1:12123`; the comment client defaults to `http://localhost:3000`. For Go to serve static files, build the package first, then set `client.static_dir: ../packages/client/dist` or `admin.static_dir: ../packages/admin/dist` in `server/config.yaml`.
 
 Woodpecker runs the full gate. Locally, run only checks directly relevant to the change and not already covered by CI.
 
-Allow the admin development origin in the separate `admin.allowed_origins` list and use the Vite same-origin `/api` proxy. Only explicitly allowed HTTP localhost/loopback origins get a non-Secure cookie; production requires HTTPS.
+The admin development origin (`http://localhost:5174` in the example config) must be listed in the separate `admin.allowed_origins`; the development page reaches the server through the Vite same-origin `/api` proxy. Only explicitly allowed HTTP localhost/loopback origins get a non-Secure cookie; production requires HTTPS.

@@ -50,7 +50,7 @@ func setupAdminTest(t *testing.T) adminEnvironment {
 	t.Setenv("ECOKU_ADMIN_USERNAME", "instance-admin")
 	t.Setenv("ECOKU_ADMIN_PASSWORD_HASH", string(hash))
 	t.Setenv("ECOKU_ADMIN_TOKEN_KEY", strings.Repeat("t", 32))
-	t.Setenv("ECOKU_NOTIFICATION_KEY", base64.RawStdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef")))
+	t.Setenv(config.EncryptionKeyEnv, base64.RawStdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef")))
 	staticDir := filepath.Join(t.TempDir(), "admin")
 	if err := os.MkdirAll(filepath.Join(staticDir, "assets"), 0o700); err != nil {
 		t.Fatal(err)
@@ -66,9 +66,12 @@ func setupAdminTest(t *testing.T) adminEnvironment {
 			{ID: "site-a", Name: "站点 A", SiteURL: "https://a.example", AllowedOrigins: []string{"https://a.example"}, ManagementKeyEnv: "ECOKU_ADMIN_SITE_A_KEY"},
 			{ID: "site-b", Name: "站点 B", SiteURL: "https://b.example", AllowedOrigins: []string{"https://b.example"}, ManagementKeyEnv: "ECOKU_ADMIN_SITE_B_KEY"},
 		},
-		Admin:         config.AdminConfig{Enabled: true, StaticDir: staticDir, UsernameEnv: "ECOKU_ADMIN_USERNAME", PasswordHashEnv: "ECOKU_ADMIN_PASSWORD_HASH", TokenKeyEnv: "ECOKU_ADMIN_TOKEN_KEY", AllowedOrigins: []string{adminTestOrigin}},
-		Notifications: config.NotificationsConfig{EncryptionKeyEnv: "ECOKU_NOTIFICATION_KEY", InstancePublicURL: "https://comments.example"},
+		Admin:         config.AdminConfig{StaticDir: staticDir, AllowedOrigins: []string{adminTestOrigin}},
+		Notifications: config.NotificationsConfig{InstancePublicURL: "https://comments.example"},
 	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := config.ValidateAdmin(); err != nil {
 		t.Fatal(err)
 	}
 	database, err := model.OpenSQLiteDatabase(t.TempDir() + "/admin.sqlite3")

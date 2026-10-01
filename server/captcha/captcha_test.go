@@ -24,14 +24,13 @@ func (function roundTripFunc) RoundTrip(request *http.Request) (*http.Response, 
 func setupCaptchaTest(t *testing.T) {
 	t.Helper()
 	key := base64.RawStdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef"))
-	t.Setenv("ECOKU_CAPTCHA_TEST_KEY", key)
+	t.Setenv(config.EncryptionKeyEnv, key)
 	t.Setenv("ECOKU_CAPTCHA_SITE_KEY", strings.Repeat("s", 32))
 	if err := config.ApplyConfig(&config.Config{
 		Sites: []config.RegisteredSiteConfig{{
 			ID: "site-a", SiteURL: "https://a.example", AllowedOrigins: []string{"https://a.example"},
 			ManagementKeyEnv: "ECOKU_CAPTCHA_SITE_KEY",
 		}},
-		Notifications: config.NotificationsConfig{EncryptionKeyEnv: "ECOKU_CAPTCHA_TEST_KEY"},
 	}); err != nil {
 		t.Fatal(err)
 	}

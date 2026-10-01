@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"ecoku-server/masterkey"
 	"ecoku-server/notifications"
 	"ecoku-server/utils"
 	"errors"
@@ -30,7 +31,7 @@ func SaveEmailNotificationSettings(c *gin.Context) {
 		utils.SendError(c, http.StatusBadRequest, err.Error())
 	case errors.Is(err, notifications.ErrConflict):
 		utils.SendError(c, http.StatusConflict, "通知设置已被其他会话更新")
-	case errors.Is(err, notifications.ErrEncryptionKeyUnavailable):
+	case errors.Is(err, masterkey.ErrUnavailable):
 		utils.SendError(c, http.StatusServiceUnavailable, "通知加密密钥尚未配置")
 	case err != nil:
 		utils.SendError(c, http.StatusInternalServerError, "保存电子邮件通知失败")
@@ -51,7 +52,7 @@ func SaveTelegramNotificationSettings(c *gin.Context) {
 		utils.SendError(c, http.StatusBadRequest, err.Error())
 	case errors.Is(err, notifications.ErrConflict):
 		utils.SendError(c, http.StatusConflict, "通知设置已被其他会话更新")
-	case errors.Is(err, notifications.ErrEncryptionKeyUnavailable):
+	case errors.Is(err, masterkey.ErrUnavailable):
 		utils.SendError(c, http.StatusServiceUnavailable, "通知加密密钥尚未配置")
 	case err != nil:
 		utils.SendError(c, http.StatusInternalServerError, "保存 Telegram 通知失败")

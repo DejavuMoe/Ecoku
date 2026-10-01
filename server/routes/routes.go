@@ -49,8 +49,8 @@ func NewRouter() (*gin.Engine, error) {
 			return nil, err
 		}
 	}
-	if config.IsAdminEnabled() {
-		if err := registerAdminStatic(r, config.GetAdminStaticDir()); err != nil {
+	if directory := config.GetAdminStaticDir(); directory != "" {
+		if err := registerAdminStatic(r, directory); err != nil {
 			return nil, err
 		}
 	}
@@ -73,99 +73,92 @@ func NewRouter() (*gin.Engine, error) {
 		)
 		public.GET("/comment/list", comment.GetComments)
 
-		if config.IsAdminEnabled() {
-			admin := public.Group("/admin")
-			admin.Use(middleware.NoStore())
-			admin.POST(
-				"/login",
-				middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
-				middleware.RateLimit("admin_login"),
-				adminhandler.Login,
-			)
-			admin.GET("/login-config", adminhandler.GetLoginConfig)
+		admin := public.Group("/admin")
+		admin.Use(middleware.NoStore())
+		admin.POST(
+			"/login",
+			middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
+			middleware.RateLimit("admin_login"),
+			adminhandler.Login,
+		)
+		admin.GET("/login-config", adminhandler.GetLoginConfig)
 
-			protected := admin.Group("")
-			protected.Use(middleware.AdminAuthentication())
-			protected.GET("/session", middleware.RequireInstanceAdmin(), adminhandler.Session)
-			protected.POST("/logout", middleware.RequireInstanceAdmin(), adminhandler.Logout)
-			protected.GET("/sites", middleware.RequireInstanceAdmin(), adminhandler.ListSites)
-			protected.POST(
-				"/sites",
-				middleware.RequireInstanceAdmin(),
-				middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
-				adminhandler.CreateSite,
-			)
-			protected.GET("/sites/:siteId", middleware.RequireInstanceAdmin(), adminhandler.GetSite)
-			protected.PUT(
-				"/sites/:siteId",
-				middleware.RequireInstanceAdmin(),
-				middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
-				adminhandler.UpdateSite,
-			)
-			protected.GET("/notifications", middleware.RequireInstanceAdmin(), adminhandler.GetNotificationSettings)
-			protected.GET("/captcha", middleware.RequireInstanceAdmin(), adminhandler.GetCaptchaSettings)
-			protected.PUT(
-				"/captcha",
-				middleware.RequireInstanceAdmin(),
-				middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
-				adminhandler.SaveCaptchaSettings,
-			)
-			protected.GET("/turnstile", middleware.RequireInstanceAdmin(), adminhandler.GetTurnstileSettings)
-			protected.PUT(
-				"/turnstile",
-				middleware.RequireInstanceAdmin(),
-				middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
-				adminhandler.SaveTurnstileSettings,
-			)
-			protected.PUT(
-				"/notifications/email",
-				middleware.RequireInstanceAdmin(), middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
-				adminhandler.SaveEmailNotificationSettings,
-			)
-			protected.POST(
-				"/notifications/email/test",
-				middleware.RequireInstanceAdmin(), middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
-				middleware.RateLimit("notification_test"), adminhandler.TestEmailNotification,
-			)
-			protected.PUT(
-				"/notifications/telegram",
-				middleware.RequireInstanceAdmin(), middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
-				adminhandler.SaveTelegramNotificationSettings,
-			)
-			protected.POST(
-				"/notifications/telegram/test",
-				middleware.RequireInstanceAdmin(), middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
-				middleware.RateLimit("notification_test"), adminhandler.TestTelegramNotification,
-			)
-			site := protected.Group("/sites/:siteId")
-			site.Use(middleware.RequireAdminSiteAccess())
-			site.GET("/comments", middleware.RequireInstanceAdmin(), adminhandler.ListComments)
-			site.GET("/comments/:commentId", middleware.RequireInstanceAdmin(), adminhandler.GetComment)
-			site.DELETE(
-				"/comments/:commentId",
-				middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
-				middleware.RateLimit("comment_delete"),
-				adminhandler.DeleteComment,
-			)
-			site.DELETE(
-				"/comments/:commentId/permanent",
-				middleware.RequireInstanceAdmin(),
-				middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
-				middleware.RateLimit("comment_delete"),
-				adminhandler.PermanentlyDeleteComment,
-			)
-		}
-
+		protected := admin.Group("")
+		protected.Use(middleware.AdminAuthentication())
+		protected.GET("/session", middleware.RequireInstanceAdmin(), adminhandler.Session)
+		protected.POST("/logout", middleware.RequireInstanceAdmin(), adminhandler.Logout)
+		protected.GET("/sites", middleware.RequireInstanceAdmin(), adminhandler.ListSites)
+		protected.POST(
+			"/sites",
+			middleware.RequireInstanceAdmin(),
+			middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
+			adminhandler.CreateSite,
+		)
+		protected.GET("/sites/:siteId", middleware.RequireInstanceAdmin(), adminhandler.GetSite)
+		protected.PUT(
+			"/sites/:siteId",
+			middleware.RequireInstanceAdmin(),
+			middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
+			adminhandler.UpdateSite,
+		)
+		protected.GET("/notifications", middleware.RequireInstanceAdmin(), adminhandler.GetNotificationSettings)
+		protected.GET("/captcha", middleware.RequireInstanceAdmin(), adminhandler.GetCaptchaSettings)
+		protected.PUT(
+			"/captcha",
+			middleware.RequireInstanceAdmin(),
+			middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
+			adminhandler.SaveCaptchaSettings,
+		)
+		protected.GET("/turnstile", middleware.RequireInstanceAdmin(), adminhandler.GetTurnstileSettings)
+		protected.PUT(
+			"/turnstile",
+			middleware.RequireInstanceAdmin(),
+			middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
+			adminhandler.SaveTurnstileSettings,
+		)
+		protected.PUT(
+			"/notifications/email",
+			middleware.RequireInstanceAdmin(), middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
+			adminhandler.SaveEmailNotificationSettings,
+		)
+		protected.POST(
+			"/notifications/email/test",
+			middleware.RequireInstanceAdmin(), middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
+			middleware.RateLimit("notification_test"), adminhandler.TestEmailNotification,
+		)
+		protected.PUT(
+			"/notifications/telegram",
+			middleware.RequireInstanceAdmin(), middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
+			adminhandler.SaveTelegramNotificationSettings,
+		)
+		protected.POST(
+			"/notifications/telegram/test",
+			middleware.RequireInstanceAdmin(), middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
+			middleware.RateLimit("notification_test"), adminhandler.TestTelegramNotification,
+		)
+		site := protected.Group("/sites/:siteId")
+		site.Use(middleware.RequireAdminSiteAccess())
+		site.GET("/comments", middleware.RequireInstanceAdmin(), adminhandler.ListComments)
+		site.GET("/comments/:commentId", middleware.RequireInstanceAdmin(), adminhandler.GetComment)
+		site.DELETE(
+			"/comments/:commentId",
+			middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
+			middleware.RateLimit("comment_delete"),
+			adminhandler.DeleteComment,
+		)
+		site.DELETE(
+			"/comments/:commentId/permanent",
+			middleware.RequireInstanceAdmin(),
+			middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
+			middleware.RateLimit("comment_delete"),
+			adminhandler.PermanentlyDeleteComment,
+		)
 	}
 
 	return r, nil
 }
 
-func registerClientStatic(router *gin.Engine, configuredDirectory string) error {
-	directory := strings.TrimSpace(configuredDirectory)
-	if directory == "" {
-		return fmt.Errorf("client.static_dir 不能为空")
-	}
+func registerClientStatic(router *gin.Engine, directory string) error {
 	absoluteDirectory, err := filepath.Abs(directory)
 	if err != nil {
 		return fmt.Errorf("解析 client.static_dir: %w", err)
@@ -201,11 +194,7 @@ func registerClientStatic(router *gin.Engine, configuredDirectory string) error 
 	return nil
 }
 
-func registerAdminStatic(router *gin.Engine, configuredDirectory string) error {
-	directory := strings.TrimSpace(configuredDirectory)
-	if directory == "" {
-		return fmt.Errorf("admin.static_dir 不能为空")
-	}
+func registerAdminStatic(router *gin.Engine, directory string) error {
 	absoluteDirectory, err := filepath.Abs(directory)
 	if err != nil {
 		return fmt.Errorf("解析 admin.static_dir: %w", err)
@@ -328,10 +317,4 @@ func RunServer(ctx context.Context) error {
 		}
 	}
 	return nil
-}
-
-func InitRouter() {
-	if err := RunServer(context.Background()); err != nil {
-		log.Fatalln(err)
-	}
 }

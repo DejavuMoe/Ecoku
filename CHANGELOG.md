@@ -5,6 +5,13 @@
 
 ## [Unreleased]
 
+### 变更
+
+- 管理后台始终启用，删除 `admin.enabled`。旧配置中的 `admin.enabled: true` 仍可加载，写 `false` 会拒绝启动并提示删除这一行。
+- 删除 `admin.username_env`、`admin.password_hash_env`、`admin.token_key_env`、`notifications.encryption_key_env`：管理员凭据与加密主密钥固定读取 `ECOKU_ADMIN_USERNAME`、`ECOKU_ADMIN_PASSWORD_HASH`、`ECOKU_ADMIN_TOKEN_KEY`、`ECOKU_NOTIFICATION_ENCRYPTION_KEY`。旧配置中写成这些标准名的仍可加载，写成其他名字会拒绝启动。
+- `captcha`、`import-twikoo` 命令不再检查管理员凭据，服务启动时照常检查。
+- 源码运行时 `admin.static_dir` 与 `client.static_dir` 一样默认为空，填写后才提供管理后台页面；官方镜像仍默认使用 `/app/admin`。
+
 ### 修复
 
 - 管理后台的标签页图标不再返回 404：服务端提供 `/admin/favicon.svg`；静态目录里没有该文件时服务照常启动。
@@ -17,7 +24,7 @@
 
 ### 文档
 
-- v0.2.8 升级说明补充兼容性：镜像中 `admin.enabled` 默认为 `true`，原配置没有写该键的部署需要管理员凭据与实例地址，不使用管理后台时应写上 `admin.enabled: false`。
+- 配置参考新增「已停用的字段」，列出旧配置文件中仍可保留的字段与取值。
 - 管理后台说明中的站点字段改为「访客邮箱」「访客网站」两行；配置参考注明 `admin.static_dir` 中可选的 `favicon.svg`；英文、日文 Smoji 说明恢复与标记示例一致的清单示例和标记格式占位。
 
 ## [0.2.8] - 2026-10-01

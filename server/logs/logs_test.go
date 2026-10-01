@@ -10,7 +10,7 @@ import (
 
 func TestNewWriterStdoutPaths(t *testing.T) {
 	for _, path := range []string{"", "stdout", "STDOUT", "-", "/dev/stdout", "  stdout  "} {
-		writer := NewWriter(path)
+		writer, _ := newWriter(path)
 		if writer != os.Stdout {
 			t.Fatalf("path %q did not use stdout: %#v", path, writer)
 		}

@@ -2,6 +2,7 @@ package admin
 
 import (
 	"ecoku-server/captcha"
+	"ecoku-server/masterkey"
 	"ecoku-server/utils"
 	"errors"
 	"net/http"
@@ -69,7 +70,7 @@ func sendCaptchaSaveResult(c *gin.Context, updated any, err error) {
 		utils.SendError(c, http.StatusBadRequest, err.Error())
 	case errors.Is(err, captcha.ErrConflict):
 		utils.SendError(c, http.StatusConflict, "验证设置已被其他会话更新")
-	case errors.Is(err, captcha.ErrEncryptionKeyUnavailable):
+	case errors.Is(err, masterkey.ErrUnavailable):
 		utils.SendError(c, http.StatusServiceUnavailable, "验证凭据加密密钥尚未配置")
 	case err != nil:
 		utils.SendError(c, http.StatusInternalServerError, "保存验证设置失败")

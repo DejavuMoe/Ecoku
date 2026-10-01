@@ -264,7 +264,7 @@ Errors related to submission:
 
 ## Admin endpoints
 
-Admin endpoints live under `/api/admin/` and exist only when the admin console is enabled (it is enabled by default in the container). When `admin.allowed_origins` below is not set, it is the origin of `notifications.instance_public_url`.
+Admin endpoints live under `/api/admin/`. When `admin.allowed_origins` below is not set, it is the origin of `notifications.instance_public_url`.
 
 ### Authentication
 
@@ -345,6 +345,6 @@ DELETE /api/admin/sites/blog/comments/102
 Authorization: EcokuSite <management key>
 ```
 
-It cannot read comment lists or details, cannot permanently delete, and cannot access other sites or instance settings. Those requests return `403`; an invalid key returns `401`. Using a management key also requires the admin console to be enabled.
+It cannot read comment lists or details, cannot permanently delete, and cannot access other sites or instance settings. Those requests return `403`; an invalid key returns `401`.
 
 Site settings under `sites` are written only when the database is first initialized, but `management_key_env` is read on every startup. To enable a management key on an existing instance, add an entry under `sites` whose `id` matches the existing site in the admin console, and also fill in `site_url` and `allowed_origins` so the config passes validation. The other fields of this entry do not override the settings in the admin console.

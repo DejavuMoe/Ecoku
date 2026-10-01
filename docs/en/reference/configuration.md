@@ -12,8 +12,7 @@ Site, blogger, CAPTCHA, and notification settings are not in these two files. Th
 - The config file may contain only one YAML document. Any unknown field makes startup fail. Leftover fields from older releases, such as MySQL or regular-user settings, also make startup fail.
 - For numeric fields, `0` or omitting the field means the default in the tables below is used.
 - The "Default" in the tables is the value the program uses when the field is omitted. The official image has the port, directories, log file and database path built in (marked "in the container" in the tables), so for a [Docker deployment](../self-hosting/docker) `config.yaml` usually needs only `notifications.instance_public_url`, plus `site.trusted_proxies` once the reverse proxy is set up.
-- Fields you have already written out still take effect; an older, complete config file does not need trimming.
-- The config file contains only the **names** of environment variables (the `*_env` fields). The secrets themselves go into `ecoku.env`.
+- An older, complete config file does not need trimming: fields you have already written out still take effect, and [retired fields](#retired) that keep their standard values still start.
 
 After changing `config.yaml` or `ecoku.env`, recreate the container with:
 
@@ -60,7 +59,6 @@ If `trusted_proxies` is not configured correctly, all visitors behind the revers
 
 | Field | Default | Description |
 | --- | --- | --- |
-| `encryption_key_env` | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | Name of the environment variable holding the credential encryption master key; you rarely need to change it. It is required when you save an SMTP password, Telegram bot token, or CAPTCHA secret key in the admin console. |
 | `instance_public_url` | Empty | The public URL of Ecoku, such as `https://ecoku.example.com`. You must set it before enabling email or Telegram notifications. When `admin.allowed_origins` is not set, its origin (scheme + domain + optional port) is also the origin of the admin console. The links to original posts in notifications are built from the site URL and page path, not from this address. |
 
 ## database
@@ -73,19 +71,16 @@ The database runs in WAL mode, so at runtime there are `-wal` and `-shm` files i
 
 ## admin
 
+The admin console and admin API are always enabled.
+
 | Field | Default | Description |
 | --- | --- | --- |
-| `enabled` | `false`; `true` in the container | Whether to enable the admin console and admin API. When disabled, neither `/admin/` nor `/api/admin/*` exists. |
-| `static_dir` | `./admin`; `/app/admin` in the container | Directory of the admin console's static files. Startup fails if `index.html` or `assets/` is missing. If the directory contains `favicon.svg`, it is served as the tab icon at `/admin/favicon.svg`; without it, startup is not affected. |
-| `username_env` | `ECOKU_ADMIN_USERNAME` | Name of the environment variable holding the admin username; you rarely need to change it. |
-| `password_hash_env` | `ECOKU_ADMIN_PASSWORD_HASH` | Name of the environment variable holding the bcrypt hash of the admin password; you rarely need to change it. |
-| `token_key_env` | `ECOKU_ADMIN_TOKEN_KEY` | Name of the environment variable holding the session signing key; you rarely need to change it. |
-| `token_ttl_minutes` | `480` | Kept for compatibility. Sessions are fixed at 8 hours after sign-in. It can only be omitted or set to `480`; any other value makes startup fail. |
-| `allowed_origins` | Origin of `notifications.instance_public_url` | Browser origins allowed to access the admin API, that is, the `scheme://domain[:port]` in the address bar when you open the admin console. Set it only if you open the admin console from more than one address. When the admin console is enabled, at least one of this and `instance_public_url` is required. |
+| `static_dir` | Empty; `/app/admin` in the container | Directory of the admin console's pages. When set, Ecoku serves the admin console at `/admin/` and refuses to start if `index.html` or `assets/` is missing; if the directory contains `favicon.svg`, it is served as the tab icon at `/admin/favicon.svg`. When empty, the pages are not served; the admin API is not affected. |
+| `allowed_origins` | Origin of `notifications.instance_public_url` | Browser origins allowed to access the admin API, that is, the `scheme://domain[:port]` in the address bar when you open the admin console. Set it only if you open the admin console from more than one address. At least one of this and `instance_public_url` is required; otherwise the service does not start. |
 
-When the admin console is enabled, Ecoku also checks at startup that:
+Ecoku also checks at startup that:
 
-- The three `*_env` fields name different environment variables, and none of their values is empty;
+- `ECOKU_ADMIN_USERNAME`, `ECOKU_ADMIN_PASSWORD_HASH`, and `ECOKU_ADMIN_TOKEN_KEY` are all non-empty;
 - The password hash is a valid bcrypt hash with a cost of at least 10 (hashes generated by `hash-password` meet this);
 - The signing key is at least 32 bytes long and is not the same as the password hash or any site management key;
 - `allowed_origins` does not overlap with the allowed origins of any site in `sites`. When you create or edit a site in the admin console, you also cannot use an admin origin; saving fails if you do.
@@ -123,13 +118,28 @@ sites:
 | `comment.length_limit` | Maximum body length, 1 to 10000. Default 1000. |
 | `comment.empty_message` | Text shown when there are no comments, up to 240 characters. |
 
+## Retired fields {#retired}
+
+The fields below are retired and kept only for older config files. Omitting them or keeping the value in the table both start normally; any other value makes startup fail, and the log names the field to delete. Do not write them in new configs.
+
+| Field | Value you can keep | Current behavior |
+| --- | --- | --- |
+| `admin.enabled` | `true` | The admin console is always enabled. |
+| `admin.token_ttl_minutes` | `480` | Sessions are fixed at 8 hours after sign-in. |
+| `admin.username_env` | `ECOKU_ADMIN_USERNAME` | The environment variable in the table is always read. |
+| `admin.password_hash_env` | `ECOKU_ADMIN_PASSWORD_HASH` | Same as above. |
+| `admin.token_key_env` | `ECOKU_ADMIN_TOKEN_KEY` | Same as above. |
+| `notifications.encryption_key_env` | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | Same as above. |
+
+If you renamed any of these environment variables, delete the field and rename the variable in `ecoku.env` back to the name in the table.
+
 ## Environment variables
 
 | Variable | Required | Description |
 | --- | --- | --- |
-| `ECOKU_ADMIN_USERNAME` | When the admin console is enabled | Admin username, 1 to 80 characters. |
-| `ECOKU_ADMIN_PASSWORD_HASH` | When the admin console is enabled | bcrypt hash of the admin password. Generate it with the `hash-password` command. See [Command line](./cli#hash-password). |
-| `ECOKU_ADMIN_TOKEN_KEY` | When the admin console is enabled | Session signing key, at least 32 bytes. You can generate one with `openssl rand -hex 32`. |
+| `ECOKU_ADMIN_USERNAME` | Yes | Admin username, 1 to 80 characters. |
+| `ECOKU_ADMIN_PASSWORD_HASH` | Yes | bcrypt hash of the admin password. Generate it with the `hash-password` command. See [Command line](./cli#hash-password). |
+| `ECOKU_ADMIN_TOKEN_KEY` | Yes | Session signing key, at least 32 bytes. You can generate one with `openssl rand -hex 32`. |
 | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | When saving credentials | A 32-byte key, Base64-encoded (with or without padding). You can generate one with `openssl rand -base64 32`. |
 | `TZ` | No | Time zone for displaying comment times, as an IANA name such as `Asia/Shanghai`. If unset or the name is invalid, it falls back to the container's system time zone; if that cannot be determined, `Asia/Shanghai` is used. Setting it explicitly is recommended. |
 | Site management key | No | The variable name is set by `sites[].management_key_env`, for example `ECOKU_BLOG_MANAGEMENT_KEY`. When that field is configured, the value must exist and be at least 32 bytes. |

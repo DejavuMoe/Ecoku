@@ -2,6 +2,7 @@ package notifications
 
 import (
 	"ecoku-server/config"
+	"ecoku-server/masterkey"
 	"ecoku-server/model"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,8 @@ import (
 
 	"gorm.io/gorm"
 )
+
+const secretAAD = "ecoku-notification-secret-v1"
 
 var (
 	ErrValidation = errors.New("notification settings validation failed")
@@ -56,7 +59,7 @@ func SaveEmail(input EmailConfig) (EmailConfig, error) {
 	})
 	secret := current.SecretCipher
 	if input.Password != "" {
-		secret, err = encryptSecret(input.Password)
+		secret, err = masterkey.Encrypt(input.Password, secretAAD)
 		if err != nil {
 			return EmailConfig{}, err
 		}
@@ -86,7 +89,7 @@ func SaveTelegram(input TelegramConfig) (TelegramConfig, error) {
 	payload, _ := json.Marshal(storedTelegramConfig{Targets: input.Targets})
 	secret := current.SecretCipher
 	if input.Token != "" {
-		secret, err = encryptSecret(input.Token)
+		secret, err = masterkey.Encrypt(input.Token, secretAAD)
 		if err != nil {
 			return TelegramConfig{}, err
 		}
@@ -110,7 +113,7 @@ func ValidateStoredSecrets() error {
 		return err
 	}
 	for _, row := range rows {
-		if _, err := decryptSecret(row.SecretCipher); err != nil {
+		if _, err := masterkey.Decrypt(row.SecretCipher, secretAAD); err != nil {
 			return fmt.Errorf("无法解密 %s 通知凭据: %w", row.Channel, err)
 		}
 	}
@@ -124,7 +127,7 @@ func resolveEmailForTest(input EmailConfig) (EmailConfig, error) {
 	}
 	input = normalizeEmail(input)
 	if input.Password == "" {
-		input.Password, err = decryptSecret(current.SecretCipher)
+		input.Password, err = masterkey.Decrypt(current.SecretCipher, secretAAD)
 		if err != nil {
 			return EmailConfig{}, err
 		}
@@ -142,7 +145,7 @@ func resolveTelegramForTest(input TelegramConfig) (TelegramConfig, error) {
 	}
 	input = normalizeTelegram(input)
 	if input.Token == "" {
-		input.Token, err = decryptSecret(current.SecretCipher)
+		input.Token, err = masterkey.Decrypt(current.SecretCipher, secretAAD)
 		if err != nil {
 			return TelegramConfig{}, err
 		}
@@ -192,7 +195,7 @@ func emailFromRow(row settingRow, includeSecret bool) (EmailConfig, error) {
 		PasswordSet: len(row.SecretCipher) > 0, Revision: row.Revision,
 	}
 	if includeSecret {
-		secret, err := decryptSecret(row.SecretCipher)
+		secret, err := masterkey.Decrypt(row.SecretCipher, secretAAD)
 		if err != nil {
 			return EmailConfig{}, err
 		}
@@ -211,7 +214,7 @@ func telegramFromRow(row settingRow, includeSecret bool) (TelegramConfig, error)
 		TokenSet: len(row.SecretCipher) > 0, Revision: row.Revision,
 	}
 	if includeSecret {
-		secret, err := decryptSecret(row.SecretCipher)
+		secret, err := masterkey.Decrypt(row.SecretCipher, secretAAD)
 		if err != nil {
 			return TelegramConfig{}, err
 		}

@@ -15,10 +15,10 @@ import (
 func setupNotificationTest(t *testing.T) *gorm.DB {
 	t.Helper()
 	key := base64.RawStdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef"))
-	t.Setenv("ECOKU_NOTIFICATION_TEST_KEY", key)
+	t.Setenv(config.EncryptionKeyEnv, key)
 	if err := config.ApplyConfig(&config.Config{
 		Sites:         []config.RegisteredSiteConfig{{ID: "site-a", Name: "示例站点", SiteURL: "https://site.example", AllowedOrigins: []string{"https://site.example"}}},
-		Notifications: config.NotificationsConfig{EncryptionKeyEnv: "ECOKU_NOTIFICATION_TEST_KEY", InstancePublicURL: "https://comments.example"},
+		Notifications: config.NotificationsConfig{InstancePublicURL: "https://comments.example"},
 	}); err != nil {
 		t.Fatal(err)
 	}

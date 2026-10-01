@@ -12,8 +12,7 @@ Ecoku の設定は 2 か所に分かれています。
 - 設定ファイルに含められる YAML ドキュメントは 1 つだけで、未知のフィールドがあると起動を拒否します。旧バージョンから残った MySQL や一般ユーザーなどのフィールドも起動失敗の原因になります。
 - 数値のフィールドに `0` を書くか省略すると、下表のデフォルト値が使われます。
 - 表の「デフォルト値」は、フィールドを省略したときにプログラムが使う値です。公式イメージにはポート、ディレクトリ、ログ、データベースのパスが組み込まれている（表では「コンテナ内」と記載）ので、[Docker デプロイ](../self-hosting/docker)では `config.yaml` に通常 `notifications.instance_public_url` だけを書き、リバースプロキシを設定した後に `site.trusted_proxies` を追加します。
-- すでに明示的に書いたフィールドは引き続き有効です。以前の完全な設定ファイルを削る必要はありません。
-- 設定ファイルには環境変数の**名前**（`*_env` フィールド）だけを書き、シークレットそのものは `ecoku.env` に置きます。
+- 以前の完全な設定ファイルを削る必要はありません。すでに書いたフィールドは引き続き有効で、[廃止されたフィールド](#retired)も元の標準値のままなら起動できます。
 
 `config.yaml` または `ecoku.env` を変更した後は、次のコマンドでコンテナを作り直します。
 
@@ -60,7 +59,6 @@ cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 
 | フィールド | デフォルト値 | 説明 |
 | --- | --- | --- |
-| `encryption_key_env` | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 認証情報の暗号化マスターキーを格納する環境変数の名前。通常は変更不要です。管理画面で SMTP パスワード、Telegram Bot Token、CAPTCHA の Secret Key を保存するときに必要です。 |
 | `instance_public_url` | 空 | Ecoku の公開 URL（例：`https://ecoku.example.com`）。メールまたは Telegram の通知を有効にする前に必ず設定してください。`admin.allowed_origins` を書いていない場合は、このオリジン（スキーム + ドメイン + 任意のポート）が管理画面のオリジンにもなります。通知内の元記事へのリンクはサイト URL とページのパスから組み立てられ、このアドレスは使いません。 |
 
 ## database
@@ -73,19 +71,16 @@ cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 
 ## admin
 
+管理画面と管理 API は常に有効です。
+
 | フィールド | デフォルト値 | 説明 |
 | --- | --- | --- |
-| `enabled` | `false`。コンテナ内は `true` | 管理画面と管理 API を有効にするかどうか。無効の場合、`/admin/` と `/api/admin/*` はどちらも存在しません。 |
-| `static_dir` | `./admin`。コンテナ内は `/app/admin` | 管理画面の静的ファイルのディレクトリ。`index.html` または `assets/` が欠けていると起動を拒否します。ディレクトリに `favicon.svg` があれば、`/admin/favicon.svg` でタブのアイコンとして提供します。なくても起動には影響しません。 |
-| `username_env` | `ECOKU_ADMIN_USERNAME` | 管理者のユーザー名を格納する環境変数の名前。通常は変更不要です。 |
-| `password_hash_env` | `ECOKU_ADMIN_PASSWORD_HASH` | 管理者パスワードの bcrypt ハッシュを格納する環境変数の名前。通常は変更不要です。 |
-| `token_key_env` | `ECOKU_ADMIN_TOKEN_KEY` | セッションの署名キーを格納する環境変数の名前。通常は変更不要です。 |
-| `token_ttl_minutes` | `480` | 互換性のために残しているフィールドです。セッションはログイン後 8 時間固定で、省略するか `480` と書くことしかできません。それ以外の値を書くと起動を拒否します。 |
-| `allowed_origins` | `notifications.instance_public_url` のオリジン | 管理 API へのアクセスを許可するブラウザのオリジン、つまり管理画面を開いたときのアドレスバーの `スキーム://ドメイン[:ポート]` です。複数のアドレスから管理画面を開く場合だけ設定します。管理画面を有効にする場合は、これと `instance_public_url` のどちらかが必要です。 |
+| `static_dir` | 空。コンテナ内は `/app/admin` | 管理画面のページを置くディレクトリ。設定すると、Ecoku は `/admin/` で管理画面を提供し、`index.html` または `assets/` が欠けていると起動を拒否します。ディレクトリに `favicon.svg` があれば、`/admin/favicon.svg` でタブのアイコンとして提供します。空の場合はページを提供しませんが、管理 API には影響しません。 |
+| `allowed_origins` | `notifications.instance_public_url` のオリジン | 管理 API へのアクセスを許可するブラウザのオリジン、つまり管理画面を開いたときのアドレスバーの `スキーム://ドメイン[:ポート]` です。複数のアドレスから管理画面を開く場合だけ設定します。これと `instance_public_url` のどちらかが必要で、どちらもないとサービスは起動しません。 |
 
-管理画面を有効にすると、Ecoku は起動時にさらに次の点を確認します。
+Ecoku は起動時にさらに次の点を確認します。
 
-- 3 つの `*_env` は互いに異なる環境変数で、どの値も空ではないこと。
+- `ECOKU_ADMIN_USERNAME`、`ECOKU_ADMIN_PASSWORD_HASH`、`ECOKU_ADMIN_TOKEN_KEY` がどれも空ではないこと。
 - パスワードハッシュが有効な bcrypt で、cost が 10 以上であること（`hash-password` で生成したハッシュは条件を満たします）。
 - 署名キーが 32 バイト以上で、パスワードハッシュやどのサイト管理キーとも同じでないこと。
 - `allowed_origins` が `sites` のどのサイトの許可オリジンとも重複しないこと。管理画面でサイトを作成・変更するときも、管理画面のオリジンは使えず、使うと保存に失敗します。
@@ -123,13 +118,28 @@ sites:
 | `comment.length_limit` | 本文の最大文字数。1～10000、デフォルトは 1000。 |
 | `comment.empty_message` | コメントがないときに表示する文字。最大 240 文字。 |
 
+## 廃止されたフィールド {#retired}
+
+次のフィールドは廃止され、古い設定ファイルのためだけに残しています。省略するか表の値のままなら通常どおり起動します。それ以外の値を書くと起動を拒否し、削除すべきフィールドをログに示します。新しい設定には書かないでください。
+
+| フィールド | 残してよい値 | 現在の動作 |
+| --- | --- | --- |
+| `admin.enabled` | `true` | 管理画面は常に有効です。 |
+| `admin.token_ttl_minutes` | `480` | セッションはログイン後 8 時間で固定です。 |
+| `admin.username_env` | `ECOKU_ADMIN_USERNAME` | 常に表の環境変数を読みます。 |
+| `admin.password_hash_env` | `ECOKU_ADMIN_PASSWORD_HASH` | 同上。 |
+| `admin.token_key_env` | `ECOKU_ADMIN_TOKEN_KEY` | 同上。 |
+| `notifications.encryption_key_env` | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 同上。 |
+
+これらの環境変数を別の名前に変えていた場合は、該当するフィールドを削除し、`ecoku.env` の変数名を表の名前に戻してください。
+
 ## 環境変数
 
 | 変数 | 必須 | 説明 |
 | --- | --- | --- |
-| `ECOKU_ADMIN_USERNAME` | 管理画面を有効にする場合 | 管理者のユーザー名。1～80 文字。 |
-| `ECOKU_ADMIN_PASSWORD_HASH` | 管理画面を有効にする場合 | 管理者パスワードの bcrypt ハッシュ。`hash-password` コマンドで生成します。[コマンドライン](./cli#hash-password)を参照してください。 |
-| `ECOKU_ADMIN_TOKEN_KEY` | 管理画面を有効にする場合 | セッションの署名キー。32 バイト以上。`openssl rand -hex 32` で生成できます。 |
+| `ECOKU_ADMIN_USERNAME` | はい | 管理者のユーザー名。1～80 文字。 |
+| `ECOKU_ADMIN_PASSWORD_HASH` | はい | 管理者パスワードの bcrypt ハッシュ。`hash-password` コマンドで生成します。[コマンドライン](./cli#hash-password)を参照してください。 |
+| `ECOKU_ADMIN_TOKEN_KEY` | はい | セッションの署名キー。32 バイト以上。`openssl rand -hex 32` で生成できます。 |
 | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 認証情報を保存する場合 | Base64 エンコードした 32 バイトのキー（パディングの有無は問いません）。`openssl rand -base64 32` で生成できます。 |
 | `TZ` | いいえ | コメントの日時を表示するタイムゾーン。`Asia/Shanghai` のような IANA 名です。設定しない場合や名前が無効な場合はコンテナのシステムのタイムゾーンにフォールバックし、それも認識できない場合は `Asia/Shanghai` を使います。明示的に設定することをおすすめします。 |
 | サイト管理キー | いいえ | 変数名は `sites[].management_key_env` で決まります（例：`ECOKU_BLOG_MANAGEMENT_KEY`）。このフィールドを設定した場合は値が必須で、32 バイト以上必要です。 |

@@ -13,13 +13,15 @@ mkdir -p server/data
 
 本机构建产物、运行数据与一次性发布验证统一放在 Git 排除的根目录 `tmp/`，不要写入源码目录。
 
-本地服务使用 SQLite 文件与 `server/config.yaml`。按需启用管理端并设置允许来源；私密环境变量只在当前 shell 中导出，名称与要求以配置示例为准，不要写入仓库。
-
-首次启动前，至少为示例站点设置管理密钥：
+本地服务使用 SQLite 文件与 `server/config.yaml`。管理后台始终启用，启动服务前在当前 shell 中导出管理员凭据，不要写入仓库。下面的登录密码是 `local-dev-password`：
 
 ```bash
-export ECOKU_EXAMPLE_SITE_MANAGEMENT_KEY="$(openssl rand -hex 32)"
+export ECOKU_ADMIN_USERNAME=admin
+export ECOKU_ADMIN_PASSWORD_HASH="$(printf '%s\n' 'local-dev-password' | (cd server && go run . hash-password))"
+export ECOKU_ADMIN_TOKEN_KEY="$(openssl rand -hex 32)"
 ```
+
+在后台保存 SMTP 密码、Telegram Bot Token 或人机验证密钥时，还需要导出 `ECOKU_NOTIFICATION_ENCRYPTION_KEY`（可用 `openssl rand -base64 32` 生成）。
 
 ## 启动
 
@@ -32,8 +34,8 @@ pnpm docs:dev
 
 以上命令按需在不同终端运行。
 
-服务端默认为 `http://127.0.0.1:12123`，评论区开发页默认为 `http://localhost:3000`。若需要由 Go 提供静态文件，先构建相应包。
+服务端默认为 `http://127.0.0.1:12123`，评论区开发页默认为 `http://localhost:3000`。若要由 Go 提供静态文件，先构建相应包，再在 `server/config.yaml` 中填写 `client.static_dir: ../packages/client/dist` 或 `admin.static_dir: ../packages/admin/dist`。
 
 完整验证由 Woodpecker 执行；本地只运行与当前改动直接相关且 CI 未覆盖的检查。
 
-管理端开发页来源必须加入独立 `admin.allowed_origins`；使用 `/api` 同源 Vite 代理。仅 `http://localhost`、回环 IP 的明确允许来源使用非 Secure Cookie，生产必须 HTTPS。
+管理端开发页的来源（示例配置中的 `http://localhost:5174`）必须写在独立的 `admin.allowed_origins` 中，开发页通过 Vite 的同源 `/api` 代理访问服务端。仅 `http://localhost`、回环 IP 的明确允许来源使用非 Secure Cookie，生产必须 HTTPS。
