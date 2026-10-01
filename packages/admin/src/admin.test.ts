@@ -1,8 +1,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
 import ChipInput from './components/ChipInput.vue'
@@ -16,7 +17,7 @@ import { messages } from './messages'
 import { useAdminStore } from './stores/admin'
 import { formatDate } from './ui'
 import type { CommentPage, CommentReview, NotificationSettings, SiteSummary } from './types'
-import { tokenizeAdminSmoji } from './smoji'
+import { smojiPlainText, tokenizeAdminSmoji } from './smoji'
 
 let pinia = createPinia()
 
@@ -153,6 +154,21 @@ describe('administrator Smoji rendering', () => {
     expect(wrapper.get('img').attributes('src')).toBe('https://static.example.test/wave.webp')
     expect(wrapper.html()).not.toContain('v-html')
   })
+
+  it('reads a quoted parent the way its body renders: shown emoji as labels, other markers as written', () => {
+    const manifestUrl = 'https://static.example.test/smoji.json'
+    const marker = '![smoji:挥手](https://static.example.test/wave.webp)'
+    expect(smojiPlainText(`你好 ${marker}`, true, manifestUrl)).toBe('你好 [表情：挥手]')
+    expect(smojiPlainText(`你好 ${marker}`, false, manifestUrl)).toBe(`你好 ${marker}`)
+    expect(smojiPlainText('![smoji:坏](https://tracker.example/bad.webp)', true, manifestUrl)).toBe('![smoji:坏](https://tracker.example/bad.webp)')
+    const store = useAdminStore()
+    store.authenticated = true; store.sites = [site({ smojiEnabled: true, smojiManifestUrl: manifestUrl })]; store.selectedSiteId = 'site-a'
+    store.comments = [comment({ id: 8, parent: 7, content: '子评论' }), comment({ content: `你好\n${marker}` })]
+    const view = mount(CommentManagementView, { global: { plugins: [pinia] } })
+    expect(view.get('#c-8 .quote-text').text()).toBe('你好 [表情：挥手]')
+    expect(view.get('#c-7 .entry-copy img').attributes('alt')).toBe('[表情：挥手]')
+    view.unmount()
+  })
 })
 
 describe('administrator state', () => {
@@ -202,6 +218,22 @@ describe('administrator state', () => {
     expect(store.toastMessage).toBe(messages.tombstoned)
   })
 
+  it('shows the new last page after deleting the only comment on the last page', async () => {
+    const store = useAdminStore()
+    store.authenticated = true; store.selectedSiteId = 'site-a'; store.page = 2; store.pageCount = 2; store.total = 21
+    store.comments = [comment({ id: 30 })]; store.counts = { published: 21, deleted: 0 }
+    vi.spyOn(adminApi, 'tombstone').mockResolvedValue({ comment: comment({ id: 30, deleted: true, status: 'deleted' }), unchanged: false })
+    const firstPage = Array.from({ length: 20 }, (_, index) => comment({ id: index + 1 }))
+    const list = vi.spyOn(adminApi, 'listComments')
+      .mockResolvedValueOnce({ data: [], counts: { published: 20, deleted: 1 }, total: 20, page: 2, pageSize: 20, pageCount: 1 })
+      .mockResolvedValueOnce({ data: firstPage, counts: { published: 20, deleted: 1 }, total: 20, page: 1, pageSize: 20, pageCount: 1 })
+    expect(await store.mutateCurrent('tombstone', 30)).toBe(true)
+    expect(list.mock.calls.map((call) => call[2])).toEqual([2, 1])
+    expect(store.page).toBe(1)
+    expect(store.comments).toHaveLength(20)
+    expect(store.queueBusy).toBe(false)
+  })
+
   it('maps SMTP failure categories to actionable inline feedback', async () => {
     const store = useAdminStore(); store.authenticated = true; store.sessionReady = true
     vi.spyOn(adminApi, 'testEmail').mockRejectedValue(new ApiError(502, 'private upstream detail', 'authentication_failed'))
@@ -229,6 +261,53 @@ describe('approved production surface', () => {
     expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false)
     expect(remove).not.toHaveBeenCalled()
     wrapper.unmount()
+  })
+
+  it('lets a deleted comment leave in place and syncs the page without the loading skeleton', async () => {
+    const store = useAdminStore()
+    store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
+    store.comments = [comment({ id: 9 }), comment({ id: 8 }), comment()]
+    store.counts = { published: 3, deleted: 0 }; store.total = 3; store.pageCount = 1
+    let release: ((value: CommentPage) => void) | undefined
+    vi.spyOn(adminApi, 'tombstone').mockResolvedValue({ comment: comment({ id: 8, deleted: true, status: 'deleted' }), unchanged: false })
+    const list = vi.spyOn(adminApi, 'listComments').mockImplementation(() => new Promise((resolve) => { release = resolve }))
+    vi.spyOn(adminApi, 'getComment').mockImplementation(async (_siteId, id) => comment({ id }))
+    const wrapper = mount(CommentManagementView, { global: { plugins: [pinia] }, attachTo: document.body })
+    await wrapper.get('#c-8 .is-danger').trigger('click')
+    await wrapper.get('#c-8 .entry-confirm .button-danger').trigger('click')
+    await vi.waitFor(() => expect(wrapper.get('#c-8').classes()).toContain('is-leaving'))
+    await vi.waitFor(() => expect(list).toHaveBeenCalledTimes(1))
+    await nextTick()
+    // While the page syncs with the server, the faded comment keeps its place and nothing else moves.
+    expect(wrapper.findAll('.entry').map((entry) => entry.attributes('id'))).toEqual(['c-9', 'c-8', 'c-7'])
+    expect(wrapper.find('.skeleton-entry').exists()).toBe(false)
+    expect(wrapper.get('.icon-button').classes()).not.toContain('is-spinning')
+    expect(store.toastMessage).toBe(messages.tombstoned)
+    release?.({ ...page([comment({ id: 9 }), comment()]), counts: { published: 2, deleted: 1 } })
+    await vi.waitFor(() => expect(document.activeElement?.id).toBe('c-7'))
+    expect(wrapper.findAll('.entry').map((entry) => entry.attributes('id'))).toEqual(['c-9', 'c-7'])
+    expect(wrapper.get('#comments-title .num').text()).toBe('2')
+    expect(store.actionBusy).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('flashes the parent after jumping to it from a quoted reply', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      const store = useAdminStore()
+      store.authenticated = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
+      store.comments = [comment({ id: 8, parent: 7, content: '子评论' }), comment()]
+      vi.spyOn(adminApi, 'getComment').mockImplementation(async (_siteId, id) => comment({ id }))
+      const wrapper = mount(CommentManagementView, { global: { plugins: [pinia] }, attachTo: document.body })
+      await wrapper.get('#c-8 .entry-quote').trigger('click')
+      await flushPromises()
+      expect(wrapper.get('#c-7').classes()).toContain('is-flash')
+      expect(document.activeElement?.id).toBe('c-7')
+      vi.advanceTimersByTime(1500)
+      await nextTick()
+      expect(wrapper.get('#c-7').classes()).not.toContain('is-flash')
+      wrapper.unmount()
+    } finally { vi.useRealTimers() }
   })
 
   it('shows the save bar only after editing and restores the persisted site on discard', async () => {
@@ -321,6 +400,20 @@ describe('approved production surface', () => {
     expect(save).not.toHaveBeenCalled()
     expect(wrapper.get('#email-recipients-input').attributes('aria-invalid')).toBe('true')
     expect(wrapper.text()).toContain('邮箱格式错误')
+    wrapper.unmount()
+  })
+
+  it('places a chip field error under its help text instead of inside the ruled row', async () => {
+    const store = useAdminStore(); store.notificationSettings = notifications()
+    const wrapper = mount(NotificationSettingsView, { global: { plugins: [pinia] } })
+    expect(wrapper.find('.field-error').exists()).toBe(false)
+    await wrapper.get('#telegram-targets-input').setValue('@invalid')
+    await wrapper.get('#telegram-targets-input').trigger('blur')
+    await nextTick()
+    const error = wrapper.get('#telegram-form .field-error')
+    expect(error.text()).toBe('接收目标 ID 格式错误')
+    expect(error.element.closest('.rule')).toBeNull()
+    expect(error.element.previousElementSibling?.classList.contains('help')).toBe(true)
     wrapper.unmount()
   })
   it('formats administrator timestamps as UTC+8 with a four-digit year and 24-hour time', () => {
@@ -502,8 +595,9 @@ describe('approved production surface', () => {
     const values = wrapper.emitted('update:modelValue')?.at(-1)?.[0] as string[]
     expect(values).toEqual(['a@example.com', 'b@example.com', 'bad'])
     await wrapper.setProps({ modelValue: values })
-    expect(wrapper.attributes('aria-invalid')).not.toBe('true')
-    expect(wrapper.find('.field-error').text()).toBe('邮箱格式错误')
+    expect(wrapper.attributes('aria-invalid')).toBe('true')
+    expect(wrapper.findAll('.chip.is-invalid .chip-text').map((chip) => chip.text())).toEqual(['bad'])
+    expect(wrapper.vm.invalid).toBe(true)
     await wrapper.findAll('.chip-remove')[1]!.trigger('click')
     expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toEqual(['a@example.com', 'bad'])
   })
@@ -545,6 +639,50 @@ describe('approved production surface', () => {
     expect(css).not.toContain('OPPO Serif SC')
     expect(html).not.toMatch(/localStorage|sessionStorage/)
     expect(css).not.toMatch(/localStorage|sessionStorage/)
+  })
+
+  it('ships the tab icon and keeps read-only rows, busy forms and toasts apart', () => {
+    const here = path.dirname(fileURLToPath(import.meta.url))
+    const html = fs.readFileSync(path.join(here, '../index.html'), 'utf8')
+    const css = fs.readFileSync(path.join(here, 'style.css'), 'utf8')
+    expect(html).toContain('<link rel="icon" href="/admin/favicon.svg" type="image/svg+xml" />')
+    expect(fs.existsSync(path.join(here, '../public/favicon.svg'))).toBe(true)
+    // A busy (disabled) fieldset makes every input :read-only, so only the readonly attribute marks a read-only row.
+    expect(css).not.toMatch(/:has\([^{]*:read-only/)
+    expect(css).toContain('.rule:has(input[readonly]) { border-bottom-style: dashed; }')
+    expect(css).toContain('.doc > fieldset:disabled { opacity: 0.7; }')
+    expect(css).not.toMatch(/^fieldset:disabled/m)
+    expect(css).toMatch(/body:has\(\.savebar-dock\) \.toast \{ bottom: calc\(var\(--savebar-bottom\) \+ \d+px\); \}/)
+  })
+
+  it('shows and announces a repeated toast again instead of letting the first one expire it', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      const store = useAdminStore()
+      store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
+      vi.spyOn(adminApi, 'listComments').mockResolvedValue(page([comment()]))
+      const wrapper = mount(App, { global: { plugins: [pinia] } })
+      // Each time the message is inserted into the live region again, it is announced again.
+      const heard: string[] = []
+      const hear = (records: MutationRecord[]) => { for (const record of records) for (const node of record.addedNodes) heard.push(node.textContent ?? '') }
+      const observer = new MutationObserver(hear)
+      observer.observe(wrapper.get('div.visually-hidden[aria-live="polite"]').element, { childList: true })
+      await store.loadComments(true)
+      await flushPromises()
+      expect(wrapper.get('.toast').text()).toBe(messages.refreshed)
+      vi.advanceTimersByTime(2000)
+      await store.loadComments(true)
+      await flushPromises()
+      vi.advanceTimersByTime(2000)
+      await nextTick()
+      expect(wrapper.get('.toast').text()).toBe(messages.refreshed)
+      vi.advanceTimersByTime(1300)
+      await nextTick()
+      expect(wrapper.find('.toast').exists()).toBe(false)
+      hear(observer.takeRecords()); observer.disconnect()
+      expect(heard.filter((text) => text === messages.refreshed)).toHaveLength(2)
+      wrapper.unmount()
+    } finally { vi.useRealTimers() }
   })
 })
 
@@ -632,5 +770,45 @@ describe('persistent administrator session', () => {
     release?.(response(200, { data: [{ id: 'private-site' }] }))
     await pending
     expect(store.sites).toEqual([])
+  })
+
+  it('carries the expiry notice across the reload that resets the login page, once', async () => {
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
+    vi.spyOn(adminApi, 'getLoginConfig').mockResolvedValue({ captcha: { provider: 'off', sitekey: '', instanceUrl: '' } })
+    vi.spyOn(adminApi, 'getSession').mockRejectedValue(new ApiError(401, 'unauthorized'))
+    vi.spyOn(adminApi, 'listComments').mockRejectedValue(new ApiError(401, 'expired'))
+    const store = useAdminStore()
+    store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
+    const signedIn = mount(App, { global: { plugins: [pinia] } })
+    await store.loadComments()
+    await flushPromises()
+    expect(reload).toHaveBeenCalledTimes(1)
+    signedIn.unmount()
+
+    // The reloaded page starts with a fresh store and no session.
+    pinia = createPinia(); setActivePinia(pinia)
+    const reloaded = mount(App, { global: { plugins: [pinia] } })
+    await flushPromises()
+    expect(reloaded.get('.auth-form [role="alert"]').text()).toBe(messages.sessionExpired)
+    reloaded.unmount()
+
+    pinia = createPinia(); setActivePinia(pinia)
+    const later = mount(App, { global: { plugins: [pinia] } })
+    await flushPromises()
+    expect(later.find('.auth-form [role="alert"]').exists()).toBe(false)
+    later.unmount()
+  })
+
+  it('reloads after a deliberate logout without leaving a notice behind', async () => {
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
+    vi.spyOn(adminApi, 'logout').mockResolvedValue(undefined)
+    const store = useAdminStore(); store.authenticated = true; store.sessionReady = true
+    const wrapper = mount(App, { global: { plugins: [pinia] } })
+    await flushPromises()
+    await store.logout()
+    await flushPromises()
+    expect(reload).toHaveBeenCalledTimes(1)
+    expect(history.state).toBeNull()
+    wrapper.unmount()
   })
 })

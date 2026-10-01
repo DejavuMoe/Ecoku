@@ -53,6 +53,9 @@ const dirty = computed(() => emailDirty.value || telegramDirty.value)
 const errorCount = computed(() => Object.keys(emailErrors).length + Object.keys(telegramErrors).length)
 const emailForm = ref<HTMLFormElement | null>(null)
 const telegramForm = ref<HTMLFormElement | null>(null)
+// The chip fields report their own validity; their errors sit under the help text, outside the ruled row.
+const recipientsInput = ref<InstanceType<typeof ChipInput> | null>(null)
+const targetsInput = ref<InstanceType<typeof ChipInput> | null>(null)
 watch(dirty, value => store.setDirty('notifications', value), { immediate: true, flush: 'sync' })
 onBeforeUnmount(() => store.setDirty('notifications', false))
 async function focusError() {
@@ -177,8 +180,9 @@ async function sendTestTelegram() {
                   <p v-if="emailErrors.from" class="field-error">{{ emailErrors.from }}</p>
                 </div>
                 <div class="field">
-                  <div class="rule rule-chips"><label class="rule-label" for="email-recipients-input">通知收件人</label><ChipInput id="email-recipients-input" :key="emailInputKey" v-model="email.recipients" kind="email" label="通知收件人" :error="emailErrors.recipients" :disabled="notificationBusy || !email.enabled" @draft-change="pendingEmail = $event" /></div>
+                  <div class="rule rule-chips"><label class="rule-label" for="email-recipients-input">通知收件人</label><ChipInput id="email-recipients-input" ref="recipientsInput" :key="emailInputKey" v-model="email.recipients" kind="email" label="通知收件人" :error="emailErrors.recipients" :disabled="notificationBusy || !email.enabled" @draft-change="pendingEmail = $event" /></div>
                   <p class="help">按 Enter、逗号或换行添加多个邮箱</p>
+                  <p v-if="recipientsInput?.invalid" class="field-error">{{ emailErrors.recipients || '邮箱格式错误' }}</p>
                 </div>
               </div>
               <div class="section-actions">
@@ -207,8 +211,9 @@ async function sendTestTelegram() {
                   <p v-if="telegramErrors.token" class="field-error">{{ telegramErrors.token }}</p>
                 </div>
                 <div class="field">
-                  <div class="rule rule-chips"><label class="rule-label" for="telegram-targets-input">接收目标 ID</label><ChipInput id="telegram-targets-input" :key="telegramInputKey" v-model="telegram.targets" kind="telegram" label="接收目标 ID" :error="telegramErrors.targets" :disabled="notificationBusy || !telegram.enabled" @draft-change="pendingTelegram = $event" /></div>
+                  <div class="rule rule-chips"><label class="rule-label" for="telegram-targets-input">接收目标 ID</label><ChipInput id="telegram-targets-input" ref="targetsInput" :key="telegramInputKey" v-model="telegram.targets" kind="telegram" label="接收目标 ID" :error="telegramErrors.targets" :disabled="notificationBusy || !telegram.enabled" @draft-change="pendingTelegram = $event" /></div>
                   <p class="help">按 Enter、逗号或换行添加；支持用户、群组、频道 ID，如 123456789 或 -1001234567890</p>
+                  <p v-if="targetsInput?.invalid" class="field-error">{{ telegramErrors.targets || '接收目标 ID 格式错误' }}</p>
                 </div>
               </div>
               <div class="section-actions">
