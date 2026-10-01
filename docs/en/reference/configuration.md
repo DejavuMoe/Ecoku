@@ -76,7 +76,7 @@ The database runs in WAL mode, so at runtime there are `-wal` and `-shm` files i
 | Field | Default | Description |
 | --- | --- | --- |
 | `enabled` | `false`; `true` in the container | Whether to enable the admin console and admin API. When disabled, neither `/admin/` nor `/api/admin/*` exists. |
-| `static_dir` | `./admin`; `/app/admin` in the container | Directory of the admin console's static files. Startup fails if `index.html` or `assets/` is missing. |
+| `static_dir` | `./admin`; `/app/admin` in the container | Directory of the admin console's static files. Startup fails if `index.html` or `assets/` is missing. If the directory contains `favicon.svg`, it is served as the tab icon at `/admin/favicon.svg`; without it, startup is not affected. |
 | `username_env` | `ECOKU_ADMIN_USERNAME` | Name of the environment variable holding the admin username; you rarely need to change it. |
 | `password_hash_env` | `ECOKU_ADMIN_PASSWORD_HASH` | Name of the environment variable holding the bcrypt hash of the admin password; you rarely need to change it. |
 | `token_key_env` | `ECOKU_ADMIN_TOKEN_KEY` | Name of the environment variable holding the session signing key; you rarely need to change it. |

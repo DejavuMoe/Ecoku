@@ -38,10 +38,10 @@ On **Sites** (站点) in the admin console, edit the site, select 「启用」 (
   "packs": [
     {
       "id": "paopao",
-      "label": "泡泡",
+      "label": "Paopao",
       "items": [
-        { "id": "smile", "label": "微笑", "src": "https://stickers.example.com/paopao/smile.png" },
-        { "id": "thumbsup", "label": "赞", "src": "thumbsup.png" }
+        { "id": "smile", "label": "Smile", "src": "https://stickers.example.com/paopao/smile.png" },
+        { "id": "thumbsup", "label": "Thumbs up", "src": "thumbsup.png" }
       ]
     }
   ]
@@ -77,10 +77,10 @@ When you have many stickers, you can use a `base` template instead of writing `s
   "packs": [
     {
       "id": "douyin",
-      "label": "抖音",
+      "label": "Douyin",
       "items": [
-        { "id": "smile", "label": "微笑" },
-        { "id": "cool", "label": "酷", "src": "https://stickers.example.com/smoji/extra/cool.png" }
+        { "id": "smile", "label": "Smile" },
+        { "id": "cool", "label": "Cool", "src": "https://stickers.example.com/smoji/extra/cool.png" }
       ]
     }
   ]
@@ -104,7 +104,7 @@ Comments store the **full image URL**. When you update your assets:
 ## Marker format
 
 ```text
-![smoji:名称](图片地址)
+![smoji:name](image-url)
 ```
 
 `(` and `)` in the image URL are encoded as `%28` and `%29`. `formConfig.smoji` in the public API returns whether the site has sticker packs enabled and the manifest URL. A custom frontend can use it to build its own picker and rendering, following the same rules as above.
