@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func TestRateLimiterBoundsAddressStateWithoutEvictingActiveBuckets(t *testing.T) {
@@ -145,27 +144,14 @@ func TestCorsPreflightUsesExactOrigin(t *testing.T) {
 
 func TestAdminCorsUsesIndependentExactOrigin(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	passwordHash, err := bcrypt.GenerateFromPassword([]byte("test-admin-password"), bcrypt.DefaultCost)
-	if err != nil {
-		t.Fatalf("hash password: %v", err)
-	}
 	t.Setenv("ECOKU_ADMIN_CORS_SITE_KEY", strings.Repeat("s", 32))
-	t.Setenv("ECOKU_ADMIN_CORS_USERNAME", "admin")
-	t.Setenv("ECOKU_ADMIN_CORS_PASSWORD_HASH", string(passwordHash))
-	t.Setenv("ECOKU_ADMIN_CORS_TOKEN_KEY", strings.Repeat("t", 32))
-	err = config.ApplyConfig(&config.Config{
+	err := config.ApplyConfig(&config.Config{
 		Sites: []config.RegisteredSiteConfig{{
 			ID:               "site-a",
 			AllowedOrigins:   []string{"https://site-a.example"},
 			ManagementKeyEnv: "ECOKU_ADMIN_CORS_SITE_KEY",
 		}},
-		Admin: config.AdminConfig{
-			Enabled:         true,
-			UsernameEnv:     "ECOKU_ADMIN_CORS_USERNAME",
-			PasswordHashEnv: "ECOKU_ADMIN_CORS_PASSWORD_HASH",
-			TokenKeyEnv:     "ECOKU_ADMIN_CORS_TOKEN_KEY",
-			AllowedOrigins:  []string{"https://admin.example"},
-		},
+		Admin: config.AdminConfig{AllowedOrigins: []string{"https://admin.example"}},
 	})
 	if err != nil {
 		t.Fatalf("apply config: %v", err)

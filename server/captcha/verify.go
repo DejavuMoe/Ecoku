@@ -3,6 +3,7 @@ package captcha
 import (
 	"bytes"
 	"context"
+	"ecoku-server/masterkey"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -76,7 +77,7 @@ func Verify(ctx context.Context, tokens Tokens) error {
 		if err != nil {
 			return err
 		}
-		secret, err := decryptSecret(row.SecretCipher, turnstileSecretAAD)
+		secret, err := masterkey.Decrypt(row.SecretCipher, turnstileSecretAAD)
 		if err != nil || secret == "" {
 			return ErrUnavailable
 		}
@@ -85,7 +86,7 @@ func Verify(ctx context.Context, tokens Tokens) error {
 		if tokens.Captcha == "" || tokens.Turnstile != "" {
 			return ErrFailed
 		}
-		secret, err := decryptSecret(row.CapSecretCipher, capSecretAAD)
+		secret, err := masterkey.Decrypt(row.CapSecretCipher, capSecretAAD)
 		if err != nil || secret == "" {
 			return ErrUnavailable
 		}

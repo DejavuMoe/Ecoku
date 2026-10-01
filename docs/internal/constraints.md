@@ -67,8 +67,9 @@
 ## 管理员与评论管理
 
 - P1 只有一个实例级管理员，可管理全部已注册站点；站点运营员和细粒度 RBAC 后置。
-- 源码运行时管理员能力默认关闭；官方镜像（`ECOKU_RUNTIME=container`）在 `admin.enabled` 未写出时默认启用，显式 `false` 仍然关闭。启用时，用户名、bcrypt 密码哈希和独立 token 签名密钥必须从三个不同的环境变量读取（变量名默认 `ECOKU_ADMIN_USERNAME`、`ECOKU_ADMIN_PASSWORD_HASH`、`ECOKU_ADMIN_TOKEN_KEY`）；仓库没有默认密码或明文凭据。
-- `admin.allowed_origins` 未填写时取 `notifications.instance_public_url` 的来源；两者都没有时，启用管理员能力的服务必须启动失败。管理端来源不得与任何站点允许来源重复。
+- 管理后台始终启用，没有开关。用户名、bcrypt 密码哈希和独立 token 签名密钥固定从 `ECOKU_ADMIN_USERNAME`、`ECOKU_ADMIN_PASSWORD_HASH`、`ECOKU_ADMIN_TOKEN_KEY` 读取，凭据加密主密钥固定从 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 读取；仓库没有默认密码或明文凭据。服务启动时校验管理员凭据，不合规即启动失败；`captcha`、`import-twikoo` 命令不需要管理员凭据。
+- 已停用的配置键只为旧配置文件保留：`admin.enabled` 只接受 `true`，`*_env` 只接受上述标准变量名，其他值启动失败并指出要删除的键。
+- `admin.allowed_origins` 未填写时取 `notifications.instance_public_url` 的来源；两者都没有时，服务必须启动失败。管理端来源不得与任何站点允许来源重复。
 - 管理员会话有效期固定为登录后 8 小时，不滚动续期，不提供 refresh token。SQLite 仅保存随机化签名凭据的 SHA-256 摘要与绝对到期时间；认证同时检查签名、凭据版本与未过期会话记录。退出撤销当前会话，Cookie 与 Bearer 均不能绕过撤销；旧版未登记 token 升级后失效。兼容配置键 `admin.token_ttl_minutes` 省略或为 0 时回退至 480；非零值只能为 480。轮换密码哈希或签名密钥并重启服务会使旧 token 失效。
 - 管理端浏览器只使用管理员会话。每站点 management key 只供可信服务端自动化，并且只能管理所属站点；不得进入浏览器、响应或日志。management key 对评论 GET 列表/详情返回 403，只保留所属站点的墓碑删除。
 - 管理端浏览器来源使用独立精确白名单，不能复用公开评论站点来源；无 `Origin` 的 CLI/服务端请求仍必须通过认证。
@@ -169,7 +170,7 @@
   操作者仍必须先停服并校验卷外备份；任何 DROP、覆盖或备份清理都需要针对目标环境的明确授权。
 - 当前全新 schema 不创建 `users`、`email_verification_codes` 或 `counts` 遗留表。
 - P4 的默认交付拓扑是单个非 root 运行容器：Go 进程同时提供 API 和 `/admin/` 静态管理端，SQLite 数据与配置从容器外持久化；
-  管理端静态文件缺失时，启用管理员能力的服务必须启动失败。
+  容器内管理端静态文件缺失时，服务必须启动失败；源码运行时 `admin.static_dir` 留空则只提供管理 API。
 - 镜像以 `GIN_MODE=release`、`ECOKU_RUNTIME=container` 运行；后者只在对应配置键省略时提供容器内路径默认值
   （`site.log_path` `/var/log/ecoku/ecoku.log`、`client.static_dir` `/app/client`、`admin.static_dir` `/app/admin`、
   `database.sqlite.path` `/data/ecoku.sqlite3`），显式写出的值始终优先。部署模板只要求 `notifications.instance_public_url`，

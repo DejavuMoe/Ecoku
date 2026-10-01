@@ -20,7 +20,7 @@ import (
 
 const (
 	minimumSecretLength             = 32
-	defaultAdminTokenTTLMinutes     = 8 * 60
+	adminTokenTTLMinutes            = 8 * 60
 	maximumAdminUsernameLength      = 80
 	maximumCommentPlaceholderLength = 80
 	DefaultCommentPlaceholder       = "写下评论（仅支持纯文本）"
@@ -29,25 +29,24 @@ const (
 	DefaultEmptyMessage             = "还没有评论\n成为第一个留下评论的人。"
 	DefaultBloggerBadge             = "[博主]"
 
+	// Secrets are read only from these environment variables.
+	adminUsernameEnv     = "ECOKU_ADMIN_USERNAME"
+	adminPasswordHashEnv = "ECOKU_ADMIN_PASSWORD_HASH"
+	adminTokenKeyEnv     = "ECOKU_ADMIN_TOKEN_KEY"
+	EncryptionKeyEnv     = "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
+
 	// The official image sets ECOKU_RUNTIME=container. Its fixed paths then
 	// become the defaults, so a mounted config.yaml only carries choices an
 	// operator actually makes.
-	runtimeEnvironment        = "ECOKU_RUNTIME"
-	containerRuntime          = "container"
-	containerLogPath          = "/var/log/ecoku/ecoku.log"
-	containerClientStaticDir  = "/app/client"
-	containerAdminStaticDir   = "/app/admin"
-	containerSQLitePath       = "/data/ecoku.sqlite3"
-	defaultAdminUsernameEnv   = "ECOKU_ADMIN_USERNAME"
-	defaultAdminPasswordEnv   = "ECOKU_ADMIN_PASSWORD_HASH"
-	defaultAdminTokenKeyEnv   = "ECOKU_ADMIN_TOKEN_KEY"
-	defaultNotificationKeyEnv = "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
+	runtimeEnvironment       = "ECOKU_RUNTIME"
+	containerRuntime         = "container"
+	containerLogPath         = "/var/log/ecoku/ecoku.log"
+	containerClientStaticDir = "/app/client"
+	containerAdminStaticDir  = "/app/admin"
+	containerSQLitePath      = "/data/ecoku.sqlite3"
 )
 
-var (
-	siteIDPattern          = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$`)
-	environmentNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
-)
+var siteIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$`)
 
 // Config is the complete server configuration.
 type Config struct {
@@ -58,10 +57,6 @@ type Config struct {
 	Admin         AdminConfig            `yaml:"admin"`
 	Notifications NotificationsConfig    `yaml:"notifications"`
 	Database      DatabaseConfig         `yaml:"database"`
-
-	// adminEnabledSet records whether config.yaml wrote admin.enabled, so the
-	// container default can tell an omitted key from an explicit false.
-	adminEnabledSet bool
 }
 
 // ClientConfig controls the optional browser assets served by the Go process.
@@ -100,8 +95,10 @@ type RegisteredSiteConfig struct {
 // NotificationsConfig contains only process-level notification integration
 // boundaries. Channel settings and encrypted credentials live in SQLite.
 type NotificationsConfig struct {
-	EncryptionKeyEnv  string `yaml:"encryption_key_env"`
 	InstancePublicURL string `yaml:"instance_public_url"`
+
+	// Retired: the master key is always read from EncryptionKeyEnv.
+	EncryptionKeyEnv string `yaml:"encryption_key_env"`
 }
 
 type CommentConfig struct {
@@ -150,14 +147,18 @@ type SQLiteConfig struct {
 	Path string `yaml:"path"`
 }
 
+// AdminConfig configures the admin console, which is always enabled.
 type AdminConfig struct {
-	Enabled         bool     `yaml:"enabled"`
-	StaticDir       string   `yaml:"static_dir"`
-	UsernameEnv     string   `yaml:"username_env"`
-	PasswordHashEnv string   `yaml:"password_hash_env"`
-	TokenKeyEnv     string   `yaml:"token_key_env"`
-	TokenTTLMinutes int      `yaml:"token_ttl_minutes"`
-	AllowedOrigins  []string `yaml:"allowed_origins"`
+	StaticDir      string   `yaml:"static_dir"`
+	AllowedOrigins []string `yaml:"allowed_origins"`
+
+	// Retired keys stay parseable so that older config files still load;
+	// validateRetiredKeys accepts only the values that are now fixed.
+	Enabled         *bool  `yaml:"enabled"`
+	UsernameEnv     string `yaml:"username_env"`
+	PasswordHashEnv string `yaml:"password_hash_env"`
+	TokenKeyEnv     string `yaml:"token_key_env"`
+	TokenTTLMinutes int    `yaml:"token_ttl_minutes"`
 }
 
 // AdminCredentials contains the runtime-only administrator secrets resolved
@@ -202,15 +203,6 @@ func LoadConfigFile(path string) error {
 		}
 		return fmt.Errorf("配置文件只允许一个 YAML 文档")
 	}
-	var presence struct {
-		Admin struct {
-			Enabled *bool `yaml:"enabled"`
-		} `yaml:"admin"`
-	}
-	if err := yaml.Unmarshal(data, &presence); err != nil {
-		return fmt.Errorf("解析 YAML: %w", err)
-	}
-	loaded.adminEnabledSet = presence.Admin.Enabled != nil
 
 	return ApplyConfig(&loaded)
 }
@@ -252,6 +244,10 @@ func applyDefaults(loaded *Config) {
 	if container && loaded.Client.StaticDir == "" {
 		loaded.Client.StaticDir = containerClientStaticDir
 	}
+	loaded.Admin.StaticDir = strings.TrimSpace(loaded.Admin.StaticDir)
+	if container && loaded.Admin.StaticDir == "" {
+		loaded.Admin.StaticDir = containerAdminStaticDir
+	}
 
 	if loaded.RateLimit.WindowSeconds == 0 {
 		loaded.RateLimit.WindowSeconds = 60
@@ -271,22 +267,6 @@ func applyDefaults(loaded *Config) {
 	if loaded.RateLimit.NotificationTest == 0 {
 		loaded.RateLimit.NotificationTest = 5
 	}
-	if loaded.Admin.TokenTTLMinutes == 0 {
-		loaded.Admin.TokenTTLMinutes = defaultAdminTokenTTLMinutes
-	}
-	if container && !loaded.adminEnabledSet {
-		loaded.Admin.Enabled = true
-	}
-	loaded.Admin.StaticDir = strings.TrimSpace(loaded.Admin.StaticDir)
-	if loaded.Admin.Enabled && loaded.Admin.StaticDir == "" {
-		loaded.Admin.StaticDir = "./admin"
-		if container {
-			loaded.Admin.StaticDir = containerAdminStaticDir
-		}
-	}
-	loaded.Admin.UsernameEnv = defaultString(loaded.Admin.UsernameEnv, defaultAdminUsernameEnv)
-	loaded.Admin.PasswordHashEnv = defaultString(loaded.Admin.PasswordHashEnv, defaultAdminPasswordEnv)
-	loaded.Admin.TokenKeyEnv = defaultString(loaded.Admin.TokenKeyEnv, defaultAdminTokenKeyEnv)
 
 	for i := range loaded.Sites {
 		loaded.Sites[i].ID = strings.TrimSpace(loaded.Sites[i].ID)
@@ -329,7 +309,6 @@ func applyDefaults(loaded *Config) {
 	for i := range loaded.Admin.AllowedOrigins {
 		loaded.Admin.AllowedOrigins[i] = strings.TrimSpace(loaded.Admin.AllowedOrigins[i])
 	}
-	loaded.Notifications.EncryptionKeyEnv = defaultString(loaded.Notifications.EncryptionKeyEnv, defaultNotificationKeyEnv)
 	loaded.Notifications.InstancePublicURL = strings.TrimSpace(loaded.Notifications.InstancePublicURL)
 	// The admin console is served from the instance itself, so its public URL
 	// is the natural admin origin when none is listed explicitly.
@@ -340,14 +319,10 @@ func applyDefaults(loaded *Config) {
 	}
 }
 
-func defaultString(value, fallback string) string {
-	if trimmed := strings.TrimSpace(value); trimmed != "" {
-		return trimmed
-	}
-	return fallback
-}
-
 func validateConfig(loaded *Config) error {
+	if err := validateRetiredKeys(loaded); err != nil {
+		return err
+	}
 	if loaded.Site.Port < 1 || loaded.Site.Port > 65535 {
 		return fmt.Errorf("site.port 必须在 1 到 65535 之间")
 	}
@@ -424,11 +399,8 @@ func validateConfig(loaded *Config) error {
 			return fmt.Errorf("站点 %q 的 comment.placeholder 不能包含换行", site.ID)
 		}
 	}
-	if err := validateAdminConfig(loaded, seenManagementKeys); err != nil {
+	if err := validateAdminOrigins(loaded); err != nil {
 		return err
-	}
-	if loaded.Notifications.EncryptionKeyEnv != "" && !environmentNamePattern.MatchString(loaded.Notifications.EncryptionKeyEnv) {
-		return fmt.Errorf("notifications.encryption_key_env 必须是有效环境变量名")
 	}
 	if loaded.Notifications.InstancePublicURL != "" {
 		normalizedPublicURL, err := NormalizeSiteURL(loaded.Notifications.InstancePublicURL)
@@ -442,6 +414,30 @@ func validateConfig(loaded *Config) error {
 		return fmt.Errorf("database.sqlite.path 不能为空")
 	}
 
+	return nil
+}
+
+// validateRetiredKeys rejects any retired key that still carries a value other
+// than the one now fixed, so that startup names the line to delete instead of
+// silently changing behaviour.
+func validateRetiredKeys(loaded *Config) error {
+	admin := loaded.Admin
+	if admin.Enabled != nil && !*admin.Enabled {
+		return fmt.Errorf("管理后台始终启用；请删除 admin.enabled")
+	}
+	if admin.TokenTTLMinutes != 0 && admin.TokenTTLMinutes != adminTokenTTLMinutes {
+		return fmt.Errorf("管理员会话固定为 8 小时；请删除 admin.token_ttl_minutes 或设为 480")
+	}
+	for _, key := range []struct{ name, value, fixed string }{
+		{"admin.username_env", admin.UsernameEnv, adminUsernameEnv},
+		{"admin.password_hash_env", admin.PasswordHashEnv, adminPasswordHashEnv},
+		{"admin.token_key_env", admin.TokenKeyEnv, adminTokenKeyEnv},
+		{"notifications.encryption_key_env", loaded.Notifications.EncryptionKeyEnv, EncryptionKeyEnv},
+	} {
+		if value := strings.TrimSpace(key.value); value != "" && value != key.fixed {
+			return fmt.Errorf("环境变量名已固定为 %s；请删除 %s，并在 ecoku.env 中改用 %s", key.fixed, key.name, key.fixed)
+		}
+	}
 	return nil
 }
 
@@ -462,29 +458,15 @@ func validateRateLimits(limits RateLimitConfig) error {
 	return nil
 }
 
-func validateAdminConfig(loaded *Config, managementKeys map[string]string) error {
-	admin := &loaded.Admin
-	if !admin.Enabled {
-		return nil
-	}
-	if admin.UsernameEnv == admin.PasswordHashEnv || admin.UsernameEnv == admin.TokenKeyEnv || admin.PasswordHashEnv == admin.TokenKeyEnv {
-		return fmt.Errorf("管理员用户名、密码哈希和 token 签名密钥必须使用不同的环境变量")
-	}
-	if admin.TokenTTLMinutes != defaultAdminTokenTTLMinutes {
-		return fmt.Errorf("管理员会话固定为 8 小时；请删除 admin.token_ttl_minutes 或设为 480")
-	}
-	if len(admin.AllowedOrigins) == 0 {
-		return fmt.Errorf("启用管理员认证时需要填写 notifications.instance_public_url 或 admin.allowed_origins")
-	}
-
+func validateAdminOrigins(loaded *Config) error {
 	publicOrigins := make(map[string]struct{})
 	for _, site := range loaded.Sites {
 		for _, origin := range site.AllowedOrigins {
 			publicOrigins[origin] = struct{}{}
 		}
 	}
-	seenAdminOrigins := make(map[string]struct{}, len(admin.AllowedOrigins))
-	for i, rawOrigin := range admin.AllowedOrigins {
+	seenAdminOrigins := make(map[string]struct{}, len(loaded.Admin.AllowedOrigins))
+	for i, rawOrigin := range loaded.Admin.AllowedOrigins {
 		normalized, err := NormalizeOrigin(rawOrigin)
 		if err != nil {
 			return fmt.Errorf("admin.allowed_origins[%d]: %w", i, err)
@@ -496,54 +478,65 @@ func validateAdminConfig(loaded *Config, managementKeys map[string]string) error
 			return fmt.Errorf("管理员来源 %q 不能复用公开站点来源", normalized)
 		}
 		seenAdminOrigins[normalized] = struct{}{}
-		admin.AllowedOrigins[i] = normalized
+		loaded.Admin.AllowedOrigins[i] = normalized
+	}
+	return nil
+}
+
+// ValidateAdmin checks what the admin console needs before the server starts:
+// a browser origin and the secrets in its environment variables. The CLI
+// commands do not serve the console and do not call it.
+func ValidateAdmin() error {
+	if GlobalConfig == nil {
+		return fmt.Errorf("配置尚未加载")
+	}
+	if len(GlobalConfig.Admin.AllowedOrigins) == 0 {
+		return fmt.Errorf("管理后台需要 notifications.instance_public_url 或 admin.allowed_origins")
 	}
 
-	username, err := requiredEnvironmentValue("admin.username_env", admin.UsernameEnv)
+	username, err := requiredEnvironmentValue(adminUsernameEnv)
 	if err != nil {
 		return err
 	}
 	username = strings.TrimSpace(username)
 	if username == "" || utf8.RuneCountInString(username) > maximumAdminUsernameLength {
-		return fmt.Errorf("环境变量 %s 中的管理员用户名必须为 1 到 %d 个字符", admin.UsernameEnv, maximumAdminUsernameLength)
+		return fmt.Errorf("环境变量 %s 中的管理员用户名必须为 1 到 %d 个字符", adminUsernameEnv, maximumAdminUsernameLength)
 	}
 
-	passwordHash, err := requiredEnvironmentValue("admin.password_hash_env", admin.PasswordHashEnv)
+	passwordHash, err := requiredEnvironmentValue(adminPasswordHashEnv)
 	if err != nil {
 		return err
 	}
 	cost, err := bcrypt.Cost([]byte(passwordHash))
 	if err != nil {
-		return fmt.Errorf("环境变量 %s 必须包含有效的 bcrypt 密码哈希", admin.PasswordHashEnv)
+		return fmt.Errorf("环境变量 %s 必须包含有效的 bcrypt 密码哈希", adminPasswordHashEnv)
 	}
 	if cost < bcrypt.DefaultCost {
-		return fmt.Errorf("环境变量 %s 中的 bcrypt cost 不能低于 %d", admin.PasswordHashEnv, bcrypt.DefaultCost)
+		return fmt.Errorf("环境变量 %s 中的 bcrypt cost 不能低于 %d", adminPasswordHashEnv, bcrypt.DefaultCost)
 	}
 
-	tokenKey, err := requiredEnvironmentValue("admin.token_key_env", admin.TokenKeyEnv)
+	tokenKey, err := requiredEnvironmentValue(adminTokenKeyEnv)
 	if err != nil {
 		return err
 	}
 	if len(tokenKey) < minimumSecretLength {
-		return fmt.Errorf("环境变量 %s 必须至少包含 %d 个字符", admin.TokenKeyEnv, minimumSecretLength)
+		return fmt.Errorf("环境变量 %s 必须至少包含 %d 个字符", adminTokenKeyEnv, minimumSecretLength)
 	}
 	if tokenKey == passwordHash {
 		return fmt.Errorf("管理员 token 签名密钥不能复用管理员密码哈希")
 	}
-	if _, shared := managementKeys[tokenKey]; shared {
-		return fmt.Errorf("管理员 token 签名密钥不能复用站点管理凭据")
+	for _, site := range GlobalConfig.Sites {
+		if site.ManagementKeyEnv != "" && os.Getenv(site.ManagementKeyEnv) == tokenKey {
+			return fmt.Errorf("管理员 token 签名密钥不能复用站点管理凭据")
+		}
 	}
 	return nil
 }
 
-func requiredEnvironmentValue(label, environmentName string) (string, error) {
-	environmentName = strings.TrimSpace(environmentName)
-	if environmentName == "" {
-		return "", fmt.Errorf("%s 不能为空", label)
-	}
-	value := os.Getenv(environmentName)
+func requiredEnvironmentValue(name string) (string, error) {
+	value := os.Getenv(name)
 	if value == "" {
-		return "", fmt.Errorf("环境变量 %s 不能为空", environmentName)
+		return "", fmt.Errorf("环境变量 %s 不能为空", name)
 	}
 	return value, nil
 }
@@ -587,13 +580,6 @@ func installGlobals(loaded *Config) {
 	LogFilePath = loaded.Site.LogPath
 }
 
-func GetSiteConfig() *SiteConfig {
-	if GlobalConfig == nil {
-		return nil
-	}
-	return &GlobalConfig.Site
-}
-
 func GetRegisteredSite(siteID string) (*RegisteredSiteConfig, bool) {
 	if GlobalConfig == nil {
 		return nil, false
@@ -607,26 +593,8 @@ func GetRegisteredSite(siteID string) (*RegisteredSiteConfig, bool) {
 	return nil, false
 }
 
-func GetAllAllowedOrigins() []string {
-	if GlobalConfig == nil {
-		return nil
-	}
-	seen := make(map[string]struct{})
-	result := make([]string, 0)
-	for _, site := range GlobalConfig.Sites {
-		for _, origin := range site.AllowedOrigins {
-			if _, exists := seen[origin]; exists {
-				continue
-			}
-			seen[origin] = struct{}{}
-			result = append(result, origin)
-		}
-	}
-	return result
-}
-
 func GetAdminAllowedOrigins() []string {
-	if GlobalConfig == nil || !GlobalConfig.Admin.Enabled {
+	if GlobalConfig == nil {
 		return nil
 	}
 	return append([]string(nil), GlobalConfig.Admin.AllowedOrigins...)
@@ -711,25 +679,6 @@ func NormalizeSmojiManifestURL(raw string) (string, error) {
 	return parsed.String(), nil
 }
 
-func IsOriginAllowed(site *RegisteredSiteConfig, origin string) bool {
-	if site == nil {
-		return false
-	}
-	if strings.TrimSpace(origin) == "" {
-		return true
-	}
-	normalized, err := NormalizeOrigin(origin)
-	if err != nil {
-		return false
-	}
-	for _, allowed := range site.AllowedOrigins {
-		if normalized == allowed {
-			return true
-		}
-	}
-	return false
-}
-
 func GetManagementKey(siteID string) (string, bool) {
 	site, ok := GetRegisteredSite(siteID)
 	if !ok {
@@ -739,45 +688,17 @@ func GetManagementKey(siteID string) (string, bool) {
 	return key, len(key) >= minimumSecretLength
 }
 
-func GetManagementKeyBindings() []RegisteredSiteConfig {
-	return GetRegisteredSites()
-}
-
 func IsValidSiteID(siteID string) bool {
 	return siteIDPattern.MatchString(strings.TrimSpace(siteID))
 }
 
-func GetCommentFormConfig(siteID string) (CommentFormConfig, bool) {
-	site, ok := GetRegisteredSite(siteID)
-	if !ok || site.Comment.EmailRequired == nil || site.Comment.WebsiteRequired == nil {
-		return CommentFormConfig{}, false
-	}
-	return CommentFormConfig{
-		EmailRequired:       *site.Comment.EmailRequired,
-		WebsiteRequired:     *site.Comment.WebsiteRequired,
-		Placeholder:         site.Comment.Placeholder,
-		DefaultSort:         site.Comment.DefaultSort,
-		LengthLimit:         site.Comment.LengthLimit,
-		EmptyMessage:        site.Comment.EmptyMessage,
-		BloggerBadge:        DefaultBloggerBadge,
-		TurnstileSitekey:    "",
-		BloggerProofEnabled: false,
-		Captcha:             CaptchaPublicConfig{Provider: "off"},
-	}, true
-}
-
-func IsAdminEnabled() bool {
-	return GlobalConfig != nil && GlobalConfig.Admin.Enabled
-}
-
 func GetAdminCredentials() (*AdminCredentials, bool) {
-	if !IsAdminEnabled() {
+	if GlobalConfig == nil {
 		return nil, false
 	}
-	admin := GlobalConfig.Admin
-	username := strings.TrimSpace(os.Getenv(admin.UsernameEnv))
-	passwordHash := os.Getenv(admin.PasswordHashEnv)
-	tokenKey := os.Getenv(admin.TokenKeyEnv)
+	username := strings.TrimSpace(os.Getenv(adminUsernameEnv))
+	passwordHash := os.Getenv(adminPasswordHashEnv)
+	tokenKey := os.Getenv(adminTokenKeyEnv)
 	if username == "" || passwordHash == "" || len(tokenKey) < minimumSecretLength {
 		return nil, false
 	}
@@ -785,7 +706,7 @@ func GetAdminCredentials() (*AdminCredentials, bool) {
 		Username:     username,
 		PasswordHash: passwordHash,
 		TokenKey:     tokenKey,
-		TokenTTL:     time.Duration(admin.TokenTTLMinutes) * time.Minute,
+		TokenTTL:     adminTokenTTLMinutes * time.Minute,
 	}, true
 }
 
@@ -824,15 +745,8 @@ func GetTrustedProxies() []string {
 	return append([]string(nil), GlobalConfig.Site.TrustedProxies...)
 }
 
-func GetAdminConfig() *AdminConfig {
-	if GlobalConfig == nil {
-		return nil
-	}
-	return &GlobalConfig.Admin
-}
-
 func GetAdminStaticDir() string {
-	if !IsAdminEnabled() {
+	if GlobalConfig == nil {
 		return ""
 	}
 	return strings.TrimSpace(GlobalConfig.Admin.StaticDir)
@@ -843,13 +757,6 @@ func GetClientStaticDir() string {
 		return ""
 	}
 	return strings.TrimSpace(GlobalConfig.Client.StaticDir)
-}
-
-func GetDatabaseConfig() *DatabaseConfig {
-	if GlobalConfig == nil {
-		return nil
-	}
-	return &GlobalConfig.Database
 }
 
 func GetSQLiteConfig() *SQLiteConfig {

@@ -12,8 +12,7 @@ Ecoku 的設定分為兩處：
 - 設定檔只能包含一個 YAML 文件，出現未知欄位會拒絕啟動。舊版本遺留的 MySQL、一般使用者等欄位也會導致啟動失敗。
 - 數值類欄位寫 `0` 或省略時，使用下表中的預設值。
 - 表中的「預設值」是程式在欄位省略時採用的值。官方映像檔內已內建連接埠、目錄、日誌和資料庫路徑（表中標「容器內」），[Docker 部署](../self-hosting/docker)時 `config.yaml` 通常只需要 `notifications.instance_public_url`，設定反向代理後再加上 `site.trusted_proxies`。
-- 已經明確寫出的欄位仍然有效，舊的完整設定檔不需要刪減。
-- 設定檔中只寫環境變數的**名稱**（`*_env` 欄位），金鑰本身放在 `ecoku.env`。
+- 舊的完整設定檔不需要刪減：已經寫出的欄位仍然有效，[已停用的欄位](#retired)保持原本的標準值也能啟動。
 
 修改 `config.yaml` 或 `ecoku.env` 後，執行下面的指令重建容器：
 
@@ -60,7 +59,6 @@ cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 
 | 欄位 | 預設值 | 說明 |
 | --- | --- | --- |
-| `encryption_key_env` | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 存放憑據加密主金鑰的環境變數名稱，一般不需要修改。在後台儲存 SMTP 密碼、Telegram Bot Token 或人機驗證 Secret Key 時需要它。 |
 | `instance_public_url` | 空 | Ecoku 的公開網址，例如 `https://ecoku.example.com`。啟用電子郵件或 Telegram 通知前必須填寫。沒有寫 `admin.allowed_origins` 時，它的來源（協定 + 網域 + 選填的連接埠）也是管理後台的來源。通知中的原文連結由站點 URL 和頁面路徑組成，不使用此網址。 |
 
 ## database
@@ -73,19 +71,16 @@ cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 
 ## admin
 
+管理後台和管理 API 始終啟用。
+
 | 欄位 | 預設值 | 說明 |
 | --- | --- | --- |
-| `enabled` | `false`；容器內 `true` | 是否啟用管理後台和管理 API。關閉時 `/admin/` 與 `/api/admin/*` 都不存在。 |
-| `static_dir` | `./admin`；容器內 `/app/admin` | 管理後台的靜態檔案目錄。缺少 `index.html` 或 `assets/` 會拒絕啟動。目錄中有 `favicon.svg` 時，以 `/admin/favicon.svg` 提供分頁圖示；沒有時不影響啟動。 |
-| `username_env` | `ECOKU_ADMIN_USERNAME` | 存放管理員使用者名稱的環境變數名稱，一般不需要修改。 |
-| `password_hash_env` | `ECOKU_ADMIN_PASSWORD_HASH` | 存放管理員密碼 bcrypt 雜湊的環境變數名稱，一般不需要修改。 |
-| `token_key_env` | `ECOKU_ADMIN_TOKEN_KEY` | 存放工作階段簽章金鑰的環境變數名稱，一般不需要修改。 |
-| `token_ttl_minutes` | `480` | 為相容而保留的欄位。工作階段固定為登入後 8 小時，只能省略或寫 `480`，寫其他值會拒絕啟動。 |
-| `allowed_origins` | `notifications.instance_public_url` 的來源 | 允許存取管理 API 的瀏覽器來源，也就是開啟後台時網址列中的 `協定://網域[:連接埠]`。只有用多個位址開啟後台時才需要填寫。啟用後台時，它和 `instance_public_url` 至少要有一個。 |
+| `static_dir` | 空；容器內 `/app/admin` | 管理後台頁面所在的目錄。填寫後，Ecoku 在 `/admin/` 提供管理後台，缺少 `index.html` 或 `assets/` 會拒絕啟動；目錄中有 `favicon.svg` 時，以 `/admin/favicon.svg` 提供分頁圖示。留空則不提供頁面，管理 API 不受影響。 |
+| `allowed_origins` | `notifications.instance_public_url` 的來源 | 允許存取管理 API 的瀏覽器來源，也就是開啟後台時網址列中的 `協定://網域[:連接埠]`。只有用多個位址開啟後台時才需要填寫。它和 `instance_public_url` 至少要有一個，否則服務無法啟動。 |
 
-啟用後台時，Ecoku 在啟動階段還會檢查：
+Ecoku 在啟動階段還會檢查：
 
-- 三個 `*_env` 必須是不同的環境變數，且值都不能為空；
+- `ECOKU_ADMIN_USERNAME`、`ECOKU_ADMIN_PASSWORD_HASH`、`ECOKU_ADMIN_TOKEN_KEY` 都不能為空；
 - 密碼雜湊必須是有效的 bcrypt，cost 不低於 10（`hash-password` 產生的雜湊符合要求）；
 - 簽章金鑰至少 32 位元組，且不能與密碼雜湊或任何站點管理金鑰相同；
 - `allowed_origins` 不能與 `sites` 中任何站點的允許來源重複。在後台新增或修改站點時，也不能使用管理端來源，否則儲存失敗。
@@ -123,13 +118,28 @@ sites:
 | `comment.length_limit` | 內文字數上限，1～10000，預設 1000。 |
 | `comment.empty_message` | 沒有評論時顯示的文字，最多 240 個字元。 |
 
+## 已停用的欄位 {#retired}
+
+下面的欄位已經停用，只為舊設定檔保留。省略或寫成表中的值都能正常啟動；寫成其他值會拒絕啟動，日誌會指出要刪除的欄位。新設定不要再寫。
+
+| 欄位 | 可保留的值 | 現在的行為 |
+| --- | --- | --- |
+| `admin.enabled` | `true` | 管理後台始終啟用。 |
+| `admin.token_ttl_minutes` | `480` | 工作階段固定為登入後 8 小時。 |
+| `admin.username_env` | `ECOKU_ADMIN_USERNAME` | 固定讀取表中的環境變數。 |
+| `admin.password_hash_env` | `ECOKU_ADMIN_PASSWORD_HASH` | 同上。 |
+| `admin.token_key_env` | `ECOKU_ADMIN_TOKEN_KEY` | 同上。 |
+| `notifications.encryption_key_env` | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 同上。 |
+
+如果曾把這些環境變數改成別的名稱，請刪除對應欄位，並在 `ecoku.env` 中把變數改回表中的名稱。
+
 ## 環境變數
 
 | 變數 | 必填 | 說明 |
 | --- | --- | --- |
-| `ECOKU_ADMIN_USERNAME` | 啟用後台時 | 管理員使用者名稱，1～80 個字元。 |
-| `ECOKU_ADMIN_PASSWORD_HASH` | 啟用後台時 | 管理員密碼的 bcrypt 雜湊。用 `hash-password` 指令產生，見[命令列](./cli#hash-password)。 |
-| `ECOKU_ADMIN_TOKEN_KEY` | 啟用後台時 | 工作階段簽章金鑰，至少 32 位元組。可用 `openssl rand -hex 32` 產生。 |
+| `ECOKU_ADMIN_USERNAME` | 是 | 管理員使用者名稱，1～80 個字元。 |
+| `ECOKU_ADMIN_PASSWORD_HASH` | 是 | 管理員密碼的 bcrypt 雜湊。用 `hash-password` 指令產生，見[命令列](./cli#hash-password)。 |
+| `ECOKU_ADMIN_TOKEN_KEY` | 是 | 工作階段簽章金鑰，至少 32 位元組。可用 `openssl rand -hex 32` 產生。 |
 | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 儲存憑據時 | Base64 編碼的 32 位元組金鑰（有無填補皆可）。可用 `openssl rand -base64 32` 產生。 |
 | `TZ` | 否 | 評論時間的顯示時區，填 IANA 名稱，例如 `Asia/Shanghai`。未設定或名稱無效時回退到容器的系統時區，無法辨識時使用 `Asia/Shanghai`。建議明確填寫。 |
 | 站點管理金鑰 | 否 | 變數名稱由 `sites[].management_key_env` 決定，例如 `ECOKU_BLOG_MANAGEMENT_KEY`。設定了該欄位時值必須存在，至少 32 位元組。 |

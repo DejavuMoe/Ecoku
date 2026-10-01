@@ -12,8 +12,7 @@ Ecoku 的配置分两处：
 - 配置文件只能包含一个 YAML 文档，出现未知字段会拒绝启动。旧版本遗留的 MySQL、普通用户等字段也会导致启动失败。
 - 数值类字段写 `0` 或省略时，使用下表中的默认值。
 - 表中的“默认值”是程序在字段省略时的取值。官方镜像内的端口、目录、日志和数据库路径已经内置（表中标“容器内”），[Docker 部署](../self-hosting/docker)时 `config.yaml` 通常只需要 `notifications.instance_public_url`，配置反向代理后再加 `site.trusted_proxies`。
-- 已经显式写出的字段仍然有效，旧的完整配置文件不需要删减。
-- 配置文件里只写环境变量的**名字**（`*_env` 字段），密钥本身放在 `ecoku.env`。
+- 旧的完整配置文件不需要删减：已经写出的字段仍然有效，[已停用的字段](#retired)保持原来的标准值也能启动。
 
 修改 `config.yaml` 或 `ecoku.env` 后，执行下面的命令重建容器：
 
@@ -60,7 +59,6 @@ cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
-| `encryption_key_env` | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 存放凭据加密主密钥的环境变量名，一般不需要修改。在后台保存 SMTP 密码、Telegram Bot Token 或人机验证 Secret Key 时需要它。 |
 | `instance_public_url` | 空 | Ecoku 的公网地址，如 `https://ecoku.example.com`。启用邮件或 Telegram 通知前必须填写。没有写 `admin.allowed_origins` 时，它的来源（协议 + 域名 + 可选端口）也是管理后台的来源。通知里的原文链接由站点 URL 和页面路径拼接，不使用此地址。 |
 
 ## database
@@ -73,19 +71,16 @@ cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 
 ## admin
 
+管理后台和管理 API 始终启用。
+
 | 字段 | 默认值 | 说明 |
 | --- | --- | --- |
-| `enabled` | `false`；容器内 `true` | 是否启用管理后台和管理 API。关闭时 `/admin/` 与 `/api/admin/*` 都不存在。 |
-| `static_dir` | `./admin`；容器内 `/app/admin` | 管理后台静态文件目录。缺少 `index.html` 或 `assets/` 会拒绝启动。目录里有 `favicon.svg` 时，以 `/admin/favicon.svg` 提供标签页图标；没有时不影响启动。 |
-| `username_env` | `ECOKU_ADMIN_USERNAME` | 存放管理员用户名的环境变量名，一般不需要修改。 |
-| `password_hash_env` | `ECOKU_ADMIN_PASSWORD_HASH` | 存放管理员密码 bcrypt 哈希的环境变量名，一般不需要修改。 |
-| `token_key_env` | `ECOKU_ADMIN_TOKEN_KEY` | 存放会话签名密钥的环境变量名，一般不需要修改。 |
-| `token_ttl_minutes` | `480` | 兼容保留的字段。会话固定为登录后 8 小时，只能省略或写 `480`，写其他值会拒绝启动。 |
-| `allowed_origins` | `notifications.instance_public_url` 的来源 | 允许访问管理 API 的浏览器来源，即打开后台时地址栏中的 `协议://域名[:端口]`。只有用多个地址打开后台时才需要填写。启用后台时，它和 `instance_public_url` 至少要有一个。 |
+| `static_dir` | 空；容器内 `/app/admin` | 管理后台页面所在目录。填写后，Ecoku 在 `/admin/` 提供管理后台，缺少 `index.html` 或 `assets/` 会拒绝启动；目录里有 `favicon.svg` 时，以 `/admin/favicon.svg` 提供标签页图标。留空则不提供页面，管理 API 不受影响。 |
+| `allowed_origins` | `notifications.instance_public_url` 的来源 | 允许访问管理 API 的浏览器来源，即打开后台时地址栏中的 `协议://域名[:端口]`。只有用多个地址打开后台时才需要填写。它和 `instance_public_url` 至少要有一个，否则服务无法启动。 |
 
-启用后台时，Ecoku 在启动阶段还会检查：
+Ecoku 在启动阶段还会检查：
 
-- 三个 `*_env` 必须是不同的环境变量，且值都不能为空；
+- `ECOKU_ADMIN_USERNAME`、`ECOKU_ADMIN_PASSWORD_HASH`、`ECOKU_ADMIN_TOKEN_KEY` 都不能为空；
 - 密码哈希必须是有效的 bcrypt，cost 不低于 10（`hash-password` 生成的哈希满足要求）；
 - 签名密钥至少 32 字节，且不能与密码哈希或任何站点管理密钥相同；
 - `allowed_origins` 不能与 `sites` 中任何站点的允许来源重复。后台新建或修改站点时，也不能使用管理端来源，否则保存失败。
@@ -123,13 +118,28 @@ sites:
 | `comment.length_limit` | 正文字数上限，1～10000，默认 1000。 |
 | `comment.empty_message` | 没有评论时显示的文字，最多 240 个字符。 |
 
+## 已停用的字段 {#retired}
+
+下面的字段已经停用，只为旧配置文件保留。省略或写成表中的值都能正常启动；写成其他值会拒绝启动，日志会指出要删除的字段。新配置不要再写。
+
+| 字段 | 可保留的值 | 现在的行为 |
+| --- | --- | --- |
+| `admin.enabled` | `true` | 管理后台始终启用。 |
+| `admin.token_ttl_minutes` | `480` | 会话固定为登录后 8 小时。 |
+| `admin.username_env` | `ECOKU_ADMIN_USERNAME` | 固定读取表中的环境变量。 |
+| `admin.password_hash_env` | `ECOKU_ADMIN_PASSWORD_HASH` | 同上。 |
+| `admin.token_key_env` | `ECOKU_ADMIN_TOKEN_KEY` | 同上。 |
+| `notifications.encryption_key_env` | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 同上。 |
+
+如果曾把这些环境变量改成别的名字，删除对应字段，并在 `ecoku.env` 中把变量改回表中的名称。
+
 ## 环境变量
 
 | 变量 | 必填 | 说明 |
 | --- | --- | --- |
-| `ECOKU_ADMIN_USERNAME` | 启用后台时 | 管理员用户名，1～80 个字符。 |
-| `ECOKU_ADMIN_PASSWORD_HASH` | 启用后台时 | 管理员密码的 bcrypt 哈希。用 `hash-password` 命令生成，见[命令行](./cli#hash-password)。 |
-| `ECOKU_ADMIN_TOKEN_KEY` | 启用后台时 | 会话签名密钥，至少 32 字节。可用 `openssl rand -hex 32` 生成。 |
+| `ECOKU_ADMIN_USERNAME` | 是 | 管理员用户名，1～80 个字符。 |
+| `ECOKU_ADMIN_PASSWORD_HASH` | 是 | 管理员密码的 bcrypt 哈希。用 `hash-password` 命令生成，见[命令行](./cli#hash-password)。 |
+| `ECOKU_ADMIN_TOKEN_KEY` | 是 | 会话签名密钥，至少 32 字节。可用 `openssl rand -hex 32` 生成。 |
 | `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 保存凭据时 | Base64 编码的 32 字节密钥（带或不带填充均可）。可用 `openssl rand -base64 32` 生成。 |
 | `TZ` | 否 | 评论时间的显示时区，IANA 名称，如 `Asia/Shanghai`。不设置或名称无效时回退到容器的系统时区，无法识别时使用 `Asia/Shanghai`。建议显式填写。 |
 | 站点管理密钥 | 否 | 变量名由 `sites[].management_key_env` 决定，例如 `ECOKU_BLOG_MANAGEMENT_KEY`。配置了该字段时值必须存在，至少 32 字节。 |

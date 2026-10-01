@@ -1,5 +1,3 @@
-import type { CommentStatus } from './types'
-
 export const messages = {
   logoutFailed: '退出失败，请重试。',
   loginFailed: '用户名或密码错误。',
@@ -26,10 +24,3 @@ export const messages = {
   loginChallengeRequired: '请完成验证后再登录。',
   noSites: '当前实例还没有站点。',
 } as const
-
-export const statusOrder: CommentStatus[] = ['published', 'deleted']
-
-export const statusMeta: Record<CommentStatus, { label: string; className: string }> = {
-  published: { label: '已发布', className: 'badge-published' },
-  deleted: { label: '已删除', className: 'badge-deleted' },
-}

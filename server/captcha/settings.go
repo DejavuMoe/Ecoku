@@ -3,6 +3,7 @@ package captcha
 import (
 	"context"
 	"ecoku-server/config"
+	"ecoku-server/masterkey"
 	"ecoku-server/model"
 	"errors"
 	"fmt"
@@ -16,11 +17,13 @@ import (
 )
 
 const (
-	ProviderOff       = "off"
-	ProviderTurnstile = "turnstile"
-	ProviderCap       = "cap"
-	maxSitekeyLength  = 255
-	maxInstanceLength = 2048
+	ProviderOff        = "off"
+	ProviderTurnstile  = "turnstile"
+	ProviderCap        = "cap"
+	maxSitekeyLength   = 255
+	maxInstanceLength  = 2048
+	turnstileSecretAAD = "ecoku-turnstile-secret-v1"
+	capSecretAAD       = "ecoku-cap-secret-v1"
 )
 
 var (
@@ -166,14 +169,14 @@ func Save(input Settings) (Settings, error) {
 
 	turnstileSecret := current.SecretCipher
 	if input.Turnstile.Secret != "" {
-		turnstileSecret, err = encryptSecret(input.Turnstile.Secret, turnstileSecretAAD)
+		turnstileSecret, err = masterkey.Encrypt(input.Turnstile.Secret, turnstileSecretAAD)
 		if err != nil {
 			return Settings{}, err
 		}
 	}
 	capSecret := current.CapSecretCipher
 	if input.Cap.Secret != "" {
-		capSecret, err = encryptSecret(input.Cap.Secret, capSecretAAD)
+		capSecret, err = masterkey.Encrypt(input.Cap.Secret, capSecretAAD)
 		if err != nil {
 			return Settings{}, err
 		}
@@ -261,12 +264,12 @@ func ValidateStoredSecrets() error {
 		return err
 	}
 	if len(row.SecretCipher) > 0 {
-		if _, err := decryptSecret(row.SecretCipher, turnstileSecretAAD); err != nil {
+		if _, err := masterkey.Decrypt(row.SecretCipher, turnstileSecretAAD); err != nil {
 			return fmt.Errorf("无法解密 Turnstile Secret key: %w", err)
 		}
 	}
 	if len(row.CapSecretCipher) > 0 {
-		if _, err := decryptSecret(row.CapSecretCipher, capSecretAAD); err != nil {
+		if _, err := masterkey.Decrypt(row.CapSecretCipher, capSecretAAD); err != nil {
 			return fmt.Errorf("无法解密 Cap Secret key: %w", err)
 		}
 	}

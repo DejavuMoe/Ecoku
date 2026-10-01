@@ -50,10 +50,6 @@ sudo rmdir app/config.yaml
 
 The site's allowed origins overlap with the admin console's origin. The admin console's origin defaults to `notifications.instance_public_url`; if you set `admin.allowed_origins`, that list is used instead. The admin console must use a separate origin, usually Ecoku's own domain, such as `https://ecoku.example.com`. If you wrote `sites` in `app/config.yaml`, the same conflict is reported at startup as "管理员来源 … 不能复用公开站点来源" (admin origin cannot reuse a public site origin).
 
-### The log says "管理员会话固定为 8 小时" (admin sessions are fixed at 8 hours)
-
-`admin.token_ttl_minutes` in `app/config.yaml` is not 480. Delete the line or set it to `480`, then recreate the container.
-
 ### The log says "无法解密 … 凭据" (cannot decrypt … credentials)
 
 SMTP, Telegram, or CAPTCHA credentials were saved in the database, but `ECOKU_NOTIFICATION_ENCRYPTION_KEY` is missing or differs from the key used when they were saved. Get the original `ecoku.env` from a backup and restore this key. If the key cannot be recovered, the only option is to restore the whole instance from an earlier backup.

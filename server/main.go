@@ -44,6 +44,9 @@ func main() {
 	}
 	// 初始化配置文件
 	config.InitConfigFile()
+	if err := config.ValidateAdmin(); err != nil {
+		log.Fatalf("管理后台配置无效: %v", err)
+	}
 	// 初始化日志系统
 	logs.InitLogger()
 	if err := model.InitDatabase(); err != nil {

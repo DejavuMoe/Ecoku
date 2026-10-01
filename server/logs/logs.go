@@ -27,11 +27,6 @@ func InitLogger() {
 	log.SetOutput(writer)
 }
 
-func NewWriter(path string) io.Writer {
-	writer, _ := newWriter(path)
-	return writer
-}
-
 func newWriter(path string) (io.Writer, io.Closer) {
 	if isStdoutPath(path) {
 		return os.Stdout, nopCloser{}

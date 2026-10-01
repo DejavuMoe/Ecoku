@@ -4,7 +4,6 @@
   "private": true,
   "description": "Ecoku self-hosted comment system workspace",
   "scripts": {
-    "serve": "cd server && air",
     "client": "pnpm -C packages/client run dev",
     "admin": "pnpm -C packages/admin run dev",
     "docs:dev": "pnpm -C docs dev",

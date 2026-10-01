@@ -1,88 +1,19 @@
-# Ecoku 服务器配置文件
+# 本地开发配置：复制为 server/config.yaml。字段说明见 docs/reference/configuration.md，
+# 管理员凭据只从环境变量读取，见 docs/contribute/local-dev.md。
 
-# 站点配置
-site:
-  # 系统运行端口
-  port: 12123
+notifications:
+  instance_public_url: "http://127.0.0.1:12123"
 
-  # 日志文件路径
-  log_path: "./data/log.txt"
+# 管理端开发页（pnpm -C packages/admin dev）的来源。
+admin:
+  allowed_origins:
+    - "http://localhost:5174"
 
-  # 空列表表示所有访客共用一个限流桶。生产若经本机 Caddy 反代到 127.0.0.1:12123
-  # 且需要按真实访客限流，填 Docker 网关 /32，例如 172.17.0.1/32。
-  # 不要填 0.0.0.0/0 或 ::/0。
-  trusted_proxies: []
-
-# 可选。设置后由 Go 直接提供 /client/ecoku-loader.js、ecoku.umd.js、ecoku.css 与 ecoku.unstyled.css。
-# 源码开发时应先构建 packages/client；容器固定使用 /app/client。
-client:
-  static_dir: "../packages/client/dist"
-
-# 单进程、固定窗口限流；进程重启后计数清空。
-rate_limit:
-  window_seconds: 60
-  comment_submit: 5
-  comment_list: 60
-  comment_delete: 30
-  admin_login: 5
-  notification_test: 5
-
-# 仅用于空数据库首次初始化的站点种子。导入后以 SQLite 站点注册表为准；这里的
-# 修改不会覆盖管理端已保存的站点配置。
+# 只在空数据库首次初始化时写入；之后在管理后台修改站点。
 sites:
   - id: "example-site"
     site_url: "https://example.com"
-    # 可选展示名称；留空时自动使用 site_url 的域名。
     name: "示例站点"
     allowed_origins:
       - "http://localhost:3000"
       - "http://localhost:5173"
-    # 可选；仅供受信任服务端自动化使用，绝不能放入浏览器 SDK。
-    management_key_env: "ECOKU_EXAMPLE_SITE_MANAGEMENT_KEY"
-    comment:
-      # 评论提交后立即发布。昵称和正文始终必填；邮箱默认必填，网站默认可选。
-      email_required: true
-      website_required: false
-      # 最多 80 个字符；留空时使用“写下评论（仅支持纯文本）”。
-      placeholder: "写下评论（仅支持纯文本）"
-      # 默认排序只支持 newest 或 oldest。
-      default_sort: "newest"
-      # 按 Unicode 字符数计算，允许范围 1 至 10000。
-      length_limit: 1000
-      # 页面没有评论时直接显示的纯文本，可换行。
-      empty_message: |-
-        还没有评论
-        成为第一个留下评论的人。
-
-# 通知渠道的非秘密进程级边界。SMTP 密码和 Telegram Token 经此主密钥
-# 加密后存入 SQLite；主密钥本身只存在于环境变量中。
-notifications:
-  encryption_key_env: "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
-  # 管理端对外公开网址；永不信任请求 Host。
-  instance_public_url: "https://ecoku.example.com"
-
-# SQLite3 数据库配置。Ecoku P2 起不再支持 MySQL。
-database:
-  sqlite:
-    # 数据库文件路径。空库会按顺序初始化到最新 schema；已有库只接受本版本迁移链上的顺序升级。
-    path: "./data/ecoku.bin"
-
-# 独立管理员认证。默认关闭；启用后缺少任何凭据都会导致启动失败。
-admin:
-  enabled: false
-  # 启用管理端时由 Go 直接承载此目录中的 Vite 构建产物。
-  # 容器示例使用 /app/admin；本地构建可改为 ../packages/admin/dist。
-  static_dir: "./admin"
-  # 管理员用户名、bcrypt 密码哈希和独立签名密钥只从环境变量读取。
-  # 不要在配置文件、命令参数或日志中写入明文密码。
-  # 首次启用前，应通过受保护的本地提示或密码管理工具离线生成 cost>=10
-  # 的 bcrypt 哈希，并通过服务管理器分别注入下面三个环境变量。
-  # 轮换时替换密码哈希和/或签名密钥后受控重启；旧 token 随即失效。
-  username_env: "ECOKU_ADMIN_USERNAME"
-  password_hash_env: "ECOKU_ADMIN_PASSWORD_HASH"
-  token_key_env: "ECOKU_ADMIN_TOKEN_KEY"
-  # 固定 8 小时；兼容键只允许 480，也可省略。
-  token_ttl_minutes: 480
-  # 必须与公开评论站点来源分离；无 Origin 的可信 CLI/服务端请求仍需认证。
-  allowed_origins:
-    - "http://localhost:5174"
