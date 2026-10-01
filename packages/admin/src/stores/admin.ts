@@ -61,11 +61,15 @@ export const useAdminStore = defineStore('admin', () => {
   const comments = ref<CommentReview[]>([])
   const selectedComment = ref<CommentReview | null>(null)
   const queueBusy = ref(false)
+  // A quiet reload keeps the current page on screen while it syncs with the server.
+  const queueQuiet = ref(false)
   const detailBusy = ref(false)
   const actionBusy = ref(false)
   const queueMessage = ref('')
   const actionMessage = ref('')
   const toastMessage = ref('')
+  // Counts toasts so that the same message twice in a row is still shown twice.
+  const toastSerial = ref(0)
   const notificationSettings = ref<NotificationSettings | null>(null)
   const notificationBusy = ref(false)
   const notificationMessage = ref('')
@@ -83,11 +87,12 @@ export const useAdminStore = defineStore('admin', () => {
   let queueGeneration = 0
   let detailGeneration = 0
 
+  function toast(message: string) { toastMessage.value = message; toastSerial.value += 1 }
   function clearSession(reason = '') {
     if (expiryTimer) clearTimeout(expiryTimer)
     queueController?.abort(); detailController?.abort()
     ++queueGeneration; ++detailGeneration
-    queueBusy.value = false; detailBusy.value = false
+    queueBusy.value = false; queueQuiet.value = false; detailBusy.value = false
     cancelAdminRequests()
     authenticated.value = false; expiresAt.value = ''; sites.value = []; selectedSiteId.value = ''
     comments.value = []; selectedComment.value = null; counts.value = emptyCounts()
@@ -179,26 +184,31 @@ export const useAdminStore = defineStore('admin', () => {
       const index = sites.value.findIndex((site) => site.id === saved.id)
       if (index >= 0) sites.value[index] = saved; else sites.value.push(saved)
       sites.value = [...sites.value].sort((a, b) => (a.name || a.siteUrl).localeCompare(b.name || b.siteUrl, 'zh-CN'))
-      selectedSiteId.value = saved.id; toastMessage.value = creating ? messages.siteCreated : messages.siteUpdated
+      selectedSiteId.value = saved.id; toast(creating ? messages.siteCreated : messages.siteUpdated)
       return saved
     } catch (error) { fail(error, 'site'); return null }
     finally { siteBusy.value = false }
   }
-  async function loadComments(announce = false) {
+  async function loadComments(announce = false, quiet = false): Promise<void> {
     if (!authenticated.value || !selectedSiteId.value) return
     detailController?.abort(); ++detailGeneration; detailBusy.value = false
     queueController?.abort(); queueController = new AbortController(); const generation = ++queueGeneration
-    queueBusy.value = true; queueMessage.value = ''; actionMessage.value = ''
+    queueBusy.value = true; queueQuiet.value = quiet; queueMessage.value = ''; actionMessage.value = ''
     try {
       const result = await adminApi.listComments(selectedSiteId.value, status.value, page.value, pageSize.value, sort.value, queueController.signal)
       if (generation !== queueGeneration) return
+      if (!result.data.length && result.page > 1 && result.pageCount > 0 && result.page > result.pageCount) {
+        // The last comment of the last page is gone: show the new last page rather than an empty one.
+        page.value = result.pageCount
+        return await loadComments(announce, quiet)
+      }
       comments.value = result.data; counts.value = result.counts; total.value = result.total
       page.value = result.page; pageSize.value = result.pageSize; pageCount.value = result.pageCount
       const next = comments.value.find((item) => item.id === selectedComment.value?.id) ?? null
       selectedComment.value = next; if (next) void loadDetail(next.id)
-      if (announce) toastMessage.value = messages.refreshed
+      if (announce) toast(messages.refreshed)
     } catch (error) { if (generation === queueGeneration && !(error instanceof DOMException && error.name === 'AbortError')) fail(error, 'queue') }
-    finally { if (generation === queueGeneration) queueBusy.value = false }
+    finally { if (generation === queueGeneration) { queueBusy.value = false; queueQuiet.value = false } }
   }
   async function loadDetail(id: number) {
     detailController?.abort(); detailController = new AbortController(); const generation = ++detailGeneration; detailBusy.value = true
@@ -213,7 +223,7 @@ export const useAdminStore = defineStore('admin', () => {
   async function toggleSort() { sort.value = sort.value === 'oldest' ? 'newest' : 'oldest'; page.value = 1; await loadComments() }
   async function selectPage(next: number) { if (next < 1 || next > pageCount.value) return; page.value = next; await loadComments() }
   function selectComment(id: number) { const value = comments.value.find((item) => item.id === id); if (value) { selectedComment.value = value; void loadDetail(id) } }
-  async function mutateCurrent(kind: 'tombstone' | 'permanent', id = selectedComment.value?.id) {
+  async function mutateCurrent(kind: 'tombstone' | 'permanent', id = selectedComment.value?.id, leave?: (id: number) => Promise<void>) {
     const target = selectedComment.value?.id === id ? selectedComment.value : comments.value.find((item) => item.id === id)
     if (!target || actionBusy.value) return false
     if (kind === 'permanent' && (!target.deleted || target.hasChildren)) {
@@ -225,8 +235,12 @@ export const useAdminStore = defineStore('admin', () => {
     try {
       if (kind === 'tombstone') await adminApi.tombstone(siteId, target.id)
       else await adminApi.permanentlyDelete(siteId, target.id)
-      toastMessage.value = kind === 'tombstone' ? messages.tombstoned : messages.permanentlyDeleted
-      selectedComment.value = null; await loadComments(); return true
+      await leave?.(target.id)
+      toast(kind === 'tombstone' ? messages.tombstoned : messages.permanentlyDeleted)
+      if (selectedComment.value?.id === target.id) selectedComment.value = null
+      // The faded comment keeps its place until the quiet reload swaps in the whole page at once,
+      // so the page keeps its height and scroll position when the next page's comment moves up.
+      await loadComments(false, true); return true
     } catch (error) { fail(error, 'action'); return false }
     finally { actionBusy.value = false }
   }
@@ -239,13 +253,13 @@ export const useAdminStore = defineStore('admin', () => {
   }
   async function saveEmail(settings: EmailNotificationSettings) {
     notificationBusy.value = true
-    try { const saved = await adminApi.saveEmail(settings); if (notificationSettings.value) notificationSettings.value.email = saved; toastMessage.value = messages.emailSaved; return saved }
+    try { const saved = await adminApi.saveEmail(settings); if (notificationSettings.value) notificationSettings.value.email = saved; toast(messages.emailSaved); return saved }
     catch (error) { fail(error, 'notification'); return null }
     finally { notificationBusy.value = false }
   }
   async function saveTelegram(settings: TelegramNotificationSettings) {
     notificationBusy.value = true
-    try { const saved = await adminApi.saveTelegram(settings); if (notificationSettings.value) notificationSettings.value.telegram = saved; toastMessage.value = messages.telegramSaved; return saved }
+    try { const saved = await adminApi.saveTelegram(settings); if (notificationSettings.value) notificationSettings.value.telegram = saved; toast(messages.telegramSaved); return saved }
     catch (error) { fail(error, 'notification'); return null }
     finally { notificationBusy.value = false }
   }
@@ -273,13 +287,13 @@ export const useAdminStore = defineStore('admin', () => {
     try {
       const saved = await adminApi.saveCaptcha(settings)
       captchaSettings.value = saved
-      toastMessage.value = messages.captchaSaved
+      toast(messages.captchaSaved)
       return saved
     } catch (error) { fail(error, 'security'); return null }
     finally { captchaBusy.value = false }
   }
   return { sessionReady, logoutBusy, logoutMessage, expiresAt, loginBusy, loginMessage, authenticated, view, dirtyView, discardRequested, sites, selectedSiteId, selectedSite, siteBusy, siteMessage,
-    status, sort, page, pageSize, pageCount, total, counts, comments, selectedComment, queueBusy, detailBusy, actionBusy, queueMessage, actionMessage, toastMessage,
+    status, sort, page, pageSize, pageCount, total, counts, comments, selectedComment, queueBusy, queueQuiet, detailBusy, actionBusy, queueMessage, actionMessage, toastMessage, toastSerial,
     notificationSettings, notificationBusy, notificationMessage, emailTestState, emailTestMessage, telegramTestState, telegramTestMessage,
     captchaSettings, captchaBusy, captchaMessage,
     login, logout, restoreSession, switchView, loadSites, saveSite, loadComments, loadDetail, selectSite, selectStatus, toggleSort, selectPage, selectComment, mutateCurrent,

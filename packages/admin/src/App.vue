@@ -14,7 +14,7 @@ import { messages } from './messages'
 
 const store = useAdminStore()
 const {
-  authenticated, sessionReady, logoutBusy, logoutMessage, loginBusy, loginMessage, view, toastMessage, dirtyView, discardRequested,
+  authenticated, sessionReady, logoutBusy, logoutMessage, loginBusy, loginMessage, view, toastMessage, toastSerial, dirtyView, discardRequested,
 } = storeToRefs(store)
 
 const views: { id: MainView; label: string }[] = [
@@ -37,12 +37,32 @@ let returnFocus: HTMLElement | null = null
 const visibleToast = ref('')
 let toastTimer: ReturnType<typeof setTimeout> | undefined
 
-watch(toastMessage, (value) => {
+watch(toastSerial, async () => {
+  const value = toastMessage.value
   if (!value) return
-  visibleToast.value = value
+  // Clear first so that a repeated message is shown and announced again.
+  visibleToast.value = ''
+  await nextTick()
   if (toastTimer !== undefined) clearTimeout(toastTimer)
+  visibleToast.value = value
   toastTimer = setTimeout(() => { visibleToast.value = '' }, 3200)
 })
+
+// Ending a session reloads the page so that the login form gets a CSP matching the current
+// CAPTCHA provider. The history entry carries the expiry notice across that reload.
+const sessionNoticeKey = 'ecokuAdminNotice'
+function reloadAfterSessionEnd() {
+  if (loginMessage.value === messages.sessionExpired) {
+    try { history.replaceState({ [sessionNoticeKey]: 'session-expired' }, '') } catch { /* the notice is optional */ }
+  }
+  window.location.reload()
+}
+function takeSessionNotice(): boolean {
+  const state: unknown = history.state
+  if (!state || typeof state !== 'object' || (state as Record<string, unknown>)[sessionNoticeKey] !== 'session-expired') return false
+  try { history.replaceState(null, '') } catch { /* ignore */ }
+  return true
+}
 
 watch(authenticated, async (value, previous) => {
   await nextTick()
@@ -54,7 +74,7 @@ watch(authenticated, async (value, previous) => {
     nav?.querySelector<HTMLButtonElement>('[aria-current="page"]')?.focus()
   } else {
     if (previous) {
-      window.location.reload()
+      reloadAfterSessionEnd()
       return
     }
     usernameInput.value?.focus()
@@ -77,10 +97,12 @@ function beforeUnload(event: BeforeUnloadEvent) {
 }
 
 onMounted(async () => {
+  const expired = takeSessionNotice()
   window.addEventListener('beforeunload', beforeUnload)
   document.addEventListener('keydown', saveShortcut)
   await store.restoreSession()
   if (!authenticated.value) {
+    if (expired && !loginMessage.value) loginMessage.value = messages.sessionExpired
     await nextTick()
     usernameInput.value?.focus()
     await mountLoginChallenge()

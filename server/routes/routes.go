@@ -236,6 +236,18 @@ func registerAdminStatic(router *gin.Engine, configuredDirectory string) error {
 		c.Data(http.StatusOK, "text/html; charset=utf-8", body)
 	})
 	adminStatic.StaticFS("/assets", gin.Dir(assetsPath, false))
+	// The tab icon is optional so that an older or custom static directory still starts.
+	faviconPath := filepath.Join(absoluteDirectory, "favicon.svg")
+	if faviconInfo, statErr := os.Stat(faviconPath); statErr == nil && faviconInfo.Mode().IsRegular() {
+		serveFavicon := func(c *gin.Context) {
+			// Opened on its own, the icon is a document: allow only its inline dark-mode style.
+			c.Header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
+			c.Header("Cache-Control", "public, max-age=86400")
+			c.File(faviconPath)
+		}
+		adminStatic.GET("/favicon.svg", serveFavicon)
+		adminStatic.HEAD("/favicon.svg", serveFavicon)
+	}
 	return nil
 }
 

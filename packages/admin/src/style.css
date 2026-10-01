@@ -37,6 +37,7 @@
   --main-w: 760px;
   --gutter: 32px;
   --masthead: 60px;
+  --savebar-bottom: 20px;
   color-scheme: light dark;
 }
 
@@ -154,9 +155,11 @@ kbd { display: inline-grid; min-width: 18px; height: 18px; place-items: center; 
 .rule input { width: 100%; min-width: 0; height: var(--row); padding: 0; border: 0; border-radius: 0; outline: 0; color: var(--ink); background: transparent; font-size: 15px; }
 .rule input.mono { font-family: var(--mono); font-size: 13.5px; }
 .rule input::placeholder, .ruled-paper::placeholder, .chip-field input::placeholder { color: var(--muted); font-family: var(--sans); font-size: 13px; letter-spacing: 0.04em; opacity: 0.75; }
-.rule input:not([type="radio"]):read-only { color: var(--muted); cursor: default; }
-.rule:has(input:not([type="radio"]):read-only) { border-bottom-style: dashed; }
-.rule:has(input:not([type="radio"]):read-only):focus-within { border-bottom-color: var(--line); }
+/* The readonly attribute rather than :read-only: inputs in a busy (disabled) fieldset match :read-only too,
+   and Chromium can leave the :has() border stale after the fieldset is enabled again. */
+.rule input[readonly] { color: var(--muted); cursor: default; }
+.rule:has(input[readonly]) { border-bottom-style: dashed; }
+.rule:has(input[readonly]):focus-within { border-bottom-color: var(--line); }
 .rule:has([aria-invalid="true"]) { border-bottom-color: var(--danger); }
 .rule input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
 .rule input[type="number"]::-webkit-inner-spin-button, .rule input[type="number"]::-webkit-outer-spin-button { margin: 0; appearance: none; }
@@ -313,7 +316,7 @@ cap-widget.admin-cap-widget {
 .entry::before { position: absolute; top: 20px; bottom: 20px; left: -20px; width: 2px; border-radius: 2px; background: transparent; content: ""; transition: background-color 0.15s ease; }
 .entry[aria-current="true"]::before { background: var(--ink); }
 .entry.is-flash::after { position: absolute; z-index: -1; inset: 2px -14px; border-radius: var(--radius); background: var(--wash); content: ""; animation: flash 1.4s ease forwards; }
-.entry.is-leaving { animation: leave 0.24s ease forwards; }
+.entry.is-leaving { animation: leave 0.24s ease forwards; pointer-events: none; }
 
 .entry-head { display: flex; min-width: 0; align-items: baseline; gap: 16px; }
 .entry-who { display: flex; min-width: 0; flex: 1 1 auto; flex-wrap: wrap; align-items: baseline; gap: 0 12px; }
@@ -408,7 +411,7 @@ a.entry-quote:hover .quote-ref { color: var(--accent); }
 .provider-panel { margin-top: 10px; }
 
 /* ---------- save bar ---------- */
-.savebar-dock { position: fixed; z-index: 60; right: 0; bottom: 20px; left: 0; pointer-events: none; }
+.savebar-dock { position: fixed; z-index: 60; right: 0; bottom: var(--savebar-bottom); left: 0; pointer-events: none; }
 .savebar { display: flex; min-height: 52px; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 18px; border: 1px solid var(--line-soft); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); pointer-events: auto; animation: rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .savebar-status { display: flex; min-width: 0; align-items: center; gap: 10px; color: var(--ink-soft); font-size: 13px; letter-spacing: 0.02em; }
 .savebar-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: var(--accent); }
@@ -425,6 +428,8 @@ dialog::backdrop { background: rgb(20 18 16 / 0.32); }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 18px 18px; }
 .toast { position: fixed; z-index: 100; bottom: 28px; left: 50%; display: inline-flex; max-width: min(440px, calc(100% - 32px)); align-items: center; gap: 8px; padding: 10px 16px; border-radius: var(--radius); color: var(--paper); background: var(--ink); box-shadow: var(--shadow); font-size: 13px; letter-spacing: 0.02em; transform: translateX(-50%); animation: toast-in 0.2s ease; }
 .toast .icon { width: 14px; height: 14px; }
+/* While a save bar is open the toast rises above it. */
+body:has(.savebar-dock) .toast { bottom: calc(var(--savebar-bottom) + 66px); }
 
 .tabbar { display: none; }
 
@@ -444,7 +449,7 @@ dialog::backdrop { background: rgb(20 18 16 / 0.32); }
 }
 
 @media (max-width: 859px) {
-  :root { --gutter: 20px; --masthead: 52px; --label-w: 88px; --label-gap: 12px; }
+  :root { --gutter: 20px; --masthead: 52px; --label-w: 88px; --label-gap: 12px; --savebar-bottom: calc(64px + env(safe-area-inset-bottom) + 10px); }
   .layout { grid-template-columns: minmax(0, 1fr); }
   .in-margin, .in-main { grid-column: 1; }
   body:has(.app) { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
@@ -488,7 +493,6 @@ dialog::backdrop { background: rgb(20 18 16 / 0.32); }
   .chip-field > input { min-width: 72px; flex-basis: 72px; }
   .rule-label-inline { padding-left: 12px; }
 
-  .savebar-dock { bottom: calc(64px + env(safe-area-inset-bottom) + 10px); }
   .savebar { padding-left: 14px; }
   .toast { bottom: calc(64px + env(safe-area-inset-bottom) + 16px); }
 
@@ -524,4 +528,4 @@ dialog::backdrop { background: rgb(20 18 16 / 0.32); }
 .brand-symbols { position: absolute; }
 .captcha-slot:empty { display: none; }
 .admin-smoji-inline { width: 1.5em; height: 1.5em; vertical-align: text-bottom; object-fit: contain; }
-fieldset:disabled { opacity: 0.7; }
+.doc > fieldset:disabled { opacity: 0.7; }

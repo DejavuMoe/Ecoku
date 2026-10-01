@@ -21,9 +21,10 @@ import (
 )
 
 const (
-	adminTestOrigin = "https://admin.example"
-	adminSiteAKey   = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	adminSiteBKey   = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	adminTestOrigin  = "https://admin.example"
+	adminSiteAKey    = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	adminSiteBKey    = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	adminTestFavicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><style>.s{fill:#b8472f}</style><path class="s" d="M0 0h64v64H0z"/></svg>`
 )
 
 type adminEnvironment struct {
@@ -55,6 +56,9 @@ func setupAdminTest(t *testing.T) adminEnvironment {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(staticDir, "index.html"), []byte("<!doctype html><html><head></head><body></body></html>"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(staticDir, "favicon.svg"), []byte(adminTestFavicon), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if err := config.ApplyConfig(&config.Config{
@@ -121,6 +125,50 @@ func TestAdminStaticCSPAllowsStyleAttributesAndNonceBootstrapWithoutUnsafeInline
 	}
 	if !strings.Contains(csp, "'nonce-") || !strings.Contains(recorder.Body.String(), "window.CAP_SCRIPT_NONCE") {
 		t.Fatalf("administrator index is missing its per-response Cap nonce: csp=%q body=%s", csp, recorder.Body.String())
+	}
+}
+
+func TestAdminStaticServesTheTabIcon(t *testing.T) {
+	env := setupAdminTest(t)
+	request := httptest.NewRequest(http.MethodGet, "/admin/favicon.svg", nil)
+	recorder := httptest.NewRecorder()
+	env.router.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK || recorder.Body.String() != adminTestFavicon {
+		t.Fatalf("favicon status=%d body=%q", recorder.Code, recorder.Body.String())
+	}
+	if contentType := recorder.Header().Get("Content-Type"); !strings.HasPrefix(contentType, "image/svg+xml") {
+		t.Fatalf("favicon content type=%q", contentType)
+	}
+	if csp := recorder.Header().Get("Content-Security-Policy"); csp != "default-src 'none'; style-src 'unsafe-inline'" {
+		t.Fatalf("favicon CSP=%q", csp)
+	}
+	if recorder.Header().Get("X-Content-Type-Options") != "nosniff" || recorder.Header().Get("Cache-Control") != "public, max-age=86400" {
+		t.Fatalf("favicon headers=%v", recorder.Header())
+	}
+
+	head := httptest.NewRequest(http.MethodHead, "/admin/favicon.svg", nil)
+	headRecorder := httptest.NewRecorder()
+	env.router.ServeHTTP(headRecorder, head)
+	if headRecorder.Code != http.StatusOK || headRecorder.Body.Len() != 0 {
+		t.Fatalf("HEAD favicon status=%d body=%d", headRecorder.Code, headRecorder.Body.Len())
+	}
+}
+
+func TestAdminStaticStartsWithoutTheTabIcon(t *testing.T) {
+	setupAdminTest(t)
+	if err := os.Remove(filepath.Join(config.GetAdminStaticDir(), "favicon.svg")); err != nil {
+		t.Fatal(err)
+	}
+	router, err := NewRouter()
+	if err != nil {
+		t.Fatalf("router without favicon: %v", err)
+	}
+	for path, want := range map[string]int{"/admin/": http.StatusOK, "/admin/favicon.svg": http.StatusNotFound} {
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
+		if recorder.Code != want {
+			t.Fatalf("GET %s status=%d, want %d", path, recorder.Code, want)
+		}
 	}
 }
 

@@ -29,3 +29,8 @@ export function tokenizeAdminSmoji(content: string, enabled: boolean, manifestUr
   if (cursor < content.length) tokens.push({ type: 'text', value: content.slice(cursor) })
   return tokens.length ? tokens : [{ type: 'text', value: content }]
 }
+
+// One-line previews, such as a quoted parent, read each emoji the body would render as its label.
+export function smojiPlainText(content: string, enabled: boolean, manifestUrl: string): string {
+  return tokenizeAdminSmoji(content, enabled, manifestUrl).map((token) => token.type === 'image' ? `[表情：${token.label}]` : token.value).join('')
+}

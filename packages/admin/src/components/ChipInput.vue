@@ -75,5 +75,4 @@ defineExpose({ invalid })
       @blur="input.trim() && add(input)"
     >
   </div>
-  <p v-if="invalid" class="field-error">{{ error || (kind === 'email' ? '邮箱格式错误' : '接收目标 ID 格式错误') }}</p>
 </template>
