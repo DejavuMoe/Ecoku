@@ -43,7 +43,8 @@ A "site" is one website that embeds the comment section. On **Sites** (站点), 
 | Site name (站点名称) | Shown in the admin console and in notification emails, up to 120 characters. If empty, the domain of the site URL is used. |
 | Allowed origins (允许来源) | Origins that may load this site's comment section, one per line, up to 32. See below. |
 | Comment order (评论排序) | The default order when a visitor opens the comment section: newest or oldest first. Visitors can switch it temporarily. |
-| Field requirements (字段要求) | Whether email is required (required by default) and whether website is required (optional by default). Nickname is always required. |
+| Visitor email (访客邮箱) | Whether a visitor's email is required (必填, the default) or optional (选填). |
+| Visitor website (访客网站) | Whether a visitor's website is required (必填) or optional (选填, the default). Nickname is always required. |
 | Comment placeholder (评论占位文案) | The hint text in the comment box, 1 to 80 characters. The default is "Write a comment (plain text only)" (写下评论（仅支持纯文本）). |
 | Comment length limit (评论长度上限) | Maximum number of characters in a comment body, 1 to 10000, default 1000. Counted in Unicode characters, so one CJK character or kana counts as one. |
 | Empty-state text (无评论文案) | Text shown when there are no comments yet, 1 to 240 characters. It may contain line breaks. |

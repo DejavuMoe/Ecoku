@@ -76,7 +76,7 @@ cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 | 欄位 | 預設值 | 說明 |
 | --- | --- | --- |
 | `enabled` | `false`；容器內 `true` | 是否啟用管理後台和管理 API。關閉時 `/admin/` 與 `/api/admin/*` 都不存在。 |
-| `static_dir` | `./admin`；容器內 `/app/admin` | 管理後台的靜態檔案目錄。缺少 `index.html` 或 `assets/` 會拒絕啟動。 |
+| `static_dir` | `./admin`；容器內 `/app/admin` | 管理後台的靜態檔案目錄。缺少 `index.html` 或 `assets/` 會拒絕啟動。目錄中有 `favicon.svg` 時，以 `/admin/favicon.svg` 提供分頁圖示；沒有時不影響啟動。 |
 | `username_env` | `ECOKU_ADMIN_USERNAME` | 存放管理員使用者名稱的環境變數名稱，一般不需要修改。 |
 | `password_hash_env` | `ECOKU_ADMIN_PASSWORD_HASH` | 存放管理員密碼 bcrypt 雜湊的環境變數名稱，一般不需要修改。 |
 | `token_key_env` | `ECOKU_ADMIN_TOKEN_KEY` | 存放工作階段簽章金鑰的環境變數名稱，一般不需要修改。 |

@@ -76,7 +76,7 @@ cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 | フィールド | デフォルト値 | 説明 |
 | --- | --- | --- |
 | `enabled` | `false`。コンテナ内は `true` | 管理画面と管理 API を有効にするかどうか。無効の場合、`/admin/` と `/api/admin/*` はどちらも存在しません。 |
-| `static_dir` | `./admin`。コンテナ内は `/app/admin` | 管理画面の静的ファイルのディレクトリ。`index.html` または `assets/` が欠けていると起動を拒否します。 |
+| `static_dir` | `./admin`。コンテナ内は `/app/admin` | 管理画面の静的ファイルのディレクトリ。`index.html` または `assets/` が欠けていると起動を拒否します。ディレクトリに `favicon.svg` があれば、`/admin/favicon.svg` でタブのアイコンとして提供します。なくても起動には影響しません。 |
 | `username_env` | `ECOKU_ADMIN_USERNAME` | 管理者のユーザー名を格納する環境変数の名前。通常は変更不要です。 |
 | `password_hash_env` | `ECOKU_ADMIN_PASSWORD_HASH` | 管理者パスワードの bcrypt ハッシュを格納する環境変数の名前。通常は変更不要です。 |
 | `token_key_env` | `ECOKU_ADMIN_TOKEN_KEY` | セッションの署名キーを格納する環境変数の名前。通常は変更不要です。 |
