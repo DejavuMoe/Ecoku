@@ -54,9 +54,9 @@ sudo rmdir app/config.yaml
 
 数据库中保存过 SMTP、Telegram 或人机验证的凭据，但 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 缺失或与保存时不同。从备份中找回原来的 `ecoku.env`，恢复这把密钥。密钥无法找回时，只能从之前的备份恢复整个实例。
 
-### 修改了 ecoku.env 但没有生效
+### 修改配置但没有生效
 
-`docker compose restart` 不会重新读取 `env_file`。修改 `ecoku.env` 或 `app/config.yaml` 后，用下面的命令重建容器：
+新部署不使用 `ecoku.env`。修改 `app/config.yaml` 或 Compose 后，用下面的命令重建容器：
 
 ```bash
 cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
@@ -105,16 +105,15 @@ Ecoku 放在反向代理后面，但没有配置 `trusted_proxies`，所有访�
 
 ### 忘记了管理员密码
 
-重新生成密码哈希，替换 `ecoku.env` 中 `ECOKU_ADMIN_PASSWORD_HASH` 的值（保留两侧的单引号，否则哈希里的 `$` 会被 Compose 展开），再重建容器：
+新部署使用 `data/` 中的持久管理员账户。停止服务后生成新的临时密码：
 
 ```bash
-cd ~/Ecoku
-read -rsp '新密码: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.8 hash-password
-unset P
+sudo docker compose down
+sudo docker compose run --rm --no-deps ecoku admin reset-password
+sudo docker compose up -d
 ```
 
-更换后所有已登录的会话都会失效。
+命令会打印临时密码，并使所有管理员会话失效。旧实例在迁移完成前仍可从备份恢复原来的 `ecoku.env`。
 
 ## 通知与人机验证
 

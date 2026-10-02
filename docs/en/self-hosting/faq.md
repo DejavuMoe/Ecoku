@@ -54,9 +54,9 @@ The site's allowed origins overlap with the admin console's origin. The admin co
 
 SMTP, Telegram, or CAPTCHA credentials were saved in the database, but `ECOKU_NOTIFICATION_ENCRYPTION_KEY` is missing or differs from the key used when they were saved. Get the original `ecoku.env` from a backup and restore this key. If the key cannot be recovered, the only option is to restore the whole instance from an earlier backup.
 
-### Changes to ecoku.env do not take effect
+### Configuration changes do not take effect
 
-`docker compose restart` does not re-read `env_file`. After changing `ecoku.env` or `app/config.yaml`, recreate the container with:
+New deployments do not use `ecoku.env`. After changing `app/config.yaml` or Compose, recreate the container with:
 
 ```bash
 cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
@@ -105,16 +105,15 @@ Check these in order:
 
 ### Forgot the admin password
 
-Generate a new password hash, replace the value of `ECOKU_ADMIN_PASSWORD_HASH` in `ecoku.env` (keep the single quotes around it, or Compose expands the `$` characters in the hash), and recreate the container:
+New deployments use the persistent account under `data/`. Stop the service and generate a new temporary password:
 
 ```bash
-cd ~/Ecoku
-read -rsp '新密码: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.8 hash-password
-unset P
+sudo docker compose down
+sudo docker compose run --rm --no-deps ecoku admin reset-password
+sudo docker compose up -d
 ```
 
-After the change, all signed-in sessions stop working.
+The command prints the temporary password and revokes all administrator sessions. During migration, an old instance can restore its original `ecoku.env` from backup.
 
 ## Notifications and CAPTCHA
 

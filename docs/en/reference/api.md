@@ -278,8 +278,9 @@ Admin endpoints live under `/api/admin/`. When `admin.allowed_origins` below is 
 | Method and path | Description |
 | --- | --- |
 | `GET /api/admin/login-config` | No sign-in needed. Returns the CAPTCHA settings the sign-in page needs (`captcha`, `turnstileSitekey`). |
-| `POST /api/admin/login` | Request body `{"username", "password", "captchaToken"}`. On success, returns `{"expires_at", "expires_in"}` and sets the cookie. Rate limited by `rate_limit.admin_login`. |
-| `GET /api/admin/session` | Returns the current session's `expires_at` and the remaining seconds `expires_in`. Does not extend the session. |
+| `POST /api/admin/login` | Request body `{"username", "password", "captchaToken"}`. On success, returns `{"expires_at", "expires_in"}` and sets the cookie; a temporary first-login session also returns `requires_password_change: true`. Rate limited by `rate_limit.admin_login`. |
+| `GET /api/admin/session` | Returns `expires_at`, remaining `expires_in`, and `requires_password_change`. It does not extend the session. |
+| `POST /api/admin/initial-setup` | Accepts only a temporary first-login session. The body is `{"username", "password"}`; success revokes the temporary session and sets a normal administrator session. |
 | `POST /api/admin/logout` | Revokes the current session and clears the cookie. A `503` means sign-out did not succeed. |
 
 ### Sites

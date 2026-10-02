@@ -17,25 +17,28 @@
 
 ## 下一版本的配置迁移（未发布） {#unreleased-config}
 
-以下变更尚未发布，不适用于直接重启 v0.2.8。数据库 schema 保持 v9；现有站点、评论和通知设置都保留，但旧 YAML 中的下列字段必须删除，否则新版本会拒绝启动。
+下一版本在 schema v9 上增加 v10 管理员账户表。现有站点、评论、通知、验证码和历史管理员凭据都会保留；旧实例不需要在升级前修改配置。
 
-| 删除项 | 新行为 |
-| --- | --- |
-| `site.port`、`site.log_path` | 监听 12123，日志写到标准输出。宿主机端口在 Compose 中修改。 |
-| 整个 `client`、`database`，以及 `admin.static_dir` | 镜像资源与数据库路径固定；保留原有数据挂载。 |
-| 整个 `sites`（包含 `management_key_env`） | 已有站点继续从 SQLite 读取，新站点在后台创建；`EcokuSite` 认证不再支持。 |
-| `admin.enabled`、`admin.token_ttl_minutes`、`admin.username_env`、`admin.password_hash_env`、`admin.token_key_env`、`notifications.encryption_key_env` | 后台始终启用，会话固定为 8 小时；环境变量名称见[配置参考](../reference/configuration#env)。 |
+升级时保留原来的 `compose.yaml`、`app/config.yaml` 和 `ecoku.env`，按[升级步骤](#steps)停服备份后启动新镜像。新版本第一次启动会：
 
-发布后，按下面的顺序迁移：
+1. 把旧的 `ECOKU_ADMIN_USERNAME`、`ECOKU_ADMIN_PASSWORD_HASH` 和 `ECOKU_ADMIN_TOKEN_KEY` 导入管理员账户和持久会话密钥；
+2. 把 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 写入 `data/ecoku-secrets.json`，并用它继续解密数据库中已有的凭据；
+3. 保留旧的 `site.port`、`site.log_path`、静态目录、SQLite 路径、YAML `sites` 和 `management_key_env` 兼容行为；
+4. 不生成临时密码，也不强迫旧管理员改密。
 
-1. 先按[停服冷备份](./backup#cold-backup)保存并验证数据库、原配置、`ecoku.env` 和 Compose。记录实际使用的 SQLite 路径和宿主机挂载位置。
-2. 删除表中的 YAML 字段及留下的空节。保留 `notifications.instance_public_url`、`site.trusted_proxies`，以及确实使用的 `admin.allowed_origins` 和 `rate_limit`。如果以前改过环境变量名，将名称改为标准名称，**原密码哈希、签名密钥和加密主密钥的值保持不变**。
-3. 确认原数据库映射到 `/data/ecoku.sqlite3`。使用官方模板的实例无需移动数据；自定义位置应调整 Compose 的宿主机路径。自定义文件名需在停服后准备为 `ecoku.sqlite3`，若仍有 `-wal`、`-shm` 文件，必须连同主文件一起复制并对应改名，保留原副本；不要只复制主文件或挂载空目录。目录及文件须允许 UID/GID `10001:10001` 读写。
-4. 从 Compose 删除 `./app/logs:/var/log/ecoku`，原日志文件可以留存。新日志用 `docker compose logs` 查看，轮转由 Docker 日志设置负责。使用 `EcokuSite` 的自动化需改用有效的管理员会话，或改在后台操作。
-5. 把镜像改为届时发布的精确 tag，再按[升级步骤](#steps)拉取、启动和检查。确认后台中的站点数量、历史评论和通知设置与升级前一致。
+确认新版本正常运行后，再迁移为简化配置：
 
-回滚到 v0.2.8 时，停止服务，恢复原 Compose、配置与环境变量；若移动过数据库，恢复原挂载对应的数据库位置。schema 相同，无需回退数据库；不要用旧备份覆盖升级后产生的新评论。旧版需要的日志目录仍须允许容器用户写入。
+1. 停服并按[备份](./backup#cold-backup)保存整个 `data/`、`app/config.yaml`、`compose.yaml` 和旧的 `ecoku.env`。
+2. 确认能登录后台、站点数量和历史评论正确，通知设置可以打开；
+3. 确认 `data/ecoku-secrets.json` 已创建，并且日志没有“无法解密凭据”；
+4. 停服后删除 `ecoku.env` 中的管理员变量和 `ECOKU_NOTIFICATION_ENCRYPTION_KEY`。如果仍需要 `TZ`，只保留 `TZ`，或者把它移到 Compose 的 `environment`；
+5. 删除 Compose 中的 `env_file`，新 Compose 只挂载 `app/config.yaml` 和 `data/`；
+6. 新配置保留 `notifications.instance_public_url`、实际使用的 `site.trusted_proxies`、`admin.allowed_origins` 和 `rate_limit`。旧字段可以暂时保留，删除前先确认不再使用旧数据库路径、文件日志或 `EcokuSite` 自动化；
+7. 重建容器并再次检查后台、评论和通知。
 
+旧的 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 与 `data/ecoku-secrets.json` 不一致时，服务会拒绝启动，以免覆盖后无法解密已有凭据。旧数据库路径继续生效，不能只删除 `database.sqlite.path` 后把空的 `/data` 挂载进去。
+
+如果回滚到 v0.2.8，停止服务，恢复原来的 Compose、配置、`ecoku.env` 和整个 `data/`。schema 不同或 v10 迁移已经完成时，回滚必须使用升级前的冷备份。
 ## 升级步骤 {#steps}
 
 **1. 阅读升级说明**。在下方的[版本列表](#versions)中找到目标版本，确认是否有配置变更、是否涉及 schema 迁移。

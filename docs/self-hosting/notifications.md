@@ -12,7 +12,7 @@ Ecoku 可以在有新评论时通知博主，在访客的评论被回复时发�
 ## 启用前的准备
 
 - `app/config.yaml` 中已填写 `notifications.instance_public_url`，否则无法启用任何渠道。
-- `ecoku.env` 中已设置 `ECOKU_NOTIFICATION_ENCRYPTION_KEY`。SMTP 密码和 Bot Token 用它加密后才能保存。
+- 新实例会自动在 `data/ecoku-secrets.json` 创建通知加密主密钥。旧实例迁移期间仍可从 `ecoku.env` 读取 `ECOKU_NOTIFICATION_ENCRYPTION_KEY`，迁移完成后可以停服备份并删除它。
 - 服务器能访问外部的 SMTP 端口（常见 465 或 587）或 `api.telegram.org`。部分云服务商默认封锁 SMTP 出站端口。
 
 ## 什么时候发通知
@@ -105,6 +105,6 @@ Ecoku 可以在有新评论时通知博主，在访客的评论被回复时发�
 
 **启用渠道时保存失败，提示“请求参数不符合要求，请检查后重试。”**：如果表单填写无误，多半是没有填写实例公开网址。在 `app/config.yaml` 中填写 `notifications.instance_public_url` 后重建容器。
 
-**保存时提示“服务端暂时无法完成操作，数据没有被修改。”**：多半是没有配置加密主密钥。在 `ecoku.env` 中设置 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 后重建容器，见 [Docker 部署](./docker#env)。
+**保存时提示“服务端暂时无法完成操作，数据没有被修改。”**：检查 `data/ecoku-secrets.json` 是否存在且权限允许容器读取。旧实例请从备份恢复原来的 `ECOKU_NOTIFICATION_ENCRYPTION_KEY`，确认迁移成功后再删除旧环境变量。
 
 **测试邮件超时**：多数是服务器的 SMTP 出站端口被封锁。先在服务器上用 `nc -vz smtp.example.com 465` 确认能连通，再检查端口与加密方式是否匹配（465 对应 SSL/TLS，587 对应 STARTTLS）。

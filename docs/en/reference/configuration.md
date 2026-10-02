@@ -1,27 +1,19 @@
 # Configuration reference
 
-This reference follows the next version; existing instances need [configuration migration](../self-hosting/upgrade#unreleased-config).
+::: warning Unreleased configuration contract
+This page describes the next version. Existing v0.2.8 instances must read [upgrade and legacy configuration migration](../self-hosting/upgrade#unreleased-config) first.
+:::
 
-Ecoku's configuration lives in two places:
+A new deployment only needs `app/config.yaml`:
 
-- `app/config.yaml`: instance-level parameters. It is read once when the container starts and is mounted read-only. After changing it, you need to recreate the container for the change to take effect.
-- `ecoku.env`: admin credentials, secrets, and the time zone, injected through Compose's `env_file`.
-
-Site, blogger, CAPTCHA, and notification settings are not in these two files. They are stored in the SQLite database, and you change them in the [admin console](../self-hosting/admin). The image fixes the listening port at `12123`, the browser assets at `/app/client`, the admin pages at `/app/admin`, and the database at `/data/ecoku.sqlite3`. These are not YAML options.
-
-## General rules
-
-- The config file may contain only one YAML document. Unknown fields prevent startup, and the log identifies their line.
-- For numeric fields, `0` or omitting the field uses the defaults below.
-- For a [Docker deployment](../self-hosting/docker), `config.yaml` usually needs only `notifications.instance_public_url`, plus `site.trusted_proxies` once the reverse proxy is configured.
-
-After changing `config.yaml` or `ecoku.env`, recreate the container with:
-
-```bash
-cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
+```yaml
+notifications:
+  instance_public_url: "https://ecoku.example.com"
 ```
 
-`docker compose restart` does not re-read `ecoku.env`.
+Sites, comments, notifications, CAPTCHA, and the administrator account live in SQLite and are managed in the [admin console](../self-hosting/admin). The official image fixes port `12123`, browser assets at `/app/client`, the admin pages at `/app/admin`, and the database at `/data/ecoku.sqlite3`. New instances also store the session signing key, notification encryption key, and administrator account under `data/`.
+
+The config file may contain only one YAML document. Unknown fields prevent startup. Legacy fields remain readable during the compatibility period; see [legacy configuration migration](../self-hosting/upgrade#unreleased-config).
 
 ## site
 
@@ -31,61 +23,54 @@ cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 
 ## rate_limit {#rate-limit}
 
-All rate limits count per client IP, in fixed windows, with state kept in process memory and reset on restart. When a limit is exceeded, the response is `429` with a `Retry-After` header. Each operation is counted separately.
+Rate limits count per client IP in process memory and reset on restart. Exceeding a limit returns `429` with `Retry-After`.
 
 | Field | Default | Description |
 | --- | --- | --- |
-| `window_seconds` | `60` | Length of the counting window in seconds, shared by all operations. |
-| `comment_submit` | `5` | Comments that may be submitted per window. |
-| `comment_list` | `60` | Comment list reads allowed per window. Browser CORS preflights and requests with rejected origins also count. |
-| `comment_delete` | `30` | Delete requests allowed per window. Soft deletes and permanent deletes are counted separately. |
-| `admin_login` | `5` | Admin sign-in attempts allowed per window. |
-| `notification_test` | `5` | Test notifications allowed per window. Test emails and test Telegram messages are counted separately. |
-
-Each rate limiter tracks at most 10,000 IPs at a time. When it is full, newly seen IPs are rejected until old entries expire; the quota of IPs already tracked is never evicted.
-
-If `trusted_proxies` is not configured correctly, all visitors behind the reverse proxy count as the same IP and share these quotas.
+| `window_seconds` | `60` | Length of the counting window in seconds. |
+| `comment_submit` | `5` | Comments allowed per window. |
+| `comment_list` | `60` | Comment list reads allowed per window. |
+| `comment_delete` | `30` | Delete requests allowed per window. |
+| `admin_login` | `5` | Sign-in attempts allowed per window. |
+| `notification_test` | `5` | Test notifications allowed per window. |
 
 ## notifications
 
 | Field | Default | Description |
 | --- | --- | --- |
-| `instance_public_url` | Empty | The public URL of Ecoku, such as `https://ecoku.example.com`. You must set it before enabling email or Telegram notifications. When `admin.allowed_origins` is not set, its origin (scheme + domain + optional port) is also the origin of the admin console. The links to original posts in notifications are built from the site URL and page path, not from this address. |
+| `instance_public_url` | Empty | Ecoku's public URL, such as `https://ecoku.example.com`. Its origin is also the admin origin when `admin.allowed_origins` is omitted. It is required before enabling notifications. |
 
 ## admin
 
-The admin console and admin API are always enabled. The image serves the console at `/admin/`.
+The admin console and API are always enabled at `/admin/`.
 
 | Field | Default | Description |
 | --- | --- | --- |
-| `allowed_origins` | Origin of `notifications.instance_public_url` | Browser origins allowed to access the admin API, that is, the `scheme://domain[:port]` in the address bar when you open the admin console. Set it only if you open the admin console from more than one address. At least one of this and `instance_public_url` is required; otherwise the service does not start. |
+| `allowed_origins` | Origin of `instance_public_url` | Browser origins allowed to access the admin API. Set it only when the console is opened from more than one address. At least one admin origin is required. |
 
-Ecoku also checks at startup that:
-
-- `ECOKU_ADMIN_USERNAME`, `ECOKU_ADMIN_PASSWORD_HASH`, and `ECOKU_ADMIN_TOKEN_KEY` are all non-empty;
-- The password hash is a valid bcrypt hash with a cost of at least 10 (hashes generated by `hash-password` meet this);
-- The signing key is at least 32 bytes long and differs from the password hash.
-
-When creating or editing a site, its allowed origins must differ from the admin console origin; otherwise saving fails.
+On a new instance Ecoku creates the `admin` account and a random temporary password. The password is printed only on the first account creation and must be replaced after the first sign-in. New administrator accounts do not need environment variables.
 
 ## Logs {#logs}
 
-Logs go to standard output. View them with `docker compose logs`; Docker controls retention and rotation. Logs exclude IP addresses, User-Agents, comment bodies, and credentials. Access logs record route templates (such as `/api/admin/sites/:siteId`), not actual path parameters.
+Logs go to standard output. View them with `docker compose logs`; Docker controls retention and rotation. New deployments do not mount `app/logs` or use `site.log_path`.
 
 ## Environment variables {#env}
 
-| Variable | Required | Description |
-| --- | --- | --- |
-| `ECOKU_ADMIN_USERNAME` | Yes | Admin username, 1 to 80 characters. |
-| `ECOKU_ADMIN_PASSWORD_HASH` | Yes | bcrypt hash of the admin password. Generate it with the `hash-password` command. See [Command line](./cli#hash-password). |
-| `ECOKU_ADMIN_TOKEN_KEY` | Yes | Session signing key, at least 32 bytes. You can generate one with `openssl rand -hex 32`. |
-| `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | When saving credentials | Encrypts SMTP passwords, Telegram bot tokens, and CAPTCHA secret keys in the database. A 32-byte key encoded as Base64, with or without padding; generate it with `openssl rand -base64 32`. |
-| `TZ` | No | Time zone for displaying comment times, as an IANA name such as `Asia/Shanghai`. If unset or the name is invalid, it falls back to the container's system time zone; if that cannot be determined, `Asia/Shanghai` is used. Setting it explicitly is recommended. |
+A new deployment does not need `ecoku.env`. To set the display time zone, add the optional `TZ` environment variable to Compose, such as `Asia/Shanghai`.
 
-Wrap each value in `ecoku.env` in single quotes, so Compose does not expand the `$` characters in the bcrypt hash. For an example and the commands that generate the values, see [Docker deployment](../self-hosting/docker#env).
+Existing deployments continue to read these variables during migration and copy their values into `data/ecoku-secrets.json` or `admin_accounts`:
 
-The image already sets `GIN_MODE=release` and `ECOKU_RUNTIME=container`. Do not change them in `ecoku.env`.
+| Variable | Purpose |
+| --- | --- |
+| `ECOKU_ADMIN_USERNAME` | Legacy administrator username. |
+| `ECOKU_ADMIN_PASSWORD_HASH` | Legacy bcrypt password hash. |
+| `ECOKU_ADMIN_TOKEN_KEY` | Legacy session signing key. |
+| `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | Encryption master key for stored notification and CAPTCHA credentials. Keep it unchanged until migration is complete. |
 
-After changing `ECOKU_ADMIN_TOKEN_KEY` or the password hash and recreating the container, all signed-in admin sessions stop working.
+After the variables have been imported and verified, stop the service, make a backup, and remove them so Ecoku uses the persistent state under `/data`.
 
-Do not change `ECOKU_NOTIFICATION_ENCRYPTION_KEY` casually: the credentials already stored in the database were encrypted with the old key. After you change it, Ecoku cannot decrypt them and exits with an error at startup.
+## Legacy configuration fields {#legacy}
+
+New templates no longer write these fields, but the compatibility layer still reads them: `site.port`, `site.log_path`, `client.static_dir`, `admin.static_dir`, `database.sqlite.path`, `sites`, `management_key_env`, `admin.enabled`, `admin.token_ttl_minutes`, and the administrator or notification `*_env` fields. Do not add them to new instances; see [upgrade](../self-hosting/upgrade#unreleased-config).
+
+The image sets `GIN_MODE=release` and `ECOKU_RUNTIME=container`. Do not override them in a new deployment.

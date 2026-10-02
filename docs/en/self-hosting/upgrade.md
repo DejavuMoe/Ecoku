@@ -17,25 +17,28 @@ You can skip versions and upgrade directly, for example from v0.1.8 straight to 
 
 ## Configuration migration for the next version (unreleased) {#unreleased-config}
 
-These changes are not released and do not apply to restarting v0.2.8. The database stays at schema v9. Existing sites, comments, and notification settings remain, but the new version rejects the following YAML fields, which must be removed.
+The next version adds the v10 administrator account table on top of schema v9. Existing sites, comments, notifications, CAPTCHA settings, and legacy administrator credentials remain. An existing deployment does not need to edit its configuration before upgrading.
 
-| Remove | New behavior |
-| --- | --- |
-| `site.port`, `site.log_path` | Listen on 12123 and log to standard output. Change the host port in Compose. |
-| The entire `client` and `database` sections, and `admin.static_dir` | Image assets and database paths are fixed. Preserve the existing data mount. |
-| The entire `sites` section, including `management_key_env` | Read existing sites from SQLite; create new sites in the admin console. `EcokuSite` authentication is removed. |
-| `admin.enabled`, `admin.token_ttl_minutes`, `admin.username_env`, `admin.password_hash_env`, `admin.token_key_env`, `notifications.encryption_key_env` | The console is always enabled and sessions last 8 hours. See the fixed environment variable names in [Configuration reference](../reference/configuration#env). |
+Keep the old `compose.yaml`, `app/config.yaml`, and `ecoku.env`, make a [cold backup](./backup#cold-backup), and start the new image by following [Upgrade steps](#steps). On the first start the new version will:
 
-After release, migrate in this order:
+1. import `ECOKU_ADMIN_USERNAME`, `ECOKU_ADMIN_PASSWORD_HASH`, and `ECOKU_ADMIN_TOKEN_KEY` into the persistent administrator account and session key;
+2. copy `ECOKU_NOTIFICATION_ENCRYPTION_KEY` into `data/ecoku-secrets.json` and keep decrypting existing stored credentials with it;
+3. retain compatibility for the old port, file log, static directory, SQLite path, YAML `sites`, and `management_key_env` settings;
+4. avoid generating a temporary password or forcing an existing administrator to change the password.
 
-1. Make and verify a [cold backup](./backup#cold-backup) of the database, original config, `ecoku.env`, and Compose file. Record the actual SQLite path and host mount location.
-2. Remove the fields above and any empty sections. Keep `notifications.instance_public_url`, `site.trusted_proxies`, and any `admin.allowed_origins` or `rate_limit` settings you use. If you used custom environment variable names, rename them to the standard names; **keep the original password hash, signing key, and encryption master key values**.
-3. Confirm that the existing database maps to `/data/ecoku.sqlite3`. Official-template deployments need no data move; for a custom location, adjust the host path in Compose. For a custom filename, prepare it as `ecoku.sqlite3` while the service is stopped. If `-wal` or `-shm` files remain, copy them together with the main file and rename them consistently, retaining the originals. Never copy just the main file or mount an empty directory. UID/GID `10001:10001` must be able to read and write the directory and files.
-4. Remove `./app/logs:/var/log/ecoku` from Compose; you may retain the old log files. Read new logs with `docker compose logs`; Docker controls rotation. Automation using `EcokuSite` must use a valid admin session instead, or move the operation to the admin console.
-5. Set the exact tag published at that time, then follow [Upgrade steps](#steps) to pull, start, and check it. Verify site counts, historical comments, and notification settings in the console.
+After the new version is confirmed healthy, migrate to the smaller configuration:
 
-To roll back to v0.2.8, stop the service and restore the original Compose, config, and environment variables. If you moved the database, restore the location expected by the original mount. The schema is unchanged, so no database rollback is needed; do not overwrite newer comments with an old backup. The old version also needs a log directory writable by the container user.
+1. Stop the service and back up all of `data/`, `app/config.yaml`, `compose.yaml`, and the old `ecoku.env`.
+2. Confirm that the admin login, site count, historical comments, and notification settings work.
+3. Confirm that `data/ecoku-secrets.json` exists and that the log contains no credential decryption error.
+4. Stop the service and remove the administrator variables and `ECOKU_NOTIFICATION_ENCRYPTION_KEY` from `ecoku.env`. Keep `TZ` only if needed, or move it to the Compose `environment` section.
+5. Remove `env_file` from Compose. The new Compose mounts only `app/config.yaml` and `data/`.
+6. Keep `notifications.instance_public_url`, any `site.trusted_proxies`, `admin.allowed_origins`, and `rate_limit` settings you use. Remove legacy fields only after confirming that you no longer need the old database path, file logs, or `EcokuSite` automation.
+7. Recreate the container and check the admin console, comments, and notifications again.
 
+If the old `ECOKU_NOTIFICATION_ENCRYPTION_KEY` differs from `data/ecoku-secrets.json`, the service refuses to start instead of making existing credentials undecryptable. The old database path continues to work; do not remove `database.sqlite.path` and accidentally mount an empty `/data` directory.
+
+To roll back to v0.2.8, stop the service and restore the original Compose, config, `ecoku.env`, and the complete `data/` directory. If the v10 migration has completed, use the cold backup made before the upgrade.
 ## Upgrade steps {#steps}
 
 **1. Read the upgrade notes.** Find the target version in the [version list](#versions) below, and check whether it has config changes or a schema migration.

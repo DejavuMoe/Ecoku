@@ -31,6 +31,18 @@ ECOKU_ADMIN_PASSWORD_HASH='$2a$10$...'
 
 Then recreate the container for it to take effect.
 
+## admin reset-password {#admin-reset-password}
+
+Generate a new temporary password for the persistent administrator account. Stop the running service first:
+
+```bash
+sudo docker compose down
+sudo docker compose run --rm --no-deps ecoku admin reset-password
+sudo docker compose up -d
+```
+
+The command prints the temporary password, revokes all administrator sessions, and requires the next sign-in to set the username and permanent password.
+
 ## captcha status
 
 Shows the current CAPTCHA settings:

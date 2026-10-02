@@ -31,6 +31,18 @@ ECOKU_ADMIN_PASSWORD_HASH='$2a$10$...'
 
 然後重建容器使其生效。
 
+## admin reset-password {#admin-reset-password}
+
+為持久化管理員帳戶產生新的臨時密碼。先停止正在執行的服務：
+
+```bash
+sudo docker compose down
+sudo docker compose run --rm --no-deps ecoku admin reset-password
+sudo docker compose up -d
+```
+
+命令會列印臨時密碼、撤銷所有管理員工作階段，並要求下次登入後重新設定使用者名稱和正式密碼。
+
 ## captcha status
 
 顯示目前的人機驗證設定：

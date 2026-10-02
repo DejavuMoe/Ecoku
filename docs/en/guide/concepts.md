@@ -99,4 +99,4 @@ Submitting, reading, deleting, and admin sign-in are all rate limited per IP. Th
 
 ## Time and time zone
 
-Comment times are displayed in `YYYY-MM-DD HH:mm` format. The time zone comes from the container's `TZ` environment variable (set in `ecoku.env`). Hovering over a time shows the time zone name and offset, such as `Asia/Shanghai UTC+8`.
+Comment times are displayed in `YYYY-MM-DD HH:mm` format. The optional container `TZ` environment variable controls the time zone; new deployments can set it in Compose. Hovering over a time shows the time zone name and offset, such as `Asia/Shanghai UTC+8`.

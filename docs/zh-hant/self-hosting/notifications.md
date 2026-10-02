@@ -12,7 +12,7 @@ Ecoku 可以在有新評論時通知部落客，並在訪客的評論被回覆�
 ## 啟用前的準備
 
 - `app/config.yaml` 中已填寫 `notifications.instance_public_url`，否則無法啟用任何管道。
-- `ecoku.env` 中已設定 `ECOKU_NOTIFICATION_ENCRYPTION_KEY`。SMTP 密碼和 Bot Token 需要用它加密後才能儲存。
+- 新實例會在 `data/ecoku-secrets.json` 自動建立通知加密主金鑰。遷移期間的舊實例仍可從 `ecoku.env` 讀取 `ECOKU_NOTIFICATION_ENCRYPTION_KEY`；完成停服備份並確認遷移成功後再刪除。
 - 伺服器能連線到外部的 SMTP 連接埠（常見為 465 或 587）或 `api.telegram.org`。部分雲端服務商預設封鎖 SMTP 對外連接埠。
 
 ## 什麼時候寄送通知
@@ -105,6 +105,6 @@ Ecoku 可以在有新評論時通知部落客，並在訪客的評論被回覆�
 
 **啟用管道時儲存失敗，提示「请求参数不符合要求，请检查后重试。」**：如果表單填寫無誤，多半是沒有填寫實例公開網址。在 `app/config.yaml` 中填寫 `notifications.instance_public_url` 後重建容器。
 
-**儲存時提示「服务端暂时无法完成操作，数据没有被修改。」**：多半是沒有設定加密主金鑰。在 `ecoku.env` 中設定 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 後重建容器，見 [Docker 部署](./docker#env)。
+**儲存時提示「服务端暂时无法完成操作，数据没有被修改。」**：請檢查 `data/ecoku-secrets.json` 是否存在，且容器使用者可以讀取。遷移期間請從備份還原原本的 `ECOKU_NOTIFICATION_ENCRYPTION_KEY`，確認持久金鑰可用後再刪除。
 
 **測試郵件逾時**：多半是伺服器的 SMTP 對外連接埠被封鎖。先在伺服器上用 `nc -vz smtp.example.com 465` 確認能連通，再檢查連接埠與加密方式是否相符（465 對應 SSL/TLS，587 對應 STARTTLS）。
