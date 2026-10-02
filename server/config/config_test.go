@@ -96,22 +96,25 @@ func TestRemovedConfigurationIsRejected(t *testing.T) {
 		"smtp":               "smtp:\n  enabled: false\n",
 		"mysql":              "database:\n  type: mysql\n  mysql:\n    host: localhost\n",
 		"drop table":         "site:\n  drop_table: true\n",
-		"port":               "site:\n  port: 12123\n",
-		"log path":           "site:\n  log_path: \"/var/log/ecoku/ecoku.log\"\n",
-		"client static dir":  "client:\n  static_dir: \"/app/client\"\n",
-		"admin static dir":   "admin:\n  static_dir: \"/app/admin\"\n",
-		"sqlite path":        "database:\n  sqlite:\n    path: \"/data/ecoku.sqlite3\"\n",
-		"sites":              "sites:\n  - id: \"blog\"\n    site_url: \"https://blog.example.com\"\n",
-		"admin enabled":      "admin:\n  enabled: true\n",
-		"admin token ttl":    "admin:\n  token_ttl_minutes: 480\n",
-		"admin env name":     "admin:\n  username_env: \"ECOKU_ADMIN_USERNAME\"\n",
-		"encryption env":     "notifications:\n  encryption_key_env: \"ECOKU_NOTIFICATION_ENCRYPTION_KEY\"\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := LoadConfigFile(writeConfig(t, data)); err == nil {
 				t.Fatalf("removed %s configuration was accepted", name)
 			}
 		})
+	}
+}
+
+func TestLegacyDeploymentFieldsRemainReadable(t *testing.T) {
+	t.Setenv(adminUsernameEnv, "")
+	t.Setenv(adminPasswordHashEnv, "")
+	t.Setenv(adminTokenKeyEnv, "")
+	data := "site:\n  port: 12123\n  log_path: /var/log/ecoku/ecoku.log\nclient:\n  static_dir: /app/client\nadmin:\n  enabled: true\n  static_dir: /app/admin\n  token_ttl_minutes: 480\ndatabase:\n  sqlite:\n    path: /data/ecoku.sqlite3\nnotifications:\n  encryption_key_env: ECOKU_NOTIFICATION_ENCRYPTION_KEY\n"
+	if err := LoadConfigFile(writeConfig(t, data)); err != nil {
+		t.Fatalf("legacy deployment fields rejected: %v", err)
+	}
+	if GetSQLitePath() != "/data/ecoku.sqlite3" || GetClientStaticDir() != "/app/client" || GetAdminStaticDir() != "/app/admin" {
+		t.Fatalf("legacy paths not retained")
 	}
 }
 
@@ -125,8 +128,8 @@ func TestCommandsLoadConfigWithoutAdminCredentials(t *testing.T) {
 	if _, ok := GetAdminCredentials(); ok {
 		t.Fatal("missing administrator credentials were available")
 	}
-	if err := ValidateAdmin(); err == nil || !strings.Contains(err.Error(), adminUsernameEnv) {
-		t.Fatalf("server startup accepted missing admin credentials: %v", err)
+	if err := ValidateAdmin(); err != nil {
+		t.Fatalf("config without admin credentials should be accepted before database bootstrap: %v", err)
 	}
 }
 

@@ -19,8 +19,9 @@ const (
 )
 
 type adminPrincipal struct {
-	token  string
-	claims *utils.AdminTokenClaims
+	token        string
+	claims       *utils.AdminTokenClaims
+	legacySiteID string
 }
 
 // AdminAuthentication accepts an instance administrator session, either from
@@ -40,7 +41,21 @@ func AdminAuthentication() gin.HandlerFunc {
 				scheme, credential, ok = "Bearer", value, true
 			}
 		}
-		if !ok || !strings.EqualFold(scheme, "Bearer") {
+		if !ok {
+			unauthorizedAdmin(c)
+			return
+		}
+		if strings.EqualFold(scheme, "EcokuSite") {
+			siteID, authenticated := authenticateManagementKey(credential)
+			if !authenticated {
+				unauthorizedAdmin(c)
+				return
+			}
+			c.Set(adminPrincipalContextKey, adminPrincipal{token: credential, legacySiteID: siteID})
+			c.Next()
+			return
+		}
+		if !strings.EqualFold(scheme, "Bearer") {
 			unauthorizedAdmin(c)
 			return
 		}
@@ -82,9 +97,75 @@ func RequireAdminSiteAccess() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		if value, exists := c.Get(adminPrincipalContextKey); exists {
+			principal, valid := value.(adminPrincipal)
+			if valid && principal.legacySiteID != "" && principal.legacySiteID != siteID {
+				utils.SendError(c, http.StatusForbidden, "无权管理该站点")
+				c.Abort()
+				return
+			}
+		}
 
 		c.Set(adminSiteIDContextKey, siteID)
 		c.Next()
+	}
+}
+
+// RequireCompletedAdmin blocks a temporary first-login session from reaching
+// the normal management API. Session, logout and initial setup are the only
+// endpoints available to that session.
+func RequireCompletedAdmin() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		_, claims := CurrentAdminSession(c)
+		principalValue, _ := c.Get(adminPrincipalContextKey)
+		principal, _ := principalValue.(adminPrincipal)
+		if principal.legacySiteID != "" {
+			if c.Request.Method == http.MethodDelete && strings.HasSuffix(c.FullPath(), "/comments/:commentId") {
+				c.Next()
+				return
+			}
+			utils.SendError(c, http.StatusForbidden, "站点管理凭据不能访问此接口")
+			c.Abort()
+			return
+		}
+		if claims == nil || !claims.SetupOnly || strings.HasSuffix(c.FullPath(), "/session") || strings.HasSuffix(c.FullPath(), "/logout") || strings.HasSuffix(c.FullPath(), "/initial-setup") {
+			c.Next()
+			return
+		}
+		utils.SendError(c, http.StatusForbidden, "请先完成管理员首次设置")
+		c.Abort()
+	}
+}
+
+func authenticateManagementKey(candidate string) (string, bool) {
+	if candidate == "" || len(candidate) > maximumAuthorizationSize {
+		return "", false
+	}
+	matchedSiteID := ""
+	matchCount := 0
+	for _, site := range config.GetRegisteredSites() {
+		key, available := config.GetManagementKey(site.ID)
+		if !available || !utils.ConstantTimeStringEqual(candidate, key) {
+			continue
+		}
+		exists, err := model.SiteExists(site.ID)
+		if err == nil && exists {
+			matchedSiteID = site.ID
+			matchCount++
+		}
+	}
+	return matchedSiteID, matchCount == 1
+}
+
+func RequireInitialSetup() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		_, claims := CurrentAdminSession(c)
+		if claims != nil && claims.SetupOnly {
+			c.Next()
+			return
+		}
+		utils.SendError(c, http.StatusForbidden, "当前会话不需要管理员首次设置")
+		c.Abort()
 	}
 }
 

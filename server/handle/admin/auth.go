@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"ecoku-server/adminidentity"
 	"ecoku-server/captcha"
 	"ecoku-server/config"
 	"ecoku-server/middleware"
@@ -30,8 +31,14 @@ type loginRequest struct {
 }
 
 type loginResponse struct {
-	ExpiresAt string `json:"expires_at"`
-	ExpiresIn int64  `json:"expires_in"`
+	ExpiresAt              string `json:"expires_at"`
+	ExpiresIn              int64  `json:"expires_in"`
+	RequiresPasswordChange bool   `json:"requires_password_change,omitempty"`
+}
+
+type initialSetupRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 func Login(c *gin.Context) {
@@ -78,15 +85,20 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	token, expiresAt, err := utils.GenerateAdminToken()
+	generateToken := utils.GenerateAdminToken
+	if credentials.MustChangePassword {
+		generateToken = utils.GenerateAdminSetupToken
+	}
+	token, expiresAt, err := generateToken()
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "生成管理员会话失败")
 		return
 	}
 	setSessionCookie(c, token, expiresAt, int(time.Until(expiresAt).Seconds()))
 	utils.SendResponse(c, http.StatusOK, "管理员登录成功", loginResponse{
-		ExpiresAt: expiresAt.UTC().Format(time.RFC3339Nano),
-		ExpiresIn: int64(credentials.TokenTTL.Seconds()),
+		ExpiresAt:              expiresAt.UTC().Format(time.RFC3339Nano),
+		ExpiresIn:              int64(credentials.TokenTTL.Seconds()),
+		RequiresPasswordChange: credentials.MustChangePassword,
 	})
 }
 
@@ -101,8 +113,36 @@ func Session(c *gin.Context) {
 		return
 	}
 	utils.SendResponse(c, http.StatusOK, "管理员会话有效", loginResponse{
-		ExpiresAt: claims.ExpiresAt.UTC().Format(time.RFC3339Nano),
-		ExpiresIn: int64(time.Until(claims.ExpiresAt).Seconds()),
+		ExpiresAt:              claims.ExpiresAt.UTC().Format(time.RFC3339Nano),
+		ExpiresIn:              int64(time.Until(claims.ExpiresAt).Seconds()),
+		RequiresPasswordChange: claims.SetupOnly,
+	})
+}
+
+func InitialSetup(c *gin.Context) {
+	var request initialSetupRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		utils.SendJSONBindingError(c, err)
+		return
+	}
+	credentials, ok := config.GetAdminCredentials()
+	if !ok || bcrypt.CompareHashAndPassword([]byte(credentials.PasswordHash), []byte(request.Password)) == nil {
+		utils.SendError(c, http.StatusBadRequest, "新密码不能与临时密码相同")
+		return
+	}
+	if err := adminidentity.CompleteInitialSetup(request.Username, request.Password); err != nil {
+		utils.SendError(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	token, expiresAt, err := utils.GenerateAdminToken()
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "生成管理员会话失败")
+		return
+	}
+	setSessionCookie(c, token, expiresAt, int(time.Until(expiresAt).Seconds()))
+	utils.SendResponse(c, http.StatusOK, "管理员账户设置成功", loginResponse{
+		ExpiresAt: expiresAt.UTC().Format(time.RFC3339Nano),
+		ExpiresIn: int64(time.Until(expiresAt).Seconds()),
 	})
 }
 
