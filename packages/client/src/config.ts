@@ -1,4 +1,5 @@
 export type EcokuTheme = 'auto' | 'light' | 'dark'
+export type EcokuLocale = 'zh-CN' | 'zh-Hant' | 'en'
 export type CaptchaProvider = 'off' | 'turnstile' | 'cap'
 
 export interface CaptchaPublicConfig {
@@ -8,6 +9,7 @@ export interface CaptchaPublicConfig {
 }
 
 export interface CommentFormConfig {
+  locale: EcokuLocale
   emailRequired: boolean
   websiteRequired: boolean
   placeholder: string
@@ -34,6 +36,7 @@ export const DEFAULT_CAPTCHA_CONFIG: Readonly<CaptchaPublicConfig> = Object.free
 })
 
 export const DEFAULT_COMMENT_FORM_CONFIG: Readonly<CommentFormConfig> = Object.freeze({
+  locale: 'zh-CN',
   emailRequired: true,
   websiteRequired: false,
   placeholder: '写下评论（仅支持纯文本）',
@@ -57,6 +60,8 @@ export interface EcokuConfig {
   apiBaseUrl?: string
   pageSize?: number
   theme?: EcokuTheme
+  /** Override the site's public comment language. */
+  i18n?: EcokuLocale
   /** When set, skip injecting the default stylesheet. Use `none` to skip without loading a file. */
   cssURL?: string
 }
@@ -69,6 +74,7 @@ export interface ResolvedEcokuConfig {
   serverURL: string
   pageSize: number
   theme: EcokuTheme
+  i18n?: EcokuLocale
   cssURL: string
 }
 
@@ -174,6 +180,10 @@ export function resolveConfig(options: EcokuConfig): ResolvedEcokuConfig {
   if (!['auto', 'light', 'dark'].includes(theme)) {
     throw new TypeError('Ecoku: theme must be auto, light, or dark.')
   }
+  const i18n = options.i18n
+  if (i18n !== undefined && !['zh-CN', 'zh-Hant', 'en'].includes(i18n)) {
+    throw new TypeError('Ecoku: i18n must be zh-CN, zh-Hant, or en.')
+  }
 
   return {
     container: resolveContainer(options.container),
@@ -183,6 +193,7 @@ export function resolveConfig(options: EcokuConfig): ResolvedEcokuConfig {
     serverURL: normalizeServerURL(preferredServerURL || legacyServerURL || ''),
     pageSize,
     theme,
+    i18n,
     cssURL: normalizeCssURL(options.cssURL),
   }
 }

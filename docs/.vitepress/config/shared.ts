@@ -61,21 +61,6 @@ const enSearch: DefaultTheme.LocalSearchOptions['translations'] = {
   },
 }
 
-const jaSearch: DefaultTheme.LocalSearchOptions['translations'] = {
-  button: { buttonText: 'ドキュメントを検索', buttonAriaLabel: 'ドキュメントを検索' },
-  modal: {
-    displayDetails: '詳細を表示',
-    resetButtonTitle: '検索をクリア',
-    backButtonTitle: '戻る',
-    noResultsText: '該当する結果はありません',
-    footer: {
-      selectText: '選択',
-      navigateText: '移動',
-      closeText: '閉じる',
-    },
-  },
-}
-
 export function sidebar(prefix: string, t: SidebarCopy): DefaultTheme.SidebarItem[] {
   const p = prefix
   return [
@@ -223,6 +208,17 @@ export const shared = defineConfig({
   srcExclude: ['**/internal/**', '**/progress/**', '**/contribute/**'],
   head: [
     ['link', { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' }],
+    ['script', {}, `(() => {
+      if (location.pathname !== '/' && location.pathname !== '') return
+      const languages = navigator.languages?.length ? navigator.languages : [navigator.language]
+      const language = languages.find(Boolean)?.toLowerCase() || ''
+      const target = language.startsWith('zh-hant') || language.startsWith('zh-tw') || language.startsWith('zh-hk')
+        ? '/zh-hant/'
+        : language.startsWith('zh')
+          ? '/'
+          : '/en/'
+      if (target !== location.pathname) location.replace(target)
+    })()`],
     ['meta', { name: 'theme-color', content: '#f7f4ee', media: '(prefers-color-scheme: light)' }],
     ['meta', { name: 'theme-color', content: '#1a1816', media: '(prefers-color-scheme: dark)' }],
     ['meta', { name: 'og:type', content: 'website' }],
@@ -276,7 +272,6 @@ export const shared = defineConfig({
         locales: {
           'zh-hant': { translations: zhHantSearch },
           en: { translations: enSearch },
-          ja: { translations: jaSearch },
         },
       },
     },

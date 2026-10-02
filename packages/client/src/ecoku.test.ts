@@ -132,6 +132,11 @@ afterEach(() => {
 })
 
 describe('approved production comment surface', () => {
+  it('supports three locales and rejects an unknown SDK override', () => {
+    const base = { container: document.createElement('div'), serverURL: 'https://example.test', siteId: 'blog', pageKey: '/' }
+    for (const i18n of ['zh-CN', 'zh-Hant', 'en'] as const) expect(resolveConfig({ ...base, i18n }).i18n).toBe(i18n)
+    expect(() => resolveConfig({ ...base, i18n: 'fr' as never })).toThrow(/i18n/)
+  })
   it('validates the explicit container, server, site, page, page size, and theme contract', () => {
     const container = document.createElement('div')
     document.body.append(container)

@@ -95,6 +95,7 @@ function asPositiveInteger(value: unknown, fallback: number): number {
 
 function normalizeFormConfig(value: unknown): CommentFormConfig {
   const raw = value && typeof value === 'object' ? value as Record<string, unknown> : {}
+  const locale = raw.i18n === 'en' || raw.i18n === 'zh-Hant' ? raw.i18n : 'zh-CN'
   const placeholder = typeof raw.placeholder === 'string' ? raw.placeholder.trim() : ''
   const defaultSort = raw.defaultSort === 'oldest' ? 'oldest' : 'newest'
   const lengthLimit = Number.isInteger(raw.lengthLimit) && Number(raw.lengthLimit) >= 1 && Number(raw.lengthLimit) <= 10000
@@ -115,6 +116,7 @@ function normalizeFormConfig(value: unknown): CommentFormConfig {
   const captcha = normalizeCaptchaConfig(raw.captcha, turnstileSitekey)
   const smoji = normalizeSmojiConfig(raw.smoji)
   return {
+    locale,
     emailRequired: typeof raw.emailRequired === 'boolean'
       ? raw.emailRequired
       : DEFAULT_COMMENT_FORM_CONFIG.emailRequired,

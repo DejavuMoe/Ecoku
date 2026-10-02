@@ -53,6 +53,9 @@ func TestV10ToV11PreservesSmojiAndRollsBackOnFailure(t *testing.T) {
 	if !site.SmojiEnabled || site.SmojiManifestURL != "https://cdn.example/smoji.json" || site.SmojiImageOrigin != "" || site.SmojiOrigin() != "https://cdn.example" {
 		t.Fatalf("legacy configuration changed: %#v", site)
 	}
+	if site.Locale != "zh-CN" {
+		t.Fatalf("default site locale changed: %q", site.Locale)
+	}
 	var after []schemaMigration
 	if err := database.Table("schema_migrations").Where("version <= 10").Order("version").Find(&after).Error; err != nil {
 		t.Fatal(err)
@@ -63,5 +66,8 @@ func TestV10ToV11PreservesSmojiAndRollsBackOnFailure(t *testing.T) {
 	var count int64
 	if err := database.Table("schema_migrations").Where("version = 11").Count(&count).Error; err != nil || count != 1 {
 		t.Fatalf("v11 history: %d, %v", count, err)
+	}
+	if err := database.Table("schema_migrations").Where("version = 12").Count(&count).Error; err != nil || count != 1 {
+		t.Fatalf("v12 history: %d, %v", count, err)
 	}
 }

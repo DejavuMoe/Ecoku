@@ -34,6 +34,7 @@ type Site struct {
 	SmojiEnabled          bool      `gorm:"column:smoji_enabled"`
 	SmojiManifestURL      string    `gorm:"column:smoji_manifest_url"`
 	SmojiImageOrigin      string    `gorm:"column:smoji_image_origin"`
+	Locale                string    `gorm:"column:i18n_locale"`
 	BloggerNickname       string    `gorm:"column:blogger_nickname"`
 	BloggerEmail          string    `gorm:"column:blogger_email"`
 	BloggerBadge          string    `gorm:"column:blogger_badge"`
@@ -58,6 +59,7 @@ type SiteWrite struct {
 	SmojiEnabled          bool
 	SmojiManifestURL      string
 	SmojiImageOrigin      string
+	Locale                string
 	BloggerNickname       string
 	BloggerEmail          string
 	BloggerBadge          string
@@ -133,6 +135,7 @@ func CreateSite(input SiteWrite, now time.Time) (Site, error) {
 			EmptyMessage: input.EmptyMessage, BloggerNickname: input.BloggerNickname,
 			SmojiEnabled: input.SmojiEnabled, SmojiManifestURL: input.SmojiManifestURL,
 			SmojiImageOrigin: input.SmojiImageOrigin,
+			Locale:           input.Locale,
 			BloggerEmail:     input.BloggerEmail, BloggerBadge: input.BloggerBadge,
 			BloggerPassphraseHash: input.BloggerPassphraseHash,
 			Revision:              1, CreatedAt: now, UpdatedAt: now,
@@ -165,6 +168,7 @@ func UpdateSite(siteID string, input SiteWrite, now time.Time) (Site, error) {
 			"smoji_enabled":      input.SmojiEnabled,
 			"smoji_manifest_url": input.SmojiManifestURL,
 			"smoji_image_origin": input.SmojiImageOrigin,
+			"i18n_locale":        input.Locale,
 			"blogger_nickname":   input.BloggerNickname,
 			"blogger_email":      input.BloggerEmail,
 			"blogger_badge":      input.BloggerBadge,

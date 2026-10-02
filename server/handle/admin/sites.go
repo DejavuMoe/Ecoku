@@ -40,6 +40,7 @@ type SiteDTO struct {
 	SmojiEnabled         bool     `json:"smoji_enabled"`
 	SmojiManifestURL     string   `json:"smoji_manifest_url"`
 	SmojiImageOrigin     string   `json:"smoji_image_origin"`
+	Locale               string   `json:"i18n"`
 	BloggerNickname      string   `json:"blogger_nickname"`
 	BloggerEmail         string   `json:"blogger_email"`
 	BloggerBadge         string   `json:"blogger_badge"`
@@ -63,6 +64,7 @@ type SiteWriteRequest struct {
 	SmojiEnabled      bool     `json:"smoji_enabled"`
 	SmojiManifestURL  string   `json:"smoji_manifest_url"`
 	SmojiImageOrigin  *string  `json:"smoji_image_origin"`
+	Locale            *string  `json:"i18n"`
 	BloggerNickname   string   `json:"blogger_nickname"`
 	BloggerEmail      string   `json:"blogger_email"`
 	BloggerBadge      string   `json:"blogger_badge"`
@@ -293,6 +295,7 @@ func validateSiteWrite(c *gin.Context, request SiteWriteRequest, creating bool, 
 		CommentLimit: commentLimit, EmptyMessage: emptyMessage,
 		SmojiEnabled: request.SmojiEnabled, SmojiManifestURL: smojiManifestURL,
 		SmojiImageOrigin: smojiImageOrigin,
+		Locale:           siteWriteLocale(request.Locale, existing),
 		BloggerNickname:  bloggerNickname, BloggerEmail: bloggerEmail,
 		BloggerBadge:   bloggerBadge,
 		AllowedOrigins: origins, Revision: request.Revision,
@@ -323,6 +326,16 @@ func validateSiteWrite(c *gin.Context, request SiteWriteRequest, creating bool, 
 	return write, true
 }
 
+func siteWriteLocale(value *string, existing *model.Site) string {
+	if value != nil {
+		return string(config.NormalizeLocale(*value))
+	}
+	if existing != nil {
+		return string(config.NormalizeLocale(existing.Locale))
+	}
+	return string(config.LocaleZH)
+}
+
 func siteDTO(site model.Site) SiteDTO {
 	return SiteDTO{
 		ID: site.ID, SiteURL: site.SiteURL, Name: site.Name,
@@ -332,6 +345,7 @@ func siteDTO(site model.Site) SiteDTO {
 		CommentLimit: site.CommentLimit, EmptyMessage: site.EmptyMessage,
 		SmojiEnabled: site.SmojiEnabled, SmojiManifestURL: site.SmojiManifestURL,
 		SmojiImageOrigin: site.SmojiImageOrigin,
+		Locale:           string(config.NormalizeLocale(site.Locale)),
 		BloggerNickname:  site.BloggerNickname, BloggerEmail: site.BloggerEmail,
 		BloggerBadge:         site.BloggerBadge,
 		BloggerPassphraseSet: strings.TrimSpace(site.BloggerPassphraseHash) != "",

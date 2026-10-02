@@ -1,4 +1,4 @@
-import type { CaptchaPublicConfig, EcokuTheme } from './config'
+import type { CaptchaPublicConfig, EcokuLocale, EcokuTheme } from './config'
 
 interface CapSolveResult { success?: boolean; token?: string }
 interface CapElement extends HTMLElement {
@@ -69,24 +69,19 @@ export class CapWidget {
     element.addEventListener('reset', () => { this.current = '' })
   }
 
-  static async mount(container: HTMLElement, config: CaptchaPublicConfig, theme: EcokuTheme): Promise<CapWidget> {
+  static async mount(container: HTMLElement, config: CaptchaPublicConfig, theme: EcokuTheme, locale: EcokuLocale = 'zh-CN'): Promise<CapWidget> {
     await loadCap(config.instanceUrl)
     const element = document.createElement('cap-widget') as CapElement
     element.className = 'ecoku-cap-widget'
     element.setAttribute('required', '')
     element.setAttribute('data-cap-api-endpoint', `${config.instanceUrl.replace(/\/+$/, '')}/${encodeURIComponent(config.sitekey)}/`)
     element.setAttribute('data-cap-disable-haptics', '')
-    element.setAttribute('data-cap-i18n-initial-state', '点击进行真人验证')
-    element.setAttribute('data-cap-i18n-verifying-label', '正在验证…')
-    element.setAttribute('data-cap-i18n-solved-label', '验证已完成')
-    element.setAttribute('data-cap-i18n-error-label', '验证失败，请重试')
-    element.setAttribute('data-cap-i18n-troubleshooting-label', '故障排除')
-    element.setAttribute('data-cap-i18n-wasm-disabled', '请启用 WebAssembly 以完成验证')
-    element.setAttribute('data-cap-i18n-verify-aria-label', '点击进行真人验证')
-    element.setAttribute('data-cap-i18n-verifying-aria-label', '正在进行真人验证，请稍候')
-    element.setAttribute('data-cap-i18n-verified-aria-label', '真人验证已通过')
-    element.setAttribute('data-cap-i18n-required-label', '请先完成人机验证')
-    element.setAttribute('data-cap-i18n-error-aria-label', '验证失败，请重试')
+    const copy = locale === 'en'
+      ? ['Click to verify', 'Verifying…', 'Verification complete', 'Verification failed. Try again.', 'Troubleshooting', 'Enable WebAssembly to continue', 'Click to verify', 'Verification in progress', 'Human verification passed', 'Complete verification first', 'Verification failed. Try again.']
+      : locale === 'zh-Hant'
+        ? ['點擊進行真人驗證', '正在驗證…', '驗證已完成', '驗證失敗，請重試', '故障排除', '請啟用 WebAssembly 以完成驗證', '點擊進行真人驗證', '正在進行真人驗證，請稍候', '真人驗證已通過', '請先完成人機驗證', '驗證失敗，請重試']
+        : ['点击进行真人验证', '正在验证…', '验证已完成', '验证失败，请重试', '故障排除', '请启用 WebAssembly 以完成验证', '点击进行真人验证', '正在进行真人验证，请稍候', '真人验证已通过', '请先完成人机验证', '验证失败，请重试']
+    ;['data-cap-i18n-initial-state', 'data-cap-i18n-verifying-label', 'data-cap-i18n-solved-label', 'data-cap-i18n-error-label', 'data-cap-i18n-troubleshooting-label', 'data-cap-i18n-wasm-disabled', 'data-cap-i18n-verify-aria-label', 'data-cap-i18n-verifying-aria-label', 'data-cap-i18n-verified-aria-label', 'data-cap-i18n-required-label', 'data-cap-i18n-error-aria-label'].forEach((name, index) => element.setAttribute(name, copy[index]))
     element.dataset.ecokuTheme = theme
     const widget = new CapWidget(element)
     container.replaceChildren(element)

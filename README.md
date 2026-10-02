@@ -48,7 +48,7 @@
 - 接入：[HTML 接入](docs/integration/html.md) · [JavaScript SDK](docs/integration/sdk.md) · [Hugo PaperMod](docs/integration/hugo.md) · [自定义样式](docs/integration/custom-css.md) · [Smoji 表情包](docs/integration/smoji.md)
 - 参考：[配置参考](docs/reference/configuration.md) · [命令行](docs/reference/cli.md) · [REST API](docs/reference/api.md)
 
-文档另有[繁體中文](docs/zh-hant/)、[English](docs/en/) 与[日本語](docs/ja/)版本。
+文档另有[繁體中文](docs/zh-hant/)与 [English](docs/en/) 版本。
 
 ## 不提供的功能
 

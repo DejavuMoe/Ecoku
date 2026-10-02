@@ -43,6 +43,7 @@ const (
 	defaultAdminPasswordEnv   = "ECOKU_ADMIN_PASSWORD_HASH"
 	defaultAdminTokenKeyEnv   = "ECOKU_ADMIN_TOKEN_KEY"
 	defaultNotificationKeyEnv = "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
+	adminLocaleEnv            = "ECOKU_ADMIN_LOCALE"
 	EncryptionKeyEnv          = defaultNotificationKeyEnv
 	adminUsernameEnv          = defaultAdminUsernameEnv
 	adminPasswordHashEnv      = defaultAdminPasswordEnv
@@ -107,6 +108,7 @@ type RegisteredSiteConfig struct {
 	Name             string        `yaml:"name"`
 	AllowedOrigins   []string      `yaml:"allowed_origins"`
 	ManagementKeyEnv string        `yaml:"management_key_env"`
+	Locale           string        `yaml:"i18n"`
 	Comment          CommentConfig `yaml:"comment"`
 }
 
@@ -137,6 +139,7 @@ type CaptchaPublicConfig struct {
 // CommentFormConfig is the public, non-secret subset of one site's comment
 // form configuration. It is safe to return to the browser SDK.
 type CommentFormConfig struct {
+	Locale              string              `json:"i18n"`
 	EmailRequired       bool                `json:"emailRequired"`
 	WebsiteRequired     bool                `json:"websiteRequired"`
 	Placeholder         string              `json:"placeholder"`
@@ -148,6 +151,29 @@ type CommentFormConfig struct {
 	BloggerProofEnabled bool                `json:"bloggerProofEnabled"`
 	Captcha             CaptchaPublicConfig `json:"captcha"`
 	Smoji               SmojiPublicConfig   `json:"smoji"`
+}
+
+type Locale string
+
+const (
+	LocaleZH    Locale = "zh-CN"
+	LocaleZHant Locale = "zh-Hant"
+	LocaleEN    Locale = "en"
+)
+
+func NormalizeLocale(value string) Locale {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "en", "en-us", "en-gb":
+		return LocaleEN
+	case "zh-hant", "zh-tw", "zh-hk":
+		return LocaleZHant
+	default:
+		return LocaleZH
+	}
+}
+
+func GetAdminLocale() Locale {
+	return NormalizeLocale(os.Getenv(adminLocaleEnv))
 }
 
 type SmojiPublicConfig struct {
@@ -309,6 +335,7 @@ func applyDefaults(loaded *Config) {
 		loaded.Sites[i].SiteURL = strings.TrimSpace(loaded.Sites[i].SiteURL)
 		loaded.Sites[i].Name = strings.TrimSpace(loaded.Sites[i].Name)
 		loaded.Sites[i].ManagementKeyEnv = strings.TrimSpace(loaded.Sites[i].ManagementKeyEnv)
+		loaded.Sites[i].Locale = string(NormalizeLocale(loaded.Sites[i].Locale))
 		if loaded.Sites[i].SiteURL == "" && len(loaded.Sites[i].AllowedOrigins) > 0 {
 			// Compatibility for the YAML-to-SQLite seed: historical site entries
 			// had no canonical URL. The first explicit origin is the only safe
@@ -788,6 +815,7 @@ func GetCommentFormConfig(siteID string) (CommentFormConfig, bool) {
 		return CommentFormConfig{}, false
 	}
 	return CommentFormConfig{
+		Locale:              string(NormalizeLocale(site.Locale)),
 		EmailRequired:       *site.Comment.EmailRequired,
 		WebsiteRequired:     *site.Comment.WebsiteRequired,
 		Placeholder:         site.Comment.Placeholder,

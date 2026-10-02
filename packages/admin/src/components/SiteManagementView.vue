@@ -14,7 +14,7 @@ const baseline = ref('')
 const dirty = computed(() => creating.value || JSON.stringify([draft, originsText.value]) !== baseline.value)
 const originsText = ref('')
 const errors = reactive<Record<string, string>>({})
-const defaults = (): SiteWrite => ({ id: '', siteUrl: '', name: '', allowedOrigins: [], defaultSort: 'newest', emailRequired: true, websiteRequired: false, placeholder: '写下评论（仅支持纯文本）', commentLimit: 1000, emptyMessage: '还没有评论\n成为第一个留下评论的人。', smojiEnabled: false, smojiManifestUrl: '', smojiImageOrigin: '', bloggerNickname: '', bloggerEmail: '', bloggerBadge: '[博主]', bloggerPassphrase: '', bloggerPassphraseSet: false, revision: 0 })
+const defaults = (): SiteWrite => ({ id: '', siteUrl: '', name: '', allowedOrigins: [], defaultSort: 'newest', emailRequired: true, websiteRequired: false, placeholder: '写下评论（仅支持纯文本）', commentLimit: 1000, emptyMessage: '还没有评论\n成为第一个留下评论的人。', smojiEnabled: false, smojiManifestUrl: '', smojiImageOrigin: '', i18n: 'zh-CN', bloggerNickname: '', bloggerEmail: '', bloggerBadge: '[博主]', bloggerPassphrase: '', bloggerPassphraseSet: false, revision: 0 })
 const draft = reactive<SiteWrite>(defaults())
 const clearErrors = () => Object.keys(errors).forEach((key) => delete errors[key])
 function applySite(site: SiteSummary | null) {
@@ -125,6 +125,10 @@ async function submit() {
                 <label class="rule"><span class="rule-label">站点名称</span><input id="site-name" maxlength="240" placeholder="可选" v-model="draft.name" :aria-invalid="Boolean(errors.name)"></label>
                 <p class="help">留空时使用站点 URL 的域名。</p>
                 <p v-if="errors.name" class="field-error">{{ errors.name }}</p>
+              </div>
+              <div class="field">
+                <label class="rule"><span class="rule-label">评论区语言</span><select id="site-i18n" v-model="draft.i18n"><option value="zh-CN">简体中文</option><option value="zh-Hant">繁體中文</option><option value="en">English</option></select></label>
+                <p class="help">访客评论区的默认语言；接入 SDK 时传入 `i18n` 可以覆盖此设置。</p>
               </div>
               <div class="field">
                 <label class="rule rule-area"><span class="rule-label">允许来源</span><textarea id="site-origins" class="ruled-paper mono" rows="3" spellcheck="false" v-model="originsText" :aria-invalid="Boolean(errors.origins)"></textarea></label>

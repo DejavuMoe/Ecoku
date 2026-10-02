@@ -43,6 +43,7 @@ services:
     container_name: ecoku
     environment:
       TZ: Asia/Shanghai
+      ECOKU_ADMIN_LOCALE: zh-CN
     ports:
       - "127.0.0.1:12123:12123"
     volumes:
@@ -130,7 +131,7 @@ The command prints a new temporary password and revokes all administrator sessio
 
 ## Time zone {#timezone}
 
-The Compose file above already sets `TZ: Asia/Shanghai` for comment and notification timestamps. To use another zone, edit `services.ecoku.environment.TZ`, for example to `Europe/Berlin`, then run `sudo docker compose up -d` to recreate the container. No separate `ecoku.env` is needed.
+The Compose file above sets `TZ: Asia/Shanghai` and `ECOKU_ADMIN_LOCALE: zh-CN`. The first controls comment and notification timestamps; the second controls the admin language and accepts `zh-Hant` or `en`. Recreate the container after changing it. Set the site comment language in the admin site’s 「评论区语言」 field; the SDK `i18n` option overrides the site default. No separate `ecoku.env` is needed.
 
 Existing instances can keep their original `ecoku.env`. To remove old administrator credentials and key variables, follow [import persistent state, stop and back up, then remove legacy variables](./upgrade#legacy-config). If the time zone is still in that environment file, move `TZ` into Compose before deleting the file.
 

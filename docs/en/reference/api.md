@@ -143,6 +143,7 @@ Other fields:
 | `commentTotal` | Number of all comments reachable from root comments (including replies and tombstones). |
 | `pageCount` | Total number of pages. |
 | `timeZone` | The server's display time zone (IANA name). |
+| `i18n` | The site's default comment language: `zh-CN`, `zh-Hant`, or `en`. The SDK `i18n` option overrides it. |
 | `formConfig` | The site's comment form settings. See the table below. |
 
 `formConfig` fields:
@@ -292,7 +293,7 @@ Admin endpoints live under `/api/admin/`. When `admin.allowed_origins` below is 
 | `GET /api/admin/sites/:siteId` | A single site. |
 | `PUT /api/admin/sites/:siteId` | Update a site. The request body must include the `revision` you got when reading it; if it is missing, the response is `400`. If another session changed the site in the meantime, the response is `409`. |
 
-Site fields: `id`, `site_url`, `name`, `allowed_origins`, `default_sort`, `email_required`, `website_required`, `placeholder`, `comment_limit`, `empty_message`, `smoji_enabled`, `smoji_manifest_url`, `smoji_image_origin`, `blogger_nickname`, `blogger_email`, `blogger_badge`, `blogger_passphrase` (write-only), `revision`. Responses use `blogger_passphrase_set` to show whether a passphrase is set, and also include the read-only `created_at` and `updated_at`. The site list is in the `data.data` array; a single site, and the result of creating or updating one, is in `data.site`.
+Site fields: `id`, `site_url`, `name`, `allowed_origins`, `i18n`, `default_sort`, `email_required`, `website_required`, `placeholder`, `comment_limit`, `empty_message`, `smoji_enabled`, `smoji_manifest_url`, `smoji_image_origin`, `blogger_nickname`, `blogger_email`, `blogger_badge`, `blogger_passphrase` (write-only), `revision`. Responses use `blogger_passphrase_set` to show whether a passphrase is set, and also include the read-only `created_at` and `updated_at`. The site list is in the `data.data` array; a single site, and the result of creating or updating one, is in `data.site`.
 
 `smoji_image_origin` is an optional trusted image origin, for example `https://s3-cdn.zsh.moe`. Empty means the manifest origin. Omitting it on update preserves the existing value; an empty string restores the default. Public `formConfig.smoji.imageOrigin` is returned only when configured. Loading, submission, rendering, and email use the same rule. See [Smoji hosting settings](../integration/smoji#hosting).
 

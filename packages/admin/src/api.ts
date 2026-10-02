@@ -5,6 +5,7 @@ import type {
   CommentReview,
   CommentStatus,
   CaptchaPublicConfig,
+  EcokuLocale,
   CaptchaSettings,
   EmailNotificationSettings,
   NotificationSettings,
@@ -120,6 +121,7 @@ function mapSite(value: unknown): SiteSummary | null {
     smojiEnabled: raw.smoji_enabled === true,
     smojiManifestUrl: text(raw.smoji_manifest_url),
     smojiImageOrigin: text(raw.smoji_image_origin),
+    i18n: raw.i18n === 'en' || raw.i18n === 'zh-Hant' ? raw.i18n : 'zh-CN',
     bloggerNickname: text(raw.blogger_nickname),
     bloggerEmail: text(raw.blogger_email),
     bloggerBadge: text(raw.blogger_badge),
@@ -166,6 +168,7 @@ function sitePayload(site: SiteWrite) {
     smoji_enabled: site.smojiEnabled,
     smoji_manifest_url: site.smojiManifestUrl,
     smoji_image_origin: site.smojiImageOrigin,
+    i18n: site.i18n,
     blogger_nickname: site.bloggerNickname,
     blogger_email: site.bloggerEmail,
     blogger_badge: site.bloggerBadge,
@@ -262,7 +265,7 @@ export const adminApi = {
   async getLoginConfig(signal?: AbortSignal): Promise<LoginConfig> {
     const raw = await request<Record<string, unknown>>('/api/admin/login-config', { method: 'GET', signal })
     const legacy = text(raw.turnstileSitekey)
-    return { captcha: mapCaptchaPublic(raw.captcha, legacy), turnstileSitekey: legacy }
+    return { captcha: mapCaptchaPublic(raw.captcha, legacy), turnstileSitekey: legacy, locale: raw.locale === 'en' || raw.locale === 'zh-Hant' ? raw.locale as EcokuLocale : 'zh-CN' }
   },
 
   async login(username: string, password: string, captchaToken = '', signal?: AbortSignal): Promise<AdminSession> {

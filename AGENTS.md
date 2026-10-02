@@ -16,7 +16,7 @@
   产品/隐私边界写 `docs/internal/constraints.md`；部署、Compose、备份、升级、通知与人机验证写
   `docs/self-hosting/`（发版时在 `docs/self-hosting/upgrades/` 增加该 tag 页面）；配置键与环境变量写
   `docs/reference/configuration.md`，CLI 子命令写 `docs/reference/cli.md`，HTTP 接口写 `docs/reference/api.md`；
-  以上均同步 `docs/en/`、`docs/zh-hant/`、`docs/ja/` 对应路径与 `deploy/` 模板；公开接入片段写根 `README.md`、
+  以上均同步 `docs/en/`、`docs/zh-hant/` 对应路径与 `deploy/` 模板；公开接入片段写根 `README.md`、
   `examples/` 与 `docs/integration/`；未发版行为只追加 `CHANGELOG.md` 的 `[Unreleased]`，不得改写已发布章节。
   本文件只保留约定。面向读者的文档用操作说明，不要把本文件的约束口吻或提示词写进站点文案。
 
@@ -27,11 +27,11 @@
 - 简体、繁体中文正文中，中英文及数字之间留半角空格，中文双引号使用「」。代码、URL、原始输出不套正文替换。
 - `app/config.yaml` 的字段、默认值、可选值、用途与示例集中维护在 `deploy/config.yaml.example` 及对应语言模板中，
   部署页和配置参考直接引用模板，不再分别维护字段表。当前仍生效的参数按默认值、可选值、示例和用途说明；可选覆盖项保持注释，不再标注「旧版兼容」。忽略或废弃的配置项不列为可配置字段。
-- 简体中文（`docs/` 根下各目录）是源文；繁中、英文、日文从简中翻译，文件集合、标题顺序、表格与代码块保持一致。
-  新增或删除页面时，同步四套 locale，并在 `docs/.vitepress/config/shared.ts` 的 sidebar 与四个 locale 配置的 `copy` 中登记。
+- 简体中文（`docs/` 根下各目录）是源文；繁中、英文从简中翻译，文件集合、标题顺序、表格与代码块保持一致。
+  新增或删除页面时，同步三套 locale，并在 `docs/.vitepress/config/shared.ts` 的 sidebar 与三个 locale 配置的 `copy` 中登记。
 - 被链接的标题必须带显式 ASCII 锚点（如 `## 配置 trusted_proxies {#trusted-proxies}`），链接只指向这些锚点；
   翻译时保留 `{#id}` 与链接目标不变，不要依赖中文标题自动生成的 slug。
-- 管理端与评论区界面只有简体中文。所有 locale 引用界面文案、服务端报错或 CLI 输出时保留原文（英、日文附释义），
+- 管理端与评论区界面支持简体中文、繁体中文和英语；默认使用简体中文。所有 locale 引用服务端报错或 CLI 输出时保留原文，
   不要把译名写成界面上并不存在的标签。
 - 写之前先核对源码：默认值、上限、状态码、字段名、报错文案以代码为准，不从旧文档或原型照搬。
   不确定的行为不写，或写明“取决于…”；不要为显得完整补写未经证实的细节。
@@ -73,6 +73,7 @@
   Woodpecker 仅启用 `docs-deploy.yml`；其余 YAML 保留原步骤与已注释触发条件，用 `when: [{ evaluate: 'false' }]` 禁用，不能只删除 `when`。
   不再向 Forgejo 发布新镜像。发布设置见 `packages/client/PUBLISH.md`。
 - 当前文档与 Compose 模板中的 Docker 镜像统一使用 GHCR 与精确发布版本号（`ghcr.io/dejavumoe/ecoku:v` + `VERSION`，禁止占位镜像或浮动 tag，当前为 `v0.3.0`）；内测归档不再展示镜像下载地址。真实域名、密码、token、SMTP、Telegram、数据库和日志等敏感信息仍使用占位符，不得进 Git。
+- 应用界面支持 `zh-CN`、`zh-Hant`、`en`。后台语言由 `ECOKU_ADMIN_LOCALE` 决定；站点前台语言由站点 `i18n` 默认值决定，SDK 的 `i18n` 参数优先覆盖。缺省均为简体中文。
 - 提交、推送、tag、镜像发布、生产部署和真实数据库操作需要当前任务的明确授权。
 - 新 tag 若可能影响平滑升级（schema、Compose 挂载、配置键、日志出口、镜像契约），回复中先写：
   停服冷备份 → 改精确镜像 tag → `sudo docker compose pull && sudo docker compose up -d` →

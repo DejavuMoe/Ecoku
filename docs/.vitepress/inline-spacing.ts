@@ -9,7 +9,7 @@ export function inlineSpacing(md: MarkdownRenderer) {
     for (const block of state.tokens) {
       if (block.type !== 'inline' || !block.children) continue
       const path = String(state.env?.relativePath || state.env?.path || '').replaceAll('\\', '/')
-      const chinese = !/(^|\/)(en|ja)\//.test(path)
+      const chinese = !/(^|\/)(en)\//.test(path)
       if (chinese) {
         let automaticLink = false
         for (const token of block.children) {
