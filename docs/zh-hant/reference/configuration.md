@@ -1,7 +1,7 @@
 # 設定參考
 
-::: warning 尚未發佈的設定契約
-本頁對應下一版本。既有 v0.2.8 實例請先閱讀[升級與舊設定遷移](../self-hosting/upgrade#unreleased-config)。
+::: info 升級與設定遷移
+本頁適用於 v0.2.9。既有 v0.2.8 實例請先閱讀[升級與舊設定遷移](../self-hosting/upgrade#legacy-config)。
 :::
 
 新部署的手動設定只有 `app/config.yaml`：
@@ -69,4 +69,4 @@ notifications:
 
 ## 舊設定欄位 {#legacy}
 
-新範本不再寫入這些欄位，但相容層仍會讀取：`site.port`、`site.log_path`、`client.static_dir`、`admin.static_dir`、`database.sqlite.path`、`sites`、`management_key_env`、`admin.enabled`、`admin.token_ttl_minutes` 和管理員或通知的 `*_env` 欄位。新實例不要加入這些欄位，見[升級](../self-hosting/upgrade#unreleased-config)。
+新範本不再寫入這些欄位，但相容層仍會讀取：`site.port`、`site.log_path`、`client.static_dir`、`admin.static_dir`、`database.sqlite.path`、`sites`、`management_key_env`、`admin.enabled`、`admin.token_ttl_minutes` 和管理員或通知的 `*_env` 欄位。新實例不要加入這些欄位，見[升級](../self-hosting/upgrade#legacy-config)。

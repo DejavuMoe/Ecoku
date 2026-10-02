@@ -17,7 +17,7 @@ Reads one line of password from standard input and prints a bcrypt hash (cost 10
 
 ```bash
 read -rsp 'Admin password: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.8 hash-password
+printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.9 hash-password
 unset P
 ```
 
