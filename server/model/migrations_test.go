@@ -24,6 +24,13 @@ func TestFreshDatabaseStartsWithoutSites(t *testing.T) {
 	if err := database.Table("sites").Count(&count).Error; err != nil || count != 0 {
 		t.Fatalf("fresh sites=%d, error=%v", count, err)
 	}
+	var tables int64
+	if err := database.Raw("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'admin_accounts'").Scan(&tables).Error; err != nil || tables != 1 {
+		t.Fatalf("admin_accounts table=%d error=%v", tables, err)
+	}
+	if err := database.Table("admin_accounts").Count(&count).Error; err != nil || count != 0 {
+		t.Fatalf("fresh admin accounts=%d error=%v", count, err)
+	}
 	testsite.Create(t, database, exampleSite)
 	if err := PrepareDatabaseForStartup(database); err != nil {
 		t.Fatal(err)
