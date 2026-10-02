@@ -13,7 +13,7 @@ Except for `hash-password`, every subcommand reads `app/config.yaml` and opens t
 
 ## hash-password {#hash-password}
 
-Reads one line of password from standard input and prints a bcrypt hash (cost 10) for `ECOKU_ADMIN_PASSWORD_HASH`. It does not read the config or touch the database, so you can run it while the service is running.
+Reads one line of password from standard input and prints a bcrypt hash (cost 10) for the legacy `ECOKU_ADMIN_PASSWORD_HASH` variable. New instances generate the administrator during first start and do not need this command. It does not read the config or touch the database, so you can run it while the service is running.
 
 ```bash
 read -rsp 'Admin password: ' P; echo

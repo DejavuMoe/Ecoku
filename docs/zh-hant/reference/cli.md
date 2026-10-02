@@ -13,7 +13,7 @@ sudo docker compose run --rm --no-deps ecoku <子命令> [参数]
 
 ## hash-password {#hash-password}
 
-從標準輸入讀取一行密碼，輸出 bcrypt 雜湊（cost 10），用於 `ECOKU_ADMIN_PASSWORD_HASH`。不讀取設定，也不存取資料庫，服務執行中也可以使用。
+從標準輸入讀取一行密碼，輸出 bcrypt 雜湊（cost 10），用於舊實例的 `ECOKU_ADMIN_PASSWORD_HASH`。新實例首次啟動會自動建立管理員，不需要使用此命令。不讀取設定，也不存取資料庫，服務執行中也可以使用。
 
 ```bash
 read -rsp '管理员密码: ' P; echo
