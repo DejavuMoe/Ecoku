@@ -15,7 +15,7 @@ This setting applies to the whole instance. All sites and admin sign-in use the 
 - When the browser submits a comment or signs in, it attaches a one-time token. The server verifies it with Turnstile or Cap before processing the request any further. Verification happens before the blogger passphrase is checked, so nobody can probe the passphrase without passing verification.
 - If verification fails, the token is missing, or the verification service times out or is unavailable, the request is rejected. It is never let through automatically, and Ecoku does not fall back to the other mode.
 - When verifying, the server sends only the token and the secret key. It does not include the visitor's IP address.
-- The secret key is encrypted with `ECOKU_NOTIFICATION_ENCRYPTION_KEY` before it is stored in the database, and the admin console only shows “已设置，输入新值以更换” (set; enter a new value to replace it). Without that key, a new secret key cannot be saved.
+- Secret keys are encrypted with the notification master key in `data/ecoku-secrets.json` before storage in the database. The master key is generated on first startup. The admin console only shows 「已设置，输入新值以更换」 (set; enter a new value to replace it). Back up the database and key file together.
 - When you switch modes or turn verification off, the settings already entered for the other mode are kept, so you do not have to enter them again when you switch back.
 
 ## Cloudflare Turnstile
@@ -196,7 +196,7 @@ If the verification service is misconfigured or unreachable, the admin may be un
 
 ```bash
 cd ~/Ecoku
-sudo docker compose down
+sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku captcha status
 sudo docker compose run --rm --no-deps ecoku captcha disable
 sudo docker compose up -d

@@ -2,50 +2,20 @@
 
 [HTML integration](./html) suits static websites where every post is a separate page. In single-page apps built with Vue, React, and similar frameworks, the page does not reload when the reader switches posts, so the comment section has to switch along with it. In that case, use the SDK directly.
 
-## Get the SDK
+## Get the SDK {#install}
 
-Every Ecoku instance serves the SDK at `/client/ecoku.umd.js`. Once loaded, it registers the global variable `Ecoku`.
-
-The npm package is `ecoku`, with versions matching project tags. After the corresponding npm publication job succeeds, install an exact version in your website project:
+[ecoku](https://www.npmjs.com/package/ecoku) is available on npm as version `0.3.0`, with ESM, CommonJS and TypeScript declarations. It mounts comments in the browser and connects to your Ecoku server; installing the package does not deploy a server.
 
 ```bash
 pnpm add --save-exact ecoku@0.3.0
 ```
 
-```ts
-import Ecoku from 'ecoku'
-```
-
-VitePress custom themes use the same entry point. Create instances only after browser mounting and update the page key on route changes. While publication is pending, use the instance-hosted UMD file below, or run `pnpm build` in the source repository's `packages/client` directory to obtain `dist/` output.
-
-In a single-page app, you can use a function that loads the UMD file on demand and makes sure it is loaded only once:
-
-```js
-const ECOKU_URL = 'https://ecoku.example.com'
-let ecokuPromise
-
-export function loadEcoku() {
-  if (window.Ecoku) return Promise.resolve(window.Ecoku)
-  ecokuPromise ??= new Promise((resolve, reject) => {
-    const script = document.createElement('script')
-    script.src = `${ECOKU_URL}/client/ecoku.umd.js`
-    script.async = true
-    script.onload = () => (window.Ecoku ? resolve(window.Ecoku) : reject(new Error('Ecoku did not load')))
-    script.onerror = () => {
-      ecokuPromise = undefined
-      script.remove()
-      reject(new Error('Failed to load Ecoku'))
-    }
-    document.head.append(script)
-  })
-  return ecokuPromise
-}
-```
+Without npm, load the instance UMD file with `<script src="https://ecoku.example.com/client/ecoku.umd.js"></script>` and use the global `Ecoku` constructor. For static article pages prefer the [HTML loader](./html).
 
 ## Create a comment section
 
 ```js
-const Ecoku = await loadEcoku()
+import Ecoku from 'ecoku'
 const comments = new Ecoku({
   container: '#comments',
   serverURL: 'https://ecoku.example.com',
@@ -67,11 +37,14 @@ await comments.init()
 | `pageTitle` | `string` | No | `''` | The post title, shown in notifications, at most 200 characters. |
 | `pageSize` | `number` | No | `10` | Root comments per page, an integer from 1 to 100. |
 | `theme` | `'auto' \| 'light' \| 'dark'` | No | `'auto'` | Color scheme. `auto` follows the page's light/dark setting. |
-| `cssURL` | `string` | No | `''` | When empty, the default styles are injected. Any value (a stylesheet URL or `'none'`) stops the injection. See below. |
+| `cssURL` | `string` | No | `''` | When empty, the default styles are injected. A valid value (a stylesheet URL or `'none'`) stops the injection. See below. |
 
 The constructor does not validate options; invalid options make `init()` throw a `TypeError`.
 
 The old option `apiBaseUrl` is an alias of `serverURL`. It still works but is deprecated.
+
+
+The constructor configuration truncates `pageTitle` to the first 200 JavaScript UTF-16 code units. `setPageKey()` does not truncate its title; the server checks a 200 Unicode-character limit. `cssURL` accepts an absolute HTTP(S) URL, a path starting with `/`, `none` or the legacy `-`, not an arbitrary string.
 
 ### Styles {#styles}
 
@@ -112,20 +85,77 @@ Unmounts the comment section: cancels all requests, removes the verification wid
 
 Returns whether the instance is currently initialized.
 
+## VitePress {#vitepress}
+
+In `.vitepress/theme/EcokuComments.vue`, import `useRoute` from VitePress, not `vue-router`. Use the route path as the stable page key and page data for the title. Create the instance on browser mount, update it when navigating and destroy it on unmount.
+
+```vue
+<script setup>
+import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { useData, useRoute } from 'vitepress'
+import Ecoku from 'ecoku'
+
+const route = useRoute()
+const { page } = useData()
+const el = ref(null)
+let comments = null
+
+onMounted(() => {
+  comments = new Ecoku({
+    container: el.value,
+    serverURL: 'https://ecoku.example.com',
+    siteId: 'docs',
+    pageKey: route.path,
+    pageTitle: page.value.title,
+  })
+  comments.init().catch(console.error)
+})
+
+watch(
+  () => [route.path, page.value.title],
+  ([path, title]) => { comments?.setPageKey(path, title).catch(console.error) },
+  { flush: 'post' },
+)
+
+onBeforeUnmount(() => {
+  comments?.destroy()
+  comments = null
+})
+</script>
+
+<template>
+  <div ref="el"></div>
+</template>
+```
+
+Add the component to the default layout’s `doc-after` slot in `.vitepress/theme/index.ts`, keeping existing theme options and CSS imports. This is a minimal integration: replace the server address and site ID, and register the documentation website origin in the admin console. The home layout does not show this slot.
+
+```ts
+import { h } from 'vue'
+import DefaultTheme from 'vitepress/theme'
+import EcokuComments from './EcokuComments.vue'
+
+export default {
+  extends: DefaultTheme,
+  Layout: () => h(DefaultTheme.Layout, null, {
+    'doc-after': () => h(EcokuComments),
+  }),
+}
+```
+
 ## Vue 3
 
 ```vue
 <script setup>
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { loadEcoku } from './load-ecoku'
+import Ecoku from 'ecoku'
 
 const route = useRoute()
 const el = ref(null)
 let comments = null
 
-onMounted(async () => {
-  const Ecoku = await loadEcoku()
+onMounted(() => {
   comments = new Ecoku({
     container: el.value,
     serverURL: 'https://ecoku.example.com',
@@ -133,12 +163,12 @@ onMounted(async () => {
     pageKey: route.path,
     pageTitle: document.title,
   })
-  await comments.init()
+  comments.init().catch(console.error)
 })
 
 watch(
   () => route.path,
-  (path) => comments?.setPageKey(path, document.title),
+  (path) => { comments?.setPageKey(path, document.title).catch(console.error) },
   { flush: 'post' },
 )
 
@@ -159,29 +189,21 @@ onBeforeUnmount(() => {
 
 ```jsx
 import { useEffect, useRef } from 'react'
-import { loadEcoku } from './load-ecoku'
+import Ecoku from 'ecoku'
 
 export function Comments({ pageKey, pageTitle }) {
   const el = useRef(null)
 
   useEffect(() => {
-    let comments
-    let cancelled = false
-    loadEcoku().then((Ecoku) => {
-      if (cancelled) return
-      comments = new Ecoku({
-        container: el.current,
-        serverURL: 'https://ecoku.example.com',
-        siteId: 'blog',
-        pageKey,
-        pageTitle,
-      })
-      comments.init().catch(console.error)
+    const comments = new Ecoku({
+      container: el.current,
+      serverURL: 'https://ecoku.example.com',
+      siteId: 'blog',
+      pageKey,
+      pageTitle,
     })
-    return () => {
-      cancelled = true
-      comments?.destroy()
-    }
+    comments.init().catch(console.error)
+    return () => comments.destroy()
   }, [pageKey, pageTitle])
 
   return <div ref={el} />

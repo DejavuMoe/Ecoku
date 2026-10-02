@@ -74,7 +74,7 @@ Comment bodies and nicknames are always displayed as plain text:
 - Markdown is not rendered, and URLs are not turned into links automatically;
 - Line breaks are preserved.
 
-The only exception is [Smoji stickers](../integration/smoji). When enabled, `![smoji:name](image-url)` renders as an image if its format and origin satisfy the site’s image-origin rule; other content stays text. The manifest origin is the default. The next release lets administrators specify an image origin separately; see [hosting the manifest and images separately](../integration/smoji#hosting).
+The only exception is [Smoji stickers](../integration/smoji). When enabled, `![smoji:name](image-url)` renders as an image if its format and origin satisfy the site’s image-origin rule; other content stays text. The manifest origin is the default. v0.3.0 lets administrators specify an image origin separately; see [hosting the manifest and images separately](../integration/smoji#hosting).
 
 A visitor's website appears only as a link on their nickname, with `rel="nofollow ugc noopener noreferrer"`.
 
@@ -99,4 +99,4 @@ Submitting, reading, deleting, and admin sign-in are all rate limited per IP. Th
 
 ## Time and time zone
 
-Comment times are displayed in `YYYY-MM-DD HH:mm` format. The optional container `TZ` environment variable controls the time zone; new deployments can set it in Compose. Hovering over a time shows the time zone name and offset, such as `Asia/Shanghai UTC+8`.
+Comment times use `YYYY-MM-DD HH:mm`. Set `TZ` in the Compose `environment`; when absent, Ecoku falls back to `Asia/Shanghai`. Hover over a time to see its time zone and offset.

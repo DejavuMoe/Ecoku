@@ -26,6 +26,7 @@ const copy: SidebarCopy & NavCopy = {
   configuration: '配置参考',
   cli: '命令行',
   api: 'REST API',
+  internalVersions: '内测记录（请勿使用）',
   earlierVersions: '更早的候选版本',
   versionCurrent: 'v0.3.0',
   versionLatest: '（最新）',
@@ -33,7 +34,7 @@ const copy: SidebarCopy & NavCopy = {
 
 export const zh = defineConfig({
   title: 'Ecoku',
-  description: '自托管、多站点的纯文本评论系统。Docker 部署，数据存 SQLite，提交后立即公开。',
+  description: '自托管，多站点，专注文字讨论。',
   lang: 'zh-Hans',
   markdown: {
     container: {

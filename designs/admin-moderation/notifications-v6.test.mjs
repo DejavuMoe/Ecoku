@@ -42,7 +42,7 @@ const present = [
   ["深色跟随系统", allHTML, /@media \(prefers-color-scheme:dark\)/],
   ["系统 CJK 无衬线字体栈", fonts.sans, /'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei UI','Microsoft YaHei','Noto Sans CJK SC'/],
   ["正文与标题使用无衬线栈", allHTML, /<body[^>]*font-family:-apple-system[\s\S]*<h1[^>]*font-family:-apple-system/],
-  ["字标仍用 Georgia", allHTML, /font-family:Georgia,'Times New Roman',serif;font-size:17px;font-weight:bold;line-height:24px;letter-spacing:0\.01em;">Ecoku</],
+  ["字标使用 Georgia", allHTML, /font-family:Georgia,'Times New Roman',serif;font-size:18px;font-weight:bold;line-height:24px;letter-spacing:0\.005em;">Ecoku</],
   ["6px 圆角卡片与按钮", allHTML, /class="email-shell"[^>]*border-radius:6px[\s\S]*class="email-button"[^>]*border-radius:6px/],
   ["墨色主按钮", allHTML, /class="email-button" align="center" bgcolor="#1e1c19"/],
   ["表格布局与 MSO 容器", allHTML, /<!--\[if mso\]><table role="presentation" width="600"/],

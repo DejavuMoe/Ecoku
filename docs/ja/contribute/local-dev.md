@@ -1,6 +1,6 @@
 # ローカル開発
 
-ローカル開発用の Go、Node.js、pnpm はリポジトリ直下の `mise.toml` で固定し、Corepack は使用しません。CI とコンテナビルドは、同じバージョンの公式 Node/Go イメージを直接使用し、mise はインストールしません。本番デプロイは引き続き Docker Compose を使用します。
+ローカル開発用の Go、Node.js、pnpm はリポジトリ直下の `mise.toml` で固定し、Corepack は使用しません。GitHub Actions は対応するバージョンのツールチェーンをインストールします。コンテナビルドと Woodpecker のドキュメントデプロイは公式イメージを使い、mise はインストールしません。本番デプロイは引き続き Docker Compose を使用します。
 
 ## セットアップ
 
@@ -30,6 +30,6 @@ pnpm docs:dev
 
 API はローカルの `http://127.0.0.1:12123` でアクセスでき、既定のポートは `12123` です。DB は `server/data/ecoku.bin`、永続キーは同じディレクトリの `ecoku-secrets.json` です。ソース実行では既定でブラウザ用の静的ファイルを配信しないため、コメント欄と管理画面は各 Vite 開発サーバーを使います。Docker イメージはビルド済みファイルを配信します。
 
-完全な検証は Woodpecker が実行します。ローカルでは、現在の変更に直接関係し、CI がカバーしない検証だけを実行します。
+完全な検証は GitHub Actions が実行します。ローカルでは、現在の変更に直接関係し、CI がカバーしない検証だけを実行します。
 
 開発用管理画面のオリジン（設定例では `http://localhost:5174`）は独立した `admin.allowed_origins` に書く必要があり、開発画面は Vite の同一オリジン `/api` プロキシ経由でサーバーにアクセスします。明示的な HTTP localhost/ループバックのみ非 Secure Cookie を使い、本番は HTTPS が必要です。

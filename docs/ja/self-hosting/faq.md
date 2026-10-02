@@ -42,7 +42,7 @@ chmod 644 app/config.yaml
 
 ```bash
 cd ~/Ecoku
-sudo docker compose down
+sudo docker compose stop ecoku
 sudo rmdir app/config.yaml
 ```
 
@@ -52,7 +52,7 @@ sudo rmdir app/config.yaml
 
 ### ログに「无法解密 … 凭据」と出る
 
-（… の認証情報を復号できない、という意味です。）データベースに SMTP、Telegram、CAPTCHA の認証情報が保存されていますが、`ECOKU_NOTIFICATION_ENCRYPTION_KEY` がないか、保存時と異なっています。バックアップから元の `ecoku.env` を探し出し、このキーを戻してください。キーを取り戻せない場合は、以前のバックアップからインスタンス全体を復元するしかありません。
+保存済みの SMTP、Telegram、CAPTCHA の認証情報には元の通知暗号化キーが必要です。DB と同じディレクトリの `ecoku-secrets.json` が同じインスタンスのもので、コンテナユーザーから読み取り可能か、権限が `600` かを確認してください。キーの再生成のために削除しないでください。不足や不一致の場合は同じバックアップから DB とキーを復元します。[復元手順](./backup#restore) を参照してください。旧キーの環境変数を使う内部テスト環境では、その値と永続ファイルの一致も確認します。
 
 ### 設定を変更しても反映されない
 

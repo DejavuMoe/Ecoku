@@ -9,34 +9,14 @@ cd ~/Ecoku
 sudo docker compose run --rm --no-deps ecoku <子命令> [参数]
 ```
 
-除了 `hash-password` 之外，子指令都會讀取 `app/config.yaml` 並開啟資料庫；如果資料庫版本低於目前的映像檔，還會先執行遷移。請先用 `sudo docker compose down` 停止服務再執行，避免與正在執行的實例同時寫入資料庫。
-
-## hash-password {#hash-password}
-
-從標準輸入讀取一行密碼，輸出 bcrypt 雜湊（cost 10），用於舊實例的 `ECOKU_ADMIN_PASSWORD_HASH`。新實例首次啟動會自動建立管理員，不需要使用此命令。不讀取設定，也不存取資料庫，服務執行中也可以使用。
-
-```bash
-read -rsp '管理员密码: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.9 hash-password
-unset P
-```
-
-密碼不能為空，UTF-8 編碼不能超過 72 位元組（bcrypt 的上限），超過時指令會報錯並結束。
-
-把輸出寫進 `ecoku.env` 時請加上單引號：
-
-```bash
-ECOKU_ADMIN_PASSWORD_HASH='$2a$10$...'
-```
-
-然後重建容器使其生效。
+除了 `hash-password` 之外，子指令都會讀取 `app/config.yaml` 並開啟資料庫；如果資料庫版本低於目前的映像檔，還會先執行遷移。請先用 `sudo docker compose stop ecoku` 停止服務再執行，避免與正在執行的實例同時寫入資料庫。
 
 ## admin reset-password {#admin-reset-password}
 
 為持久化管理員帳戶產生新的臨時密碼。先停止正在執行的服務：
 
 ```bash
-sudo docker compose down
+sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku admin reset-password
 sudo docker compose up -d
 ```
@@ -62,7 +42,7 @@ provider=turnstile turnstile_secret_set=true cap_secret_set=false
 關閉人機驗證。用於驗證服務設定錯誤、導致管理員無法登入後台的情況。
 
 ```bash
-sudo docker compose down
+sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku captcha disable
 sudo docker compose up -d
 ```
@@ -101,3 +81,27 @@ Twikoo 导入完成：评论=128 根评论=90 回复=38 页面=24 邮箱=110 网
 ```
 
 完整步驟、欄位對應和注意事項見[從 Twikoo 遷移](../self-hosting/twikoo)。
+
+::: details 內測設定：密碼雜湊
+
+## hash-password {#hash-password}
+
+從標準輸入讀取一行密碼，輸出 bcrypt 雜湊（cost 10），用於舊實例的 `ECOKU_ADMIN_PASSWORD_HASH`。新實例首次啟動會自動建立管理員，不需要使用此命令。不讀取設定，也不存取資料庫，服務執行中也可以使用。
+
+```bash
+read -rsp '管理员密码: ' P; echo
+printf '%s\n' "$P" | sudo docker run --rm -i ghcr.io/dejavumoe/ecoku:v0.3.0 hash-password
+unset P
+```
+
+密碼不能為空，UTF-8 編碼不能超過 72 位元組（bcrypt 的上限），超過時指令會報錯並結束。
+
+把輸出寫進 `ecoku.env` 時請加上單引號：
+
+```bash
+ECOKU_ADMIN_PASSWORD_HASH='$2a$10$...'
+```
+
+然後重建容器使其生效。
+
+:::

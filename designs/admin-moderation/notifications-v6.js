@@ -14,6 +14,8 @@ export const tokens = {
     lineSoft: "rgba(30,28,25,0.12)",
     wash: "#efebe3",
     accent: "#9a4733",
+    seal: "#b8472f",
+    sealCut: "#f7f4ee",
   },
   dark: {
     paper: "#1a1816",
@@ -25,6 +27,8 @@ export const tokens = {
     lineSoft: "rgba(238,232,221,0.12)",
     wash: "#26231f",
     accent: "#d57c64",
+    seal: "#c55a40",
+    sealCut: "#1a1816",
   },
 };
 
@@ -48,7 +52,8 @@ export const darkRules = [
   `.email-rule{border-color:${D.lineSoft}!important}`,
   `.email-wash{background-color:${D.wash}!important}`,
   `.email-frame{border-color:${D.line}!important}`,
-  `.email-mark{border-color:${D.ink}!important;color:${D.ink}!important}`,
+  `.email-seal{background-color:${D.seal}!important}`,
+  `.email-seal-cut{border-color:${D.sealCut}!important}`,
   `.email-button{background-color:${D.ink}!important}`,
   `.email-button-link{color:${D.paper}!important}`,
 ].join("");
@@ -169,16 +174,18 @@ function paragraphSection(content) {
 }
 
 export function renderEmailDocument(doc) {
-  const header = `<tr><td class="email-pad email-rule" style="padding:22px 36px;border-bottom:1px solid ${L.lineSoft};">` +
+  const seal = `<table class="email-seal" role="presentation" width="26" height="26" cellpadding="0" cellspacing="0" border="0" bgcolor="${L.seal}" style="width:26px;height:26px;border-collapse:separate;border-radius:6px;background-color:${L.seal};"><tr><td align="center" valign="middle">` +
+    `<table role="presentation" width="18" height="18" cellpadding="0" cellspacing="0" border="0" style="width:18px;height:18px;border-collapse:collapse;"><tr><td class="email-seal-cut" width="7" height="5" style="width:7px;height:5px;border:2px solid ${L.sealCut};border-radius:1px;"></td><td width="11"></td></tr><tr><td colspan="2" height="4"></td></tr><tr><td colspan="2"><table role="presentation" width="18" cellpadding="0" cellspacing="0" border="0" style="width:18px;border-collapse:collapse;"><tr><td class="email-seal-cut" width="5" height="5" style="width:5px;height:5px;border:2px solid ${L.sealCut};"></td><td width="2"></td><td class="email-seal-cut" width="5" height="5" style="width:5px;height:5px;border:2px solid ${L.sealCut};"></td><td width="2"></td><td class="email-seal-cut" width="5" height="5" style="width:5px;height:5px;border:2px solid ${L.sealCut};"></td></tr></table></td></tr></table>` +
+    `</td></tr></table>`;
+  const header = `<tr><td class="email-pad email-rule" style="padding:20px 32px;border-bottom:1px solid ${L.lineSoft};">` +
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>` +
-    `<td width="36" valign="middle" style="width:36px;"><table role="presentation" width="26" cellpadding="0" cellspacing="0" border="0" style="width:26px;border-collapse:separate;"><tr>` +
-    `<td class="email-mark" align="center" height="24" style="height:24px;border:1px solid ${L.ink};border-radius:13px;color:${L.ink};font-family:${fonts.wordmark};font-size:14px;font-weight:bold;line-height:24px;mso-line-height-rule:exactly;">E</td></tr></table></td>` +
-    `<td class="email-copy" valign="middle" style="color:${L.ink};font-family:${fonts.wordmark};font-size:17px;font-weight:bold;line-height:24px;letter-spacing:0.01em;">Ecoku</td>` +
+    `<td width="36" valign="middle" style="width:36px;">${seal}</td>` +
+    `<td class="email-copy" valign="middle" style="padding-left:2px;color:${L.ink};font-family:${fonts.wordmark};font-size:18px;font-weight:bold;line-height:24px;letter-spacing:0.005em;">Ecoku</td>` +
     `<td class="email-muted" align="right" valign="middle" style="color:${L.muted};font-size:12px;line-height:18px;word-break:break-word;">${escapeHTML(doc.siteName)}</td>` +
     `</tr></table></td></tr>`;
-  const hero = `<tr><td class="email-pad" style="padding:32px 36px 4px;">` +
+  const hero = `<tr><td class="email-pad" style="padding:28px 32px 4px;">` +
     `<p class="email-accent" style="margin:0 0 10px;color:${L.accent};font-size:12px;font-weight:bold;letter-spacing:0.08em;line-height:18px;">${escapeHTML(doc.label)}</p>` +
-    `<h1 class="email-title email-copy" style="margin:0;color:${L.ink};font-family:${fonts.sans};font-size:24px;font-weight:bold;line-height:32px;word-break:break-word;">${escapeHTML(doc.heading)}</h1></td></tr>`;
+    `<h1 class="email-title email-copy" style="margin:0;color:${L.ink};font-family:${fonts.sans};font-size:25px;font-weight:700;line-height:32px;letter-spacing:-0.01em;word-break:break-word;">${escapeHTML(doc.heading)}</h1></td></tr>`;
   const action = doc.action
     ? `<tr><td class="email-pad" style="padding:28px 36px 36px;"><table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:separate;"><tr>` +
       `<td class="email-button" align="center" bgcolor="${L.ink}" style="border-radius:6px;background-color:${L.ink};">` +

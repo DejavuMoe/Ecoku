@@ -17,18 +17,23 @@ Ecoku 的状态在部署目录中。新部署的完整备份至少包含：
 set -eu
 umask 077
 cd "$HOME/Ecoku"
-install -d -m 700 "$HOME/backups"
-sudo docker compose down
-archive="$HOME/backups/ecoku-$(date +%Y%m%d_%H%M%S).tar.gz"
-sudo tar -czf - data/ app/config.yaml compose.yaml ${ECOKU_BACKUP_ENV:-} > "$archive"
+install -d -m 700 backups
+sudo docker compose stop ecoku
+archive="backups/ecoku-$(date +%Y%m%d_%H%M%S).tar.gz"
+set -- data/ app/config.yaml compose.yaml
+if [ -f ecoku.env ]; then set -- "$@" ecoku.env; fi
+sudo tar -czf - "$@" > "$archive"
+tar -tzf "$archive" >/dev/null
 printf 'Verified backup: %s\n' "$archive"
 sudo docker compose up -d
 )
 ```
 
-如果旧实例有 `ecoku.env`，请在打包前设置 `ECOKU_BACKUP_ENV=ecoku.env`；新实例不要设置。归档必须包含整个 `data/`，不能只复制 `ecoku.sqlite3`，因为 WAL 和持久密钥也在其中。
+命令会自动包含仍存在的 `ecoku.env`。归档必须包含整个 `data/`，不能只复制 SQLite 主文件。看到 `Verified backup` 表示归档已成功写入并可列出内容，不代表已经做过恢复演练。备份失败时服务保持停止；修正原因后重试，或执行 `sudo docker compose up -d ecoku` 恢复运行。
 
 ## 从备份恢复 {#restore}
+
+恢复时先停止服务，将当前 `data/` 移到另一个目录留存，再完整解压同一份备份。不要直接覆盖运行中的数据库，也不要把新版本的 WAL 与旧数据库混在一起。
 
 停服后恢复整个 `data/`、`app/config.yaml` 和 `compose.yaml`。旧实例还原 `ecoku.env`。恢复后修正权限：
 
@@ -36,6 +41,7 @@ sudo docker compose up -d
 cd ~/Ecoku
 sudo chown -R 10001:10001 data
 sudo chmod 750 data
+sudo chmod 600 data/ecoku-secrets.json
 sudo docker compose up -d
 curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 ```

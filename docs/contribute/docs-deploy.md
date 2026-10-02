@@ -4,6 +4,8 @@
 
 文档部署仍由 Woodpecker 负责。新增的 `.github/workflows/ci.yml` 仅构建、检查并保存文档产物；GitHub Actions 的镜像、npm SDK 和 GitHub Release 发布见 [发布说明](../../packages/client/PUBLISH.md)。GitHub 工作流不连接文档服务器。
 
+`docs-deploy.yml` 是唯一启用的 Woodpecker 工作流。其余 YAML 保留原步骤和已注释的触发条件，以 `evaluate: 'false'` 禁用；完整验证和镜像发布已交给 GitHub Actions。
+
 ## 流程
 
 `.woodpecker/docs-deploy.yml` 在 `master` 分支 push 时运行，与完整测试流程互相独立：

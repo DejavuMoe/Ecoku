@@ -26,6 +26,7 @@ const copy: SidebarCopy & NavCopy = {
   configuration: 'Configuration',
   cli: 'Command Line',
   api: 'REST API',
+  internalVersions: 'Internal test archive (do not use)',
   earlierVersions: 'Earlier release candidates',
   versionCurrent: 'v0.3.0',
   versionLatest: ' (latest)',
@@ -33,7 +34,7 @@ const copy: SidebarCopy & NavCopy = {
 
 export const en = defineConfig({
   title: 'Ecoku',
-  description: 'Self-hosted multi-site plain-text comments. Deploy with Docker, store data in SQLite, go live on submit.',
+  description: 'Self-hosted comments for multiple sites.',
   lang: 'en',
   themeConfig: {
     nav: nav('/en', copy),

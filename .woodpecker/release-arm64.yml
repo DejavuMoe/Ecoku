@@ -4,9 +4,14 @@ labels:
   role: oracle-toronto
   server: oracle-toronto
 
+# Disabled: verification and image releases now run in GitHub Actions.
 when:
-  event: tag
-  ref: refs/tags/v*
+  - evaluate: 'false'
+
+# Previous triggers, retained for reference:
+# when:
+#   event: tag
+#   ref: refs/tags/v*
 
 steps:
   - name: publish-arm64

@@ -58,7 +58,7 @@ Each email contains both a plain-text and an HTML version. The HTML version uses
 
 Times are shown in the container's `TZ`, the same as in the comment area, with the UTC offset, such as `2026/09/29 10:18 (UTC+8)`. Comments by the blogger show the site's blogger badge after the nickname.
 
-Smoji render as images only when enabled and the image satisfies the site’s image-origin rule. This defaults to the manifest origin; the next release supports [a separate image origin](../integration/smoji#hosting). Images load directly from their host, as in the comment area. If the mail client blocks external images, `[表情：标签]` ([Smoji: label]) is shown instead. Other cases and plain-text messages also use `[表情：标签]`.
+Smoji render as images only when enabled and the image satisfies the site’s image-origin rule. This defaults to the manifest origin; v0.3.0 supports [a separate image origin](../integration/smoji#hosting). Images load directly from their host, as in the comment area. If the mail client blocks external images, `[表情：标签]` ([Smoji: label]) is shown instead. Other cases and plain-text messages also use `[表情：标签]`.
 
 Subject lines (sent in Chinese):
 

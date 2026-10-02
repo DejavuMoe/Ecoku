@@ -1,6 +1,10 @@
 # Upgrade
 
+Public releases start at v0.3.0. For a new instance use [Docker deployment](./docker); this page covers upgrades.
+
 The current release is **v0.3.0** (released 2026-10-03, schema v11).
+
+New images are published to GHCR. Deployments using Forgejo images should change `image` to `ghcr.io/dejavumoe/ecoku:v0.3.0` or the exact target tag for future upgrades, keeping existing data and configuration mounts. No new versions will be published to the Forgejo registry. Switching registries at the same version does not require reinitializing the instance.
 
 ## What happens during an upgrade
 
@@ -13,33 +17,6 @@ Upgrading means changing the image in `compose.yaml` to the new version and star
 
 That makes a backup taken before the upgrade the only way to roll back to an older schema.
 
-You can skip versions and upgrade directly, for example from v0.1.8 straight to v0.3.0. The intermediate migrations run one after another. But read the upgrade notes for every version you skip, because some versions require config changes (for example, [v0.2.4](./upgrades/v0.2.4) requires `admin.token_ttl_minutes` to be 480 or omitted).
-
-## Legacy configuration migration for v0.2.9 {#legacy-config}
-
-v0.2.9 adds the v10 administrator account table on top of schema v9. Existing sites, comments, notifications, CAPTCHA settings, and legacy administrator credentials remain. An existing deployment does not need to edit its configuration before upgrading.
-
-Keep the old `compose.yaml`, `app/config.yaml`, and `ecoku.env`, make a [cold backup](./backup#cold-backup), and start the new image by following [Upgrade steps](#steps). On the first start the new version will:
-
-1. import `ECOKU_ADMIN_USERNAME`, `ECOKU_ADMIN_PASSWORD_HASH`, and `ECOKU_ADMIN_TOKEN_KEY` into the persistent administrator account and session key;
-2. copy `ECOKU_NOTIFICATION_ENCRYPTION_KEY` into `data/ecoku-secrets.json` and keep decrypting existing stored credentials with it;
-3. retain compatibility for the old port, file log, static directory, SQLite path, YAML `sites`, and `management_key_env` settings;
-4. avoid generating a temporary password or forcing an existing administrator to change the password.
-
-After the new version is confirmed healthy, migrate to the smaller configuration:
-
-1. Confirm that the admin login, site count, historical comments, and notification settings work.
-2. Confirm that `data/ecoku-secrets.json` exists and that the log contains no credential decryption error.
-3. Stop the service and back up all of `data/`, `app/config.yaml`, `compose.yaml`, and the old `ecoku.env`.
-4. Stop the service and remove the administrator variables and `ECOKU_NOTIFICATION_ENCRYPTION_KEY` from `ecoku.env`. Move `TZ` to the Compose `environment` section if needed; keeping it in `ecoku.env` requires keeping `env_file`.
-5. Remove `env_file` only if it is no longer needed. Keep it if it still supplies `TZ` or a site management key.
-6. Keep `notifications.instance_public_url`, any `site.trusted_proxies`, `admin.allowed_origins`, and `rate_limit` settings you use. Remove legacy fields only after confirming that you no longer need the old database path, file logs, or `EcokuSite` automation.
-7. Recreate the container and check the admin console, comments, and notifications again.
-
-If the old `ECOKU_NOTIFICATION_ENCRYPTION_KEY` differs from `data/ecoku-secrets.json`, the service refuses to start instead of making existing credentials undecryptable. The old database path continues to work; do not remove `database.sqlite.path` and accidentally mount an empty `/data` directory.
-
-To roll back to v0.2.8, stop the service and restore the original Compose, config, `ecoku.env`, and the complete `data/` directory. If the v10 migration has completed, use the cold backup made before the upgrade.
-
 ## Upgrade steps {#steps}
 
 **1. Read the upgrade notes.** Find the target version in the [version list](#versions) below, and check whether it has config changes or a schema migration.
@@ -49,7 +26,7 @@ To roll back to v0.2.8, stop the service and restore the original Compose, confi
 **3. Change the image version.** Edit `~/Ecoku/compose.yaml` and change `image` to the target version, for example:
 
 ```yaml
-    image: "git.via.moe/dejavu/ecoku:v0.3.0"
+    image: "ghcr.io/dejavumoe/ecoku:v0.3.0"
 ```
 
 Use an exact version number, not `latest`. If the upgrade notes ask you to change `app/config.yaml` or `ecoku.env`, change them at the same time.
@@ -85,6 +62,14 @@ First check whether the old and new versions have the same schema (see the table
 | Version | Release date | Schema | Highlights |
 | --- | --- | --- | --- |
 | [v0.3.0](./upgrades/v0.3.0) | 2026-10-03 | v10 → v11 | Separate Smoji image origin, npm SDK and GHCR releases, configuration templates and documentation theme. |
+
+A single version number in the Schema column means that release has no database migration.
+
+::: details Internal test archive (do not use)
+This page preserves the tag, changes and historical upgrade notes. Public deployments start at v0.3.0; old images are no longer supported for deployment. Use the [current deployment guide](./docker).
+
+| Version | Date | Schema | Historical changes |
+| --- | --- | --- | --- |
 | [v0.2.9](./upgrades/v0.2.9) | 2026-10-02 | v9 → v10 | First-login password setup, persistent administrator and keys, legacy compatibility, and admin fixes. |
 | [v0.2.8](./upgrades/v0.2.8) | 2026-10-01 | v9 | The admin console adds a comment stream, row-based settings, shortcuts and bottom navigation; container defaults allow shorter deployment templates. |
 | [v0.2.7](./upgrades/v0.2.7) | 2026-09-29 | v8 → v9 | Notification emails use the paper-and-ink look and system fonts, with the post title in the subject; deleting a comment cancels pending notifications and retracts sent Telegram messages; the queue stops retrying deliveries that cannot succeed. |
@@ -104,7 +89,34 @@ First check whether the old and new versions have the same schema (see the table
 | [v0.1.3](./upgrades/v0.1.3) | 2026-08-15 | v4 → v5 | Blogger switched to passphrase authentication; notifications split per recipient. |
 | [v0.1.2](./upgrades/v0.1.2) | 2026-08-15 | v4 | Comment metadata layout adjustments. |
 | [v0.1.1](./upgrades/v0.1.1) | 2026-08-15 | v4 | Collapse button uses a fixed width and no longer shifts when toggled. |
-| [v0.1.0](./upgrades/v0.1.0) | 2026-08-15 | v4 | First stable release. |
+| [v0.1.0](./upgrades/v0.1.0) | 2026-08-15 | v4 | First stable-tagged internal test release. |
 | [Earlier release candidates](./upgrades/earlier) | 2026-08-14 | v1 – v4 | The `v0.1.0-rc.*` series. |
+:::
 
-A single version number in the Schema column means that release has no database migration.
+<details id="legacy-config" class="details custom-block">
+<summary>Legacy configuration for internal test instances</summary>
+
+v0.2.9 adds the v10 administrator account table on top of schema v9. Existing sites, comments, notifications, CAPTCHA settings, and legacy administrator credentials remain. An existing deployment does not need to edit its configuration before upgrading.
+
+Keep the old `compose.yaml`, `app/config.yaml`, and `ecoku.env`, make a [cold backup](./backup#cold-backup), and start the new image by following [Upgrade steps](#steps). On the first start the new version will:
+
+1. import `ECOKU_ADMIN_USERNAME`, `ECOKU_ADMIN_PASSWORD_HASH`, and `ECOKU_ADMIN_TOKEN_KEY` into the persistent administrator account and session key;
+2. copy `ECOKU_NOTIFICATION_ENCRYPTION_KEY` into `data/ecoku-secrets.json` and keep decrypting existing stored credentials with it;
+3. retain compatibility for the old port, file log, static directory, SQLite path, YAML `sites`, and `management_key_env` settings;
+4. avoid generating a temporary password or forcing an existing administrator to change the password.
+
+After the new version is confirmed healthy, migrate to the smaller configuration:
+
+1. Confirm that the admin login, site count, historical comments, and notification settings work.
+2. Confirm that `data/ecoku-secrets.json` exists and that the log contains no credential decryption error.
+3. Stop the service and back up all of `data/`, `app/config.yaml`, `compose.yaml`, and the old `ecoku.env`.
+4. Stop the service and remove the administrator variables and `ECOKU_NOTIFICATION_ENCRYPTION_KEY` from `ecoku.env`. Move `TZ` to the Compose `environment` section if needed; keeping it in `ecoku.env` requires keeping `env_file`.
+5. Remove `env_file` only if it is no longer needed. Keep it if it still supplies `TZ` or a site management key.
+6. Keep `notifications.instance_public_url`, any `site.trusted_proxies`, `admin.allowed_origins`, and `rate_limit` settings you use. Remove legacy fields only after confirming that you no longer need the old database path, file logs, or `EcokuSite` automation.
+7. Recreate the container and check the admin console, comments, and notifications again.
+
+If the old `ECOKU_NOTIFICATION_ENCRYPTION_KEY` differs from `data/ecoku-secrets.json`, the service refuses to start instead of making existing credentials undecryptable. The old database path continues to work; do not remove `database.sqlite.path` and accidentally mount an empty `/data` directory.
+
+Internal test images are no longer provided for production rollback. Restoring a historical schema requires its complete cold backup; this section preserves the configuration migration record only.
+
+</details>

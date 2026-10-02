@@ -4,7 +4,7 @@
 
 ## 完整設定範本 {#template}
 
-新部署複製範本並替換 `instance_public_url`。已展開的項目使用預設值；舊版相容項保持註解，只有保留舊部署行為時才需要啟用。YAML 中每個頂層區段只能出現一次，不要在檔案末尾重複附加 `site:` 或 `admin:`。
+複製範本並替換 `instance_public_url`。其他未註解的值使用預設值；註解中的賦值可依需要啟用。YAML 中每個頂層區段只能出現一次，不能重複附加 `site:` 或 `admin:`。後台始終啟用；工作階段時長是固定限制，不能自由調整。
 
 <div class="config-template">
 
@@ -29,16 +29,14 @@ sudo docker compose logs --tail=100 ecoku
 
 ## 日誌 {#logs}
 
-預設日誌寫到標準輸出，以 `docker compose logs` 查看，保留與輪替由 Docker 管理。範本中的 `site.log_path` 僅為舊版相容項；新部署不需要日誌目錄掛載。
+預設日誌寫到標準輸出，以 `docker compose logs` 查看，保留與輪替由 Docker 管理。`site.log_path` 是可選的檔案日誌路徑；設定實際路徑時同時寫標準輸出和檔案，並須掛載容器可寫入的目錄。具體值見範本。
 
 ## 環境變數 {#env}
 
 新部署不需要 `ecoku.env`。Compose 中的 `TZ: Asia/Shanghai` 決定評論與通知的顯示時區；需要其他時區時直接修改該行。`TZ` 不是 YAML 設定欄位。
 
-範本中的 `*_env` 都是舊環境變數的名稱，而非秘密值。新實例自動建立管理員、臨時密碼與持久金鑰；舊實例須先完成匯入及備份，再移除原變數。映像已設定 `GIN_MODE=release` 和 `ECOKU_RUNTIME=container`，不要覆寫。
+範本中的 `*_env` 是程式讀取的環境變數名稱，不是秘密值；需要自行注入時，在 Compose 的 `environment` 或 `env_file` 提供對應變數。預設自動建立管理員和持久金鑰，不必注入這些憑據。映像檔已設定 `GIN_MODE=release` 和 `ECOKU_RUNTIME=container`，不要覆寫。
 
-## 舊設定遷移 {#legacy}
+## 初始化與持久資料 {#legacy}
 
-範本保留目前仍接受的相容欄位及其預設值。站點種子只在建立全新資料庫時匯入，不會覆蓋已有站點；站點、SMTP、Telegram、人機驗證與 Smoji 在後台修改。
-
-升級與刪除舊環境變數的操作步驟見 [舊實例設定遷移](../self-hosting/upgrade#legacy-config)。資料庫與同目錄的 `ecoku-secrets.json` 必須一起備份。
+站點種子 `sites` 僅在建立全新資料庫時匯入，不會覆蓋既有站點；後續站點編輯、SMTP、Telegram、人機驗證與 Smoji 在後台完成。資料庫和同目錄的 `ecoku-secrets.json` 必須一起備份。修改資料庫路徑不會自動搬移資料。

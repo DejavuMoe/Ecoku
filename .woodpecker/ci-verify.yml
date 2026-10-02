@@ -4,11 +4,16 @@ labels:
   role: netcup-vps1000
   server: netcup-vps1000
 
+# Disabled: verification and image releases now run in GitHub Actions.
 when:
-  - event: push
-    branch: master
-  - event: pull_request
-    branch: master
+  - evaluate: 'false'
+
+# Previous triggers, retained for reference:
+# when:
+#   - event: push
+#     branch: master
+#   - event: pull_request
+#     branch: master
 
 steps:
   - name: frontend

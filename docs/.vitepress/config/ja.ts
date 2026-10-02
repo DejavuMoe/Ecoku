@@ -26,6 +26,7 @@ const copy: SidebarCopy & NavCopy = {
   configuration: '設定リファレンス',
   cli: 'コマンドライン',
   api: 'REST API',
+  internalVersions: '内部テスト記録（使用不可）',
   earlierVersions: '以前のリリース候補',
   versionCurrent: 'v0.3.0',
   versionLatest: '（最新）',
@@ -33,7 +34,7 @@ const copy: SidebarCopy & NavCopy = {
 
 export const ja = defineConfig({
   title: 'Ecoku',
-  description: 'セルフホストのマルチサイト純テキストコメント。Docker で導入し、データは SQLite。投稿はその場で公開。',
+  description: 'セルフホストで、複数サイトの文字の対話を。',
   lang: 'ja',
   markdown: {
     container: {

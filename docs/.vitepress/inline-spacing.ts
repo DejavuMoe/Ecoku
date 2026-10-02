@@ -8,6 +8,19 @@ export function inlineSpacing(md: MarkdownRenderer) {
   md.core.ruler.after('linkify', 'ecoku-inline-spacing', state => {
     for (const block of state.tokens) {
       if (block.type !== 'inline' || !block.children) continue
+      const path = String(state.env?.relativePath || state.env?.path || '').replaceAll('\\', '/')
+      const chinese = !/(^|\/)(en|ja)\//.test(path)
+      if (chinese) {
+        let automaticLink = false
+        for (const token of block.children) {
+          if (token.type === 'link_open') automaticLink = token.info === 'auto'
+          if (token.type === 'link_close') automaticLink = false
+          if (token.type !== 'text' || automaticLink) continue
+          token.content = token.content.replaceAll('“', '「').replaceAll('”', '」')
+            .replace(/(\p{Script=Han})([A-Za-z0-9])/gu, '$1 $2')
+            .replace(/([A-Za-z0-9])(\p{Script=Han})/gu, '$1 $2')
+        }
+      }
       const tokens = block.children.filter(token => token.type !== 'text' || token.content !== '')
       const spaced = []
       for (let i = 0; i < tokens.length; i++) {

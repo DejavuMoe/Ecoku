@@ -58,7 +58,7 @@
 | Hexo | `<%- url_for(page.path) %>` |
 | Jekyll | `{{ page.url }}` |
 | Astro | `{Astro.url.pathname}` |
-| VitePress | カスタムテーマで `useRoute().path` を読み取り、[SDK](./sdk) で埋め込みます |
+| VitePress | カスタムテーマで `useRoute().path` を読み取り、[SDK](./sdk#vitepress) で埋め込みます |
 :::
 
 上記は参考です。ブラウザで生成された HTML を見て、完全な URL ではなく `/posts/hello-world/` のような安定したパスが出力されていることを確認してください。

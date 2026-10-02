@@ -37,7 +37,7 @@
 {{- end -}}
 ```
 
-模板用 `.RelPermalink` 作为页面 key（如 `/posts/my-first-post/`），用 `.Title` 作为文章标题。没有填写 `server_url` 或 `site_id` 时，显示“评论服务尚未配置。”，方便发现配置遗漏。
+模板用 `.RelPermalink` 作为页面 key（如 `/posts/my-first-post/`），用 `.Title` 作为文章标题。没有填写 `server_url` 或 `site_id` 时，显示「评论服务尚未配置。」，方便发现配置遗漏。
 
 ## 2. 添加站点配置
 

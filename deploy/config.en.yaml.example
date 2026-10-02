@@ -1,8 +1,9 @@
 # Complete Ecoku configuration. Save as app/config.yaml; recreate the container after changes.
 # Active values are defaults, except the example instance_public_url that you must replace.
 # Write each top-level section once. YAML does not expand ${ENV} variables here.
-# Configure SMTP, Telegram, CAPTCHA, Smoji and sites in the admin console, not this file.
-# Keep legacy compatibility fields commented out. Existing instances may retain their old values.
+# Configure SMTP, Telegram, CAPTCHA and Smoji in the console; sites supplies initial sites and credential bindings.
+# Omitted instance options use defaults; supply an admin origin via instance_public_url or admin.allowed_origins.
+# Commented assignments are supported options. Uncomment only to override default behavior.
 
 notifications:
   # Public URL of Ecoku itself, used for admin-origin checks and when enabling notifications.
@@ -12,11 +13,11 @@ notifications:
   # A path is accepted, but this field does not configure your reverse proxy or change application routes.
   instance_public_url: "https://ecoku.example.com"
 
-  # Legacy compatibility: environment variable NAME holding the encryption key, not the key itself.
+  # Optional: environment variable NAME holding the encryption key, not the key itself.
   # Default: ECOKU_NOTIFICATION_ENCRYPTION_KEY. Custom example: MY_ECOKU_KEY.
   # The variable value must be a 32-byte key in standard Base64, with or without padding.
   # New instances generate keys and save them in ecoku-secrets.json beside the database.
-  # Do not rotate the old key before persistent-state migration; existing ciphertext would become unreadable.
+  # If injected, the value must match the notification key in the persistent file; mismatch prevents startup.
   # encryption_key_env: "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
 
 site:
@@ -29,10 +30,11 @@ site:
   # 0.0.0.0/0 and ::/0 are forbidden. Do not assume the example gateway is your gateway.
   trusted_proxies: []
 
-  # Legacy compatibility: listen port. Default 12123; integer 1–65535; 0 selects the default.
+  # Optional: listen port. Default 12123; integer 1–65535; 0 selects the default.
   # Docker users can change the host-side Compose port mapping without changing the container port.
+  # Changing the container listen port also requires updating its Compose mapping and health check.
   # port: 12123
-  # Legacy compatibility: log file path. Default "" writes to stdout; view with docker compose logs.
+  # Optional: log file path. Default "" writes to stdout; view with docker compose logs.
   # Example: /var/log/ecoku/ecoku.log. File logging needs a writable directory mount.
   # "-", "stdout" and "/dev/stdout" also select stdout only; other paths keep both stdout and file logs.
   # log_path: ""
@@ -65,41 +67,42 @@ admin:
   # If both this list and instance_public_url are empty, startup fails for lack of an admin origin.
   allowed_origins: []
 
-  # Legacy compatibility: admin is always enabled. Default true; false is ignored.
-  # enabled: true
-  # Legacy compatibility: sessions are fixed at 480 minutes (8 hours), not a tunable timeout.
+  # Optional: sessions are fixed at 480 minutes (8 hours), not a tunable timeout.
   # Omit it, set 0 or 480. Other integers prevent startup. Activity does not extend the session.
   # token_ttl_minutes: 480
-  # Legacy compatibility: admin static directory. Docker default /app/admin; source-run default empty.
+  # Optional: admin static directory. Docker default /app/admin; source-run default empty.
   # Empty in source runs disables static admin pages, but leaves the admin API enabled.
+  # Example: ../packages/admin/dist. Empty in Docker still uses /app/admin.
   # static_dir: "/app/admin"
 
-  # Legacy compatibility: these are variable NAMES, not the username, hash or signing key values.
+  # Optional administrator bootstrap credential sources; absent values use or create a persistent account.
+  # These are variable names, not credential values. YAML alone does not inject environment variables.
   # Defaults below. Custom examples: MY_ADMIN_USER, MY_ADMIN_HASH, MY_ADMIN_KEY.
   # Prefer letters/digits/underscores with a letter or underscore first; the three names must differ.
-  # Supplying any legacy administrator credential variable requires supplying all three.
+  # Supplying any administrator credential variable requires supplying all three.
   # Username: 1–80 characters; password: bcrypt hash with cost >= 10; signing key: at least 32 bytes.
-  # New instances need none of these: first startup prints an admin temporary password that must be changed.
+  # Without these credential values, initial account creation prints an admin temporary password to change on first login.
   # username_env: "ECOKU_ADMIN_USERNAME"
   # password_hash_env: "ECOKU_ADMIN_PASSWORD_HASH"
   # token_key_env: "ECOKU_ADMIN_TOKEN_KEY"
 
-# Legacy compatibility: static comment-client directory. Docker default /app/client.
+# Optional: static comment-client directory. Docker default /app/client.
 # Source-run default: empty, serving no static scripts. Example: ../packages/client/dist.
 # client:
 #   static_dir: "/app/client"
 
-# Legacy compatibility: SQLite only. Specify a database FILE path, not a directory.
+# Optional: SQLite only. Specify a database FILE path, not a directory.
 # Docker default: /data/ecoku.sqlite3. Source-run default: ./data/ecoku.bin.
 # Example: /data/comments.sqlite3. The directory must be writable and persist outside the container.
 # ecoku-secrets.json lives beside the database. Back up and move them together.
+# Changing the database path does not move data; a missing target creates a new database.
 # database:
 #   sqlite:
 #     path: "/data/ecoku.sqlite3"
 
-# Legacy compatibility: YAML site seeds. Default []. Create new sites in the admin console.
+# Optional: YAML site seeds. Default []. Create new sites in the admin console.
 # Imported only when creating a brand-new database. Editing this does not update existing database sites.
-# To use this compatibility format, uncomment the entire sites section below.
+# To seed initial sites, uncomment the entire sites section below.
 # sites:
 #   # Required ID: letter/digit first; letters, digits, dots, underscores, hyphens; at most 100 characters.
 #   - id: "blog"
@@ -110,9 +113,11 @@ admin:
 #     name: "我的博客"
 #     # At least one unique origin is required, without path/query/fragment and distinct from admin origins.
 #     allowed_origins: ["https://blog.example.com"]
-#     # Old site-management key variable name. Default empty disables this compatibility credential.
+#     # Optional variable name for a site management credential. Default empty disables this credential.
+#     # EcokuSite credentials can only tombstone comments on this site, not read admin data.
 #     # Example: BLOG_MANAGEMENT_KEY, at least 32 bytes; each site needs a different variable and key.
 #     # Never expose it in a browser or public integration code.
+#     # This credential binding applies on every startup, not only during the first site seed import.
 #     management_key_env: ""
 #     comment:
 #       # Require email. Default true; values true / false.

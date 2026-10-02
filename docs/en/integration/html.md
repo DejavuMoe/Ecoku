@@ -58,7 +58,7 @@ The page key decides which post a comment belongs to. [Do not change it once it 
 | Hexo | `<%- url_for(page.path) %>` |
 | Jekyll | `{{ page.url }}` |
 | Astro | `{Astro.url.pathname}` |
-| VitePress | Read `useRoute().path` in a custom theme and integrate with the [SDK](./sdk) |
+| VitePress | Read `useRoute().path` in a custom theme and integrate with the [SDK](./sdk#vitepress) |
 :::
 
 These are for reference only. Look at the generated HTML in your browser and confirm that it outputs a stable path, such as `/posts/hello-world/`, rather than a full URL.

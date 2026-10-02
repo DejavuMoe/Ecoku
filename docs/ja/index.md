@@ -2,8 +2,8 @@
 layout: home
 hero:
   name: Ecoku
-  text: セルフホストの純テキストコメントシステム
-  tagline: 静的ブログと個人サイトのために。Docker コンテナ 1 つ、SQLite ファイル 1 つ。コメントは投稿するとすぐに公開されます。
+  text: セルフホストで、複数サイトの文字の対話を
+  tagline: ブログと個人サイトのためのコメントシステム。訪問者登録は不要で、投稿はすぐ公開され、データは自分で管理できます。
   image:
     src: /logo.svg
     alt: Ecoku のロゴ
@@ -22,11 +22,11 @@ features:
   - title: 投稿するとすぐに公開
     details: 審査キューはありません。返信は返信先のコメントの下に展開され、削除しても墓標が残るので議論の文脈が途切れません。
     link: /ja/guide/concepts#threads
-  - title: 訪問者の情報を集めない
-    details: IP と User-Agent を保存せず、公開 API はメールアドレスを返しません。訪問者の情報はブラウザ内で暗号化され、7 日間だけ保存されます。
+  - title: 訪問者の IP を保存しない
+    details: コメントには名前、本文、入力したメールアドレスや URL を保存します。公開 API はメールを返さず、IP と User-Agent は保存しません。ブラウザーは情報を暗号化して 7 日間記憶できます。
     link: /ja/guide/concepts#data
-  - title: コンテナ 1 つ、ファイル 1 つ
-    details: 1 つの Go プログラムが API、管理画面、埋め込みスクリプトをまとめて提供し、すべてのデータは 1 つの SQLite ファイルに入ります。
+  - title: 1 つのコンテナで運用
+    details: Go プログラムが API、管理画面、埋め込み資産を提供します。業務データは SQLite、キーは別ファイルに保存します。データディレクトリ全体と設定をバックアップします。
     link: /ja/guide/introduction#components
   - title: マルチサイト
     details: 1 つのインスタンスで複数のサイトを扱えます。サイトごとに許可オリジン、コメント設定、ブロガー情報を個別に持ちます。

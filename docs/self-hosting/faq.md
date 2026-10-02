@@ -42,17 +42,17 @@ chmod 644 app/config.yaml
 
 ```bash
 cd ~/Ecoku
-sudo docker compose down
+sudo docker compose stop ecoku
 sudo rmdir app/config.yaml
 ```
 
-### 保存站点时提示“公开站点来源不能复用管理端来源”
+### 保存站点时提示「公开站点来源不能复用管理端来源」
 
 站点的允许来源与管理后台的来源重复了。管理后台的来源默认取 `notifications.instance_public_url`，另外写了 `admin.allowed_origins` 时以它为准。管理后台必须使用一个独立的来源，通常就是 Ecoku 自己的域名，如 `https://ecoku.example.com`。
 
-### 日志提示“无法解密 … 凭据”
+### 日志提示「无法解密 … 凭据」
 
-数据库中保存过 SMTP、Telegram 或人机验证的凭据，但 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 缺失或与保存时不同。从备份中找回原来的 `ecoku.env`，恢复这把密钥。密钥无法找回时，只能从之前的备份恢复整个实例。
+数据库内的 SMTP、Telegram 或人机验证凭据需要原来的通知加密密钥才能解密。先检查数据库同目录的 `ecoku-secrets.json` 是否来自同一实例；文件必须由容器用户读取，权限为 `600`。不要删除文件让程序重新生成密钥。文件缺失或不匹配时，从同一份备份恢复数据库和密钥，见 [恢复说明](./backup#restore)。内测实例若仍注入旧密钥变量，还需检查变量与持久文件是否一致。
 
 ### 修改配置但没有生效
 
@@ -70,13 +70,13 @@ cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 
 - 外壳元素上有 `data-ecoku-comments`，内部有 `data-ecoku-mount`、`data-ecoku-loader`、`data-ecoku-status`、`data-ecoku-retry` 四个元素，结构与[接入示例](../integration/html)一致；
 - `data-server-url`、`data-site-id`、`data-page-key` 三个属性都有值；
-- 浏览器开发者工具的“网络”面板中，`ecoku-loader.js` 和 `ecoku.umd.js` 能正常加载。
+- 浏览器开发者工具的「网络」面板中，`ecoku-loader.js` 和 `ecoku.umd.js` 能正常加载。
 
-### 评论区显示“评论暂时不可用”，或提示没有权限
+### 评论区显示「评论暂时不可用」，或提示没有权限
 
 多数是文章页的来源没有登记。在后台「站点」中，把浏览器地址栏里的 `协议://域名[:端口]` 加入该站点的允许来源。带 `www` 与不带 `www` 是两个来源。
 
-### 访客频繁收到“提交过于频繁”
+### 访客频繁收到「提交过于频繁」
 
 Ecoku 放在反向代理后面，但没有配置 `trusted_proxies`，所有访客被算作同一个 IP，共用每分钟 5 次的提交额度。按[反向代理](./reverse-proxy#trusted-proxies)填写 Docker 网关地址，并确认反向代理用覆盖方式设置了 `X-Forwarded-For`。
 
@@ -90,7 +90,7 @@ Ecoku 放在反向代理后面，但没有配置 `trusted_proxies`，所有访�
 
 ### 评论时间的时区不对
 
-时区由 `ecoku.env` 中的 `TZ` 决定，如 `TZ='Asia/Tokyo'`。修改后需要重建容器（见上文）。
+时区在 Compose 的 `services.ecoku.environment.TZ` 中设置，例如 `TZ: Asia/Tokyo`。修改后重建容器即可，不需要 `ecoku.env`。
 
 ## 管理后台
 
@@ -108,7 +108,7 @@ Ecoku 放在反向代理后面，但没有配置 `trusted_proxies`，所有访�
 新部署使用 `data/` 中的持久管理员账户。停止服务后生成新的临时密码：
 
 ```bash
-sudo docker compose down
+sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku admin reset-password
 sudo docker compose up -d
 ```

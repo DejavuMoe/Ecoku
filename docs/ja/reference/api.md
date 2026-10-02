@@ -157,7 +157,7 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&page=1&pageSize=10&sor
 | `bloggerProofEnabled` | サイトでブロガーの合言葉が設定されているかどうか。 |
 | `captcha` | 現在の CAPTCHA の方式。`provider` は `off`、`turnstile`、`cap` のいずれかで、`sitekey` は公開用の Site key です。Cap の場合はさらに `instanceUrl` があります。 |
 | `turnstileSitekey` | 古いクライアントのために残しています。Turnstile モードのときだけ値があります。 |
-| `smoji` | `enabled` は有効状態、`manifestUrl` は一覧 URL。次のリリースでは任意の `imageOrigin` を追加し、省略または空の場合は一覧のオリジンを使います。 |
+| `smoji` | `enabled` は有効状態、`manifestUrl` は一覧 URL。v0.3.0 では任意の `imageOrigin` を追加し、省略または空の場合は一覧のオリジンを使います。 |
 
 #### 読み込みの上限
 
@@ -294,7 +294,7 @@ Origin: https://blog.example.com
 
 サイトのフィールド：`id`、`site_url`、`name`、`allowed_origins`、`default_sort`、`email_required`、`website_required`、`placeholder`、`comment_limit`、`empty_message`、`smoji_enabled`、`smoji_manifest_url`、`smoji_image_origin`、`blogger_nickname`、`blogger_email`、`blogger_badge`、`blogger_passphrase`（書き込み専用）、`revision`。レスポンスでは `blogger_passphrase_set` で合言葉が設定済みかどうかを表し、読み取り専用の `created_at`、`updated_at` も含みます。サイト一覧は `data.data` 配列に、1 つのサイトおよび作成・更新の結果は `data.site` に入ります。
 
-`smoji_image_origin`（未リリース）は任意の信頼する画像オリジンです（例：`https://s3-cdn.zsh.moe`）。空欄なら一覧のオリジンを使います。更新時に省略すると既存値を維持し、空文字列で既定値に戻します。公開の `formConfig.smoji.imageOrigin` は設定済みの場合のみ返します。読込、投稿、表示、メールは同じ規則に従います。[Smoji ホスティング設定](../integration/smoji#hosting)を参照してください。
+`smoji_image_origin`は任意の信頼する画像オリジンです（例：`https://s3-cdn.zsh.moe`）。空欄なら一覧のオリジンを使います。更新時に省略すると既存値を維持し、空文字列で既定値に戻します。公開の `formConfig.smoji.imageOrigin` は設定済みの場合のみ返します。読込、投稿、表示、メールは同じ規則に従います。[Smoji ホスティング設定](../integration/smoji#hosting)を参照してください。
 
 サイトの作成時に ID がすでに存在する場合や、`allowed_origins` が `admin.allowed_origins` と重複する場合は、いずれも `409` を返します。
 

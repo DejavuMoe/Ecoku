@@ -1,6 +1,10 @@
 # 更早的候选版本
 
-以下 `v0.1.0-rc.*` 版本可能仍出现在早期实例的 `compose.yaml` 中。升级方法见[升级](../upgrade)。跨 schema 回滚都需要用冷备份恢复。
+::: warning 内测版本，请勿使用
+仅保留版本标签、变更和历史升级事项。公开部署从 v0.3.0 开始；旧镜像不再提供部署支持。请使用 [当前部署文档](../docker)。
+:::
+
+`v0.1.0-rc.1` · [v0.1.0-rc.2](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.2) · [v0.1.0-rc.3](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.3) · [v0.1.0-rc.5](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.5) · [v0.1.0-rc.6](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.6) · [v0.1.0-rc.7](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.7) · [v0.1.0-rc.8](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.8) · [v0.1.0-rc.9](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.9) · [v0.1.0-rc.10](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.10)
 
 ## v0.1.0-rc.8 ～ rc.10
 

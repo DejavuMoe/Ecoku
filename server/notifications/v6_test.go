@@ -93,6 +93,8 @@ func TestEmailV6RendersSmojiTimeZoneAndDesignTokens(t *testing.T) {
 		"color:#9a4733",
 		"font-family:-apple-system",
 		`<!--[if mso]>`,
+		`class="email-seal"`,
+		`background-color:#b8472f`,
 		`@media (prefers-color-scheme:dark)`,
 		"#ecoku-comment-900",
 	} {

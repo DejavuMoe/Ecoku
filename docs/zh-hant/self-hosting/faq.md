@@ -42,7 +42,7 @@ chmod 644 app/config.yaml
 
 ```bash
 cd ~/Ecoku
-sudo docker compose down
+sudo docker compose stop ecoku
 sudo rmdir app/config.yaml
 ```
 
@@ -52,7 +52,7 @@ sudo rmdir app/config.yaml
 
 ### 日誌提示「无法解密 … 凭据」
 
-資料庫中儲存過 SMTP、Telegram 或人機驗證的憑據，但 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 缺失或與儲存時不同。請從備份中找回原本的 `ecoku.env`，還原這把金鑰。金鑰無法找回時，只能從先前的備份還原整個實例。
+資料庫中的 SMTP、Telegram 或人機驗證憑據需要原本的通知加密金鑰才能解密。先檢查資料庫同目錄的 `ecoku-secrets.json` 是否來自同一實例；檔案必須可由容器使用者讀取，權限為 `600`。不要刪除檔案讓程式重新產生金鑰。檔案遺失或不相符時，從同一份備份還原資料庫和金鑰，見 [還原說明](./backup#restore)。內測實例若仍注入舊金鑰變數，也需檢查變數與持久檔案是否一致。
 
 ### 修改設定後沒有生效
 
@@ -89,7 +89,7 @@ Ecoku 放在反向代理後面，但沒有設定 `trusted_proxies`，所有訪�
 
 ### 評論時間的時區不對
 
-時區由 `ecoku.env` 中的 `TZ` 決定，例如 `TZ='Asia/Tokyo'`。修改後需要重建容器（見上文）。
+時區在 Compose 的 `services.ecoku.environment.TZ` 中設定，例如 `TZ: Asia/Tokyo`。修改後重建容器即可，不需要 `ecoku.env`。
 
 ## 管理後台
 
@@ -107,7 +107,7 @@ Ecoku 放在反向代理後面，但沒有設定 `trusted_proxies`，所有訪�
 新部署使用 `data/` 中的持久帳戶。停止服務後產生新的臨時密碼：
 
 ```bash
-sudo docker compose down
+sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku admin reset-password
 sudo docker compose up -d
 ```

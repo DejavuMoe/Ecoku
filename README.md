@@ -1,16 +1,16 @@
 # Ecoku
 
-自托管的多站点纯文本评论系统，适合静态博客和个人网站。
+自托管，多站点，专注文字讨论。适合静态博客和个人网站。
 
-- 一个 Docker 容器，所有数据在一个 SQLite 文件里；
+- 一个 Docker 容器，业务数据存于 SQLite，密钥独立持久化；
 - 评论只有纯文本，提交后直接公开，没有审核队列；
-- 访客不用注册，身份只在浏览器中加密保存 7 天；
+- 访客不用注册，浏览器可加密记住身份 7 天；邮箱不通过公开接口返回；
 - 一个实例可以服务多个网站；
 - 可选邮件 / Telegram 通知，以及 Cloudflare Turnstile 或自托管 Cap 人机验证。
 
-当前版本：`v0.3.0`，镜像 `git.via.moe/dejavu/ecoku:v0.3.0`。
+当前版本：`v0.3.0`，镜像 `ghcr.io/dejavumoe/ecoku:v0.3.0`。
 
-文档：<https://ecoku.zsh.moe>
+文档：[部署与接入](https://ecoku.zsh.moe) · SDK：[npm ecoku](https://www.npmjs.com/package/ecoku)
 
 ## 快速开始
 

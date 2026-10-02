@@ -42,7 +42,7 @@ chmod 644 app/config.yaml
 
 ```bash
 cd ~/Ecoku
-sudo docker compose down
+sudo docker compose stop ecoku
 sudo rmdir app/config.yaml
 ```
 
@@ -52,7 +52,7 @@ The site's allowed origins overlap with the admin console's origin. The admin co
 
 ### The log says "无法解密 … 凭据" (cannot decrypt … credentials)
 
-SMTP, Telegram, or CAPTCHA credentials were saved in the database, but `ECOKU_NOTIFICATION_ENCRYPTION_KEY` is missing or differs from the key used when they were saved. Get the original `ecoku.env` from a backup and restore this key. If the key cannot be recovered, the only option is to restore the whole instance from an earlier backup.
+Stored SMTP, Telegram and CAPTCHA credentials require the original notification encryption key. Check that `ecoku-secrets.json` beside the database belongs to the same instance, is readable by the container user and has mode `600`. Do not delete it to generate new keys. Restore the database and keys from the same backup if missing or mismatched; see [restore](./backup#restore). Internal test instances still injecting legacy key variables must also check they match the persistent file.
 
 ### Configuration changes do not take effect
 
@@ -90,7 +90,7 @@ Comments are stored by page key. When the link format changes, the page keys gen
 
 ### Comment times are in the wrong time zone
 
-The time zone comes from `TZ` in `ecoku.env`, such as `TZ='Asia/Tokyo'`. After changing it, recreate the container (see above).
+Set the time zone in Compose at `services.ecoku.environment.TZ`, for example `TZ: Asia/Tokyo`, then recreate the container. No `ecoku.env` file is needed.
 
 ## Admin console
 
@@ -108,7 +108,7 @@ Check these in order:
 New deployments use the persistent account under `data/`. Stop the service and generate a new temporary password:
 
 ```bash
-sudo docker compose down
+sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku admin reset-password
 sudo docker compose up -d
 ```

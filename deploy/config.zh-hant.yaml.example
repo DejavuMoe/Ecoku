@@ -1,8 +1,9 @@
 # Ecoku 完整設定範本。儲存為 app/config.yaml；修改後重建容器生效。
 # 未註解的值均為預設值，instance_public_url 使用需自行替換的範例網址。
 # 每個頂層區段只寫一次；此處的 YAML 不會展開 ${ENV} 環境變數。
-# SMTP、Telegram、人機驗證、Smoji 和站點在後台設定，不寫入此檔案。
-# 標註「舊版相容」的項目保持註解；既有實例可保留原值，新部署無需啟用。
+# SMTP、Telegram、人機驗證和 Smoji 在後台設定；sites 可提供初始站點和管理憑據綁定。
+# 實例級選項省略時使用預設值；管理來源須由 instance_public_url 或 admin.allowed_origins 提供。
+# 註解中的賦值也是可用參數，只在需要覆寫預設行為時取消註解。
 
 notifications:
   # Ecoku 自己的公開 URL，用於管理後台來源檢查及啟用通知時檢查。
@@ -12,11 +13,11 @@ notifications:
   # URL 可含路徑，但此欄位不會設定反向代理或改變程式路由。
   instance_public_url: "https://ecoku.example.com"
 
-  # 舊版相容：保存通知加密主金鑰的環境變數名稱，不是金鑰本身。
+  # 可選：保存通知加密主金鑰的環境變數名稱，不是金鑰本身。
   # 預設：ECOKU_NOTIFICATION_ENCRYPTION_KEY。自訂範例：MY_ECOKU_KEY。
   # 變數值須為 32 位元組金鑰的標準 Base64，可帶或不帶末尾填補。
   # 新實例會自動產生金鑰，儲存在資料庫旁的 ecoku-secrets.json。
-  # 舊實例完成持久化遷移前，不要更換原金鑰，否則無法解密既有設定。
+  # 自行注入時，環境變數值須與持久檔案中的通知金鑰一致；不相符會拒絕啟動。
   # encryption_key_env: "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
 
 site:
@@ -29,10 +30,11 @@ site:
   # 禁止 0.0.0.0/0 和 ::/0；不要直接把範例閘道當成自己的閘道。
   trusted_proxies: []
 
-  # 舊版相容：監聽連接埠。預設 12123；可選整數 1～65535，0 使用預設值。
+  # 可選：監聽連接埠。預設 12123；可選整數 1～65535，0 使用預設值。
   # Docker 使用者修改 Compose 的主機映射連接埠即可，無需改容器連接埠。
+  # 若修改容器監聽連接埠，也須同步 Compose 的容器連接埠和健康檢查。
   # port: 12123
-  # 舊版相容：日誌檔路徑。預設 ""，寫入標準輸出，以 docker compose logs 查看。
+  # 可選：日誌檔路徑。預設 ""，寫入標準輸出，以 docker compose logs 查看。
   # 範例：/var/log/ecoku/ecoku.log。檔案日誌需要自行掛載可寫入的目錄。
   # 也可填 "-"、"stdout" 或 "/dev/stdout"，皆只寫標準輸出；其他路徑同時保留 stdout 與檔案日誌。
   # log_path: ""
@@ -65,39 +67,40 @@ admin:
   # 此處與 instance_public_url 都為空時，啟動會因缺少管理來源而失敗。
   allowed_origins: []
 
-  # 舊版相容：後台始終啟用。預設 true，即使填 false 也會被忽略。
-  # enabled: true
-  # 舊版相容：工作階段固定 480 分鐘（8 小時），不是可自由調整的逾時。
+  # 可選：工作階段固定 480 分鐘（8 小時），不是可自由調整的逾時。
   # 可省略、填 0 或 480；其他整數會拒絕啟動。操作不會延長工作階段。
   # token_ttl_minutes: 480
-  # 舊版相容：後台靜態目錄。Docker 預設 /app/admin，原始碼執行預設空。
+  # 可選：後台靜態目錄。Docker 預設 /app/admin，原始碼執行預設空。
   # 本機設為空時不提供後台靜態頁面；管理 API 仍啟用。
+  # 路徑範例：../packages/admin/dist；Docker 留空仍使用 /app/admin。
   # static_dir: "/app/admin"
 
-  # 舊版相容：以下是環境變數名稱，不是帳號、雜湊或簽章金鑰的值。
+  # 可選的管理員初始化憑據來源；不填環境變數時使用持久帳戶或自動建立帳戶。
+  # 三項是環境變數名稱，不是帳號、雜湊或金鑰值；僅寫 YAML 不會注入環境變數。
   # 預設值見各行；自訂範例：MY_ADMIN_USER、MY_ADMIN_HASH、MY_ADMIN_KEY。
   # 名稱建議以字母或底線開頭，只含字母、數字、底線，三者不得相同。
-  # 一旦提供任一舊管理員憑據變數，就必須同時提供完整三項。
+  # 一旦提供任一管理員憑據變數，就必須同時提供完整三項。
   # 使用者名稱 1～80 字元；密碼為 bcrypt 雜湊且 cost >= 10；簽章金鑰至少 32 位元組。
-  # 新實例無需這些變數：首次啟動印出 admin 臨時密碼，首次登入必須改密。
+  # 不注入這些憑據變數時，首次建立帳戶會印出 admin 臨時密碼，首次登入必須改密。
   # username_env: "ECOKU_ADMIN_USERNAME"
   # password_hash_env: "ECOKU_ADMIN_PASSWORD_HASH"
   # token_key_env: "ECOKU_ADMIN_TOKEN_KEY"
 
-# 舊版相容：評論腳本靜態目錄。Docker 預設 /app/client。
+# 可選：評論腳本靜態目錄。Docker 預設 /app/client。
 # 原始碼執行預設空，不提供靜態腳本；範例：../packages/client/dist。
 # client:
 #   static_dir: "/app/client"
 
-# 舊版相容：僅支援 SQLite，值為資料庫檔案路徑，而非目錄。
+# 可選：僅支援 SQLite，值為資料庫檔案路徑，而非目錄。
 # Docker 預設 /data/ecoku.sqlite3；原始碼執行預設 ./data/ecoku.bin。
 # 範例：/data/comments.sqlite3。目錄須可寫入，避免臨時或未掛載位置。
 # 持久金鑰 ecoku-secrets.json 位於資料庫同一目錄，搬遷時一起備份與移動。
+# 修改資料庫路徑不會搬移原資料；新路徑不存在時會建立新資料庫。
 # database:
 #   sqlite:
 #     path: "/data/ecoku.sqlite3"
 
-# 舊版相容：YAML 站點種子。預設 []，新部署直接在後台建立站點。
+# 可選：YAML 站點種子。預設 []，新部署直接在後台建立站點。
 # 僅建立全新資料庫時匯入；修改這裡不會更新已有資料庫的站點。
 # 如需此相容格式，取消下方整個 sites 區段的註解。
 # sites:
@@ -110,9 +113,11 @@ admin:
 #     name: "我的博客"
 #     # 至少一個不重複來源，不含路徑、查詢或片段，且與管理來源分開。
 #     allowed_origins: ["https://blog.example.com"]
-#     # 舊站點管理金鑰的環境變數名稱。預設空，表示不啟用此相容憑據。
+#     # 可選：站點管理憑據的環境變數名稱。預設空，不啟用此憑據。
+#     # 僅可透過 EcokuSite 憑據對本站評論執行墓碑刪除，不能讀取管理資料。
 #     # 範例：BLOG_MANAGEMENT_KEY，值至少 32 位元組；各站點的名稱和值均須獨立。
 #     # 不得放入瀏覽器或公開接入程式碼。
+#     # 此憑據綁定每次啟動都生效，不限於站點種子的首次匯入。
 #     management_key_env: ""
 #     comment:
 #       # 信箱必填。預設 true，可選 true / false。

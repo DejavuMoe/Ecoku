@@ -15,7 +15,7 @@ Ecoku では、訪問者がコメントを投稿する前と、管理者がロ�
 - ブラウザはコメントの投稿時やログイン時に使い捨ての token を付けて送り、サーバーは Turnstile または Cap に確認してから処理を続けます。この確認はブロガーの合言葉のチェックより前に行われるため、検証を通過しないと合言葉を試すことはできません。
 - 確認に失敗した場合、token がない場合、検証サービスがタイムアウトしたり利用できなかったりした場合、リクエストはいずれも拒否されます。自動的に通過させることも、別の方式に切り替えることもありません。
 - サーバーが確認するときに送るのは token と Secret Key だけで、訪問者の IP は付けません。
-- Secret Key は `ECOKU_NOTIFICATION_ENCRYPTION_KEY` で暗号化してデータベースに保存され、管理画面には「已设置，输入新值以更换」（設定済み。変更するには新しい値を入力）とだけ表示されます。このキーを設定していないと、新しい Secret Key は保存できません。
+- Secret Key は `data/ecoku-secrets.json` の通知暗号化マスターキーで暗号化して DB に保存します。マスターキーは初回起動時に自動生成され、管理画面には「已设置，输入新值以更换」（設定済み、新しい値で置換）とのみ表示します。DB とキーファイルをまとめてバックアップしてください。
 - 方式を切り替えたり無効にしたりしても、もう一方の方式に入力済みの設定は保持されるため、元に戻すときに入力し直す必要はありません。
 
 ## Cloudflare Turnstile
@@ -196,7 +196,7 @@ Cap の key で instrumentation（ランタイム検査）を有効にしてい�
 
 ```bash
 cd ~/Ecoku
-sudo docker compose down
+sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku captcha status
 sudo docker compose run --rm --no-deps ecoku captcha disable
 sudo docker compose up -d

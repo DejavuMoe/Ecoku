@@ -102,27 +102,33 @@ export function sidebar(prefix: string, t: SidebarCopy): DefaultTheme.SidebarIte
           collapsed: true,
           items: [
             { text: `${t.versionCurrent}${t.versionLatest}`, link: `${p}/self-hosting/upgrades/v0.3.0` },
-            { text: 'v0.2.9', link: `${p}/self-hosting/upgrades/v0.2.9` },
-            { text: 'v0.2.8', link: `${p}/self-hosting/upgrades/v0.2.8` },
-            { text: 'v0.2.7', link: `${p}/self-hosting/upgrades/v0.2.7` },
-            { text: 'v0.2.6', link: `${p}/self-hosting/upgrades/v0.2.6` },
-            { text: 'v0.2.5', link: `${p}/self-hosting/upgrades/v0.2.5` },
-            { text: 'v0.2.4', link: `${p}/self-hosting/upgrades/v0.2.4` },
-            { text: 'v0.2.3', link: `${p}/self-hosting/upgrades/v0.2.3` },
-            { text: 'v0.2.2', link: `${p}/self-hosting/upgrades/v0.2.2` },
-            { text: 'v0.2.1', link: `${p}/self-hosting/upgrades/v0.2.1` },
-            { text: 'v0.2.0', link: `${p}/self-hosting/upgrades/v0.2.0` },
-            { text: 'v0.1.9', link: `${p}/self-hosting/upgrades/v0.1.9` },
-            { text: 'v0.1.8', link: `${p}/self-hosting/upgrades/v0.1.8` },
-            { text: 'v0.1.7', link: `${p}/self-hosting/upgrades/v0.1.7` },
-            { text: 'v0.1.6', link: `${p}/self-hosting/upgrades/v0.1.6` },
-            { text: 'v0.1.5', link: `${p}/self-hosting/upgrades/v0.1.5` },
-            { text: 'v0.1.4', link: `${p}/self-hosting/upgrades/v0.1.4` },
-            { text: 'v0.1.3', link: `${p}/self-hosting/upgrades/v0.1.3` },
-            { text: 'v0.1.2', link: `${p}/self-hosting/upgrades/v0.1.2` },
-            { text: 'v0.1.1', link: `${p}/self-hosting/upgrades/v0.1.1` },
-            { text: 'v0.1.0', link: `${p}/self-hosting/upgrades/v0.1.0` },
-            { text: t.earlierVersions, link: `${p}/self-hosting/upgrades/earlier` },
+            {
+              text: t.internalVersions,
+              collapsed: true,
+              items: [
+                { text: 'v0.2.9', link: `${p}/self-hosting/upgrades/v0.2.9` },
+                { text: 'v0.2.8', link: `${p}/self-hosting/upgrades/v0.2.8` },
+                { text: 'v0.2.7', link: `${p}/self-hosting/upgrades/v0.2.7` },
+                { text: 'v0.2.6', link: `${p}/self-hosting/upgrades/v0.2.6` },
+                { text: 'v0.2.5', link: `${p}/self-hosting/upgrades/v0.2.5` },
+                { text: 'v0.2.4', link: `${p}/self-hosting/upgrades/v0.2.4` },
+                { text: 'v0.2.3', link: `${p}/self-hosting/upgrades/v0.2.3` },
+                { text: 'v0.2.2', link: `${p}/self-hosting/upgrades/v0.2.2` },
+                { text: 'v0.2.1', link: `${p}/self-hosting/upgrades/v0.2.1` },
+                { text: 'v0.2.0', link: `${p}/self-hosting/upgrades/v0.2.0` },
+                { text: 'v0.1.9', link: `${p}/self-hosting/upgrades/v0.1.9` },
+                { text: 'v0.1.8', link: `${p}/self-hosting/upgrades/v0.1.8` },
+                { text: 'v0.1.7', link: `${p}/self-hosting/upgrades/v0.1.7` },
+                { text: 'v0.1.6', link: `${p}/self-hosting/upgrades/v0.1.6` },
+                { text: 'v0.1.5', link: `${p}/self-hosting/upgrades/v0.1.5` },
+                { text: 'v0.1.4', link: `${p}/self-hosting/upgrades/v0.1.4` },
+                { text: 'v0.1.3', link: `${p}/self-hosting/upgrades/v0.1.3` },
+                { text: 'v0.1.2', link: `${p}/self-hosting/upgrades/v0.1.2` },
+                { text: 'v0.1.1', link: `${p}/self-hosting/upgrades/v0.1.1` },
+                { text: 'v0.1.0', link: `${p}/self-hosting/upgrades/v0.1.0` },
+                { text: t.earlierVersions, link: `${p}/self-hosting/upgrades/earlier` },
+              ],
+            },
           ],
         },
         { text: t.twikoo, link: `${p}/self-hosting/twikoo` },
@@ -199,6 +205,7 @@ export interface SidebarCopy extends NavCopy {
   configuration: string
   cli: string
   api: string
+  internalVersions: string
   earlierVersions: string
   versionCurrent: string
   versionLatest: string

@@ -6,7 +6,7 @@ plain-text, no-avatar, threaded comment surface.
 
 ## Install
 
-Install the SDK version matching your release after the npm publication job succeeds:
+[ecoku is available on npm](https://www.npmjs.com/package/ecoku). Install version 0.3.0:
 
 ```bash
 npm install --save-exact ecoku@0.3.0
