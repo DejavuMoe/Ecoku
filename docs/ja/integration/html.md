@@ -82,7 +82,7 @@
 - `script-src` と `connect-src`：Ecoku のオリジン（例：`https://ecoku.example.com`）
 - デフォルトのスタイルは `<style>` 要素として注入されます。CSP でインラインスタイルを許可していない場合は、`data-css-url` を `https://ecoku.example.com/client/ecoku.css` にして外部スタイルシートを使い、`style-src` でそのオリジンを許可してください。
 - CAPTCHA を有効にしている場合は、検証サービスも許可する必要があります。[CAPTCHA · コンテンツセキュリティポリシー](../self-hosting/captcha#csp)を参照してください。
-- [Smoji スタンプ](./smoji)を有効にしている場合は、`connect-src` と `img-src` でスタンプのマニフェストがあるオリジンを許可してください。
+- [Smoji スタンプ](./smoji)が有効な場合、`connect-src` で一覧のオリジン、`img-src` で画像のオリジンを許可してください。別々にホストする場合はそれぞれ設定します。[一覧と画像のホスティング](./smoji#hosting)を参照してください。
 
 ## ローダーを使わない場合
 

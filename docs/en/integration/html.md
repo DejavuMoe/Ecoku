@@ -82,7 +82,7 @@ If your blog sets a Content Security Policy (CSP), you need to allow:
 - `script-src` and `connect-src`: the Ecoku origin, such as `https://ecoku.example.com`;
 - The default styles are injected as a `<style>` element. If your CSP does not allow inline styles, set `data-css-url` to `https://ecoku.example.com/client/ecoku.css` to use an external stylesheet instead, and allow that origin in `style-src`;
 - When CAPTCHA is enabled, you also need to allow the verification service. See [CAPTCHA · Content Security Policy](../self-hosting/captcha#csp);
-- When [Smoji stickers](./smoji) are enabled, allow the origin that hosts the sticker manifest in `connect-src` and `img-src`.
+- When [Smoji stickers](./smoji) are enabled, allow the manifest origin in `connect-src` and the image origin in `img-src`. Set both when hosted separately; see [manifest and image hosting](./smoji#hosting).
 
 ## Without the loader
 

@@ -1,72 +1,44 @@
 # 設定リファレンス
 
-::: info アップグレードと設定移行
-このページは v0.2.9 に対応します。既存の v0.2.8 インスタンスは先に[アップグレードと旧設定の移行](../self-hosting/upgrade#legacy-config)を確認してください。
-:::
+`app/config.yaml` の全フィールド、既定値、選択肢、用途、例を以下のコメント付きテンプレートにまとめています。Docker デプロイページも同じテンプレートを参照し、別のフィールド表を探す必要はありません。
 
-新規デプロイで手動設定するのは `app/config.yaml` だけです。
+## 完全な設定テンプレート {#template}
 
-```yaml
-notifications:
-  instance_public_url: "https://ecoku.example.com"
+新規デプロイではテンプレートをコピーし、`instance_public_url` を変更します。有効な項目は既定値です。旧版互換項目は、旧デプロイの動作を維持する場合だけコメントを外してください。トップレベルの各 YAML 節は一度だけ記述し、末尾に `site:` や `admin:` を重複して追加しないでください。
+
+<div class="config-template">
+
+<<< ../../../deploy/config.ja.yaml.example{yaml}
+
+</div>
+
+## 変更を反映する {#reload}
+
+保存後、Compose のディレクトリでコンテナを再作成してログを確認します。マウントした YAML を編集するだけではサービスに反映されません。
+
+```bash
+sudo docker compose up -d --force-recreate ecoku
+sudo docker compose logs --tail=100 ecoku
 ```
 
-サイト、コメント、通知、CAPTCHA、管理者アカウントは SQLite に保存され、[管理画面](../self-hosting/admin)で変更します。公式イメージのポートは `12123`、ブラウザーリソースは `/app/client`、管理画面は `/app/admin`、データベースは `/data/ecoku.sqlite3` に固定されています。新規インスタンスの署名キー、通知暗号化マスターキー、管理者アカウントも `data/` に保存します。
+YAML ドキュメントは一つだけ使えます。未知の項目、不正な値、重複する項目は起動時に拒否されます。ログの指摘を修正して再起動してください。
 
-## site
+## レート制限の動作 {#rate-limit}
 
-| フィールド | デフォルト値 | 説明 |
-| --- | --- | --- |
-| `trusted_proxies` | `[]` | `X-Forwarded-For` を転送できる直接の接続元。IP または CIDR で指定します。通常は Docker ゲートウェイだけを指定します。`0.0.0.0/0` と `::/0` は禁止です。[リバースプロキシ](../self-hosting/reverse-proxy#trusted-proxies)を参照してください。 |
-
-## rate_limit {#rate-limit}
-
-レート制限はクライアント IP ごとにプロセスのメモリで数え、再起動すると消去します。超過時は `429` と `Retry-After` を返します。
-
-| フィールド | デフォルト値 | 説明 |
-| --- | --- | --- |
-| `window_seconds` | `60` | 計数ウィンドウの秒数。 |
-| `comment_submit` | `5` | ウィンドウ内に投稿できるコメント数。 |
-| `comment_list` | `60` | ウィンドウ内に読めるコメント一覧の回数。 |
-| `comment_delete` | `30` | ウィンドウ内に実行できる削除回数。 |
-| `admin_login` | `5` | ウィンドウ内のログイン試行回数。 |
-| `notification_test` | `5` | ウィンドウ内のテスト通知回数。 |
-
-## notifications
-
-| フィールド | デフォルト値 | 説明 |
-| --- | --- | --- |
-| `instance_public_url` | 空 | Ecoku の公開 URL。`admin.allowed_origins` を省略した場合は、この URL のオリジンが管理画面のオリジンにもなります。通知を有効にする前に設定してください。 |
-
-## admin
-
-管理画面と管理 API は常に有効で、画面は `/admin/` です。
-
-| フィールド | デフォルト値 | 説明 |
-| --- | --- | --- |
-| `allowed_origins` | `instance_public_url` のオリジン | 管理 API にアクセスできるブラウザーのオリジン。複数のアドレスから開く場合だけ設定します。少なくとも 1 つ必要です。 |
-
-新規インスタンスでは起動時に `admin` とランダムな仮パスワードを作成します。仮パスワードはアカウント作成時だけログに出し、初回ログイン後に変更します。新しい管理者アカウントに環境変数は不要です。
+各 `rate_limit` 項目の既定値、単位、例はテンプレートに記載しています。IP ごとに計数し、超過時に `429` と `Retry-After` を返します。再起動で計数はリセットされます。`0` は無効化ではなく既定値への復帰です。プロキシ配下では `site.trusted_proxies` も設定し、全訪問者がプロキシ IP の制限枠を共有しないようにしてください。
 
 ## ログ {#logs}
 
-ログは標準出力に書き込み、`docker compose logs` で確認します。保存とローテーションは Docker が管理します。新規デプロイでは `app/logs` をマウントせず、`site.log_path` も使いません。
+既定では標準出力に書き込み、`docker compose logs` で確認します。保持とローテーションは Docker が管理します。`site.log_path` は旧版互換の項目で、新規デプロイにはログディレクトリのマウントは不要です。
 
 ## 環境変数 {#env}
 
-新規デプロイでは `ecoku.env` は不要です。表示タイムゾーンを指定する場合だけ、Compose に任意の `TZ` を追加します。
+新規デプロイに `ecoku.env` は不要です。Compose の `TZ: Asia/Shanghai` がコメントと通知の表示時刻を決めます。変更する場合はこの行を編集してください。`TZ` は YAML 設定項目ではありません。
 
-既存インスタンスの更新時は、次の変数を読み取り、`data/ecoku-secrets.json` または `admin_accounts` に移行します。
+テンプレートの `*_env` は旧環境変数の名前で、秘密の値そのものではありません。新規インスタンスは管理者、仮パスワード、永続キーを自動生成します。既存インスタンスは取り込みとバックアップ後に旧変数を削除します。イメージの `GIN_MODE=release` と `ECOKU_RUNTIME=container` は上書きしないでください。
 
-| 変数 | 用途 |
-| --- | --- |
-| `ECOKU_ADMIN_USERNAME` | 旧管理者名。 |
-| `ECOKU_ADMIN_PASSWORD_HASH` | 旧管理者の bcrypt ハッシュ。 |
-| `ECOKU_ADMIN_TOKEN_KEY` | 旧セッション署名キー。 |
-| `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 保存済み通知と CAPTCHA 認証情報の暗号化マスターキー。移行完了まで変更しないでください。 |
+## 旧設定の移行 {#legacy}
 
-インポートと検証が成功したら、サービスを停止してバックアップを作成し、環境変数を削除できます。以後は `/data` の永続状態を使います。
+現在も受け付ける互換フィールドと既定値をテンプレートに記載しています。サイト初期データは新しい DB の作成時だけ取り込み、既存サイトを上書きしません。サイト、SMTP、Telegram、CAPTCHA、Smoji は管理画面で変更します。
 
-## 旧設定フィールド {#legacy}
-
-新しいテンプレートには書きませんが、互換層は `site.port`、`site.log_path`、`client.static_dir`、`admin.static_dir`、`database.sqlite.path`、`sites`、`management_key_env`、`admin.enabled`、`admin.token_ttl_minutes`、管理者・通知の `*_env` を読み取ります。新しいインスタンスには追加しないでください。[アップグレード](../self-hosting/upgrade#legacy-config)を参照してください。
+更新と旧環境変数の削除手順は [旧インスタンスの設定移行](../self-hosting/upgrade#legacy-config) を参照してください。DB と同じ場所の `ecoku-secrets.json` を必ず一緒にバックアップします。

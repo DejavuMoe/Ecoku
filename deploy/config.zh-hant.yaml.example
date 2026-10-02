@@ -1,0 +1,129 @@
+# Ecoku 完整設定範本。儲存為 app/config.yaml；修改後重建容器生效。
+# 未註解的值均為預設值，instance_public_url 使用需自行替換的範例網址。
+# 每個頂層區段只寫一次；此處的 YAML 不會展開 ${ENV} 環境變數。
+# SMTP、Telegram、人機驗證、Smoji 和站點在後台設定，不寫入此檔案。
+# 標註「舊版相容」的項目保持註解；既有實例可保留原值，新部署無需啟用。
+
+notifications:
+  # Ecoku 自己的公開 URL，用於管理後台來源檢查及啟用通知時檢查。
+  # 預設：空字串。新部署請填寫實際 HTTPS 網址，而非部落格網址。
+  # 可用：http:// 或 https:// 完整 URL，不含使用者名稱密碼、查詢參數或片段。
+  # 本機開發範例：http://127.0.0.1:12123；公開網址範例見下方。
+  # URL 可含路徑，但此欄位不會設定反向代理或改變程式路由。
+  instance_public_url: "https://ecoku.example.com"
+
+  # 舊版相容：保存通知加密主金鑰的環境變數名稱，不是金鑰本身。
+  # 預設：ECOKU_NOTIFICATION_ENCRYPTION_KEY。自訂範例：MY_ECOKU_KEY。
+  # 變數值須為 32 位元組金鑰的標準 Base64，可帶或不帶末尾填補。
+  # 新實例會自動產生金鑰，儲存在資料庫旁的 ecoku-secrets.json。
+  # 舊實例完成持久化遷移前，不要更換原金鑰，否則無法解密既有設定。
+  # encryption_key_env: "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
+
+site:
+  # 可信直連代理，預設 []。可填單一 IPv4、IPv6 位址或 CIDR 網段。
+  # 範例：["172.18.0.1/32"]；也可使用每行一個位址的 YAML 清單。
+  # 主機反向代理經 Docker 轉送時，通常填寫實際 Docker 閘道。
+  # 查詢：sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
+  # 只信任你控制的代理；代理須覆寫瀏覽器自帶的 X-Forwarded-For。
+  # 留空時不讀取轉送標頭，代理後的訪客可能共用限流額度。
+  # 禁止 0.0.0.0/0 和 ::/0；不要直接把範例閘道當成自己的閘道。
+  trusted_proxies: []
+
+  # 舊版相容：監聽連接埠。預設 12123；可選整數 1～65535，0 使用預設值。
+  # Docker 使用者修改 Compose 的主機映射連接埠即可，無需改容器連接埠。
+  # port: 12123
+  # 舊版相容：日誌檔路徑。預設 ""，寫入標準輸出，以 docker compose logs 查看。
+  # 範例：/var/log/ecoku/ecoku.log。檔案日誌需要自行掛載可寫入的目錄。
+  # 也可填 "-"、"stdout" 或 "/dev/stdout"，皆只寫標準輸出；其他路徑同時保留 stdout 與檔案日誌。
+  # log_path: ""
+
+rate_limit:
+  # 以下欄位皆為整數；省略或填 0 使用預設值，負數會拒絕啟動。
+  # 有效值必須大於 0，沒有停用限流的特殊值；建議使用合理的小整數。
+  # 按直連位址或可信代理轉送的訪客 IP 分別計數，各介面類別獨立。
+  # 超限回傳 HTTP 429 和 Retry-After；計數在記憶體中，重啟後歸零。
+
+  # 視窗長度，單位秒。預設 60；範例 120 表示兩分鐘一個視窗。
+  window_seconds: 60
+  # 每個視窗允許的評論發布次數（含回覆）。預設 5；範例 10。
+  comment_submit: 5
+  # 每個視窗允許的公開評論清單讀取次數。預設 60；範例 120。
+  comment_list: 60
+  # 每個視窗允許的評論刪除次數。預設 30；範例 60。
+  comment_delete: 30
+  # 每個視窗允許的後台登入嘗試次數。預設 5；範例 10。
+  admin_login: 5
+  # 每個視窗允許的測試通知次數。預設 5；範例 10。
+  notification_test: 5
+
+admin:
+  # 可存取管理 API 的瀏覽器來源。預設 []，自動取 instance_public_url 的來源。
+  # 可選：不重複的 http(s)://網域[:連接埠] 清單，不含路徑、查詢或片段。
+  # 範例：["https://ecoku.example.com", "https://admin.example.com"]。
+  # 僅多網址管理或前後端分離開發時需要明確填寫。
+  # 與部落格評論區的來源分開；公開管理來源必須使用 HTTPS。
+  # 此處與 instance_public_url 都為空時，啟動會因缺少管理來源而失敗。
+  allowed_origins: []
+
+  # 舊版相容：後台始終啟用。預設 true，即使填 false 也會被忽略。
+  # enabled: true
+  # 舊版相容：工作階段固定 480 分鐘（8 小時），不是可自由調整的逾時。
+  # 可省略、填 0 或 480；其他整數會拒絕啟動。操作不會延長工作階段。
+  # token_ttl_minutes: 480
+  # 舊版相容：後台靜態目錄。Docker 預設 /app/admin，原始碼執行預設空。
+  # 本機設為空時不提供後台靜態頁面；管理 API 仍啟用。
+  # static_dir: "/app/admin"
+
+  # 舊版相容：以下是環境變數名稱，不是帳號、雜湊或簽章金鑰的值。
+  # 預設值見各行；自訂範例：MY_ADMIN_USER、MY_ADMIN_HASH、MY_ADMIN_KEY。
+  # 名稱建議以字母或底線開頭，只含字母、數字、底線，三者不得相同。
+  # 一旦提供任一舊管理員憑據變數，就必須同時提供完整三項。
+  # 使用者名稱 1～80 字元；密碼為 bcrypt 雜湊且 cost >= 10；簽章金鑰至少 32 位元組。
+  # 新實例無需這些變數：首次啟動印出 admin 臨時密碼，首次登入必須改密。
+  # username_env: "ECOKU_ADMIN_USERNAME"
+  # password_hash_env: "ECOKU_ADMIN_PASSWORD_HASH"
+  # token_key_env: "ECOKU_ADMIN_TOKEN_KEY"
+
+# 舊版相容：評論腳本靜態目錄。Docker 預設 /app/client。
+# 原始碼執行預設空，不提供靜態腳本；範例：../packages/client/dist。
+# client:
+#   static_dir: "/app/client"
+
+# 舊版相容：僅支援 SQLite，值為資料庫檔案路徑，而非目錄。
+# Docker 預設 /data/ecoku.sqlite3；原始碼執行預設 ./data/ecoku.bin。
+# 範例：/data/comments.sqlite3。目錄須可寫入，避免臨時或未掛載位置。
+# 持久金鑰 ecoku-secrets.json 位於資料庫同一目錄，搬遷時一起備份與移動。
+# database:
+#   sqlite:
+#     path: "/data/ecoku.sqlite3"
+
+# 舊版相容：YAML 站點種子。預設 []，新部署直接在後台建立站點。
+# 僅建立全新資料庫時匯入；修改這裡不會更新已有資料庫的站點。
+# 如需此相容格式，取消下方整個 sites 區段的註解。
+# sites:
+#   # 必填 ID：字母或數字開頭，可含字母、數字、點、底線、連字號，最多 100 字元。
+#   - id: "blog"
+#     # 站點 URL 無固定預設值；留空時取 allowed_origins 的第一項。
+#     # 可用完整 http(s) URL，不含憑據、查詢或片段；範例為部落格根網址。
+#     site_url: "https://blog.example.com"
+#     # 顯示名稱。預設空，顯示時回退到網域；最多 120 字元。
+#     name: "我的博客"
+#     # 至少一個不重複來源，不含路徑、查詢或片段，且與管理來源分開。
+#     allowed_origins: ["https://blog.example.com"]
+#     # 舊站點管理金鑰的環境變數名稱。預設空，表示不啟用此相容憑據。
+#     # 範例：BLOG_MANAGEMENT_KEY，值至少 32 位元組；各站點的名稱和值均須獨立。
+#     # 不得放入瀏覽器或公開接入程式碼。
+#     management_key_env: ""
+#     comment:
+#       # 信箱必填。預設 true，可選 true / false。
+#       email_required: true
+#       # 網站必填。預設 false，可選 true / false。
+#       website_required: false
+#       # 輸入框提示，預設如下。最多 80 字元，不能換行；空值使用預設文案。
+#       placeholder: "写下评论（仅支持纯文本）"
+#       # 預設排序：newest（最新，預設）或 oldest（最早）。
+#       default_sort: "newest"
+#       # 評論字元數上限。預設 1000，可選 1～10000；0 使用預設值。
+#       length_limit: 1000
+#       # 無評論文案，預設如下。最多 240 字元，可用 \n 換行；空值使用預設文案。
+#       empty_message: "还没有评论\n成为第一个留下评论的人。"

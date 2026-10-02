@@ -43,6 +43,8 @@ services:
     init: true
     restart: unless-stopped
     container_name: ecoku
+    environment:
+      TZ: Asia/Shanghai
     ports:
       - "127.0.0.1:12123:12123"
     volumes:
@@ -72,16 +74,19 @@ services:
 
 ## 3. app/config.yaml を作成する {#config}
 
-```yaml
-notifications:
-  instance_public_url: "https://ecoku.example.com"
-```
+以下は完全な `app/config.yaml` テンプレートです。用途、既定値、選択肢、例を各項目のコメントに記載しています。`instance_public_url` を Ecoku 自体の HTTPS URL に変更し、旧版互換項目のコメントはそのままにしてください。
+
+<div class="config-template">
+
+<<< ../../../deploy/config.ja.yaml.example{yaml}
+
+</div>
+
+コンテナの非 root ユーザーから設定を読み取れるようにします：
 
 ```bash
 chmod 644 ~/Ecoku/app/config.yaml
 ```
-
-リバースプロキシ設定後、訪問者のアドレスでレート制限する場合は `site.trusted_proxies` を追加します。[リバースプロキシ](./reverse-proxy#trusted-proxies)を参照してください。それ以外はデフォルトで動作します。
 
 ## 4. 起動する
 
@@ -102,6 +107,8 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 ## 5. 初回ログイン
 
+管理画面を開く前に、[Ecoku ドメインの HTTPS リバースプロキシ設定](./reverse-proxy)に従って Caddy または Nginx を設定し、公開ヘルスエンドポイントへのアクセスを確認してください。公開ポートは既定でホストのループバックにだけバインドされ、インターネットから直接は開けません。
+
 `https://ecoku.example.com/admin/` を開き、ユーザー名 `admin` と初回ログの仮パスワードでログインします。その後、必ず正式なパスワードを設定します。
 
 - `admin` を維持するか、別のユーザー名に変更できます。
@@ -121,21 +128,16 @@ sudo docker compose up -d
 
 新しい仮パスワードが表示され、すべての管理者セッションが無効になります。
 
-## タイムゾーン
+## タイムゾーン {#timezone}
 
-新規デプロイでは `ecoku.env` は不要です。コメントと通知の表示タイムゾーンを指定する場合は Compose サービスに追加します。
+上記の Compose には、コメントと通知の表示時刻用に `TZ: Asia/Shanghai` が設定済みです。変更する場合は `services.ecoku.environment.TZ` を `Europe/Berlin` などに書き換え、`sudo docker compose up -d` でコンテナを再作成してください。別途 `ecoku.env` を作る必要はありません。
 
-```yaml
-    environment:
-      TZ: Asia/Shanghai
-```
-
-既存インスタンスは古い `ecoku.env` を使い続けられます。アップグレード時に管理者認証情報とキーを永続状態へ取り込みます。[アップグレード](./upgrade#legacy-config)を参照してください。
+既存のインスタンスは元の `ecoku.env` を引き続き使えます。古い管理者認証情報とキー変数を削除する場合は、[永続状態への取り込み、停止・バックアップ、旧変数の削除](./upgrade#legacy-config)に従ってください。タイムゾーンも旧環境ファイルにある場合は、削除前に `TZ` を Compose に移してください。
 
 ## 次の手順
 
-1. [リバースプロキシを設定](./reverse-proxy)して `https://ecoku.example.com` を公開する。
-2. 「站点」（サイト）で最初のサイトを作成する。
-3. [コメントクライアントを埋め込む](../integration/html)。
+1. 管理画面で[最初のサイトを作成](./admin#sites)し、接続に使うサイト ID を取得します。
+2. [HTML 接続手順](../integration/html)に従い、ブログにコメント欄を埋め込みます。
+3. [バックアップと復元](./backup)に従い、設定、データベース、永続キーをバックアップします。
 
 Twikoo の履歴を移行する場合は、先にサイトを作成してから[Twikoo 移行](./twikoo)を実行してください。

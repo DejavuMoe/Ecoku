@@ -1,72 +1,44 @@
 # 設定參考
 
-::: info 升級與設定遷移
-本頁適用於 v0.2.9。既有 v0.2.8 實例請先閱讀[升級與舊設定遷移](../self-hosting/upgrade#legacy-config)。
-:::
+`app/config.yaml` 的欄位、預設值、可選值、用途與範例集中在下方註解範本中。Docker 部署頁引用同一份範本，無需在多份欄位表之間查找。
 
-新部署的手動設定只有 `app/config.yaml`：
+## 完整設定範本 {#template}
 
-```yaml
-notifications:
-  instance_public_url: "https://ecoku.example.com"
+新部署複製範本並替換 `instance_public_url`。已展開的項目使用預設值；舊版相容項保持註解，只有保留舊部署行為時才需要啟用。YAML 中每個頂層區段只能出現一次，不要在檔案末尾重複附加 `site:` 或 `admin:`。
+
+<div class="config-template">
+
+<<< ../../../deploy/config.zh-hant.yaml.example{yaml}
+
+</div>
+
+## 修改後生效 {#reload}
+
+儲存檔案後，在 Compose 所在目錄重建容器並查看日誌。單純修改掛載的 YAML 不會熱更新服務：
+
+```bash
+sudo docker compose up -d --force-recreate ecoku
+sudo docker compose logs --tail=100 ecoku
 ```
 
-站點、評論、通知、人機驗證和管理員帳戶保存在 SQLite 中，在[管理後台](../self-hosting/admin)修改。官方映像檔固定使用連接埠 `12123`、瀏覽器資源 `/app/client`、管理頁面 `/app/admin` 和資料庫 `/data/ecoku.sqlite3`。新實例的簽章金鑰、通知加密主金鑰和管理員帳戶也保存在 `data/`。
+設定檔只能包含一個 YAML 文件。未知欄位、無效值或重複欄位會阻止啟動；依日誌修正後重新啟動。
 
-## site
+## 限流行為 {#rate-limit}
 
-| 欄位 | 預設值 | 說明 |
-| --- | --- | --- |
-| `trusted_proxies` | `[]` | 允許轉送 `X-Forwarded-For` 的直連對端，填 IP 或 CIDR。通常只填 Docker 閘道，例如 `172.18.0.1/32`。禁止 `0.0.0.0/0` 與 `::/0`。詳見[反向代理](../self-hosting/reverse-proxy#trusted-proxies)。 |
-
-## rate_limit {#rate-limit}
-
-所有限流按用戶端 IP 計數，狀態保存在程序記憶體中，重新啟動後清零。超過限制時回傳 `429` 和 `Retry-After`。
-
-| 欄位 | 預設值 | 說明 |
-| --- | --- | --- |
-| `window_seconds` | `60` | 計數時間窗長度（秒）。 |
-| `comment_submit` | `5` | 每個時間窗允許送出的評論數。 |
-| `comment_list` | `60` | 每個時間窗允許讀取評論清單的次數。 |
-| `comment_delete` | `30` | 每個時間窗允許刪除的次數。 |
-| `admin_login` | `5` | 每個時間窗允許登入的次數。 |
-| `notification_test` | `5` | 每個時間窗允許發送測試通知的次數。 |
-
-## notifications
-
-| 欄位 | 預設值 | 說明 |
-| --- | --- | --- |
-| `instance_public_url` | 空 | Ecoku 公開網址，例如 `https://ecoku.example.com`。未填 `admin.allowed_origins` 時，它的來源也是管理後台來源。啟用通知前必須填寫。 |
-
-## admin
-
-管理後台和管理 API 始終啟用，頁面位於 `/admin/`。
-
-| 欄位 | 預設值 | 說明 |
-| --- | --- | --- |
-| `allowed_origins` | `instance_public_url` 的來源 | 允許存取管理 API 的瀏覽器來源。只有從多個位址開啟後台時才需要填寫。至少需要一個管理來源。 |
-
-新實例啟動時會自動建立 `admin` 和隨機臨時密碼。臨時密碼只在首次建立帳戶時列印，首次登入後必須修改。新管理員帳戶不需要環境變數。
+`rate_limit` 每一項的預設值、單位與範例均在範本中。按 IP 分別計數，超限回傳 `429` 與 `Retry-After`；程序重啟後計數歸零。填寫 `0` 是恢復預設值，不是關閉限流。反向代理場景也要設定 `site.trusted_proxies`，避免所有訪客共用代理位址的額度。
 
 ## 日誌 {#logs}
 
-日誌寫到標準輸出，用 `docker compose logs` 查看，保留與輪替由 Docker 管理。新部署不掛載 `app/logs`，也不使用 `site.log_path`。
+預設日誌寫到標準輸出，以 `docker compose logs` 查看，保留與輪替由 Docker 管理。範本中的 `site.log_path` 僅為舊版相容項；新部署不需要日誌目錄掛載。
 
 ## 環境變數 {#env}
 
-新部署不需要 `ecoku.env`。如需指定顯示時區，可在 Compose 設定選填的 `TZ`，例如 `Asia/Shanghai`。
+新部署不需要 `ecoku.env`。Compose 中的 `TZ: Asia/Shanghai` 決定評論與通知的顯示時區；需要其他時區時直接修改該行。`TZ` 不是 YAML 設定欄位。
 
-既有實例升級時仍會讀取以下變數，並把它們導入 `data/ecoku-secrets.json` 或 `admin_accounts`：
+範本中的 `*_env` 都是舊環境變數的名稱，而非秘密值。新實例自動建立管理員、臨時密碼與持久金鑰；舊實例須先完成匯入及備份，再移除原變數。映像已設定 `GIN_MODE=release` 和 `ECOKU_RUNTIME=container`，不要覆寫。
 
-| 變數 | 用途 |
-| --- | --- |
-| `ECOKU_ADMIN_USERNAME` | 舊管理員名稱。 |
-| `ECOKU_ADMIN_PASSWORD_HASH` | 舊管理員 bcrypt 密碼雜湊。 |
-| `ECOKU_ADMIN_TOKEN_KEY` | 舊管理員工作階段簽章金鑰。 |
-| `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 已儲存通知和人機驗證憑據的加密主金鑰。遷移完成前不要更換。 |
+## 舊設定遷移 {#legacy}
 
-變數導入並驗證成功後，可以停服備份，再刪除它們，讓程序改用 `/data` 中的持久狀態。
+範本保留目前仍接受的相容欄位及其預設值。站點種子只在建立全新資料庫時匯入，不會覆蓋已有站點；站點、SMTP、Telegram、人機驗證與 Smoji 在後台修改。
 
-## 舊設定欄位 {#legacy}
-
-新範本不再寫入這些欄位，但相容層仍會讀取：`site.port`、`site.log_path`、`client.static_dir`、`admin.static_dir`、`database.sqlite.path`、`sites`、`management_key_env`、`admin.enabled`、`admin.token_ttl_minutes` 和管理員或通知的 `*_env` 欄位。新實例不要加入這些欄位，見[升級](../self-hosting/upgrade#legacy-config)。
+升級與刪除舊環境變數的操作步驟見 [舊實例設定遷移](../self-hosting/upgrade#legacy-config)。資料庫與同目錄的 `ecoku-secrets.json` 必須一起備份。

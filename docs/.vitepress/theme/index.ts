@@ -20,30 +20,34 @@ function getMermaid() {
 
 async function renderMermaidDiagrams() {
   if (typeof window === 'undefined') return
+  const elements = document.querySelectorAll<HTMLElement>('.mermaid')
+  if (!elements.length) return
   const mermaidModule = await getMermaid()
   if (!mermaidModule) return
 
   const isDark = document.documentElement.classList.contains('dark')
+  const styles = getComputedStyle(document.documentElement)
+  const color = (name: string) => styles.getPropertyValue(name).trim()
   mermaidModule.default.initialize({
     startOnLoad: false,
-    theme: isDark ? 'dark' : 'default',
-    themeVariables: isDark
-      ? {
-          darkMode: true,
-          background: '#1a1d20',
-          primaryColor: '#0f766e',
-          primaryTextColor: '#f2ece2',
-          lineColor: '#6ee7b7',
-          fontSize: '13px',
-        }
-      : {
-          darkMode: false,
-          background: '#faf9f5',
-          primaryColor: '#0f766e',
-          primaryTextColor: '#141413',
-          lineColor: '#0f766e',
-          fontSize: '13px',
-        },
+    theme: 'base',
+    themeVariables: {
+      darkMode: isDark,
+      background: color('--paper'),
+      primaryColor: color('--wash'),
+      primaryTextColor: color('--ink'),
+      primaryBorderColor: color('--line'),
+      secondaryColor: color('--surface'),
+      secondaryTextColor: color('--ink'),
+      tertiaryColor: color('--surface'),
+      tertiaryTextColor: color('--ink'),
+      lineColor: color('--muted'),
+      textColor: color('--ink'),
+      edgeLabelBackground: color('--paper'),
+      clusterBkg: color('--surface'),
+      clusterBorder: color('--line'),
+      fontSize: '13px',
+    },
     flowchart: {
       htmlLabels: true,
       curve: 'basis',
@@ -56,7 +60,6 @@ async function renderMermaidDiagrams() {
     fontFamily: 'inherit',
   })
 
-  const elements = document.querySelectorAll<HTMLElement>('.mermaid')
   let idCounter = 0
 
   for (const el of Array.from(elements)) {
@@ -106,4 +109,3 @@ export default {
     }
   },
 } satisfies Theme
-

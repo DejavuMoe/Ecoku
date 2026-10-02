@@ -1,10 +1,129 @@
-# Ecoku 的公网地址：管理后台从这里打开，启用邮件或 Telegram 通知前也必须填写。
-# 端口、目录与数据库路径都已固定在镜像里；站点在管理后台创建。
+# Ecoku 完整配置模板。保存为 app/config.yaml；修改后重建容器生效。
+# 未注释的值均为默认值，instance_public_url 使用需要自行替换的示例地址。
+# 每个顶层段只写一次；YAML 不支持在这里展开 ${ENV} 环境变量。
+# SMTP、Telegram、人机验证、Smoji 和站点在后台设置，不写进此文件。
+# 标注“旧版兼容”的项保持注释；已有实例可以保留原值，新部署无需启用。
+
 notifications:
+  # Ecoku 自己的公网 URL，供管理后台访问来源校验及启用通知时检查。
+  # 默认：空字符串。新部署请填写实际 HTTPS 地址，而不是博客地址。
+  # 可用：http:// 或 https:// 完整 URL；不含用户名密码、查询参数或片段。
+  # 本地开发示例：http://127.0.0.1:12123；公网示例见下方。
+  # URL 可带路径，但此字段不会配置反向代理或改变程序路由。
   instance_public_url: "https://ecoku.example.com"
 
-# 配置反向代理后再取消注释，填 Docker 网关地址，见文档「反向代理」。
-# 不要填 0.0.0.0/0 或 ::/0。
-# site:
-#   trusted_proxies:
-#     - "172.18.0.1/32"
+  # 旧版兼容：保存通知加密主密钥的环境变量名，不是密钥本身。
+  # 默认：ECOKU_NOTIFICATION_ENCRYPTION_KEY。自定义示例：MY_ECOKU_KEY。
+  # 变量值须为 32 字节密钥的标准 Base64，可带或不带末尾填充。
+  # 新实例自动生成密钥并保存在数据库旁的 ecoku-secrets.json。
+  # 旧实例完成持久化迁移前，不要更换原密钥，否则已加密配置无法解密。
+  # encryption_key_env: "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
+
+site:
+  # 可信直连代理，默认 []。可填单个 IPv4、IPv6 地址或 CIDR 网段。
+  # 示例：["172.18.0.1/32"]；也可用 YAML 列表每行填写一个地址。
+  # 宿主机反向代理经 Docker 转发时，通常填写实际 Docker 网关。
+  # 查询：sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
+  # 仅信任你控制的代理；代理须覆盖浏览器自带的 X-Forwarded-For。
+  # 留空时不读取转发头，代理后的访客可能共享限流额度。
+  # 禁止 0.0.0.0/0 和 ::/0；不要把示例网关直接当成自己的网关。
+  trusted_proxies: []
+
+  # 旧版兼容：监听端口。默认 12123；可选整数 1～65535，0 使用默认值。
+  # Docker 用户改 Compose 的宿主机映射端口即可，无需改容器端口。
+  # port: 12123
+  # 旧版兼容：文件日志路径。默认 ""，写到标准输出，用 docker compose logs 查看。
+  # 示例：/var/log/ecoku/ecoku.log。启用文件日志需自行挂载可写目录。
+  # 也可填写 "-"、"stdout" 或 "/dev/stdout"，均只写标准输出；其他路径同时保留 stdout 与文件日志。
+  # log_path: ""
+
+rate_limit:
+  # 以下项都是整数；省略或填 0 使用默认值，负数拒绝启动。
+  # 有效值必须大于 0，没有关闭限流的特殊值；建议使用合理的小整数。
+  # 按直连地址或可信代理传来的访客 IP 分别计数；各接口类别独立。
+  # 超限返回 HTTP 429 和 Retry-After；计数在内存中，重启后清零。
+
+  # 窗口长度，单位秒。默认 60；示例：120 表示两分钟一个窗口。
+  window_seconds: 60
+  # 每个窗口允许的评论发布次数（含回复）。默认 5；示例：10。
+  comment_submit: 5
+  # 每个窗口允许的公开评论列表读取次数。默认 60；示例：120。
+  comment_list: 60
+  # 每个窗口允许的评论删除次数。默认 30；示例：60。
+  comment_delete: 30
+  # 每个窗口允许的后台登录尝试次数。默认 5；示例：10。
+  admin_login: 5
+  # 每个窗口允许的测试通知次数。默认 5；示例：10。
+  notification_test: 5
+
+admin:
+  # 可访问管理 API 的浏览器来源，默认 []，自动取上方 instance_public_url 的来源。
+  # 可选：不重复的 http(s)://域名[:端口] 列表，不含路径、查询或片段。
+  # 示例：["https://ecoku.example.com", "https://admin.example.com"]。
+  # 多地址访问后台或前后端分离开发时才需显式填写。
+  # 与博客评论区的允许来源分开；公网管理来源必须使用 HTTPS。
+  # 如果此处与 instance_public_url 都为空，服务启动时会报缺少管理来源。
+  allowed_origins: []
+
+  # 旧版兼容：后台始终启用。默认 true；即使填 false 也会被忽略。
+  # enabled: true
+  # 旧版兼容：会话固定 480 分钟（8 小时），不是可自由调节的超时。
+  # 可省略、填 0 或 480；其他整数拒绝启动。活跃操作不会延长会话。
+  # token_ttl_minutes: 480
+  # 旧版兼容：管理后台静态目录，Docker 默认 /app/admin，本地源码运行默认空。
+  # 空目录配置在本地表示不提供后台静态页面；管理 API 仍启用。
+  # static_dir: "/app/admin"
+
+  # 旧版兼容：以下三项是环境变量名，不是账号、哈希或签名密钥本身。
+  # 默认值见各行；自定义示例：MY_ADMIN_USER、MY_ADMIN_HASH、MY_ADMIN_KEY。
+  # 名称建议由字母或下划线开头，仅含字母、数字、下划线，三者不得相同。
+  # 一旦提供任意旧管理员凭据变量，就必须同时提供完整的三项凭据。
+  # 用户名 1～80 个字符；密码值须为 bcrypt 哈希且 cost >= 10；签名密钥至少 32 字节。
+  # 新实例不需要这些环境变量：首次启动打印 admin 临时密码，首次登录必须改密。
+  # username_env: "ECOKU_ADMIN_USERNAME"
+  # password_hash_env: "ECOKU_ADMIN_PASSWORD_HASH"
+  # token_key_env: "ECOKU_ADMIN_TOKEN_KEY"
+
+# 旧版兼容：浏览器评论脚本的静态目录。Docker 默认 /app/client。
+# 本地源码运行默认空，不提供静态脚本；示例：../packages/client/dist。
+# client:
+#   static_dir: "/app/client"
+
+# 旧版兼容：仅支持 SQLite，值是数据库文件路径，不是目录。
+# Docker 默认 /data/ecoku.sqlite3；本地源码运行默认 ./data/ecoku.bin。
+# 示例：/data/comments.sqlite3。目录需可写；不要指向临时或未挂载位置。
+# 持久密钥 ecoku-secrets.json 与数据库放在同一目录；搬迁时一起备份和移动。
+# database:
+#   sqlite:
+#     path: "/data/ecoku.sqlite3"
+
+# 旧版兼容：YAML 站点种子。默认 []，新部署直接在后台创建站点。
+# 仅创建全新数据库时导入；修改这里不会更新已有数据库中的站点。
+# 如要使用该兼容格式，取消下面整个 sites 段的注释。
+# sites:
+#   # 必填 ID；字母或数字开头，可含字母、数字、点、下划线和连字符，最多 100 字符。
+#   - id: "blog"
+#     # 站点 URL，无默认固定值；留空时取 allowed_origins 的第一项。
+#     # 可用完整 http(s) URL，不含凭据、查询或片段；示例为博客根地址。
+#     site_url: "https://blog.example.com"
+#     # 站点显示名称。默认空，显示时回落到域名；最多 120 字符。
+#     name: "我的博客"
+#     # 必填至少一个不重复的来源，不含路径、查询或片段；与管理端来源分开。
+#     allowed_origins: ["https://blog.example.com"]
+#     # 旧站点管理密钥的环境变量名，默认空，表示不启用此兼容凭据。
+#     # 示例：BLOG_MANAGEMENT_KEY，变量值至少 32 字节，各站点的名称和值均需独立。
+#     # 不要放到浏览器或公开接入代码中。
+#     management_key_env: ""
+#     comment:
+#       # 邮箱必填，默认 true；可选 true / false。
+#       email_required: true
+#       # 网站必填，默认 false；可选 true / false。
+#       website_required: false
+#       # 输入框占位文字，默认如下；最多 80 字符，不能换行，空值使用默认文案。
+#       placeholder: "写下评论（仅支持纯文本）"
+#       # 默认排序，可选 newest（最新）或 oldest（最早）；默认 newest。
+#       default_sort: "newest"
+#       # 评论字符数上限，默认 1000；可选 1～10000，0 使用默认值。
+#       length_limit: 1000
+#       # 无评论文案，默认如下；最多 240 字符，可用 \n 换行，空值使用默认文案。
+#       empty_message: "还没有评论\n成为第一个留下评论的人。"

@@ -82,7 +82,7 @@
 - `script-src` 和 `connect-src`：Ecoku 的来源，如 `https://ecoku.example.com`；
 - 默认样式以 `<style>` 元素注入。CSP 不允许内联样式时，把 `data-css-url` 设为 `https://ecoku.example.com/client/ecoku.css`，改用外链样式表，并在 `style-src` 中放行该来源；
 - 启用了人机验证时，还要放行验证服务，见[人机验证 · 内容安全策略](../self-hosting/captcha#csp)；
-- 启用了 [Smoji 表情](./smoji)时，在 `connect-src` 和 `img-src` 中放行表情清单所在的来源。
+- 启用了 [Smoji 表情](./smoji)时，在 `connect-src` 中放行清单来源，在 `img-src` 中放行图片来源。二者分开托管时需要分别填写，见[清单与图片的托管](./smoji#hosting)。
 
 ## 不用加载器
 

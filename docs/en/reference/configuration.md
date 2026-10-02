@@ -1,76 +1,44 @@
 # Configuration reference
 
-::: info Upgrade and configuration migration
-This reference describes v0.2.9. Existing v0.2.8 instances must read [upgrade and legacy configuration migration](../self-hosting/upgrade#legacy-config) first.
-:::
+The annotated template below collects every `app/config.yaml` field, default, allowed value, explanation, and example. The Docker deployment page includes the same template, so there is no separate field table to reconcile.
 
-A new deployment only needs `app/config.yaml`:
+## Complete configuration template {#template}
 
-```yaml
-notifications:
-  instance_public_url: "https://ecoku.example.com"
+For a new deployment, copy the template and replace `instance_public_url`. Active options use defaults. Keep legacy compatibility options commented unless retaining old deployment behavior. Each top-level YAML section must appear only once; do not append a second `site:` or `admin:` section.
+
+<div class="config-template">
+
+<<< ../../../deploy/config.en.yaml.example{yaml}
+
+</div>
+
+## Apply changes {#reload}
+
+Save the file, then recreate the container from the Compose directory and inspect its logs. Editing the mounted YAML does not hot-reload the service:
+
+```bash
+sudo docker compose up -d --force-recreate ecoku
+sudo docker compose logs --tail=100 ecoku
 ```
 
-Sites, comments, notifications, CAPTCHA, and the administrator account live in SQLite and are managed in the [admin console](../self-hosting/admin). The official image fixes port `12123`, browser assets at `/app/client`, the admin pages at `/app/admin`, and the database at `/data/ecoku.sqlite3`. New instances also store the session signing key, notification encryption key, and administrator account under `data/`.
+Only one YAML document is allowed. Unknown fields, invalid values, and duplicate fields prevent startup. Correct the reported problem and start again.
 
-The config file may contain only one YAML document. Unknown fields prevent startup. Legacy fields remain readable during the compatibility period; see [legacy configuration migration](../self-hosting/upgrade#legacy-config).
+## Rate-limit behavior {#rate-limit}
 
-## site
-
-| Field | Default | Description |
-| --- | --- | --- |
-| `trusted_proxies` | `[]` | Direct peers allowed to forward `X-Forwarded-For`, as IPs or CIDRs. Usually just the Docker gateway, such as `172.18.0.1/32`. `0.0.0.0/0` and `::/0` are forbidden. See [Reverse proxy](../self-hosting/reverse-proxy#trusted-proxies). |
-
-## rate_limit {#rate-limit}
-
-Rate limits count per client IP in process memory and reset on restart. Exceeding a limit returns `429` with `Retry-After`.
-
-| Field | Default | Description |
-| --- | --- | --- |
-| `window_seconds` | `60` | Length of the counting window in seconds. |
-| `comment_submit` | `5` | Comments allowed per window. |
-| `comment_list` | `60` | Comment list reads allowed per window. |
-| `comment_delete` | `30` | Delete requests allowed per window. |
-| `admin_login` | `5` | Sign-in attempts allowed per window. |
-| `notification_test` | `5` | Test notifications allowed per window. |
-
-## notifications
-
-| Field | Default | Description |
-| --- | --- | --- |
-| `instance_public_url` | Empty | Ecoku's public URL, such as `https://ecoku.example.com`. Its origin is also the admin origin when `admin.allowed_origins` is omitted. It is required before enabling notifications. |
-
-## admin
-
-The admin console and API are always enabled at `/admin/`.
-
-| Field | Default | Description |
-| --- | --- | --- |
-| `allowed_origins` | Origin of `instance_public_url` | Browser origins allowed to access the admin API. Set it only when the console is opened from more than one address. At least one admin origin is required. |
-
-On a new instance Ecoku creates the `admin` account and a random temporary password. The password is printed only on the first account creation and must be replaced after the first sign-in. New administrator accounts do not need environment variables.
+Defaults, units, and examples for every `rate_limit` field are in the template. Counters are per IP; excess requests return `429` and `Retry-After`, and restart resets counters. `0` restores the default rather than disabling limits. Behind a reverse proxy, also set `site.trusted_proxies` so visitors do not share the proxy IP’s allowance.
 
 ## Logs {#logs}
 
-Logs go to standard output. View them with `docker compose logs`; Docker controls retention and rotation. New deployments do not mount `app/logs` or use `site.log_path`.
+Logs go to stdout by default; use `docker compose logs`. Docker controls retention and rotation. `site.log_path` in the template is a legacy option; new deployments need no log directory mount.
 
 ## Environment variables {#env}
 
-A new deployment does not need `ecoku.env`. To set the display time zone, add the optional `TZ` environment variable to Compose, such as `Asia/Shanghai`.
+New deployments need no `ecoku.env`. Compose’s `TZ: Asia/Shanghai` controls comment and notification timestamps. Edit that line to change the zone; `TZ` is not a YAML configuration field.
 
-Existing deployments continue to read these variables during migration and copy their values into `data/ecoku-secrets.json` or `admin_accounts`:
+The template’s `*_env` fields are old environment variable names, not secret values. New instances create the administrator, temporary password, and persistent keys automatically. Existing instances must import and back up before removing old variables. The image sets `GIN_MODE=release` and `ECOKU_RUNTIME=container`; do not override them.
 
-| Variable | Purpose |
-| --- | --- |
-| `ECOKU_ADMIN_USERNAME` | Legacy administrator username. |
-| `ECOKU_ADMIN_PASSWORD_HASH` | Legacy bcrypt password hash. |
-| `ECOKU_ADMIN_TOKEN_KEY` | Legacy session signing key. |
-| `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | Encryption master key for stored notification and CAPTCHA credentials. Keep it unchanged until migration is complete. |
+## Legacy configuration migration {#legacy}
 
-After the variables have been imported and verified, stop the service, make a backup, and remove them so Ecoku uses the persistent state under `/data`.
+The template documents all compatibility fields still accepted and their defaults. Site seeds are imported only into brand-new databases and never overwrite existing sites. Manage sites, SMTP, Telegram, CAPTCHA, and Smoji in the console.
 
-## Legacy configuration fields {#legacy}
-
-New templates no longer write these fields, but the compatibility layer still reads them: `site.port`, `site.log_path`, `client.static_dir`, `admin.static_dir`, `database.sqlite.path`, `sites`, `management_key_env`, `admin.enabled`, `admin.token_ttl_minutes`, and the administrator or notification `*_env` fields. Do not add them to new instances; see [upgrade](../self-hosting/upgrade#legacy-config).
-
-The image sets `GIN_MODE=release` and `ECOKU_RUNTIME=container`. Do not override them in a new deployment.
+See [legacy instance configuration migration](../self-hosting/upgrade#legacy-config) for upgrade and environment-variable removal steps. Back up the database and its sibling `ecoku-secrets.json` together.

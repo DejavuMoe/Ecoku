@@ -11,17 +11,11 @@ cp server/config.yaml.example server/config.yaml
 mkdir -p server/data
 ```
 
-Keep machine-local build outputs, runtime data, and one-off release checks in the root `tmp/` directory, which Git ignores; do not write them into source directories.
+Keep one-off build outputs and verification files in the Git-ignored root `tmp/` directory. The server writes its development database and persistent keys to `server/data/` according to the configuration; do not commit runtime data.
 
-Local services use a SQLite file and `server/config.yaml`. The admin console is always enabled, so export the admin credentials in the current shell before starting the server; never commit them. The sign-in password below is `local-dev-password`:
+Local services use SQLite and `server/config.yaml`. When starting a new database, Ecoku automatically creates `admin`, prints a temporary password in the terminal, and saves persistent keys to `server/data/ecoku-secrets.json`. Sign in with that password and change it on first login; no administrator or notification-key environment variables are required.
 
-```bash
-export ECOKU_ADMIN_USERNAME=admin
-export ECOKU_ADMIN_PASSWORD_HASH="$(printf '%s\n' 'local-dev-password' | (cd server && go run . hash-password))"
-export ECOKU_ADMIN_TOKEN_KEY="$(openssl rand -hex 32)"
-```
-
-To save an SMTP password, Telegram bot token, or CAPTCHA secret key in the admin console, also export `ECOKU_NOTIFICATION_ENCRYPTION_KEY` (generate one with `openssl rand -base64 32`).
+Existing development databases retain their administrator account. If you previously configured legacy environment variables, complete persistent-state migration before removing them; see [legacy configuration migration](../self-hosting/upgrade#legacy-config).
 
 ## Run
 
@@ -34,7 +28,7 @@ pnpm docs:dev
 
 Run the commands you need in separate terminals.
 
-The server listens at `http://127.0.0.1:12123` and stores its database at `server/data/ecoku.bin`. Source runs serve the API only; use the Vite development servers for the comment client and admin console. The Docker image serves the built assets.
+Access the API locally at `http://127.0.0.1:12123`; the default port is `12123`. The database is `server/data/ecoku.bin`, with `ecoku-secrets.json` in the same directory. Source runs do not serve browser assets by default; use the Vite development servers for the client and admin console. The Docker image serves built assets.
 
 Woodpecker runs the full gate. Locally, run only checks directly relevant to the change and not already covered by CI.
 

@@ -74,7 +74,7 @@ Comment bodies and nicknames are always displayed as plain text:
 - Markdown is not rendered, and URLs are not turned into links automatically;
 - Line breaks are preserved.
 
-The only exception is [Smoji stickers](../integration/smoji). When a site has a sticker pack enabled, `![smoji:name](image-url)` that has the right format and the same origin as the sticker manifest is displayed as an image. Everything else is displayed as text.
+The only exception is [Smoji stickers](../integration/smoji). When enabled, `![smoji:name](image-url)` renders as an image if its format and origin satisfy the site’s image-origin rule; other content stays text. The manifest origin is the default. The next release lets administrators specify an image origin separately; see [hosting the manifest and images separately](../integration/smoji#hosting).
 
 A visitor's website appears only as a link on their nickname, with `rel="nofollow ugc noopener noreferrer"`.
 
@@ -89,7 +89,7 @@ Ecoku does not store visitor IP addresses, User-Agents, or geolocation, and does
 The visitor's browser connects directly to a third party in these cases:
 
 - When Turnstile or Cap is enabled, to load the verification widget;
-- When Smoji is enabled, to load sticker images from the server that hosts the manifest.
+- When Smoji is enabled, the browser fetches the manifest and images from their respective resource hosts.
 
 ## Origin checks and rate limits
 
