@@ -6,6 +6,7 @@ import (
 	"ecoku-server/config"
 	"ecoku-server/internal/testsite"
 	"ecoku-server/model"
+	"ecoku-server/utils"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -95,6 +97,39 @@ func setupAdminTest(t *testing.T) adminEnvironment {
 		t.Fatalf("invalid session response: %s", login.Body.String())
 	}
 	return adminEnvironment{router: router, token: cookies[0].Value}
+}
+
+func TestInitialSetupSessionIsRestrictedAndRotated(t *testing.T) {
+	env := setupAdminTest(t)
+	t.Cleanup(func() { config.SetAdminCredentials(nil) })
+	hash, err := bcrypt.GenerateFromPassword([]byte("temporary-password"), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	if err := model.CreateAdminAccount(model.AdminAccount{ID: 1, Username: "admin", PasswordHash: string(hash), MustChangePassword: true, Revision: 1, CreatedAt: now, UpdatedAt: now}); err != nil {
+		t.Fatal(err)
+	}
+	config.GlobalConfig.Paths.SQLitePath = filepath.Join(t.TempDir(), "runtime", "ecoku.sqlite3")
+	config.SetAdminCredentials(&config.AdminCredentials{Username: "admin", PasswordHash: string(hash), TokenKey: strings.Repeat("t", 32), TokenTTL: 8 * time.Hour, MustChangePassword: true})
+	setupToken, _, err := utils.GenerateAdminSetupToken()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response := requestJSON(t, env.router, http.MethodGet, "/api/admin/sites", adminTestOrigin, "Bearer "+setupToken, nil); response.Code != http.StatusForbidden {
+		t.Fatalf("setup session accessed management API: %d", response.Code)
+	}
+	setup := requestJSON(t, env.router, http.MethodPost, "/api/admin/initial-setup", adminTestOrigin, "Bearer "+setupToken, map[string]any{"username": "owner", "password": "new-password-for-admin"})
+	if setup.Code != http.StatusOK {
+		t.Fatalf("initial setup=%d %s", setup.Code, setup.Body.String())
+	}
+	if requestJSON(t, env.router, http.MethodGet, "/api/admin/session", "", "Bearer "+setupToken, nil).Code != http.StatusUnauthorized {
+		t.Fatal("temporary setup session remained valid")
+	}
+	cookies := setup.Result().Cookies()
+	if len(cookies) != 1 || requestJSON(t, env.router, http.MethodGet, "/api/admin/session", "", "Bearer "+cookies[0].Value, nil).Code != http.StatusOK {
+		t.Fatal("normal session was not issued after initial setup")
+	}
 }
 
 func TestAdminStaticCSPAllowsStyleAttributesAndNonceBootstrapWithoutUnsafeInline(t *testing.T) {

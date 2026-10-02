@@ -2,9 +2,11 @@ package model
 
 import (
 	"crypto/sha256"
+	"ecoku-server/config"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -12,7 +14,7 @@ import (
 )
 
 const (
-	LatestSchemaVersion               = 9
+	LatestSchemaVersion               = 10
 	freshSchemaVersion                = 1
 	freshSchemaName                   = "fresh_published_comments"
 	freshSchemaDefinition             = "sqlite3:fresh-v1:published-comments:site-display-config:notifications:tombstones"
@@ -36,6 +38,9 @@ const (
 	smojiSiteSchemaDefinition         = "sqlite3:v7:sites-smoji-enabled-manifest-url"
 	DefaultBloggerBadge               = "[博主]"
 	legacyOutboxTarget                = "*"
+	adminAccountSchemaVersion         = 10
+	adminAccountSchemaName            = "persistent_admin_account"
+	adminAccountSchemaDefinition      = "sqlite3:v10:persistent-admin-account"
 )
 
 type schemaMigration struct {
@@ -182,6 +187,9 @@ func createFreshSchema(database *gorm.DB) error {
 				return fmt.Errorf("初始化通知设置: %w", err)
 			}
 		}
+		if err := seedConfiguredSites(tx, now); err != nil {
+			return err
+		}
 		checksum := schemaChecksum(freshSchemaDefinition)
 		if err := tx.Exec(`INSERT INTO schema_migrations (version, name, checksum, applied_at)
 VALUES (?, ?, ?, ?)`, freshSchemaVersion, freshSchemaName, checksum, now).Error; err != nil {
@@ -189,6 +197,34 @@ VALUES (?, ?, ?, ?)`, freshSchemaVersion, freshSchemaName, checksum, now).Error;
 		}
 		return nil
 	})
+}
+
+func seedConfiguredSites(tx *gorm.DB, now time.Time) error {
+	for _, seed := range config.GetRegisteredSites() {
+		parsed, err := url.Parse(seed.SiteURL)
+		if err != nil || parsed.Hostname() == "" {
+			return fmt.Errorf("初始化站点 %q 失败", seed.ID)
+		}
+		emailRequired := seed.Comment.EmailRequired == nil || *seed.Comment.EmailRequired
+		websiteRequired := seed.Comment.WebsiteRequired != nil && *seed.Comment.WebsiteRequired
+		if err := tx.Exec(`INSERT INTO sites (
+  id, site_url, domain, name, default_sort, email_required, website_required,
+  placeholder, comment_limit, empty_message, revision, created_at, updated_at
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
+			seed.ID, seed.SiteURL, strings.ToLower(parsed.Hostname()), seed.Name,
+			seed.Comment.DefaultSort, emailRequired, websiteRequired,
+			seed.Comment.Placeholder, seed.Comment.LengthLimit, seed.Comment.EmptyMessage,
+			now, now,
+		).Error; err != nil {
+			return fmt.Errorf("初始化站点 %q: %w", seed.ID, err)
+		}
+		for _, origin := range seed.AllowedOrigins {
+			if err := tx.Exec("INSERT INTO site_origins (site_id, origin) VALUES (?, ?)", seed.ID, origin).Error; err != nil {
+				return fmt.Errorf("初始化站点 %q 来源: %w", seed.ID, err)
+			}
+		}
+	}
+	return nil
 }
 
 func validateKnownSchemaHistory(database *gorm.DB) (int, error) {
@@ -212,6 +248,7 @@ func validateKnownSchemaHistory(database *gorm.DB) (int, error) {
 		smojiSiteSchemaVersion:           {name: smojiSiteSchemaName, definition: smojiSiteSchemaDefinition},
 		adminSessionSchemaVersion:        {name: adminSessionSchemaName, definition: adminSessionSchemaDefinition},
 		outboxDeliveryStateSchemaVersion: {name: outboxDeliveryStateSchemaName, definition: outboxDeliveryStateSchemaDefinition},
+		adminAccountSchemaVersion:        {name: adminAccountSchemaName, definition: adminAccountSchemaDefinition},
 	}
 	for index, row := range rows {
 		version := index + 1
@@ -267,11 +304,38 @@ func migrateSchema(database *gorm.DB, currentVersion int) error {
 			if err := migrateOutboxDeliveryState(database); err != nil {
 				return err
 			}
+		case adminAccountSchemaVersion:
+			if err := migrateAdminAccount(database); err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("没有可用的 schema 迁移版本 %d", version)
 		}
 	}
 	return nil
+}
+
+func migrateAdminAccount(database *gorm.DB) error {
+	return database.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec(`CREATE TABLE admin_accounts (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  username TEXT NOT NULL CHECK (length(username) BETWEEN 1 AND 80),
+  password_hash TEXT NOT NULL CHECK (length(password_hash) BETWEEN 1 AND 255),
+  must_change_password INTEGER NOT NULL DEFAULT 0 CHECK (must_change_password IN (0, 1)),
+  managed_by_environment INTEGER NOT NULL DEFAULT 0 CHECK (managed_by_environment IN (0, 1)),
+  revision INTEGER NOT NULL DEFAULT 1 CHECK (revision >= 1),
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL
+)`).Error; err != nil {
+			return fmt.Errorf("创建管理员账户表: %w", err)
+		}
+		now := time.Now().UTC()
+		if err := tx.Exec(`INSERT INTO schema_migrations (version, name, checksum, applied_at) VALUES (?, ?, ?, ?)`,
+			adminAccountSchemaVersion, adminAccountSchemaName, schemaChecksum(adminAccountSchemaDefinition), now).Error; err != nil {
+			return fmt.Errorf("记录管理员账户 schema: %w", err)
+		}
+		return nil
+	})
 }
 
 func migrateSiteBloggerIdentity(database *gorm.DB) error {
@@ -563,7 +627,7 @@ func validateCurrentSchema(database *gorm.DB) error {
 	if currentVersion != LatestSchemaVersion {
 		return fmt.Errorf("数据库 schema 版本 %d 未升级到 %d", currentVersion, LatestSchemaVersion)
 	}
-	for _, table := range []string{"sites", "site_origins", "comments", "notification_settings", "notification_outbox", "captcha_settings", "admin_sessions"} {
+	for _, table := range []string{"sites", "site_origins", "comments", "notification_settings", "notification_outbox", "captcha_settings", "admin_sessions", "admin_accounts"} {
 		exists, err := hasTable(database, table)
 		if err != nil || !exists {
 			return fmt.Errorf("数据库缺少当前 schema 表 %s", table)

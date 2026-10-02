@@ -3,9 +3,11 @@ package main
 import (
 	"bufio"
 	"context"
+	"ecoku-server/adminidentity"
 	"ecoku-server/captcha"
 	"ecoku-server/config"
 	"ecoku-server/importer"
+	"ecoku-server/logs"
 	"ecoku-server/model"
 	"ecoku-server/notifications"
 	"ecoku-server/routes"
@@ -34,6 +36,11 @@ func main() {
 				log.Fatalf("管理员密码哈希生成失败: %v", err)
 			}
 			return
+		case "admin":
+			if err := runAdminCommand(os.Args[2:], os.Stdout); err != nil {
+				log.Fatalf("管理员运维命令失败: %v", err)
+			}
+			return
 		case "captcha":
 			if err := runCaptchaCommand(os.Args[2:], os.Stdout); err != nil {
 				log.Fatalf("CAPTCHA 运维命令失败: %v", err)
@@ -43,13 +50,20 @@ func main() {
 	}
 	// 初始化配置文件
 	config.InitConfigFile()
-	if err := config.ValidateAdmin(); err != nil {
-		log.Fatalf("管理后台配置无效: %v", err)
+	if config.LogFilePath != "" {
+		logs.InitLogger()
+	} else {
+		// New deployments use stdout; Docker controls retention and rotation.
+		log.SetOutput(os.Stdout)
 	}
-	// 服务日志写到 stdout，由 `docker compose logs` 查看。
-	log.SetOutput(os.Stdout)
 	if err := model.InitDatabase(); err != nil {
 		log.Fatalf("数据库初始化失败: %v", err)
+	}
+	if err := adminidentity.Initialize(); err != nil {
+		log.Fatalf("管理员账户初始化失败: %v", err)
+	}
+	if err := config.ValidateAdmin(); err != nil {
+		log.Fatalf("管理后台配置无效: %v", err)
 	}
 	if err := notifications.ValidateStoredSecrets(); err != nil {
 		log.Fatalf("通知凭据校验失败: %v", err)
@@ -74,6 +88,27 @@ func main() {
 		log.Fatalf("数据库关闭失败: %v", databaseErr)
 	}
 	log.Printf("Ecoku 已安全停止")
+}
+
+func runAdminCommand(arguments []string, writer io.Writer) (resultErr error) {
+	if len(arguments) != 1 || arguments[0] != "reset-password" {
+		return fmt.Errorf("用法: admin reset-password")
+	}
+	config.InitConfigFile()
+	if err := model.InitDatabase(); err != nil {
+		return err
+	}
+	defer func() {
+		if err := model.CloseDatabase(); err != nil && resultErr == nil {
+			resultErr = err
+		}
+	}()
+	password, err := adminidentity.ResetTemporaryPassword()
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintf(writer, "管理员临时密码：%s\n", password)
+	return err
 }
 
 func runPasswordHash(reader io.Reader, writer io.Writer) error {

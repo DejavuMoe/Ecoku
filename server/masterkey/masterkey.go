@@ -7,6 +7,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"ecoku-server/config"
+	"ecoku-server/instancekeys"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -22,20 +23,27 @@ var ErrUnavailable = errors.New("notification encryption key unavailable")
 const formatVersion = 1
 
 func aead() (cipher.AEAD, error) {
-	raw := strings.TrimSpace(os.Getenv(config.EncryptionKeyEnv))
-	if raw == "" {
-		return nil, ErrUnavailable
-	}
-	var key []byte
-	for _, encoding := range []*base64.Encoding{base64.RawStdEncoding, base64.StdEncoding} {
-		if decoded, err := encoding.DecodeString(raw); err == nil && len(decoded) == 32 {
-			key = decoded
-			break
+	keys, err := instancekeys.Current()
+	if err != nil {
+		// Isolated tests and one-off commands still use the legacy environment
+		// fallback until the server has initialized its persistent key store.
+		raw := strings.TrimSpace(os.Getenv(config.EncryptionKeyEnv))
+		if raw == "" {
+			return nil, ErrUnavailable
 		}
+		var key []byte
+		for _, encoding := range []*base64.Encoding{base64.RawStdEncoding, base64.StdEncoding} {
+			if decoded, decodeErr := encoding.DecodeString(raw); decodeErr == nil && len(decoded) == 32 {
+				key = decoded
+				break
+			}
+		}
+		if key == nil {
+			return nil, fmt.Errorf("%w: expected a base64-encoded 32-byte key", ErrUnavailable)
+		}
+		keys.NotificationEncryption = key
 	}
-	if key == nil {
-		return nil, fmt.Errorf("%w: expected a base64-encoded 32-byte key", ErrUnavailable)
-	}
+	key := keys.NotificationEncryption
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err

@@ -84,9 +84,10 @@ func NewRouter() (*gin.Engine, error) {
 		admin.GET("/login-config", adminhandler.GetLoginConfig)
 
 		protected := admin.Group("")
-		protected.Use(middleware.AdminAuthentication())
+		protected.Use(middleware.AdminAuthentication(), middleware.RequireCompletedAdmin())
 		protected.GET("/session", adminhandler.Session)
 		protected.POST("/logout", adminhandler.Logout)
+		protected.POST("/initial-setup", middleware.RequireInitialSetup(), middleware.LimitRequestBody(middleware.MaxRequestBodyBytes), adminhandler.InitialSetup)
 		protected.GET("/sites", adminhandler.ListSites)
 		protected.POST(
 			"/sites",
@@ -280,14 +281,12 @@ func adminStaticSecurityHeaders() gin.HandlerFunc {
 	}
 }
 
-// listenAddress is fixed; compose.yaml maps the host port onto it.
-const listenAddress = ":12123"
-
 func RunServer(ctx context.Context) error {
 	r, err := NewRouter()
 	if err != nil {
 		return fmt.Errorf("路由初始化失败: %w", err)
 	}
+	listenAddress := fmt.Sprintf(":%d", config.GetPort())
 	log.Println("Server starting on " + listenAddress)
 	server := &http.Server{
 		Addr:              listenAddress,

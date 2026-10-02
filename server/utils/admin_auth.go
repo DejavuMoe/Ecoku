@@ -31,24 +31,34 @@ type adminTokenPayload struct {
 	IssuedAt          int64  `json:"iat"`
 	ExpiresAt         int64  `json:"exp"`
 	CredentialVersion string `json:"cv"`
+	SetupOnly         bool   `json:"setup_only,omitempty"`
 }
 
 type AdminTokenClaims struct {
 	Username  string
 	IssuedAt  time.Time
 	ExpiresAt time.Time
+	SetupOnly bool
 }
 
 // GenerateAdminToken creates an administrator-only bearer token. The token is
 // signed with a key that is independent from ordinary user authentication and
 // is bound to the current administrator password hash.
 func GenerateAdminToken() (string, time.Time, error) {
+	return generateStoredAdminToken(false)
+}
+
+func GenerateAdminSetupToken() (string, time.Time, error) {
+	return generateStoredAdminToken(true)
+}
+
+func generateStoredAdminToken(setupOnly bool) (string, time.Time, error) {
 	credentials, ok := config.GetAdminCredentials()
 	if !ok {
 		return "", time.Time{}, fmt.Errorf("管理员认证未安全配置")
 	}
 	now := time.Now()
-	token, expiry, err := generateAdminTokenAt(credentials, now)
+	token, expiry, err := generateAdminTokenAt(credentials, now, setupOnly)
 	if err != nil {
 		return "", time.Time{}, err
 	}
@@ -67,7 +77,8 @@ func GenerateAdminToken() (string, time.Time, error) {
 	return token, expiry, nil
 }
 
-func generateAdminTokenAt(credentials *config.AdminCredentials, now time.Time) (string, time.Time, error) {
+func generateAdminTokenAt(credentials *config.AdminCredentials, now time.Time, setupFlags ...bool) (string, time.Time, error) {
+	setupOnly := len(setupFlags) > 0 && setupFlags[0]
 	if credentials == nil || credentials.Username == "" || credentials.PasswordHash == "" || credentials.TokenKey == "" || credentials.TokenTTL <= 0 {
 		return "", time.Time{}, fmt.Errorf("管理员认证未安全配置")
 	}
@@ -86,6 +97,7 @@ func generateAdminTokenAt(credentials *config.AdminCredentials, now time.Time) (
 		IssuedAt:          issuedAt.Unix(),
 		ExpiresAt:         expiresAt.Unix(),
 		CredentialVersion: adminCredentialVersion(credentials),
+		SetupOnly:         setupOnly,
 	}
 	payloadJSON, err := json.Marshal(payload)
 	if err != nil {
@@ -163,6 +175,7 @@ func parseAdminTokenAt(token string, credentials *config.AdminCredentials, now t
 		Username:  payload.Subject,
 		IssuedAt:  issuedAt,
 		ExpiresAt: expiresAt,
+		SetupOnly: payload.SetupOnly,
 	}, nil
 }
 
