@@ -28,7 +28,7 @@ function site(overrides: Partial<SiteSummary> = {}): SiteSummary {
     emailRequired: true, websiteRequired: false,
     placeholder: '写下评论（仅支持纯文本）', commentLimit: 1000,
     emptyMessage: '还没有评论\n成为第一个留下评论的人。', revision: 1,
-    smojiEnabled: false, smojiManifestUrl: '',
+    smojiEnabled: false, smojiManifestUrl: '', smojiImageOrigin: '',
     bloggerNickname: 'Dejavu Moe', bloggerEmail: 'admin@example.test',
     bloggerBadge: '[博主]', bloggerPassphraseSet: true,
     createdAt: '2026-08-13T01:00:00Z', updatedAt: '2026-08-13T01:00:00Z',
@@ -140,6 +140,16 @@ describe('administrator API contract', () => {
 })
 
 describe('administrator Smoji rendering', () => {
+  it('uses the configured CDN for bodies and quoted text and rejects unsafe origins', () => {
+    const manifestUrl = 'https://blog.example/smoji.json'
+    const marker = '![smoji:挠脸](https://cdn.example/face.webp)'
+    expect(smojiPlainText(marker, true, manifestUrl, 'https://cdn.example')).toBe('[表情：挠脸]')
+    const wrapper = mount(SmojiContent, { props: { content: marker, enabled: true, manifestUrl, imageOrigin: 'https://cdn.example' } })
+    expect(wrapper.get('img').attributes('src')).toBe('https://cdn.example/face.webp')
+    for (const origin of ['', 'https://cdn.example/path', 'https://user@cdn.example', 'https://cdn.example?', 'https://cdn.example#', 'http://cdn.example', 'https://*.example']) {
+      expect(tokenizeAdminSmoji(marker, true, manifestUrl, origin)).toEqual([{ type: 'text', value: marker }])
+    }
+  })
   it('renders only configured-origin markers as images without HTML injection', () => {
     const manifestUrl = 'https://static.example.test/smoji.json'
     const marker = '正文 ![smoji:挥手](https://static.example.test/wave.webp)'
@@ -321,6 +331,26 @@ describe('approved production surface', () => {
     expect((wrapper.get('#site-name').element as HTMLInputElement).value).toBe("Dejavu's Blog")
     expect(wrapper.find('.savebar').exists()).toBe(false)
     expect(store.dirtyView).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('validates, normalizes and clears the approved image-origin field without losing drafts', async () => {
+    const store = useAdminStore(); store.authenticated = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
+    const save = vi.spyOn(adminApi, 'updateSite').mockImplementation(async input => site({ ...input }))
+    const wrapper = mount(SiteManagementView, { attachTo: document.body, global: { plugins: [pinia] } })
+    await wrapper.get('#smoji-image-origin').setValue('https://cdn.example/path')
+    await wrapper.get('.save-button').trigger('click')
+    expect(save).not.toHaveBeenCalled()
+    expect(wrapper.get('#smoji-image-origin').attributes('aria-invalid')).toBe('true')
+    expect(document.activeElement?.id).toBe('smoji-image-origin')
+    await wrapper.get('#smoji-image-origin').setValue(' https://CDN.example:443/ ')
+    await wrapper.get('.save-button').trigger('click')
+    await flushPromises()
+    expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ smojiImageOrigin: 'https://cdn.example' }))
+    await wrapper.get('#smoji-image-origin').setValue('')
+    await wrapper.get('.save-button').trigger('click')
+    await flushPromises()
+    expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ smojiImageOrigin: '' }))
     wrapper.unmount()
   })
 
@@ -522,7 +552,8 @@ describe('approved production surface', () => {
     expect(wrapper.text()).toContain('表情包')
     expect(wrapper.get('#smoji-enabled').attributes('type')).toBe('radio')
     expect(wrapper.get('#smoji-manifest-url').attributes('type')).toBe('url')
-    expect(wrapper.text()).toContain('可能向该站点暴露访客 IP')
+    expect(wrapper.get('#smoji-image-origin').attributes('type')).toBe('url')
+    expect(wrapper.text()).toContain('可能向该服务器暴露访客 IP')
     expect(wrapper.text()).not.toContain('通知判定预览')
     expect(wrapper.text()).not.toContain('站点域名')
     expect(wrapper.text()).not.toContain('审核方式')

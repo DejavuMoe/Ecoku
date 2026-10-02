@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ecoku · 表情包</title>
+  <link rel="icon" href="../brand/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles-v15.css">
+  <style>
+    .origin-page { padding-bottom: 100px; }
+    .brand { text-decoration: none; }
+    .brand img { width: 28px; height: 28px; }
+    .masthead-main { justify-content: space-between; }
+    .nav a { display: flex; align-items: center; text-decoration: none; }
+    .masthead-main select { background: var(--paper); border: 0; padding: 8px; }
+    .site-static { margin-bottom: 18px; }
+    .rule input { min-height: 44px; }
+    .help a { text-underline-offset: 3px; }
+    .result { color: var(--success); font-size: 13px; padding-block: 16px; }
+    @media (max-width: 760px) { .masthead .in-margin { display: block; } .masthead-inner { display: flex; justify-content: space-between; } .masthead-main { gap: 16px; } }
+  </style>
+</head>
+<body>
+  <header class="masthead"><div class="masthead-inner layout">
+    <div class="in-margin masthead-brand"><a class="brand" href="index-v15.html#sites"><img src="../brand/ecoku-mark.svg" alt=""><span class="wordmark">Ecoku</span></a></div>
+    <div class="in-main masthead-main"><nav class="nav" aria-label="主导航"><a class="nav-link" href="index-v15.html#comments">评论</a><a class="nav-link" href="index-v15.html#sites" aria-current="page">站点</a></nav><select aria-label="外观" id="theme"><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></div>
+  </div></header>
+  <main class="origin-page">
+    <header class="page-head layout"><div class="in-margin head-margin"><div class="site-static"><strong class="site-name">我的博客</strong><span class="site-id">blog</span></div></div><div class="in-main head-main"><h1 class="page-title">站点设置</h1><p class="page-lede">每个接入评论区的网站对应一个站点。</p></div></header>
+    <form id="settings" class="doc" novalidate>
+      <section class="doc-section layout" aria-labelledby="sec-smoji">
+        <div class="in-margin section-margin"><h2 id="sec-smoji">表情包</h2><p>清单和图片由资源服务器直接提供，可能向该服务器暴露访客 IP 等请求信息。</p></div>
+        <div class="in-main section-body">
+          <div class="field"><div class="rule rule-choice" role="radiogroup" aria-labelledby="lbl-smoji"><span class="rule-label" id="lbl-smoji">表情包</span><span class="options"><label><input type="radio" name="enabled" value="1" checked><span>启用</span></label><label><input type="radio" name="enabled" value="0"><span>关闭</span></label></span></div></div>
+          <div class="field"><label class="rule"><span class="rule-label">Smoji 清单</span><input class="mono" id="manifest" type="url" value="https://example.com/smoji.json" maxlength="2048" spellcheck="false" aria-describedby="manifest-help manifest-error"></label><p class="help" id="manifest-help">填写公开的 HTTPS 清单地址。可在 <a href="https://smoji.zsh.moe/" target="_blank" rel="noreferrer">Smoji 工作台</a> 挑选表情，导出后自行托管。</p><p class="field-error" id="manifest-error" role="alert" hidden></p></div>
+          <div class="field"><label class="rule"><span class="rule-label">图片来源</span><input class="mono" id="origin" type="url" value="https://s3-cdn.zsh.moe" placeholder="留空时与清单同源" maxlength="2048" spellcheck="false" aria-describedby="origin-help origin-error"></label><p class="help" id="origin-help">选填。图片放在其他 CDN 时，填写其来源，如 https://s3-cdn.zsh.moe，不含路径。仅允许这个来源的图片。</p><p class="field-error" id="origin-error" role="alert" hidden></p></div>
+          <p class="help">关闭表情包时保留这些地址；历史表情会按文字显示。</p>
+          <p id="result" class="result" role="status" aria-live="polite"></p>
+        </div>
+      </section>
+      <div id="savebar" class="savebar-dock" hidden><div class="layout"><div class="in-main savebar"><p class="savebar-status">有未保存的修改</p><div class="savebar-actions"><button type="reset" class="button button-quiet">撤销修改</button><button type="submit" class="button button-primary">保存更改</button></div></div></div>
+    </form>
+  </main>
+  <script>
+    const form = document.querySelector('#settings');
+    const manifest = document.querySelector('#manifest');
+    const origin = document.querySelector('#origin');
+    const savebar = document.querySelector('#savebar');
+    let saved = JSON.stringify([...new FormData(form), manifest.value, origin.value]);
+    const snapshot = () => JSON.stringify([...new FormData(form), manifest.value, origin.value]);
+    const clearErrors = () => { for (const input of [manifest, origin]) { input.removeAttribute('aria-invalid'); document.querySelector(`#${input.id}-error`).hidden = true; } };
+    form.addEventListener('input', () => { clearErrors(); savebar.hidden = saved === snapshot(); document.querySelector('#result').textContent = ''; });
+    form.addEventListener('reset', () => { clearErrors(); savebar.hidden = true; document.querySelector('#result').textContent = ''; });
+    document.querySelector('#theme').addEventListener('change', event => document.documentElement.dataset.theme = event.target.value);
+    function valid(value, originOnly) { try { const url = new URL(value); const loopback = url.hostname === 'localhost' || /^127\.\d+\.\d+\.\d+$/.test(url.hostname) || url.hostname === '[::1]'; return (url.protocol === 'https:' || url.protocol === 'http:' && loopback) && !url.username && !url.password && !url.href.includes('?') && !url.href.includes('#') && (!originOnly || url.pathname === '/'); } catch { return false; } }
+    form.addEventListener('submit', async event => {
+      event.preventDefault(); clearErrors(); let first;
+      for (const [input, invalid, message] of [[manifest, (form.elements.enabled.value === '1' && !manifest.value.trim()) || (manifest.value.trim() && !valid(manifest.value.trim(), false)), '清单 URL 无效；生产环境需使用 HTTPS'], [origin, origin.value.trim() && !valid(origin.value.trim(), true), '图片来源无效；请填写 HTTPS 来源，不含路径']]) {
+        if (invalid) { const error = document.querySelector(`#${input.id}-error`); error.textContent = message; error.hidden = false; input.setAttribute('aria-invalid', 'true'); first ||= input; }
+      }
+      if (first) { first.focus(); return; }
+      const submit = form.querySelector('[type="submit"]'); submit.disabled = true; submit.textContent = '保存中…';
+      await new Promise(resolve => setTimeout(resolve, 350));
+      manifest.defaultValue = manifest.value = manifest.value.trim(); origin.defaultValue = origin.value = origin.value.trim() ? new URL(origin.value.trim()).origin : '';
+      for (const radio of form.elements.enabled) radio.defaultChecked = radio.checked;
+      saved = snapshot(); savebar.hidden = true; submit.disabled = false; submit.textContent = '保存更改'; document.querySelector('#result').textContent = '站点已保存';
+    });
+  </script>
+</body>
+</html>

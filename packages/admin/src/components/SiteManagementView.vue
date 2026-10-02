@@ -5,6 +5,7 @@ import { useAdminStore } from '../stores/admin'
 import type { SiteSummary, SiteWrite } from '../types'
 import SitePicker from './SitePicker.vue'
 import SaveBar from './SaveBar.vue'
+import { normalizeSmojiImageOrigin } from '../smoji'
 
 const store = useAdminStore()
 const { sites, selectedSite, siteBusy, siteMessage, createSiteRequest } = storeToRefs(store)
@@ -13,7 +14,7 @@ const baseline = ref('')
 const dirty = computed(() => creating.value || JSON.stringify([draft, originsText.value]) !== baseline.value)
 const originsText = ref('')
 const errors = reactive<Record<string, string>>({})
-const defaults = (): SiteWrite => ({ id: '', siteUrl: '', name: '', allowedOrigins: [], defaultSort: 'newest', emailRequired: true, websiteRequired: false, placeholder: '写下评论（仅支持纯文本）', commentLimit: 1000, emptyMessage: '还没有评论\n成为第一个留下评论的人。', smojiEnabled: false, smojiManifestUrl: '', bloggerNickname: '', bloggerEmail: '', bloggerBadge: '[博主]', bloggerPassphrase: '', bloggerPassphraseSet: false, revision: 0 })
+const defaults = (): SiteWrite => ({ id: '', siteUrl: '', name: '', allowedOrigins: [], defaultSort: 'newest', emailRequired: true, websiteRequired: false, placeholder: '写下评论（仅支持纯文本）', commentLimit: 1000, emptyMessage: '还没有评论\n成为第一个留下评论的人。', smojiEnabled: false, smojiManifestUrl: '', smojiImageOrigin: '', bloggerNickname: '', bloggerEmail: '', bloggerBadge: '[博主]', bloggerPassphrase: '', bloggerPassphraseSet: false, revision: 0 })
 const draft = reactive<SiteWrite>(defaults())
 const clearErrors = () => Object.keys(errors).forEach((key) => delete errors[key])
 function applySite(site: SiteSummary | null) {
@@ -57,6 +58,8 @@ function validate() {
       if ((url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) || url.username || url.password || url.href.includes('?') || url.href.includes('#')) throw new Error()
     } catch { errors.smojiManifestUrl = '清单 URL 无效；生产环境需使用 HTTPS' }
   } else if (draft.smojiEnabled) errors.smojiManifestUrl = '启用表情包时必须填写清单 URL'
+  try { draft.smojiImageOrigin = normalizeSmojiImageOrigin(draft.smojiImageOrigin) }
+  catch { errors.smojiImageOrigin = '图片来源无效；请填写 HTTPS 来源，不含路径' }
   if (Boolean(draft.bloggerNickname) !== Boolean(draft.bloggerEmail)) {
     errors.bloggerIdentity = '博主昵称与邮箱需同时填写'
   } else if (draft.bloggerNickname && ([...draft.bloggerNickname].length > 80 || /[\r\n]/.test(draft.bloggerNickname))) {
@@ -172,7 +175,7 @@ async function submit() {
           </section>
 
           <section class="doc-section layout" aria-labelledby="sec-smoji">
-            <div class="in-margin section-margin"><h2 id="sec-smoji">表情包</h2><p>表情图片由清单所在的服务器直接提供，可能向该站点暴露访客 IP 等请求信息。</p></div>
+            <div class="in-margin section-margin"><h2 id="sec-smoji">表情包</h2><p>清单和图片由资源服务器直接提供，可能向该服务器暴露访客 IP 等请求信息。</p></div>
             <div class="in-main section-body">
               <div class="field">
                 <div class="rule rule-choice" role="radiogroup" aria-labelledby="lbl-smoji">
@@ -181,10 +184,16 @@ async function submit() {
                 </div>
               </div>
               <div class="field">
-                <label class="rule"><span class="rule-label">Smoji 清单</span><input id="smoji-manifest-url" class="mono" type="url" maxlength="2048" spellcheck="false" placeholder="https://static.example.com/smoji.json" v-model="draft.smojiManifestUrl" :aria-invalid="Boolean(errors.smojiManifestUrl)"></label>
-                <p class="help">HTTPS 地址，图片须与清单同源。关闭表情包时可以保留此地址。</p>
-                <p v-if="errors.smojiManifestUrl" class="field-error">{{ errors.smojiManifestUrl }}</p>
+                <label class="rule"><span class="rule-label">Smoji 清单</span><input id="smoji-manifest-url" class="mono" type="url" maxlength="2048" spellcheck="false" placeholder="https://static.example.com/smoji.json" v-model="draft.smojiManifestUrl" :aria-invalid="Boolean(errors.smojiManifestUrl)" :aria-describedby="errors.smojiManifestUrl ? 'smoji-manifest-help smoji-manifest-error' : 'smoji-manifest-help'"></label>
+                <p class="help" id="smoji-manifest-help">填写公开的 HTTPS 清单地址。可在 <a href="https://smoji.zsh.moe/" target="_blank" rel="noreferrer">Smoji 工作台</a> 挑选表情，导出后自行托管。</p>
+                <p v-if="errors.smojiManifestUrl" id="smoji-manifest-error" class="field-error">{{ errors.smojiManifestUrl }}</p>
               </div>
+              <div class="field">
+                <label class="rule"><span class="rule-label">图片来源</span><input id="smoji-image-origin" class="mono" type="url" maxlength="2048" spellcheck="false" placeholder="留空时与清单同源" v-model="draft.smojiImageOrigin" :aria-invalid="Boolean(errors.smojiImageOrigin)" :aria-describedby="errors.smojiImageOrigin ? 'smoji-image-help smoji-image-error' : 'smoji-image-help'"></label>
+                <p class="help" id="smoji-image-help">选填。图片放在其他 CDN 时，填写其来源，如 https://s3-cdn.zsh.moe，不含路径。仅允许这个来源的图片。</p>
+                <p v-if="errors.smojiImageOrigin" id="smoji-image-error" class="field-error">{{ errors.smojiImageOrigin }}</p>
+              </div>
+              <p class="help">关闭表情包时保留这些地址；历史表情会按文字显示。</p>
             </div>
           </section>
 

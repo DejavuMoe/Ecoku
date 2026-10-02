@@ -10,6 +10,46 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+func TestNormalizeSmojiImageOrigin(t *testing.T) {
+	for raw, want := range map[string]string{"": "", " https://CDN.example:0443/ ": "https://cdn.example", "http://127.0.0.1:8080": "http://127.0.0.1:8080"} {
+		got, err := NormalizeSmojiImageOrigin(raw)
+		if err != nil || got != want {
+			t.Fatalf("%q: got %q, %v; want %q", raw, got, err, want)
+		}
+	}
+	for _, raw := range []string{"https://cdn.example/packs", "https://cdn.example?", "https://cdn.example#", "https://user@cdn.example", "https://cdn.example:65536", "http://cdn.example", "//cdn.example", "javascript:alert(1)", "https://*.example"} {
+		if _, err := NormalizeSmojiImageOrigin(raw); err == nil {
+			t.Fatalf("unsafe image origin accepted: %q", raw)
+		}
+	}
+}
+
+func TestDeploymentTemplatesUseDocumentedDefaults(t *testing.T) {
+	t.Setenv(runtimeEnvironment, containerRuntime)
+	for _, name := range []string{adminUsernameEnv, adminPasswordHashEnv, adminTokenKeyEnv} {
+		t.Setenv(name, "")
+	}
+	previousConfig, previousPort, previousLog := GlobalConfig, Port, LogFilePath
+	t.Cleanup(func() { GlobalConfig, Port, LogFilePath = previousConfig, previousPort, previousLog })
+	for _, name := range []string{"config.yaml.example", "config.en.yaml.example", "config.zh-hant.yaml.example", "config.ja.yaml.example"} {
+		t.Run(name, func(t *testing.T) {
+			if err := LoadConfigFile(filepath.Join("..", "..", "deploy", name)); err != nil {
+				t.Fatal(err)
+			}
+			cfg := GlobalConfig
+			if cfg.RateLimit != (RateLimitConfig{WindowSeconds: 60, CommentSubmit: 5, CommentList: 60, CommentDelete: 30, AdminLogin: 5, NotificationTest: 5}) {
+				t.Fatalf("unexpected template limits: %#v", cfg.RateLimit)
+			}
+			if cfg.Site.Port != 12123 || cfg.Site.LogPath != "" || len(cfg.Site.TrustedProxies) != 0 || len(cfg.Sites) != 0 {
+				t.Fatal("template unexpectedly enabled a legacy deployment setting")
+			}
+			if !cfg.Admin.Enabled || len(cfg.Admin.AllowedOrigins) != 1 || cfg.Admin.AllowedOrigins[0] != "https://ecoku.example.com" || cfg.Paths.SQLitePath != containerSQLitePath {
+				t.Fatal("template changed the default admin origin or database location")
+			}
+		})
+	}
+}
+
 // setAdminEnvironment provides valid administrator secrets and returns the
 // password hash.
 func setAdminEnvironment(t *testing.T, tokenKey string) string {

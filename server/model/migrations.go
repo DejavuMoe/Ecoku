@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	LatestSchemaVersion               = 10
+	LatestSchemaVersion               = 11
 	freshSchemaVersion                = 1
 	freshSchemaName                   = "fresh_published_comments"
 	freshSchemaDefinition             = "sqlite3:fresh-v1:published-comments:site-display-config:notifications:tombstones"
@@ -249,6 +249,7 @@ func validateKnownSchemaHistory(database *gorm.DB) (int, error) {
 		adminSessionSchemaVersion:        {name: adminSessionSchemaName, definition: adminSessionSchemaDefinition},
 		outboxDeliveryStateSchemaVersion: {name: outboxDeliveryStateSchemaName, definition: outboxDeliveryStateSchemaDefinition},
 		adminAccountSchemaVersion:        {name: adminAccountSchemaName, definition: adminAccountSchemaDefinition},
+		smojiImageOriginSchemaVersion:    {name: smojiImageOriginSchemaName, definition: smojiImageOriginSchemaDefinition},
 	}
 	for index, row := range rows {
 		version := index + 1
@@ -306,6 +307,10 @@ func migrateSchema(database *gorm.DB, currentVersion int) error {
 			}
 		case adminAccountSchemaVersion:
 			if err := migrateAdminAccount(database); err != nil {
+				return err
+			}
+		case smojiImageOriginSchemaVersion:
+			if err := migrateSmojiImageOrigin(database); err != nil {
 				return err
 			}
 		default:
@@ -633,7 +638,7 @@ func validateCurrentSchema(database *gorm.DB) error {
 			return fmt.Errorf("数据库缺少当前 schema 表 %s", table)
 		}
 	}
-	for _, column := range []string{"blogger_nickname", "blogger_email", "blogger_badge", "blogger_passphrase_hash", "smoji_enabled", "smoji_manifest_url"} {
+	for _, column := range []string{"blogger_nickname", "blogger_email", "blogger_badge", "blogger_passphrase_hash", "smoji_enabled", "smoji_manifest_url", "smoji_image_origin"} {
 		var count int64
 		if err := database.Raw("SELECT COUNT(*) FROM pragma_table_info('sites') WHERE name = ?", column).Scan(&count).Error; err != nil || count != 1 {
 			return fmt.Errorf("数据库缺少当前 schema 字段 sites.%s", column)

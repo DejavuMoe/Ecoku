@@ -153,6 +153,7 @@ type CommentFormConfig struct {
 type SmojiPublicConfig struct {
 	Enabled     bool   `json:"enabled"`
 	ManifestURL string `json:"manifestUrl"`
+	ImageOrigin string `json:"imageOrigin,omitempty"`
 }
 
 type DatabaseConfig struct {
@@ -730,6 +731,19 @@ func NormalizeSmojiManifestURL(raw string) (string, error) {
 		}
 	}
 	return parsed.String(), nil
+}
+
+// NormalizeSmojiImageOrigin accepts one explicitly trusted image origin. Empty
+// keeps the manifest's origin; URL paths never expand the trust boundary.
+func NormalizeSmojiImageOrigin(raw string) (string, error) {
+	if strings.Contains(raw, "*") {
+		return "", fmt.Errorf("表情图片来源不支持通配符")
+	}
+	normalized, err := NormalizeSmojiManifestURL(raw)
+	if err != nil || normalized == "" {
+		return normalized, err
+	}
+	return NormalizeOrigin(normalized)
 }
 
 func IsOriginAllowed(site *RegisteredSiteConfig, origin string) bool {

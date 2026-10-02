@@ -247,9 +247,9 @@ func plainAuthor(comment model.Comment, site model.Site) string {
 }
 
 // emailContentHTML renders Smoji markers that still belong to the site's
-// current manifest origin as images; any other marker keeps only its label.
+// trusted image origin as images; any other marker keeps only its label.
 func emailContentHTML(content string, site model.Site) string {
-	origin := smojiOrigin(site)
+	origin := site.SmojiOrigin()
 	var b strings.Builder
 	cursor := 0
 	for _, match := range smojiMarkerPattern.FindAllStringSubmatchIndex(content, -1) {
@@ -281,14 +281,6 @@ func plainContent(content string) string {
 
 func smojiText(label string) string {
 	return "[表情：" + strings.TrimSpace(label) + "]"
-}
-
-func smojiOrigin(site model.Site) string {
-	if !site.SmojiEnabled {
-		return ""
-	}
-	_, origin := normalizedOrigin(site.SmojiManifestURL)
-	return origin
 }
 
 func normalizedOrigin(raw string) (string, string) {

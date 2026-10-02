@@ -4,11 +4,26 @@ export type AdminSmojiToken =
 
 const MARKER_PATTERN = /!\[smoji:([^\]\r\n]+)\]\((https?:\/\/[^()\s]+)\)/g
 
-export function tokenizeAdminSmoji(content: string, enabled: boolean, manifestUrl: string): AdminSmojiToken[] {
+export function normalizeSmojiImageOrigin(value: string): string {
+  if (!value.trim()) return ''
+  const url = new URL(value.trim())
+  const loopback = url.hostname === 'localhost' || /^127\.\d+\.\d+\.\d+$/.test(url.hostname) || url.hostname === '[::1]'
+  if ((url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback))
+    || url.username || url.password || url.href.includes('?') || url.href.includes('#') || url.hostname.includes('*')
+    || url.pathname !== '/') throw new Error('invalid-image-origin')
+  return url.origin
+}
+
+export function tokenizeAdminSmoji(content: string, enabled: boolean, manifestUrl: string, imageOrigin = ''): AdminSmojiToken[] {
   if (!enabled || !manifestUrl) return [{ type: 'text', value: content }]
   let origin = ''
   try {
-    origin = new URL(manifestUrl).origin
+    const url = new URL(imageOrigin ? normalizeSmojiImageOrigin(imageOrigin) : manifestUrl)
+    const loopback = url.hostname === 'localhost' || /^127\.\d+\.\d+\.\d+$/.test(url.hostname) || url.hostname === '[::1]'
+    if ((url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback))
+      || url.username || url.password || url.href.includes('?') || url.href.includes('#') || url.hostname.includes('*')
+      || (imageOrigin && url.pathname !== '/')) throw new Error()
+    origin = url.origin
   } catch {
     return [{ type: 'text', value: content }]
   }
@@ -19,7 +34,7 @@ export function tokenizeAdminSmoji(content: string, enabled: boolean, manifestUr
     if (match.index > cursor) tokens.push({ type: 'text', value: content.slice(cursor, match.index) })
     try {
       const source = new URL(match[2])
-      if (source.origin !== origin || source.username || source.password || source.search || source.hash) throw new Error()
+      if (source.origin !== origin || source.username || source.password || source.href.includes('?') || source.href.includes('#')) throw new Error()
       tokens.push({ type: 'image', label: match[1], src: source.toString() })
     } catch {
       tokens.push({ type: 'text', value: match[0] })
@@ -31,6 +46,6 @@ export function tokenizeAdminSmoji(content: string, enabled: boolean, manifestUr
 }
 
 // One-line previews, such as a quoted parent, read each emoji the body would render as its label.
-export function smojiPlainText(content: string, enabled: boolean, manifestUrl: string): string {
-  return tokenizeAdminSmoji(content, enabled, manifestUrl).map((token) => token.type === 'image' ? `[表情：${token.label}]` : token.value).join('')
+export function smojiPlainText(content: string, enabled: boolean, manifestUrl: string, imageOrigin = ''): string {
+  return tokenizeAdminSmoji(content, enabled, manifestUrl, imageOrigin).map((token) => token.type === 'image' ? `[表情：${token.label}]` : token.value).join('')
 }

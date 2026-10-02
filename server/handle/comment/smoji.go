@@ -17,15 +17,10 @@ func validSmojiContent(content string, site model.Site) bool {
 	if len(matches) == 0 {
 		return !strings.Contains(content, "![smoji:")
 	}
-	if !site.SmojiEnabled {
+	origin := site.SmojiOrigin()
+	if origin == "" {
 		return false
 	}
-	manifest, err := config.NormalizeSmojiManifestURL(site.SmojiManifestURL)
-	if err != nil || manifest == "" {
-		return false
-	}
-	manifestURL, _ := url.Parse(manifest)
-	origin := strings.ToLower(manifestURL.Scheme + "://" + manifestURL.Host)
 	previousEnd := 0
 	for _, match := range matches {
 		if strings.Contains(content[previousEnd:match[0]], "![smoji:") {

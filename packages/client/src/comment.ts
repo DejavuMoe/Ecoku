@@ -419,15 +419,21 @@ export class CommentSurface {
   }
 
   private applyFormConfig(next: CommentFormConfig, initializeSort = true): void {
-    const previousManifestURL = this.formConfig.smoji.manifestUrl
+    const previousSmoji = this.formConfig.smoji
     this.formConfig = { ...next, captcha: { ...next.captcha }, smoji: { ...next.smoji } }
-    if (previousManifestURL !== next.smoji.manifestUrl) {
+    if (previousSmoji.manifestUrl !== next.smoji.manifestUrl
+      || previousSmoji.imageOrigin !== next.smoji.imageOrigin || previousSmoji.enabled !== next.smoji.enabled) {
       this.smojiManifestController?.abort()
       this.smojiManifestPromise = null
       for (const control of this.smojiControls) {
         this.closeSmojiControl(control)
         const panel = control.querySelector<HTMLElement>('.ecoku-smoji-panel')
         if (panel) { panel.replaceChildren(); delete panel.dataset.loaded }
+      }
+      for (const form of [this.rootForm, this.activeReply?.form]) {
+        const preview = form?.querySelector<HTMLElement>('.ecoku-composer-preview')
+        if (preview) { preview.hidden = true; preview.replaceChildren() }
+        form?.querySelector('.ecoku-preview-trigger')?.setAttribute('aria-pressed', 'false')
       }
     }
     for (const control of this.smojiControls) control.hidden = !next.smoji.enabled
@@ -716,7 +722,7 @@ export class CommentSurface {
     const copy = createElement('div', 'ecoku-comment-copy')
     const paragraph = createElement('p')
     if (comment.deleted) paragraph.textContent = zhCN.deletedBody
-    else renderSmojiContent(paragraph, comment.content, this.formConfig.smoji.enabled, this.formConfig.smoji.manifestUrl)
+    else renderSmojiContent(paragraph, comment.content, this.formConfig.smoji.enabled, this.formConfig.smoji.manifestUrl, this.formConfig.smoji.imageOrigin)
     copy.append(paragraph)
     contentShell.append(copy)
     if (replySlot) contentShell.append(replySlot)
@@ -961,7 +967,7 @@ export class CommentSurface {
         if (!this.smojiManifestPromise) {
           const controller = new AbortController()
           this.smojiManifestController = controller
-          this.smojiManifestPromise = loadSmojiManifest(this.formConfig.smoji.manifestUrl, controller.signal)
+          this.smojiManifestPromise = loadSmojiManifest(this.formConfig.smoji.manifestUrl, controller.signal, this.formConfig.smoji.imageOrigin)
             .finally(() => {
               if (this.smojiManifestController === controller) this.smojiManifestController = null
             })
@@ -1001,7 +1007,7 @@ export class CommentSurface {
         preview.textContent = '暂无可预览内容。'
         return
       }
-      renderSmojiContent(preview, content, this.formConfig.smoji.enabled, this.formConfig.smoji.manifestUrl)
+      renderSmojiContent(preview, content, this.formConfig.smoji.enabled, this.formConfig.smoji.manifestUrl, this.formConfig.smoji.imageOrigin)
     }
     button.addEventListener('click', () => {
       const opening = preview.hidden

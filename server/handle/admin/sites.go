@@ -39,6 +39,7 @@ type SiteDTO struct {
 	EmptyMessage         string   `json:"empty_message"`
 	SmojiEnabled         bool     `json:"smoji_enabled"`
 	SmojiManifestURL     string   `json:"smoji_manifest_url"`
+	SmojiImageOrigin     string   `json:"smoji_image_origin"`
 	BloggerNickname      string   `json:"blogger_nickname"`
 	BloggerEmail         string   `json:"blogger_email"`
 	BloggerBadge         string   `json:"blogger_badge"`
@@ -61,6 +62,7 @@ type SiteWriteRequest struct {
 	EmptyMessage      string   `json:"empty_message"`
 	SmojiEnabled      bool     `json:"smoji_enabled"`
 	SmojiManifestURL  string   `json:"smoji_manifest_url"`
+	SmojiImageOrigin  *string  `json:"smoji_image_origin"`
 	BloggerNickname   string   `json:"blogger_nickname"`
 	BloggerEmail      string   `json:"blogger_email"`
 	BloggerBadge      string   `json:"blogger_badge"`
@@ -247,6 +249,17 @@ func validateSiteWrite(c *gin.Context, request SiteWriteRequest, creating bool, 
 		return model.SiteWrite{}, false
 	}
 	bloggerNickname := strings.TrimSpace(request.BloggerNickname)
+	smojiImageOrigin := ""
+	if existing != nil {
+		smojiImageOrigin = existing.SmojiImageOrigin
+	}
+	if request.SmojiImageOrigin != nil {
+		smojiImageOrigin, err = config.NormalizeSmojiImageOrigin(*request.SmojiImageOrigin)
+		if err != nil || len(smojiImageOrigin) > maximumSiteURLLength {
+			utils.SendError(c, http.StatusBadRequest, "表情图片来源无效；请填写 HTTPS 来源，不含路径")
+			return model.SiteWrite{}, false
+		}
+	}
 	bloggerEmail := strings.TrimSpace(request.BloggerEmail)
 	if (bloggerNickname == "") != (bloggerEmail == "") {
 		utils.SendError(c, http.StatusBadRequest, "博主昵称和邮箱必须同时填写或同时留空")
@@ -279,7 +292,8 @@ func validateSiteWrite(c *gin.Context, request SiteWriteRequest, creating bool, 
 		WebsiteRequired: websiteRequired, Placeholder: placeholder,
 		CommentLimit: commentLimit, EmptyMessage: emptyMessage,
 		SmojiEnabled: request.SmojiEnabled, SmojiManifestURL: smojiManifestURL,
-		BloggerNickname: bloggerNickname, BloggerEmail: bloggerEmail,
+		SmojiImageOrigin: smojiImageOrigin,
+		BloggerNickname:  bloggerNickname, BloggerEmail: bloggerEmail,
 		BloggerBadge:   bloggerBadge,
 		AllowedOrigins: origins, Revision: request.Revision,
 	}
@@ -317,7 +331,8 @@ func siteDTO(site model.Site) SiteDTO {
 		WebsiteRequired: site.WebsiteRequired, Placeholder: site.Placeholder,
 		CommentLimit: site.CommentLimit, EmptyMessage: site.EmptyMessage,
 		SmojiEnabled: site.SmojiEnabled, SmojiManifestURL: site.SmojiManifestURL,
-		BloggerNickname: site.BloggerNickname, BloggerEmail: site.BloggerEmail,
+		SmojiImageOrigin: site.SmojiImageOrigin,
+		BloggerNickname:  site.BloggerNickname, BloggerEmail: site.BloggerEmail,
 		BloggerBadge:         site.BloggerBadge,
 		BloggerPassphraseSet: strings.TrimSpace(site.BloggerPassphraseHash) != "",
 		Revision:             site.Revision, CreatedAt: site.CreatedAt.UTC().Format(time.RFC3339Nano),
