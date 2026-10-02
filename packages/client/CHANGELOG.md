@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.3.0 - 2026-10-03
+
+- 首次通过 GitHub Actions 发布 npm SDK，版本跟随项目 tag。
+- 支持管理员指定 Smoji 图片来源，清单与图片可以分别托管。
+
 - SDK 版本与仓库 release tag 对齐，准备通过 GitHub Actions 发布 npm 包。
 - 发表框与已发布正文共用字号和颜色；接入与 SDK 不再显示「正在加载评论…」。
 - 可选 `cssURL`：设置后不再注入默认样式。

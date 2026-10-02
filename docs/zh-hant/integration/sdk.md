@@ -6,11 +6,17 @@
 
 每個 Ecoku 實例都在 `/client/ecoku.umd.js` 提供 SDK，載入後會註冊全域變數 `Ecoku`。
 
-::: info npm 套件尚未發布
-SDK 的套件名稱為 `ecoku`，但目前還沒有發布到 npm，`npm install ecoku` 無法使用。需要 ES 模組或 TypeScript 型別時，可以從原始碼儲存庫的 `packages/client` 目錄自行建置（`pnpm build`），產出位於 `dist/`。
+SDK 的 npm 套件名稱為 `ecoku`，版本跟隨專案 tag。在對應 npm 發布任務成功後，可在網站專案中安裝精確版本：
 
-儲存庫已設定隨 GitHub release tag 發布 npm 套件，SDK 版本與 tag 去掉 `v` 後的版本一致。首次發布成功後，可在網站專案中執行 `pnpm add --save-exact ecoku`，再使用 `import Ecoku from 'ecoku'`；VitePress 的自訂主題也使用這個入口。工作流程設定完成不代表套件已可安裝，首次發布前仍使用下方的實例託管檔案。
-:::
+```bash
+pnpm add --save-exact ecoku@0.3.0
+```
+
+```ts
+import Ecoku from 'ecoku'
+```
+
+VitePress 的自訂主題也使用這個入口；只在瀏覽器掛載後建立實例，並在路由切換時更新頁面 key。發布尚未完成時，可先使用下方實例託管的 UMD 檔案，或在原始碼儲存庫的 `packages/client` 執行 `pnpm build`，從 `dist/` 取得產物。
 
 在單頁應用程式中，可以用一個函式依需要載入 UMD 檔案，確保只載入一次：
 

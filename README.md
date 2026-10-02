@@ -8,7 +8,7 @@
 - 一个实例可以服务多个网站；
 - 可选邮件 / Telegram 通知，以及 Cloudflare Turnstile 或自托管 Cap 人机验证。
 
-当前版本：`v0.2.9`，镜像 `git.via.moe/dejavu/ecoku:v0.2.9`。
+当前版本：`v0.3.0`，镜像 `git.via.moe/dejavu/ecoku:v0.3.0`。
 
 文档：<https://ecoku.zsh.moe>
 

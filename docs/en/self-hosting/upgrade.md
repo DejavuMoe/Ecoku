@@ -1,6 +1,6 @@
 # Upgrade
 
-The current release is **v0.2.9** (released 2026-10-02, schema v10).
+The current release is **v0.3.0** (released 2026-10-03, schema v11).
 
 ## What happens during an upgrade
 
@@ -13,7 +13,7 @@ Upgrading means changing the image in `compose.yaml` to the new version and star
 
 That makes a backup taken before the upgrade the only way to roll back to an older schema.
 
-You can skip versions and upgrade directly, for example from v0.1.8 straight to v0.2.9. The intermediate migrations run one after another. But read the upgrade notes for every version you skip, because some versions require config changes (for example, [v0.2.4](./upgrades/v0.2.4) requires `admin.token_ttl_minutes` to be 480 or omitted).
+You can skip versions and upgrade directly, for example from v0.1.8 straight to v0.3.0. The intermediate migrations run one after another. But read the upgrade notes for every version you skip, because some versions require config changes (for example, [v0.2.4](./upgrades/v0.2.4) requires `admin.token_ttl_minutes` to be 480 or omitted).
 
 ## Legacy configuration migration for v0.2.9 {#legacy-config}
 
@@ -49,7 +49,7 @@ To roll back to v0.2.8, stop the service and restore the original Compose, confi
 **3. Change the image version.** Edit `~/Ecoku/compose.yaml` and change `image` to the target version, for example:
 
 ```yaml
-    image: "git.via.moe/dejavu/ecoku:v0.2.9"
+    image: "git.via.moe/dejavu/ecoku:v0.3.0"
 ```
 
 Use an exact version number, not `latest`. If the upgrade notes ask you to change `app/config.yaml` or `ecoku.env`, change them at the same time.
@@ -84,6 +84,7 @@ First check whether the old and new versions have the same schema (see the table
 
 | Version | Release date | Schema | Highlights |
 | --- | --- | --- | --- |
+| [v0.3.0](./upgrades/v0.3.0) | 2026-10-03 | v10 → v11 | Separate Smoji image origin, npm SDK and GHCR releases, configuration templates and documentation theme. |
 | [v0.2.9](./upgrades/v0.2.9) | 2026-10-02 | v9 → v10 | First-login password setup, persistent administrator and keys, legacy compatibility, and admin fixes. |
 | [v0.2.8](./upgrades/v0.2.8) | 2026-10-01 | v9 | The admin console adds a comment stream, row-based settings, shortcuts and bottom navigation; container defaults allow shorter deployment templates. |
 | [v0.2.7](./upgrades/v0.2.7) | 2026-09-29 | v8 → v9 | Notification emails use the paper-and-ink look and system fonts, with the post title in the subject; deleting a comment cancels pending notifications and retracts sent Telegram messages; the queue stops retrying deliveries that cannot succeed. |

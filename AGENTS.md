@@ -69,7 +69,7 @@
 - GitHub Actions 的 `.github/workflows/ci.yml` 验证 `master` push / PR；`release.yml` 在 `v*` tag 上先校验版本并复用 CI
   验证该 tag，再发布 GHCR 双架构镜像与同版本 npm SDK，最后创建 GitHub Release。文档仅保存构建产物，不部署。
   Woodpecker 配置保留；GitHub 的 GHCR 发布不替换现有 Compose 的 Forgejo 精确镜像。发布设置见 `packages/client/PUBLISH.md`。
-- 文档与 Compose 模板中的 Docker 镜像统一使用实际注册地址与精确发布版本号（`git.via.moe/dejavu/ecoku:v` + `VERSION`，禁止占位镜像或浮动 tag，当前为 `v0.2.9`）；真实域名、密码、token、SMTP、Telegram、数据库和日志等敏感信息仍使用占位符，不得进 Git。
+- 文档与 Compose 模板中的 Docker 镜像统一使用实际注册地址与精确发布版本号（`git.via.moe/dejavu/ecoku:v` + `VERSION`，禁止占位镜像或浮动 tag，当前为 `v0.3.0`）；真实域名、密码、token、SMTP、Telegram、数据库和日志等敏感信息仍使用占位符，不得进 Git。
 - 提交、推送、tag、镜像发布、生产部署和真实数据库操作需要当前任务的明确授权。
 - 新 tag 若可能影响平滑升级（schema、Compose 挂载、配置键、日志出口、镜像契约），回复中先写：
   停服冷备份 → 改精确镜像 tag → `sudo docker compose pull && sudo docker compose up -d` →

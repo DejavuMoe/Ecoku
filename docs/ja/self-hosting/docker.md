@@ -1,7 +1,7 @@
 # Docker デプロイ
 
 ::: info アップグレードと設定移行
-このページは v0.2.9 のデプロイ手順です。v0.2.8 を更新する前に[アップグレードと旧設定の移行](./upgrade#legacy-config)を確認してください。既存のインスタンスは古い `ecoku.env` と Compose をそのまま使えます。新しいログインを確認してから古い環境変数を削除します。
+このページは v0.3.0 のデプロイ手順です。v0.2.8 を更新する前に[アップグレードと旧設定の移行](./upgrade#legacy-config)を確認してください。既存のインスタンスは古い `ecoku.env` と Compose をそのまま使えます。新しいログインを確認してから古い環境変数を削除します。
 :::
 
 新規デプロイに必要なのは `compose.yaml`、`app/config.yaml`、`data/` だけです。Ecoku は初回起動時に管理者パスワード、セッション署名キー、通知暗号化マスターキーを自動生成します。
@@ -39,7 +39,7 @@ sudo chmod 750 data
 ```yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.2.9"
+    image: "git.via.moe/dejavu/ecoku:v0.3.0"
     init: true
     restart: unless-stopped
     container_name: ecoku

@@ -6,11 +6,17 @@
 
 どの Ecoku インスタンスも `/client/ecoku.umd.js` で SDK を提供しており、読み込むとグローバル変数 `Ecoku` が登録されます。
 
-::: info npm パッケージは未公開です
-SDK のパッケージ名は `ecoku` ですが、まだ npm に公開されていないため、`npm install ecoku` は使えません。ES モジュールや TypeScript の型定義が必要な場合は、ソースリポジトリの `packages/client` ディレクトリで自分でビルド（`pnpm build`）でき、成果物は `dist/` に出力されます。
+SDK の npm パッケージ名は `ecoku` で、バージョンはプロジェクトの tag と一致します。対応する npm 公開ジョブの成功後、サイトのプロジェクトに固定バージョンをインストールできます。
 
-GitHub の release tag に合わせて npm パッケージを公開するワークフローを設定しています。SDK のバージョンは tag から `v` を除いた値です。初回の公開が成功した後は、サイトのプロジェクトで `pnpm add --save-exact ecoku` を実行し、`import Ecoku from 'ecoku'` を使用できます。VitePress のカスタムテーマも同じエントリーポイントを使います。ワークフローの設定だけではインストール可能になりません。初回公開までは、以下のインスタンス配信ファイルを使用してください。
-:::
+```bash
+pnpm add --save-exact ecoku@0.3.0
+```
+
+```ts
+import Ecoku from 'ecoku'
+```
+
+VitePress のカスタムテーマも同じエントリーポイントを使います。ブラウザーでのマウント後にのみインスタンスを作成し、ルート変更時にページ key を更新してください。公開が完了していない場合は、以下のインスタンス配信 UMD を使うか、ソースの `packages/client` で `pnpm build` を実行して `dist/` の成果物を利用できます。
 
 シングルページアプリでは、UMD ファイルを必要なときに一度だけ読み込む関数を用意できます。
 
