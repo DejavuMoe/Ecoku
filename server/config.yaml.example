@@ -1,5 +1,5 @@
 # 本地开发配置：复制为 server/config.yaml。字段说明见 docs/reference/configuration.md，
-# 管理员凭据只从环境变量读取，见 docs/contribute/local-dev.md。
+# 管理员凭据只从环境变量读取，见 docs/contribute/local-dev.md。站点在管理后台创建。
 
 notifications:
   instance_public_url: "http://127.0.0.1:12123"
@@ -8,12 +8,3 @@ notifications:
 admin:
   allowed_origins:
     - "http://localhost:5174"
-
-# 只在空数据库首次初始化时写入；之后在管理后台修改站点。
-sites:
-  - id: "example-site"
-    site_url: "https://example.com"
-    name: "示例站点"
-    allowed_origins:
-      - "http://localhost:3000"
-      - "http://localhost:5173"

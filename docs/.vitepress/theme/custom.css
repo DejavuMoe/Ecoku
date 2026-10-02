@@ -5,8 +5,7 @@
   --vp-c-brand-soft: rgba(15, 118, 110, 0.08);
   --vp-home-hero-name-color: transparent;
   --vp-home-hero-name-background: linear-gradient(125deg, #0f766e 10%, #0d9488 45%, #65a30d 95%);
-  --vp-home-hero-image-background-image: linear-gradient(145deg, #99f6e4 15%, #ccfbf1 45%, #d9f99d 85%);
-  --vp-home-hero-image-filter: blur(40px);
+  --vp-home-hero-image-background-image: none;
   --vp-button-brand-bg: #0f766e;
   --vp-button-brand-hover-bg: #0d9488;
   --vp-button-brand-active-bg: #115e59;
@@ -65,8 +64,6 @@
   --vp-c-brand-3: #99f6e4;
   --vp-c-brand-soft: rgba(45, 212, 191, 0.12);
   --vp-home-hero-name-background: linear-gradient(125deg, #2dd4bf 5%, #5eead4 40%, #a3e635 95%);
-  --vp-home-hero-image-background-image: linear-gradient(145deg, #115e59 10%, #134e4a 45%, #365314 90%);
-  --vp-home-hero-image-filter: blur(48px);
   --vp-button-brand-bg: #0d9488;
   --vp-button-brand-hover-bg: #14b8a6;
   --vp-button-brand-active-bg: #0f766e;
@@ -103,31 +100,17 @@
     linear-gradient(90deg, rgba(94, 234, 212, 0.04) 1px, transparent 1px);
 }
 
+/* The hero shows the same 區 seal as the nav logo, only larger. */
 .VPHomeHero .image-src {
-  width: min(350px, 78vw);
-  max-width: 350px;
-  max-height: 350px;
-  filter: drop-shadow(0 20px 30px rgba(15, 118, 110, 0.22));
-  transition: transform 0.35s ease, filter 0.35s ease;
-}
-
-.VPHomeHero .image-src:hover {
-  transform: translate(-50%, calc(-50% - 4px)) scale(1.02);
-  filter: drop-shadow(0 26px 36px rgba(15, 118, 110, 0.28));
-}
-
-.dark .VPHomeHero .image-src {
-  filter: drop-shadow(0 22px 32px rgba(0, 0, 0, 0.4));
-}
-
-.dark .VPHomeHero .image-src:hover {
-  filter: drop-shadow(0 28px 40px rgba(45, 212, 191, 0.2));
+  width: min(232px, 60vw);
+  max-width: 232px;
+  max-height: 232px;
 }
 
 @media (max-width: 639px) {
   .VPHomeHero .image-src {
-    width: min(240px, 70vw);
-    max-height: 240px;
+    width: min(160px, 46vw);
+    max-height: 160px;
   }
 }
 

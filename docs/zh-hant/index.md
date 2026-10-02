@@ -5,8 +5,8 @@ hero:
   text: 自託管的<br>純文字評論系統
   tagline: 給靜態部落格和個人網站使用。一個 Docker 容器，一個 SQLite 檔案，評論送出即公開。
   image:
-    src: /ecoku-hero.png
-    alt: Ecoku 評論區示意圖
+    src: /logo.svg
+    alt: Ecoku 標誌
   actions:
     - theme: brand
       text: 開始部署

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"ecoku-server/captcha"
 	"ecoku-server/config"
+	"ecoku-server/internal/testsite"
 	"ecoku-server/model"
 	"encoding/base64"
 	"encoding/json"
@@ -35,14 +36,7 @@ func (function commentRoundTripFunc) RoundTrip(request *http.Request) (*http.Res
 func setupCommentTest(t *testing.T) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
-	emailOptional := false
-	websiteRequired := true
-	t.Setenv("ECOKU_COMMENT_SITE_A_KEY", strings.Repeat("a", 32))
-	t.Setenv("ECOKU_COMMENT_SITE_B_KEY", strings.Repeat("b", 32))
-	if err := config.ApplyConfig(&config.Config{Sites: []config.RegisteredSiteConfig{
-		{ID: "site-a", SiteURL: "https://a.example", AllowedOrigins: []string{"https://a.example"}, ManagementKeyEnv: "ECOKU_COMMENT_SITE_A_KEY", Comment: config.CommentConfig{LengthLimit: 4}},
-		{ID: "site-b", SiteURL: "https://b.example", AllowedOrigins: []string{"https://b.example"}, ManagementKeyEnv: "ECOKU_COMMENT_SITE_B_KEY", Comment: config.CommentConfig{EmailRequired: &emailOptional, WebsiteRequired: &websiteRequired, Placeholder: "分享你的想法", DefaultSort: "oldest", LengthLimit: 321, EmptyMessage: "暂时没有评论"}},
-	}}); err != nil {
+	if err := config.ApplyConfig(&config.Config{}); err != nil {
 		t.Fatal(err)
 	}
 	database, err := model.OpenSQLiteDatabase(t.TempDir() + "/comments.sqlite3")
@@ -52,6 +46,10 @@ func setupCommentTest(t *testing.T) *gin.Engine {
 	if err := model.PrepareDatabaseForStartup(database); err != nil {
 		t.Fatal(err)
 	}
+	testsite.Create(t, database,
+		testsite.Site{ID: "site-a", SiteURL: "https://a.example", AllowedOrigins: []string{"https://a.example"}, LengthLimit: 4},
+		testsite.Site{ID: "site-b", SiteURL: "https://b.example", AllowedOrigins: []string{"https://b.example"}, EmailRequired: ptr(false), WebsiteRequired: true, Placeholder: "分享你的想法", DefaultSort: "oldest", LengthLimit: 321, EmptyMessage: "暂时没有评论"},
+	)
 	previous := model.DB
 	model.DB = database
 	t.Cleanup(func() { model.DB = previous; sqlDB, _ := database.DB(); _ = sqlDB.Close() })
@@ -223,7 +221,7 @@ func TestSiteFormConfigurationAndUnicodeLengthLimit(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &envelope); err != nil {
 		t.Fatal(err)
 	}
-	want := config.CommentFormConfig{EmailRequired: false, WebsiteRequired: true, Placeholder: "分享你的想法", DefaultSort: "oldest", LengthLimit: 321, EmptyMessage: "暂时没有评论", BloggerBadge: config.DefaultBloggerBadge, Captcha: config.CaptchaPublicConfig{Provider: captcha.ProviderOff}}
+	want := config.CommentFormConfig{EmailRequired: false, WebsiteRequired: true, Placeholder: "分享你的想法", DefaultSort: "oldest", LengthLimit: 321, EmptyMessage: "暂时没有评论", BloggerBadge: model.DefaultBloggerBadge, Captcha: config.CaptchaPublicConfig{Provider: captcha.ProviderOff}}
 	if envelope.Data.FormConfig != want {
 		t.Fatalf("form=%#v", envelope.Data.FormConfig)
 	}
@@ -267,16 +265,6 @@ func postJSON(t *testing.T, router http.Handler, body map[string]any) *httptest.
 func enableCommentTurnstile(t *testing.T, successToken string) {
 	t.Helper()
 	t.Setenv(config.EncryptionKeyEnv, base64.RawStdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef")))
-	emailOptional := false
-	websiteRequired := true
-	if err := config.ApplyConfig(&config.Config{
-		Sites: []config.RegisteredSiteConfig{
-			{ID: "site-a", SiteURL: "https://a.example", AllowedOrigins: []string{"https://a.example"}, ManagementKeyEnv: "ECOKU_COMMENT_SITE_A_KEY", Comment: config.CommentConfig{LengthLimit: 4}},
-			{ID: "site-b", SiteURL: "https://b.example", AllowedOrigins: []string{"https://b.example"}, ManagementKeyEnv: "ECOKU_COMMENT_SITE_B_KEY", Comment: config.CommentConfig{EmailRequired: &emailOptional, WebsiteRequired: &websiteRequired, Placeholder: "分享你的想法", DefaultSort: "oldest", LengthLimit: 321, EmptyMessage: "暂时没有评论"}},
-		},
-	}); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := captcha.Save(captcha.Settings{
 		Provider:  captcha.ProviderTurnstile,
 		Turnstile: captcha.ProviderSettings{Sitekey: "public-sitekey", Secret: "secret-private"},
@@ -296,14 +284,6 @@ func enableCommentTurnstile(t *testing.T, successToken string) {
 func enableCommentCap(t *testing.T, successToken string) {
 	t.Helper()
 	t.Setenv(config.EncryptionKeyEnv, base64.RawStdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef")))
-	if err := config.ApplyConfig(&config.Config{
-		Sites: []config.RegisteredSiteConfig{
-			{ID: "site-a", SiteURL: "https://a.example", AllowedOrigins: []string{"https://a.example"}, ManagementKeyEnv: "ECOKU_COMMENT_SITE_A_KEY", Comment: config.CommentConfig{LengthLimit: 4}},
-			{ID: "site-b", SiteURL: "https://b.example", AllowedOrigins: []string{"https://b.example"}, ManagementKeyEnv: "ECOKU_COMMENT_SITE_B_KEY"},
-		},
-	}); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := captcha.Save(captcha.Settings{
 		Provider: captcha.ProviderCap,
 		Cap:      captcha.CapSettings{InstanceURL: "https://cap.example.com", Sitekey: "cap-public", Secret: "cap-private"},

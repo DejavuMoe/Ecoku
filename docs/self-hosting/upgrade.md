@@ -15,6 +15,27 @@
 
 可以跨版本直接升级，比如从 v0.1.8 直接换到 v0.2.8，中间的迁移会依次执行。但请把跨过的每个版本的升级说明都读一遍，有的版本需要调整配置（例如 [v0.2.4](./upgrades/v0.2.4) 要求 `admin.token_ttl_minutes` 为 480 或省略）。
 
+## 下一版本的配置迁移（未发布） {#unreleased-config}
+
+以下变更尚未发布，不适用于直接重启 v0.2.8。数据库 schema 保持 v9；现有站点、评论和通知设置都保留，但旧 YAML 中的下列字段必须删除，否则新版本会拒绝启动。
+
+| 删除项 | 新行为 |
+| --- | --- |
+| `site.port`、`site.log_path` | 监听 12123，日志写到标准输出。宿主机端口在 Compose 中修改。 |
+| 整个 `client`、`database`，以及 `admin.static_dir` | 镜像资源与数据库路径固定；保留原有数据挂载。 |
+| 整个 `sites`（包含 `management_key_env`） | 已有站点继续从 SQLite 读取，新站点在后台创建；`EcokuSite` 认证不再支持。 |
+| `admin.enabled`、`admin.token_ttl_minutes`、`admin.username_env`、`admin.password_hash_env`、`admin.token_key_env`、`notifications.encryption_key_env` | 后台始终启用，会话固定为 8 小时；环境变量名称见[配置参考](../reference/configuration#env)。 |
+
+发布后，按下面的顺序迁移：
+
+1. 先按[停服冷备份](./backup#cold-backup)保存并验证数据库、原配置、`ecoku.env` 和 Compose。记录实际使用的 SQLite 路径和宿主机挂载位置。
+2. 删除表中的 YAML 字段及留下的空节。保留 `notifications.instance_public_url`、`site.trusted_proxies`，以及确实使用的 `admin.allowed_origins` 和 `rate_limit`。如果以前改过环境变量名，将名称改为标准名称，**原密码哈希、签名密钥和加密主密钥的值保持不变**。
+3. 确认原数据库映射到 `/data/ecoku.sqlite3`。使用官方模板的实例无需移动数据；自定义位置应调整 Compose 的宿主机路径。自定义文件名需在停服后准备为 `ecoku.sqlite3`，若仍有 `-wal`、`-shm` 文件，必须连同主文件一起复制并对应改名，保留原副本；不要只复制主文件或挂载空目录。目录及文件须允许 UID/GID `10001:10001` 读写。
+4. 从 Compose 删除 `./app/logs:/var/log/ecoku`，原日志文件可以留存。新日志用 `docker compose logs` 查看，轮转由 Docker 日志设置负责。使用 `EcokuSite` 的自动化需改用有效的管理员会话，或改在后台操作。
+5. 把镜像改为届时发布的精确 tag，再按[升级步骤](#steps)拉取、启动和检查。确认后台中的站点数量、历史评论和通知设置与升级前一致。
+
+回滚到 v0.2.8 时，停止服务，恢复原 Compose、配置与环境变量；若移动过数据库，恢复原挂载对应的数据库位置。schema 相同，无需回退数据库；不要用旧备份覆盖升级后产生的新评论。旧版需要的日志目录仍须允许容器用户写入。
+
 ## 升级步骤 {#steps}
 
 **1. 阅读升级说明**。在下方的[版本列表](#versions)中找到目标版本，确认是否有配置变更、是否涉及 schema 迁移。

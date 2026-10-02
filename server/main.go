@@ -6,7 +6,6 @@ import (
 	"ecoku-server/captcha"
 	"ecoku-server/config"
 	"ecoku-server/importer"
-	"ecoku-server/logs"
 	"ecoku-server/model"
 	"ecoku-server/notifications"
 	"ecoku-server/routes"
@@ -47,8 +46,8 @@ func main() {
 	if err := config.ValidateAdmin(); err != nil {
 		log.Fatalf("管理后台配置无效: %v", err)
 	}
-	// 初始化日志系统
-	logs.InitLogger()
+	// 服务日志写到 stdout，由 `docker compose logs` 查看。
+	log.SetOutput(os.Stdout)
 	if err := model.InitDatabase(); err != nil {
 		log.Fatalf("数据库初始化失败: %v", err)
 	}
@@ -104,7 +103,6 @@ func runCaptchaCommand(arguments []string, writer io.Writer) (resultErr error) {
 		return fmt.Errorf("用法: captcha disable|status")
 	}
 	config.InitConfigFile()
-	logs.InitLogger()
 	if err := model.InitDatabase(); err != nil {
 		return err
 	}
@@ -150,7 +148,6 @@ func runTwikooImport(arguments []string) (resultErr error) {
 		return fmt.Errorf("必须提供 --site 和 --file")
 	}
 	config.InitConfigFile()
-	logs.InitLogger()
 	if err := model.InitDatabase(); err != nil {
 		return err
 	}

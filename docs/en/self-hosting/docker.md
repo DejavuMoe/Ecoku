@@ -1,5 +1,9 @@
 # Docker deployment
 
+::: info Unreleased deployment changes
+This page follows the next version. For the published v0.2.8 image, use the [v0.2.8 deployment guide](https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.8/docs/en/self-hosting/docker.md). Before upgrading an existing instance, read [configuration migration](./upgrade#unreleased-config).
+:::
+
 This page starts from an empty Linux host and brings up an Ecoku instance with Docker Compose. You only prepare three files: `compose.yaml`, `app/config.yaml` and `ecoku.env`. When you are done, the service is reachable only on the local machine at `127.0.0.1:12123`. You set up public HTTPS in the next step, [Reverse proxy](./reverse-proxy).
 
 ## Before you start
@@ -27,11 +31,11 @@ After deployment, the directory layout looks like this:
 
 ## 1. Prepare the directories
 
-The container runs as UID/GID `10001:10001` with a read-only root file system. Only the mounted `app/logs` and `data` directories are writable. Create the deployment directory and `app/` with your own account, so editing the config later does not need `sudo`; hand `app/logs` and `data` to the container user:
+The container runs as UID/GID `10001:10001` with a read-only root file system. Only the mounted `data` directory is writable. Create the deployment directory and `app/` with your own account; give `data` to the container user:
 
 ```bash
 mkdir -p ~/Ecoku/app && cd ~/Ecoku
-sudo install -d -o 10001 -g 10001 -m 750 app/logs data
+sudo install -d -o 10001 -g 10001 -m 750 data
 ```
 
 ## 2. Create compose.yaml
@@ -51,7 +55,6 @@ services:
       - "127.0.0.1:12123:12123"
     volumes:
       - ./app/config.yaml:/app/config.yaml:ro
-      - ./app/logs:/var/log/ecoku
       - ./data:/data
     deploy:
       resources:
@@ -73,7 +76,7 @@ services:
     stop_grace_period: 30s
 ```
 
-The port, directories, log file and database path inside the container are fixed in the image and match the mounts above. To use a different location on the host, change only the part before the colon, for example `"127.0.0.1:8080:12123"` for the port or `/srv/ecoku-data:/data` for the data.
+The port, directories, and database path inside the image are fixed and match these mounts. To change host locations, edit only the part before the colon, for example `"127.0.0.1:8080:12123"` or `/srv/ecoku-data:/data`. Logs go to standard output; view them with `docker compose logs`.
 
 Keep two things exactly as shown:
 
@@ -124,13 +127,7 @@ Then make it readable and writable only by you:
 chmod 600 ~/Ecoku/ecoku.env
 ```
 
-| Variable | What to enter |
-| --- | --- |
-| `TZ` | Time zone for comments and notifications, as an IANA name such as `Asia/Shanghai` or `Asia/Tokyo`. |
-| `ECOKU_ADMIN_USERNAME` | Admin sign-in username, 1 to 80 characters. |
-| `ECOKU_ADMIN_PASSWORD_HASH` | bcrypt hash of the admin password, never the plain password. Generate it with the command below. |
-| `ECOKU_ADMIN_TOKEN_KEY` | Signing key for admin sessions, at least 32 characters. Generate it with the command below. Changing it invalidates all signed-in sessions. |
-| `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | Encrypts the SMTP password, Telegram bot token, and CAPTCHA secret key stored in the database; 32 bytes, Base64-encoded. Generate it with the command below. |
+`TZ` controls the display time zone for comments and notifications; `ECOKU_ADMIN_USERNAME` is the sign-in username. Generate the remaining three values with the commands below. See [Configuration reference](../reference/configuration#env) for their requirements.
 
 Generate the password hash. The password is not echoed while you type it; put the whole `$2a$10$...` output into `ECOKU_ADMIN_PASSWORD_HASH`:
 

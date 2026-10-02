@@ -2,11 +2,9 @@ package model
 
 import (
 	"crypto/sha256"
-	"ecoku-server/config"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"strings"
 	"time"
 
@@ -184,9 +182,6 @@ func createFreshSchema(database *gorm.DB) error {
 				return fmt.Errorf("初始化通知设置: %w", err)
 			}
 		}
-		if err := seedConfiguredSites(tx, now); err != nil {
-			return err
-		}
 		checksum := schemaChecksum(freshSchemaDefinition)
 		if err := tx.Exec(`INSERT INTO schema_migrations (version, name, checksum, applied_at)
 VALUES (?, ?, ?, ?)`, freshSchemaVersion, freshSchemaName, checksum, now).Error; err != nil {
@@ -194,34 +189,6 @@ VALUES (?, ?, ?, ?)`, freshSchemaVersion, freshSchemaName, checksum, now).Error;
 		}
 		return nil
 	})
-}
-
-func seedConfiguredSites(tx *gorm.DB, now time.Time) error {
-	for _, seed := range config.GetRegisteredSites() {
-		parsed, err := url.Parse(seed.SiteURL)
-		if err != nil || parsed.Hostname() == "" {
-			return fmt.Errorf("初始化站点 %q 失败", seed.ID)
-		}
-		emailRequired := seed.Comment.EmailRequired == nil || *seed.Comment.EmailRequired
-		websiteRequired := seed.Comment.WebsiteRequired != nil && *seed.Comment.WebsiteRequired
-		if err := tx.Exec(`INSERT INTO sites (
-  id, site_url, domain, name, default_sort, email_required, website_required,
-  placeholder, comment_limit, empty_message, revision, created_at, updated_at
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
-			seed.ID, seed.SiteURL, strings.ToLower(parsed.Hostname()), seed.Name,
-			seed.Comment.DefaultSort, emailRequired, websiteRequired,
-			seed.Comment.Placeholder, seed.Comment.LengthLimit, seed.Comment.EmptyMessage,
-			now, now,
-		).Error; err != nil {
-			return fmt.Errorf("初始化站点 %q: %w", seed.ID, err)
-		}
-		for _, origin := range seed.AllowedOrigins {
-			if err := tx.Exec("INSERT INTO site_origins (site_id, origin) VALUES (?, ?)", seed.ID, origin).Error; err != nil {
-				return fmt.Errorf("初始化站点 %q 来源: %w", seed.ID, err)
-			}
-		}
-	}
-	return nil
 }
 
 func validateKnownSchemaHistory(database *gorm.DB) (int, error) {

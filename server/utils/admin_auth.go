@@ -183,14 +183,8 @@ func signAdminToken(encodedPayload, key string) []byte {
 }
 
 // ConstantTimeStringEqual compares normalized identity strings through fixed
-// size digests. ConstantTimeSecretEqual is used for opaque management keys.
+// size digests.
 func ConstantTimeStringEqual(left, right string) bool {
-	leftDigest := sha256.Sum256([]byte(left))
-	rightDigest := sha256.Sum256([]byte(right))
-	return subtle.ConstantTimeCompare(leftDigest[:], rightDigest[:]) == 1
-}
-
-func ConstantTimeSecretEqual(left, right string) bool {
 	leftDigest := sha256.Sum256([]byte(left))
 	rightDigest := sha256.Sum256([]byte(right))
 	return subtle.ConstantTimeCompare(leftDigest[:], rightDigest[:]) == 1

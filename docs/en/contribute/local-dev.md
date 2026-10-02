@@ -34,7 +34,7 @@ pnpm docs:dev
 
 Run the commands you need in separate terminals.
 
-The server defaults to `http://127.0.0.1:12123`; the comment client defaults to `http://localhost:3000`. For Go to serve static files, build the package first, then set `client.static_dir: ../packages/client/dist` or `admin.static_dir: ../packages/admin/dist` in `server/config.yaml`.
+The server listens at `http://127.0.0.1:12123` and stores its database at `server/data/ecoku.bin`. Source runs serve the API only; use the Vite development servers for the comment client and admin console. The Docker image serves the built assets.
 
 Woodpecker runs the full gate. Locally, run only checks directly relevant to the change and not already covered by CI.
 

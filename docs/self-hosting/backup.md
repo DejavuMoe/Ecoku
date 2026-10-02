@@ -9,8 +9,6 @@ Ecoku 的全部状态都在部署目录里。一份完整备份包含四项：
 | `app/config.yaml` | 实例配置。 |
 | `compose.yaml` | 其中记录了正在使用的镜像版本，恢复时要用同一版本启动。 |
 
-`app/logs/` 只是日志副本，不需要备份。
-
 `ecoku.env` 包含密钥，备份文件请只保存在自己可控的位置。
 
 ## 停服冷备份 {#cold-backup}
@@ -108,7 +106,6 @@ done
 sudo tar -xzf "$archive" --no-same-owner
 sudo chown -R 10001:10001 data
 sudo chmod 750 data
-sudo install -d -o 10001 -g 10001 -m 750 app/logs
 sudo chown "$(id -u):$(id -g)" app app/config.yaml ecoku.env compose.yaml
 chmod 755 app
 chmod 644 app/config.yaml

@@ -16,9 +16,8 @@ var (
 	ErrSiteConflict = errors.New("site changed concurrently")
 )
 
-// Site is the runtime source of truth for a hosted website. Secrets are never
-// stored in this table; optional EcokuSite credentials remain environment-only
-// bindings for trusted server automation.
+// Site is the runtime source of truth for a hosted website. Sites are created
+// in the admin console; the blogger passphrase is stored only as a hash.
 type Site struct {
 	ID                    string    `gorm:"column:id;primaryKey"`
 	SiteURL               string    `gorm:"column:site_url"`

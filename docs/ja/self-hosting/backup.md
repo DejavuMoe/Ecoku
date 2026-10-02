@@ -9,8 +9,6 @@ Ecoku の状態はすべてデプロイ先のディレクトリにあります�
 | `app/config.yaml` | インスタンスの設定。 |
 | `compose.yaml` | 使用中のイメージのバージョンが記録されています。復元時は同じバージョンで起動する必要があります。 |
 
-`app/logs/` はログのコピーにすぎないので、バックアップは不要です。
-
 `ecoku.env` にはシークレットが含まれます。バックアップファイルは自分で管理できる場所にだけ保存してください。
 
 ## 停止してのコールドバックアップ {#cold-backup}
@@ -108,7 +106,6 @@ done
 sudo tar -xzf "$archive" --no-same-owner
 sudo chown -R 10001:10001 data
 sudo chmod 750 data
-sudo install -d -o 10001 -g 10001 -m 750 app/logs
 sudo chown "$(id -u):$(id -g)" app app/config.yaml ecoku.env compose.yaml
 chmod 755 app
 chmod 644 app/config.yaml

@@ -35,11 +35,11 @@ func InitDatabase() error {
 // OpenConfiguredDatabase opens only SQLite3. P2 intentionally removed the
 // former MySQL configuration and driver.
 func OpenConfiguredDatabase() (*gorm.DB, error) {
-	sqliteConfig := config.GetSQLiteConfig()
-	if sqliteConfig == nil || strings.TrimSpace(sqliteConfig.Path) == "" {
-		return nil, fmt.Errorf("SQLite 配置不完整")
+	path := config.GetSQLitePath()
+	if path == "" {
+		return nil, fmt.Errorf("配置尚未加载")
 	}
-	return OpenSQLiteDatabase(sqliteConfig.Path)
+	return OpenSQLiteDatabase(path)
 }
 
 // OpenSQLiteDatabase is exported for import commands and isolated tests.

@@ -1,5 +1,5 @@
 # Ecoku 的公网地址：管理后台从这里打开，启用邮件或 Telegram 通知前也必须填写。
-# 容器内的端口、目录、日志与数据库路径都已内置，不需要写在这里。
+# 端口、目录与数据库路径都已固定在镜像里；站点在管理后台创建。
 notifications:
   instance_public_url: "https://ecoku.example.com"
 

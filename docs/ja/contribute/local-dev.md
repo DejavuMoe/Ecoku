@@ -34,7 +34,7 @@ pnpm docs:dev
 
 必要なコマンドを別々のターミナルで実行してください。
 
-サーバーの既定値は `http://127.0.0.1:12123`、コメント画面は `http://localhost:3000` です。Go から静的ファイルを配信する場合は、対象パッケージを先にビルドし、`server/config.yaml` に `client.static_dir: ../packages/client/dist` または `admin.static_dir: ../packages/admin/dist` を書いてください。
+サーバーは `http://127.0.0.1:12123` で待ち受け、データベースは `server/data/ecoku.bin` に保存します。ソースからの実行は API のみを提供します。コメント欄と管理画面にはそれぞれ Vite 開発サーバーを使い、Docker イメージはビルド済みの静的ページを提供します。
 
 完全な検証は Woodpecker が実行します。ローカルでは、現在の変更に直接関係し、CI がカバーしない検証だけを実行します。
 

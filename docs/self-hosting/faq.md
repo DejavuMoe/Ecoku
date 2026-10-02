@@ -12,12 +12,12 @@ sudo docker compose logs --tail=100 ecoku
 
 ### 容器反复重启，日志提示 permission denied
 
-容器以 UID/GID `10001:10001` 运行，需要能读 `app/config.yaml`、能写 `data/` 和 `app/logs/`。修正属主与权限后重启：
+容器以 UID/GID `10001:10001` 运行，需要能读 `app/config.yaml`、能写 `data/`。修正属主与权限后重启：
 
 ```bash
 cd ~/Ecoku
-sudo chown -R 10001:10001 data app/logs
-sudo chmod 750 data app/logs
+sudo chown -R 10001:10001 data
+sudo chmod 750 data
 sudo chown "$(id -u):$(id -g)" app app/config.yaml
 chmod 644 app/config.yaml
 sudo docker compose up -d
@@ -48,7 +48,7 @@ sudo rmdir app/config.yaml
 
 ### 保存站点时提示“公开站点来源不能复用管理端来源”
 
-站点的允许来源与管理后台的来源重复了。管理后台的来源默认取 `notifications.instance_public_url`，另外写了 `admin.allowed_origins` 时以它为准。管理后台必须使用一个独立的来源，通常就是 Ecoku 自己的域名，如 `https://ecoku.example.com`。如果在 `app/config.yaml` 中写了 `sites`，同样的冲突会在启动时报“管理员来源 … 不能复用公开站点来源”。
+站点的允许来源与管理后台的来源重复了。管理后台的来源默认取 `notifications.instance_public_url`，另外写了 `admin.allowed_origins` 时以它为准。管理后台必须使用一个独立的来源，通常就是 Ecoku 自己的域名，如 `https://ecoku.example.com`。
 
 ### 日志提示“无法解密 … 凭据”
 

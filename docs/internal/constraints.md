@@ -68,10 +68,10 @@
 
 - P1 只有一个实例级管理员，可管理全部已注册站点；站点运营员和细粒度 RBAC 后置。
 - 管理后台始终启用，没有开关。用户名、bcrypt 密码哈希和独立 token 签名密钥固定从 `ECOKU_ADMIN_USERNAME`、`ECOKU_ADMIN_PASSWORD_HASH`、`ECOKU_ADMIN_TOKEN_KEY` 读取，凭据加密主密钥固定从 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 读取；仓库没有默认密码或明文凭据。服务启动时校验管理员凭据，不合规即启动失败；`captcha`、`import-twikoo` 命令不需要管理员凭据。
-- 已停用的配置键只为旧配置文件保留：`admin.enabled` 只接受 `true`，`*_env` 只接受上述标准变量名，其他值启动失败并指出要删除的键。
+- 配置只接受当前字段。已删除的 `admin.enabled`、`admin.token_ttl_minutes`、管理员与通知的 `*_env`、端口、日志及存储路径、YAML `sites` 均按未知字段拒绝；升级前显式迁移配置，不静默忽略。
 - `admin.allowed_origins` 未填写时取 `notifications.instance_public_url` 的来源；两者都没有时，服务必须启动失败。管理端来源不得与任何站点允许来源重复。
-- 管理员会话有效期固定为登录后 8 小时，不滚动续期，不提供 refresh token。SQLite 仅保存随机化签名凭据的 SHA-256 摘要与绝对到期时间；认证同时检查签名、凭据版本与未过期会话记录。退出撤销当前会话，Cookie 与 Bearer 均不能绕过撤销；旧版未登记 token 升级后失效。兼容配置键 `admin.token_ttl_minutes` 省略或为 0 时回退至 480；非零值只能为 480。轮换密码哈希或签名密钥并重启服务会使旧 token 失效。
-- 管理端浏览器只使用管理员会话。每站点 management key 只供可信服务端自动化，并且只能管理所属站点；不得进入浏览器、响应或日志。management key 对评论 GET 列表/详情返回 403，只保留所属站点的墓碑删除。
+- 管理员会话有效期固定为登录后 8 小时，不滚动续期，不提供 refresh token。SQLite 仅保存随机化签名凭据的 SHA-256 摘要与绝对到期时间；认证同时检查签名、凭据版本与未过期会话记录。退出撤销当前会话，Cookie 与 Bearer 均不能绕过撤销；旧版未登记 token 升级后失效。轮换密码哈希或签名密钥并重启服务会使旧 token 失效。
+- 管理 API 只接受有效管理员会话 Cookie 或已登记且未撤销的 Bearer 凭据；不再支持站点 management key，`EcokuSite` 认证返回 401。
 - 管理端浏览器来源使用独立精确白名单，不能复用公开评论站点来源；无 `Origin` 的 CLI/服务端请求仍必须通过认证。
 - 管理 DTO 可以包含私有邮箱，但不得返回 IP、UA、地区、UserID、密码、验证码、token、管理密钥或完整 User。
 - 管理端包含登录、站点注册与评论表单配置、按 `published/deleted` 筛选并按日期分组的评论流、就地展示的详情、
@@ -82,12 +82,10 @@
 - 站点、通知和安全表单使用行式字段；有修改时显示保存栏，离开页面、切换站点或退出前确认放弃修改；刷新或关闭页面使用浏览器的未保存修改确认。邮件和 Telegram 分别校验、分别保存，未成功保存的草稿保留。评论删除在对应评论旁确认，确认目标 ID 不随选中评论改变。
 - 管理端是“评论管理”而非审核队列；已发布评论和公开墓碑使用
   `site_url + pageKey + #ecoku-comment-ID` 精确跳转。
-- 实例站点发现接口接受有效的管理员会话 Cookie 或已登记且未撤销的 Bearer 凭据；`EcokuSite` management key 仅能调用所属站点的删除接口，
-  不能发现其他站点，也不能读取评论列表或详情。
 
 ## 站点注册与通知
 
-- SQLite 中的站点注册表是运行时事实来源。YAML `sites` 只在空数据库首次初始化时导入，不会覆盖管理端修改。
+- SQLite 中的站点注册表是运行时事实来源。新数据库没有站点，首次登录后在管理后台创建；重启和升级保留已有站点。配置文件不再预置站点。
 - 实例管理员可以创建与编辑站点 ID、规范站点 URL、可选站点名称、精确允许来源、
   默认评论排序、邮箱/网站必填性、评论框占位文案、评论长度上限及无评论文案；站点 ID 创建后不可修改。
   站点域名由规范站点 URL 在系统内部解析，不作为独立表单项显示。站点名称留空时，所有展示与通知自动回落到该域名。
@@ -127,8 +125,7 @@
 ## 多站点与隐私
 
 - 一个实例可以承载多个显式注册的站点。
-- 每个站点具有独立的允许来源和评论配置。可选的 management key 仅从环境变量读取，
-  只用于已有受信任服务端自动化绑定；管理端新建站点默认不生成或展示密钥。
+- 每个站点具有独立的允许来源和评论配置，统一由实例管理员管理。
 - 未注册的 `siteId` 必须被拒绝；浏览器中不得嵌入管理秘密。
 - 邮箱可以私有保存，但不得进入公开评论 DTO。
 - IP、User-Agent 和地理位置不得持久化、公开返回或写入应用日志。
@@ -143,9 +140,7 @@
 - 根评论在数据库使用 `parent_id=NULL`；公共提交和列表为兼容既有 SDK 继续接受或返回 `parent: 0`。
 - 父关系由 SQLite 复合自引用外键约束到同一站点和页面，服务端仍必须验证父节点和循环。
 - 墓碑保留 ID、站点、页面、父关系和时间，清空昵称、私有邮箱、网站、原正文，并将 `is_blogger` 置为 0。
-- 管理员会话 Cookie、已登记且未撤销的 Bearer 凭据与本站 `EcokuSite` 可以把已发布评论墓碑化。重复墓碑删除幂等且不级联后代；
-  无后代墓碑可由实例管理员会话彻底删除，
-  management key 无权执行彻底删除。
+- 管理员会话 Cookie 或已登记且未撤销的 Bearer 凭据可以把已发布评论墓碑化。重复墓碑删除幂等且不级联后代；无后代墓碑可由实例管理员会话彻底删除。
 
 ## 运行边界
 
@@ -170,13 +165,10 @@
   操作者仍必须先停服并校验卷外备份；任何 DROP、覆盖或备份清理都需要针对目标环境的明确授权。
 - 当前全新 schema 不创建 `users`、`email_verification_codes` 或 `counts` 遗留表。
 - P4 的默认交付拓扑是单个非 root 运行容器：Go 进程同时提供 API 和 `/admin/` 静态管理端，SQLite 数据与配置从容器外持久化；
-  容器内管理端静态文件缺失时，服务必须启动失败；源码运行时 `admin.static_dir` 留空则只提供管理 API。
-- 镜像以 `GIN_MODE=release`、`ECOKU_RUNTIME=container` 运行；后者只在对应配置键省略时提供容器内路径默认值
-  （`site.log_path` `/var/log/ecoku/ecoku.log`、`client.static_dir` `/app/client`、`admin.static_dir` `/app/admin`、
-  `database.sqlite.path` `/data/ecoku.sqlite3`），显式写出的值始终优先。部署模板只要求 `notifications.instance_public_url`，
+  容器内管理端静态文件缺失时，服务必须启动失败；源码运行只提供 API，页面由 Vite 开发服务器提供。
+- 镜像以 `GIN_MODE=release`、`ECOKU_RUNTIME=container` 运行；监听端口固定为 12123，容器内浏览器资源、后台、数据库分别固定在 `/app/client`、`/app/admin`、`/data/ecoku.sqlite3`，源码运行数据库固定在工作目录下 `./data/ecoku.bin`。部署模板只要求 `notifications.instance_public_url`，
   `ecoku.env` 只放 `TZ`、管理员凭据与两把密钥，Compose 模板不再覆盖 Docker 日志驱动。
-- 应用日志始终写入 stdout，供 `docker compose logs` 跟随；`site.log_path` 指向普通文件时额外由进程内轮转保留副本。
-  空值、`stdout`、`-` 或 `/dev/stdout` 只写标准输出。访问日志只记录路由模板，未匹配路由使用固定值；不写入实际路径参数。日志仍不得包含 IP、UA、凭据、token 或评论正文。
+- 应用日志写入 stdout，供 `docker compose logs` 跟随，轮转和保留由 Docker 日志设置决定；不写文件副本，Compose 不再挂载 `app/logs`。访问日志只记录路由模板，未匹配路由使用固定值；不写入实际路径参数。日志仍不得包含 IP、UA、凭据、token 或评论正文。
 - 浏览器 SDK 的 npm 包名为 `ecoku`，版本为 `0.1.0`，提供 ESM、CommonJS、UMD 和 TypeScript 声明；
   根工作区为 private，自动化只生成发布候选构件，不创建 tag、release 或执行 npm publish。容器版本仍以根 `VERSION` 为准。
 - 旧持久开发验收实例已经退役；其专用域名、IP、同步脚本、部署模板和登录指引不再属于当前

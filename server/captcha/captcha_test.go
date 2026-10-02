@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"ecoku-server/config"
+	"ecoku-server/internal/testsite"
 	"ecoku-server/model"
 )
 
@@ -25,13 +26,7 @@ func setupCaptchaTest(t *testing.T) {
 	t.Helper()
 	key := base64.RawStdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef"))
 	t.Setenv(config.EncryptionKeyEnv, key)
-	t.Setenv("ECOKU_CAPTCHA_SITE_KEY", strings.Repeat("s", 32))
-	if err := config.ApplyConfig(&config.Config{
-		Sites: []config.RegisteredSiteConfig{{
-			ID: "site-a", SiteURL: "https://a.example", AllowedOrigins: []string{"https://a.example"},
-			ManagementKeyEnv: "ECOKU_CAPTCHA_SITE_KEY",
-		}},
-	}); err != nil {
+	if err := config.ApplyConfig(&config.Config{}); err != nil {
 		t.Fatal(err)
 	}
 	database, err := model.OpenSQLiteDatabase(t.TempDir() + "/captcha.sqlite3")
@@ -41,6 +36,7 @@ func setupCaptchaTest(t *testing.T) {
 	if err := model.PrepareDatabaseForStartup(database); err != nil {
 		t.Fatal(err)
 	}
+	testsite.Create(t, database, testsite.Site{ID: "site-a", SiteURL: "https://a.example", AllowedOrigins: []string{"https://a.example"}})
 	previous := model.DB
 	model.DB = database
 	t.Cleanup(func() { model.DB = previous; sqlDB, _ := database.DB(); _ = sqlDB.Close() })
@@ -63,10 +59,10 @@ func TestDisabledCaptchaPublishesNoChallenge(t *testing.T) {
 func TestSettingsEncryptBothSecretsAndRetainInactiveProvider(t *testing.T) {
 	setupCaptchaTest(t)
 	saved, err := Save(Settings{
-		Provider: ProviderTurnstile,
+		Provider:  ProviderTurnstile,
 		Turnstile: ProviderSettings{Sitekey: "turnstile-public", Secret: "turnstile-private"},
-		Cap: CapSettings{InstanceURL: "https://cap.example.com", Sitekey: "cap-public", Secret: "cap-private"},
-		Revision: 1,
+		Cap:       CapSettings{InstanceURL: "https://cap.example.com", Sitekey: "cap-public", Secret: "cap-private"},
+		Revision:  1,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -147,7 +143,7 @@ func TestCapInstanceRejectsNonHTTPSAndPrivateTargets(t *testing.T) {
 	} {
 		_, err := Save(Settings{
 			Provider: ProviderCap,
-			Cap: CapSettings{InstanceURL: instance, Sitekey: "cap-public", Secret: "cap-private"},
+			Cap:      CapSettings{InstanceURL: instance, Sitekey: "cap-public", Secret: "cap-private"},
 			Revision: 1,
 		})
 		if !errors.Is(err, ErrValidation) {
@@ -160,7 +156,7 @@ func TestCapSitekeyRejectsPathDelimiters(t *testing.T) {
 	setupCaptchaTest(t)
 	_, err := Save(Settings{
 		Provider: ProviderCap,
-		Cap: CapSettings{InstanceURL: "https://cap.example.com", Sitekey: "site/key", Secret: "cap-private"},
+		Cap:      CapSettings{InstanceURL: "https://cap.example.com", Sitekey: "site/key", Secret: "cap-private"},
 		Revision: 1,
 	})
 	if !errors.Is(err, ErrValidation) {
@@ -171,9 +167,9 @@ func TestCapSitekeyRejectsPathDelimiters(t *testing.T) {
 func TestTurnstileVerificationAcceptsGenericAndLegacyTokensWithoutRemoteIP(t *testing.T) {
 	setupCaptchaTest(t)
 	if _, err := Save(Settings{
-		Provider: ProviderTurnstile,
+		Provider:  ProviderTurnstile,
 		Turnstile: ProviderSettings{Sitekey: "public-sitekey", Secret: "secret-private"},
-		Revision: 1,
+		Revision:  1,
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -233,7 +229,7 @@ func TestCapVerificationUsesJSONAndRejectsLegacyToken(t *testing.T) {
 	setupCaptchaTest(t)
 	if _, err := Save(Settings{
 		Provider: ProviderCap,
-		Cap: CapSettings{InstanceURL: "https://cap.example.com", Sitekey: "public-cap", Secret: "private-cap"},
+		Cap:      CapSettings{InstanceURL: "https://cap.example.com", Sitekey: "public-cap", Secret: "private-cap"},
 		Revision: 1,
 	}); err != nil {
 		t.Fatal(err)
@@ -269,10 +265,10 @@ func TestCapVerificationUsesJSONAndRejectsLegacyToken(t *testing.T) {
 func TestDisableIsIdempotentAndPreservesCredentials(t *testing.T) {
 	setupCaptchaTest(t)
 	if _, err := Save(Settings{
-		Provider: ProviderCap,
+		Provider:  ProviderCap,
 		Turnstile: ProviderSettings{Sitekey: "turnstile-public", Secret: "turnstile-private"},
-		Cap: CapSettings{InstanceURL: "https://cap.example.com", Sitekey: "cap-public", Secret: "cap-private"},
-		Revision: 1,
+		Cap:       CapSettings{InstanceURL: "https://cap.example.com", Sitekey: "cap-public", Secret: "cap-private"},
+		Revision:  1,
 	}); err != nil {
 		t.Fatal(err)
 	}

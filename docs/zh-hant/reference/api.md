@@ -270,7 +270,7 @@ Origin: https://blog.example.com
 
 - **工作階段 Cookie**：`POST /api/admin/login` 成功後，伺服器端會設定名為 `ecoku_admin_session` 的 Cookie（HttpOnly、SameSite=Strict、Path=`/api/admin`，正式環境帶 Secure），有效期 8 小時。登入回應中不包含 token。
 - 登入請求，以及以 Cookie 驗證的非 GET 請求，必須帶有 `admin.allowed_origins` 中的 `Origin`。
-- 以 `Authorization: Bearer <凭据>` 或管理金鑰驗證的請求可以不帶 `Origin`；如果帶了，仍須在 `admin.allowed_origins` 中，否則回傳 `403`。Bearer 憑據必須是目前有效、未登出的工作階段；v0.2.4 之前簽發的舊 token 不再有效。
+- 以 `Authorization: Bearer <凭据>`驗證的請求可以不帶 `Origin`；如果帶了，仍須在 `admin.allowed_origins` 中，否則回傳 `403`。Bearer 憑據必須是目前有效、未登出的工作階段；v0.2.4 之前簽發的舊 token 不再有效。
 - 登入要求 HTTPS，只有迴路位址可以用 HTTP。
 
 ### 登入與工作階段
@@ -326,25 +326,3 @@ Origin: https://blog.example.com
 | `POST /api/admin/notifications/telegram/test` | 傳送測試訊息，失敗時同上。 |
 
 兩個測試端點受 `rate_limit.notification_test` 速率限制。
-
-## 站點管理金鑰 {#management-key}
-
-站點管理金鑰用於**可信的伺服器端自動化**，例如在自己的後台系統中刪除違規評論。它不能放進瀏覽器。
-
-1. 在 `app/config.yaml` 的 `sites` 中為站點設定 `management_key_env`，並在 `ecoku.env` 中設定對應的環境變數，值至少 32 位元組，各站點不能相同。見[設定參考](./configuration#sites)。
-2. 請求時帶上：
-
-   ```http
-   Authorization: EcokuSite <管理密钥>
-   ```
-
-管理金鑰**只能**對所屬站點的評論執行墓碑刪除：
-
-```http
-DELETE /api/admin/sites/blog/comments/102
-Authorization: EcokuSite <管理密钥>
-```
-
-它不能讀取評論清單或詳細資訊，不能徹底刪除，也不能存取其他站點或實例設定，這些請求會回傳 `403`；金鑰無效時回傳 `401`。
-
-`sites` 中的站點設定只在資料庫首次初始化時寫入，但 `management_key_env` 每次啟動都會讀取。既有實例若要啟用管理金鑰，可以在 `sites` 中補寫一個項目：`id` 與後台中既有的站點一致，`site_url` 和 `allowed_origins` 也要填寫，才能通過設定檢查。這個項目的其他欄位不會覆寫後台中的設定。

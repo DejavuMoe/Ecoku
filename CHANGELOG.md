@@ -7,10 +7,13 @@
 
 ### 变更
 
-- 管理后台始终启用，删除 `admin.enabled`。旧配置中的 `admin.enabled: true` 仍可加载，写 `false` 会拒绝启动并提示删除这一行。
-- 删除 `admin.username_env`、`admin.password_hash_env`、`admin.token_key_env`、`notifications.encryption_key_env`：管理员凭据与加密主密钥固定读取 `ECOKU_ADMIN_USERNAME`、`ECOKU_ADMIN_PASSWORD_HASH`、`ECOKU_ADMIN_TOKEN_KEY`、`ECOKU_NOTIFICATION_ENCRYPTION_KEY`。旧配置中写成这些标准名的仍可加载，写成其他名字会拒绝启动。
+- 管理后台始终启用，会话固定为 8 小时；删除 `admin.enabled`、`admin.token_ttl_minutes`。
+- 删除 `admin.username_env`、`admin.password_hash_env`、`admin.token_key_env`、`notifications.encryption_key_env`：管理员凭据与加密主密钥固定读取 `ECOKU_ADMIN_USERNAME`、`ECOKU_ADMIN_PASSWORD_HASH`、`ECOKU_ADMIN_TOKEN_KEY`、`ECOKU_NOTIFICATION_ENCRYPTION_KEY`。
+- 删除 `site.port`、`site.log_path`、`client.static_dir`、`admin.static_dir`、`database.sqlite.path`。端口固定为 12123；镜像固定提供 `/client/` 与 `/admin/`，数据库固定在 `/data/ecoku.sqlite3`。日志只写标准输出，移除文件轮转依赖与 Compose 的 `./app/logs` 挂载。
+- 删除 YAML `sites` 预置与 `management_key_env`，新实例在管理后台创建站点；已有站点仍保存在 SQLite 中。取消 `EcokuSite` 管理密钥认证，管理 API 只接受管理员会话。
+- 删除旧配置兼容层，以上字段即使填写旧默认值也会按未知字段拒绝启动；现有实例需先按升级页迁移配置。schema 仍为 v9，已有评论、站点和通知凭据不变。
 - `captcha`、`import-twikoo` 命令不再检查管理员凭据，服务启动时照常检查。
-- 源码运行时 `admin.static_dir` 与 `client.static_dir` 一样默认为空，填写后才提供管理后台页面；官方镜像仍默认使用 `/app/admin`。
+- 源码运行只提供 API，数据库固定在 `./data/ecoku.bin`；前端页面使用 Vite 开发服务器。
 
 ### 修复
 
@@ -21,11 +24,12 @@
 - 删除评论后，该评论在原位淡出，列表不再闪现加载骨架，滚动位置保持不变；从回复引用跳到父评论时恢复短暂高亮。
 - 保存栏打开时，提示消息显示在保存栏上方，不再与之重叠；连续出现相同的提示时会重新显示并重新朗读。
 - 会话过期导致页面刷新后，登录页显示“管理会话已过期，请重新登录。”。
+- 四种语言的文档首页统一使用已批准的「區」标识，与导航栏及 favicon 一致，移除旧首页图像。
 
 ### 文档
 
-- 配置参考新增「已停用的字段」，列出旧配置文件中仍可保留的字段与取值。
-- 管理后台说明中的站点字段改为「访客邮箱」「访客网站」两行；配置参考注明 `admin.static_dir` 中可选的 `favicon.svg`；英文、日文 Smoji 说明恢复与标记示例一致的清单示例和标记格式占位。
+- 配置、API、部署、备份与本地开发说明同步精简；部署页保留环境变量示例与生成命令，字段表统一放在配置参考。四种语言的升级页增加未发布配置迁移说明，包含旧配置删除项、数据库位置、日志挂载与回滚。
+- 管理后台说明中的站点字段改为「访客邮箱」「访客网站」两行；英文、日文 Smoji 说明恢复与标记示例一致的清单示例和标记格式占位。
 
 ## [0.2.8] - 2026-10-01
 

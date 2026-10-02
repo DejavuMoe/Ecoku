@@ -270,7 +270,7 @@ Origin: https://blog.example.com
 
 - **会话 Cookie**：`POST /api/admin/login` 成功后，服务端设置名为 `ecoku_admin_session` 的 Cookie（HttpOnly、SameSite=Strict、Path=`/api/admin`，生产环境带 Secure），有效期 8 小时。登录响应中不包含 token。
 - 登录请求，以及用 Cookie 认证的非 GET 请求，必须带有 `admin.allowed_origins` 中的 `Origin`。
-- 用 `Authorization: Bearer <凭据>` 或管理密钥认证的请求可以不带 `Origin`；如果带了，仍须在 `admin.allowed_origins` 中，否则返回 `403`。Bearer 凭据必须是当前有效、未注销的会话；v0.2.4 之前签发的旧 token 不再有效。
+- 用 `Authorization: Bearer <凭据>` 认证的请求可以不带 `Origin`；如果带了，仍须在 `admin.allowed_origins` 中，否则返回 `403`。Bearer 凭据必须是当前有效、未注销的会话；v0.2.4 之前签发的旧 token 不再有效。
 - 登录要求 HTTPS，只有回环地址可以用 HTTP。
 
 ### 登录与会话
@@ -326,25 +326,3 @@ Origin: https://blog.example.com
 | `POST /api/admin/notifications/telegram/test` | 发送测试消息，失败时同上。 |
 
 两个测试接口受 `rate_limit.notification_test` 限流。
-
-## 站点管理密钥 {#management-key}
-
-站点管理密钥用于**可信的服务端自动化**，例如在自己的后台系统中删除违规评论。它不能放进浏览器。
-
-1. 在 `app/config.yaml` 的 `sites` 中为站点配置 `management_key_env`，并在 `ecoku.env` 中设置对应的环境变量，值至少 32 字节，各站点不能相同。见[配置参考](./configuration#sites)。
-2. 请求时带上：
-
-   ```http
-   Authorization: EcokuSite <管理密钥>
-   ```
-
-管理密钥**只能**对所属站点的评论执行墓碑删除：
-
-```http
-DELETE /api/admin/sites/blog/comments/102
-Authorization: EcokuSite <管理密钥>
-```
-
-它不能读取评论列表或详情，不能彻底删除，也不能访问其他站点或实例设置，这些请求返回 `403`；密钥无效返回 `401`。
-
-`sites` 中的站点设置只在数据库首次初始化时写入，但 `management_key_env` 每次启动都会读取。已有实例要启用管理密钥，可以在 `sites` 中补写一个条目：`id` 与后台中已有的站点一致，`site_url` 和 `allowed_origins` 也要填写以通过配置校验。这个条目的其他字段不会覆盖后台中的设置。

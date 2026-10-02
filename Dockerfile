@@ -31,7 +31,7 @@ FROM alpine:3.24.1 AS runtime
 ARG ECOKU_VERSION
 ARG ECOKU_REVISION
 ARG ECOKU_SOURCE
-# ECOKU_RUNTIME makes the image paths below the defaults for config.yaml.
+# ECOKU_RUNTIME selects the fixed image paths.
 ENV GIN_MODE=release \
     ECOKU_RUNTIME=container
 LABEL org.opencontainers.image.title="Ecoku" \

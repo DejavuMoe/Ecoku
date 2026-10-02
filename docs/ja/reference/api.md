@@ -270,7 +270,7 @@ Origin: https://blog.example.com
 
 - **セッション Cookie**：`POST /api/admin/login` が成功すると、サーバーは `ecoku_admin_session` という名前の Cookie（HttpOnly、SameSite=Strict、Path=`/api/admin`、本番環境では Secure 付き）を設定します。有効期間は 8 時間です。ログインのレスポンスには token は含まれません。
 - ログインのリクエストと、Cookie で認証する GET 以外のリクエストには、`admin.allowed_origins` に含まれる `Origin` が必要です。
-- `Authorization: Bearer <認証情報>` または管理キーで認証するリクエストには `Origin` を付けなくてもかまいません。付けた場合は `admin.allowed_origins` に含まれている必要があり、そうでなければ `403` を返します。Bearer の認証情報は現在有効でログアウトされていないセッションでなければなりません。v0.2.4 より前に発行された古い token は使えません。
+- `Authorization: Bearer <認証情報>`で認証するリクエストには `Origin` を付けなくてもかまいません。付けた場合は `admin.allowed_origins` に含まれている必要があり、そうでなければ `403` を返します。Bearer の認証情報は現在有効でログアウトされていないセッションでなければなりません。v0.2.4 より前に発行された古い token は使えません。
 - ログインには HTTPS が必要で、HTTP を使えるのはループバックアドレスだけです。
 
 ### ログインとセッション
@@ -326,25 +326,3 @@ Origin: https://blog.example.com
 | `POST /api/admin/notifications/telegram/test` | テストメッセージを送ります。失敗時は上と同じです。 |
 
 2 つのテスト API は `rate_limit.notification_test` でレート制限されます。
-
-## サイト管理キー {#management-key}
-
-サイト管理キーは、自前の管理システムから規約違反のコメントを削除するような、**信頼できるサーバー側の自動化**のためのものです。ブラウザに置いてはいけません。
-
-1. `app/config.yaml` の `sites` でサイトに `management_key_env` を設定し、`ecoku.env` に対応する環境変数を設定します。値は 32 バイト以上で、サイト間で同じにしてはいけません。[設定リファレンス](./configuration#sites)を参照してください。
-2. リクエスト時に次を付けます。
-
-   ```http
-   Authorization: EcokuSite <管理キー>
-   ```
-
-管理キーでできるのは、所属するサイトのコメントの墓標削除**だけ**です。
-
-```http
-DELETE /api/admin/sites/blog/comments/102
-Authorization: EcokuSite <管理キー>
-```
-
-コメントの一覧や詳細の読み取り、完全削除、ほかのサイトやインスタンス設定へのアクセスはできず、これらのリクエストには `403` を返します。キーが無効な場合は `401` を返します。
-
-`sites` のサイト設定はデータベースの初回初期化時にしか書き込まれませんが、`management_key_env` は起動のたびに読み込まれます。既存のインスタンスで管理キーを使うには、`sites` にエントリーを 1 つ追加します。`id` は管理画面にある既存のサイトと同じにし、設定の検証を通すために `site_url` と `allowed_origins` も書きます。このエントリーのほかのフィールドが管理画面の設定を上書きすることはありません。

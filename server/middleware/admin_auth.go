@@ -19,14 +19,12 @@ const (
 )
 
 type adminPrincipal struct {
-	instanceAdmin bool
-	siteID        string
-	token         string
-	claims        *utils.AdminTokenClaims
+	token  string
+	claims *utils.AdminTokenClaims
 }
 
-// AdminAuthentication accepts either an instance administrator bearer token
-// or an EcokuSite credential reserved for trusted server-side automation.
+// AdminAuthentication accepts an instance administrator session, either from
+// the session cookie or as a Bearer token.
 func AdminAuthentication() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
@@ -42,46 +40,29 @@ func AdminAuthentication() gin.HandlerFunc {
 				scheme, credential, ok = "Bearer", value, true
 			}
 		}
-		if !ok {
+		if !ok || !strings.EqualFold(scheme, "Bearer") {
 			unauthorizedAdmin(c)
 			return
 		}
 
-		var principal adminPrincipal
-		switch {
-		case strings.EqualFold(scheme, "Bearer"):
-			claims, err := utils.ParseAdminToken(credential)
-			if err != nil {
-				if errors.Is(err, utils.ErrAdminSessionUnavailable) {
-					utils.SendError(c, http.StatusServiceUnavailable, "管理员会话存储不可用")
-					c.Abort()
-					return
-				}
-				unauthorizedAdmin(c)
+		claims, err := utils.ParseAdminToken(credential)
+		if err != nil {
+			if errors.Is(err, utils.ErrAdminSessionUnavailable) {
+				utils.SendError(c, http.StatusServiceUnavailable, "管理员会话存储不可用")
+				c.Abort()
 				return
 			}
-			principal.instanceAdmin = true
-			principal.token, principal.claims = credential, claims
-		case strings.EqualFold(scheme, "EcokuSite"):
-			siteID, authenticated := authenticateManagementKey(credential)
-			if !authenticated {
-				unauthorizedAdmin(c)
-				return
-			}
-			principal.siteID = siteID
-		default:
 			unauthorizedAdmin(c)
 			return
 		}
 
-		c.Set(adminPrincipalContextKey, principal)
+		c.Set(adminPrincipalContextKey, adminPrincipal{token: credential, claims: claims})
 		c.Next()
 	}
 }
 
 // RequireAdminSiteAccess validates the explicit site path parameter after the
-// caller has authenticated. Instance administrators can access every
-// registered site; a management key is restricted to its own site.
+// administrator has authenticated.
 func RequireAdminSiteAccess() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		siteID := strings.TrimSpace(c.Param("siteId"))
@@ -102,39 +83,7 @@ func RequireAdminSiteAccess() gin.HandlerFunc {
 			return
 		}
 
-		value, exists := c.Get(adminPrincipalContextKey)
-		principal, valid := value.(adminPrincipal)
-		if !exists || !valid {
-			unauthorizedAdmin(c)
-			return
-		}
-		if !principal.instanceAdmin && principal.siteID != siteID {
-			utils.SendError(c, http.StatusForbidden, "无权管理该站点")
-			c.Abort()
-			return
-		}
-
 		c.Set(adminSiteIDContextKey, siteID)
-		c.Next()
-	}
-}
-
-// RequireInstanceAdmin restricts instance-wide capabilities such as site
-// discovery to a Bearer administrator session. A site management key remains
-// valid only for its explicit site-scoped automation endpoints.
-func RequireInstanceAdmin() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		value, exists := c.Get(adminPrincipalContextKey)
-		principal, valid := value.(adminPrincipal)
-		if !exists || !valid {
-			unauthorizedAdmin(c)
-			return
-		}
-		if !principal.instanceAdmin {
-			utils.SendError(c, http.StatusForbidden, "站点管理凭据无权访问实例信息")
-			c.Abort()
-			return
-		}
 		c.Next()
 	}
 }
@@ -168,35 +117,13 @@ func parseAuthorizationHeader(header string) (string, string, bool) {
 	return parts[0], parts[1], true
 }
 
-func authenticateManagementKey(candidate string) (string, bool) {
-	if candidate == "" || len(candidate) > maximumAuthorizationSize {
-		return "", false
-	}
-	matchedSiteID := ""
-	matchCount := 0
-	for _, site := range config.GetRegisteredSites() {
-		key, available := config.GetManagementKey(site.ID)
-		if !available {
-			continue
-		}
-		if utils.ConstantTimeSecretEqual(candidate, key) {
-			exists, err := model.SiteExists(site.ID)
-			if err == nil && exists {
-				matchedSiteID = site.ID
-				matchCount++
-			}
-		}
-	}
-	return matchedSiteID, matchCount == 1
-}
-
 func unauthorizedAdmin(c *gin.Context) {
 	utils.SendError(c, http.StatusUnauthorized, "管理员认证失败")
 	c.Abort()
 }
 
-// Cookie writes and login require an explicit trusted browser origin. The
-// independent EcokuSite/Bearer automation paths still do not depend on Origin.
+// Cookie writes and login require an explicit trusted browser origin. A
+// Bearer token in the Authorization header does not depend on Origin.
 func CheckAdminOrigin(c *gin.Context) bool {
 	origin, err := config.NormalizeOrigin(c.GetHeader("Origin"))
 	if err == nil {

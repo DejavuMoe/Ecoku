@@ -3,6 +3,7 @@ package routes
 import (
 	"context"
 	"ecoku-server/config"
+	"ecoku-server/internal/testsite"
 	"ecoku-server/middleware"
 	"ecoku-server/model"
 	"net/http"
@@ -77,16 +78,16 @@ func TestClientStaticAssetsAreServedWithCrossOriginSafeHeaders(t *testing.T) {
 	configureRoutesTest(t)
 	directory := t.TempDir()
 	for name, body := range map[string]string{
-		"ecoku.umd.js":         "globalThis.Ecoku = function () {};",
-		"ecoku-loader.js":      "void 0;",
-		"ecoku.css":            ".ecoku-comments{}",
-		"ecoku.unstyled.css":   ".ecoku-comments{}",
+		"ecoku.umd.js":       "globalThis.Ecoku = function () {};",
+		"ecoku-loader.js":    "void 0;",
+		"ecoku.css":          ".ecoku-comments{}",
+		"ecoku.unstyled.css": ".ecoku-comments{}",
 	} {
 		if err := os.WriteFile(filepath.Join(directory, name), []byte(body), 0o600); err != nil {
 			t.Fatalf("write %s: %v", name, err)
 		}
 	}
-	config.GlobalConfig.Client.StaticDir = directory
+	config.GlobalConfig.Paths.ClientStaticDir = directory
 	router, err := NewRouter()
 	if err != nil {
 		t.Fatalf("new router: %v", err)
@@ -122,7 +123,7 @@ func TestClientStaticAssetsMustBeComplete(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(directory, "ecoku.umd.js"), []byte("void 0;"), 0o600); err != nil {
 		t.Fatalf("write asset: %v", err)
 	}
-	config.GlobalConfig.Client.StaticDir = directory
+	config.GlobalConfig.Paths.ClientStaticDir = directory
 	if _, err := NewRouter(); err == nil || !strings.Contains(err.Error(), "ecoku-loader.js") {
 		t.Fatalf("missing loader error = %v", err)
 	}
@@ -130,15 +131,9 @@ func TestClientStaticAssetsMustBeComplete(t *testing.T) {
 
 func configureRoutesTest(t *testing.T, trustedProxies ...string) {
 	t.Helper()
-	t.Setenv("ECOKU_ROUTES_SITE_KEY", strings.Repeat("r", 32))
 	err := config.ApplyConfig(&config.Config{
 		Site:      config.SiteConfig{TrustedProxies: trustedProxies},
 		RateLimit: config.RateLimitConfig{CommentSubmit: 1},
-		Sites: []config.RegisteredSiteConfig{{
-			ID:               "site-a",
-			AllowedOrigins:   []string{"https://a.example"},
-			ManagementKeyEnv: "ECOKU_ROUTES_SITE_KEY",
-		}},
 	})
 	if err != nil {
 		t.Fatalf("apply config: %v", err)
@@ -150,6 +145,7 @@ func configureRoutesTest(t *testing.T, trustedProxies ...string) {
 	if err := model.PrepareDatabaseForStartup(database); err != nil {
 		t.Fatalf("initialize routes database: %v", err)
 	}
+	testsite.Create(t, database, testsite.Site{ID: "site-a", SiteURL: "https://a.example", AllowedOrigins: []string{"https://a.example"}})
 	previous := model.DB
 	model.DB = database
 	t.Cleanup(func() {
