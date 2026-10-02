@@ -1,0 +1,215 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+# Serialize releases, including their shared registry caches. Never cancel a publish.
+concurrency:
+  group: ecoku-release
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      image: ${{ steps.image.outputs.name }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.19.0
+          package-manager-cache: false
+      - name: Validate tag and release files
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: node scripts/check-release.mjs "$RELEASE_TAG"
+      - name: Resolve GHCR image
+        id: image
+        env:
+          REPOSITORY: ${{ github.repository }}
+        run: echo "name=ghcr.io/${REPOSITORY,,}" >> "$GITHUB_OUTPUT"
+
+  # Validate the exact tag and publish the SDK tarball from this run.
+  verify:
+    needs: check
+    uses: ./.github/workflows/ci.yml
+
+  image:
+    needs: [check, verify]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          outputs: type=image,name=${{ needs.check.outputs.image }},push-by-digest=true,name-canonical=true,push=true
+          build-args: |
+            ECOKU_VERSION=${{ github.ref_name }}
+            ECOKU_REVISION=${{ github.sha }}
+            ECOKU_SOURCE=${{ github.server_url }}/${{ github.repository }}
+          # Registry caches remain available across different tag refs.
+          cache-from: type=registry,ref=${{ needs.check.outputs.image }}:buildcache-${{ matrix.arch }}
+          cache-to: type=registry,ref=${{ needs.check.outputs.image }}:buildcache-${{ matrix.arch }},mode=max
+          provenance: mode=max
+          pull: true
+      - name: Export image digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: digest-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 7
+
+  manifest:
+    needs: [check, image]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: digest-*
+          path: ${{ runner.temp }}/digests
+          merge-multiple: true
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - name: Publish multi-platform tag
+        working-directory: ${{ runner.temp }}/digests
+        env:
+          IMAGE: ${{ needs.check.outputs.image }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          digests=(*)
+          test "${#digests[@]}" -eq 2
+          sources=()
+          for digest in "${digests[@]}"; do
+            [[ "$digest" =~ ^[0-9a-f]{64}$ ]]
+            sources+=("$IMAGE@sha256:$digest")
+          done
+          docker buildx imagetools create --tag "$IMAGE:$TAG" "${sources[@]}"
+          docker buildx imagetools inspect "$IMAGE:$TAG"
+
+  npm:
+    needs: [check, verify]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ecoku-sdk
+          path: artifact
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.19.0
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Check tarball identity
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          files=(artifact/*.tgz)
+          test "${#files[@]}" -eq 1
+          tar -xOf "${files[0]}" package/package.json > "$RUNNER_TEMP/sdk-package.json"
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict'
+          import { readFileSync } from 'node:fs'
+          const pkg = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/sdk-package.json`, 'utf8'))
+          assert.equal(pkg.name, 'ecoku')
+          assert.equal(pkg.version, process.env.TAG.slice(1))
+          assert.equal(pkg.repository.url, `git+https://github.com/${process.env.GITHUB_REPOSITORY}.git`)
+          JS
+      - name: Publish verified tarball
+        env:
+          TAG: ${{ github.ref_name }}
+          # Optional bootstrap token; subsequent releases should use npm OIDC.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          dist_tag=latest
+          if [[ "$TAG" == *-* ]]; then dist_tag=next; fi
+          npm publish artifact/*.tgz --ignore-scripts --access public --provenance --tag "$dist_tag"
+
+  release:
+    needs: [manifest, npm]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ecoku-sdk
+          path: artifact
+      - name: Prepare release notes and checksums
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict'
+          import { readFileSync, writeFileSync } from 'node:fs'
+          const version = process.env.TAG.slice(1)
+          const changelog = readFileSync('CHANGELOG.md', 'utf8')
+          const section = changelog.split('\n## ').find(part => part.startsWith(`[${version}] - `))
+          assert.ok(section, 'Missing release notes')
+          const notes = section.slice(section.indexOf('\n') + 1).split('\n[Unreleased]:')[0].trim()
+          assert.ok(notes, 'Empty release notes')
+          writeFileSync('artifact/RELEASE_NOTES.md', `${notes}\n`)
+          JS
+          cd artifact
+          sha256sum ecoku-*.tgz > SHA256SUMS
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          flags=()
+          if [[ "$TAG" == *-* ]]; then flags+=(--prerelease); fi
+          gh release create "$TAG" artifact/ecoku-*.tgz artifact/SHA256SUMS \
+            --verify-tag --title "Ecoku $TAG" --notes-file artifact/RELEASE_NOTES.md "${flags[@]}"

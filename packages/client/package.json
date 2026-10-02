@@ -1,6 +1,11 @@
 {
   "name": "ecoku",
-  "version": "0.1.0",
+  "version": "0.2.9",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DejavuMoe/Ecoku.git",
+    "directory": "packages/client"
+  },
   "description": "A lightweight browser client for the Ecoku self-hosted comment system",
   "keywords": [
     "comment",

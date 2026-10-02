@@ -6,11 +6,13 @@ plain-text, no-avatar, threaded comment surface.
 
 ## Install
 
-```bash
-npm install ecoku
-```
+The npm publication workflow is prepared, but the first npm release is still
+pending. Until it succeeds, use the SDK served by your Ecoku instance or build
+this package from source. After publication, install `ecoku` with your package
+manager and pin a released version matching your server. SDK versions follow
+the repository's release tags.
 
-Version 0.1.0 exposes the same default `Ecoku` constructor through ESM, CommonJS,
+The SDK exposes the same default `Ecoku` constructor through ESM, CommonJS,
 and a browser UMD global:
 
 ```js
@@ -77,7 +79,7 @@ comments.destroy()
 `apiBaseUrl` remains a deprecated alias for `serverURL`. The former
 `ecoku-comment-*` DOM-template protocol is no longer supported; production
 integration must provide a dedicated container. This removal is the breaking
-change behind the 3.0.0 protocol rewrite. The published npm version is now 0.1.0.
+change from the former DOM-template integration.
 Replace legacy template elements with one empty
 container and pass that container together with `serverURL`, `siteId`, and
 `pageKey` to the constructor.
