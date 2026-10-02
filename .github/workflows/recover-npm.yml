@@ -1,0 +1,91 @@
+name: Recover npm publication
+
+# Publish a verified artifact after a publish-command failure without moving its tag.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag
+        required: true
+        type: string
+      run_id:
+        description: Original Release run with successful verification and images
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+concurrency:
+  group: ecoku-release
+  cancel-in-progress: false
+
+jobs:
+  npm:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      TAG: ${{ inputs.tag }}
+      SOURCE_RUN: ${{ inputs.run_id }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.tag }}
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 24.19.0
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Verify original release provenance
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
+          node scripts/check-release.mjs "$TAG"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" > "$RUNNER_TEMP/source-run.json"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/jobs?per_page=100" > "$RUNNER_TEMP/source-jobs.json"
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict'
+          import { readFileSync } from 'node:fs'
+          import { execFileSync } from 'node:child_process'
+          const read = name => JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/${name}.json`, 'utf8'))
+          const run = read('source-run')
+          assert.equal(run.path, '.github/workflows/release.yml')
+          assert.equal(run.event, 'push')
+          assert.equal(run.status, 'completed')
+          assert.equal(run.head_branch, process.env.TAG)
+          assert.equal(run.head_sha, execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim())
+          const { jobs } = read('source-jobs')
+          for (const name of ['check', 'verify / client', 'verify / admin', 'verify / docs', 'verify / server', 'manifest']) {
+            assert.ok(jobs.some(job => job.name === name && job.conclusion === 'success'), `${name} did not pass`)
+          }
+          JS
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ecoku-sdk
+          path: artifact
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify package identity
+        run: |
+          files=(./artifact/*.tgz)
+          test "${#files[@]}" -eq 1
+          tar -xOf "${files[0]}" package/package.json > "$RUNNER_TEMP/sdk-package.json"
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict'
+          import { readFileSync } from 'node:fs'
+          const pkg = JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/sdk-package.json`, 'utf8'))
+          assert.equal(pkg.name, 'ecoku')
+          assert.equal(pkg.version, process.env.TAG.slice(1))
+          assert.equal(pkg.repository.url, `git+https://github.com/${process.env.GITHUB_REPOSITORY}.git`)
+          JS
+      - name: Publish original verified package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          dist_tag=latest
+          if [[ "$TAG" == *-* ]]; then dist_tag=next; fi
+          npm publish ./artifact/*.tgz --ignore-scripts --access public --provenance --tag "$dist_tag"

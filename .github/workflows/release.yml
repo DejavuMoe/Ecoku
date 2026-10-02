@@ -170,7 +170,7 @@ jobs:
         run: |
           dist_tag=latest
           if [[ "$TAG" == *-* ]]; then dist_tag=next; fi
-          npm publish artifact/*.tgz --ignore-scripts --access public --provenance --tag "$dist_tag"
+          npm publish ./artifact/*.tgz --ignore-scripts --access public --provenance --tag "$dist_tag"
 
   release:
     needs: [manifest, npm]

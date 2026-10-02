@@ -57,6 +57,8 @@ jobs:
           mkdir -p artifacts
           cd packages/client
           npm pack --ignore-scripts --pack-destination ../../artifacts
+          cd ../..
+          npm publish ./artifacts/ecoku-*.tgz --ignore-scripts --access public --dry-run
       - name: Save SDK tarball
         if: matrix.target == 'client'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
