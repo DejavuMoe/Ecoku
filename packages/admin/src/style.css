@@ -219,6 +219,13 @@ kbd { display: inline-grid; min-width: 18px; height: 18px; place-items: center; 
 .auth-form .notice { margin-bottom: 8px; }
 .auth-form .captcha-slot { margin-top: 16px; }
 .auth-form .button-block { margin-top: 20px; }
+.first-login-form { --label-w: 70px; width: min(100%, 420px); padding: 28px; }
+.first-login-intro, .first-login-foot { color: var(--muted); font-size: 13px; line-height: 1.8; }
+.first-login-help { padding-left: 0; margin: 8px 0; }
+.first-login-show { display: flex; min-height: 44px; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.first-login-show input { width: 16px; height: 16px; accent-color: var(--ink); }
+.first-login-foot { text-align: center; font-size: 12px; }
+@media (max-width: 480px) { .first-login-form { padding: 24px 20px; } }
 
 /* Cap Widget: official geometry, tokens mapped the same way as the comment surface. */
 cap-widget.admin-cap-widget {

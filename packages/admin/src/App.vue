@@ -6,6 +6,7 @@ import CommentManagementView from './components/CommentManagementView.vue'
 import NotificationSettingsView from './components/NotificationSettingsView.vue'
 import SecurityView from './components/SecurityView.vue'
 import SiteManagementView from './components/SiteManagementView.vue'
+import FirstLoginSetupView from './components/FirstLoginSetupView.vue'
 import { useAdminStore } from './stores/admin'
 import { adminApi } from './api'
 import type { CaptchaPublicConfig, MainView } from './types'
@@ -14,7 +15,7 @@ import { messages } from './messages'
 
 const store = useAdminStore()
 const {
-  authenticated, sessionReady, logoutBusy, logoutMessage, loginBusy, loginMessage, view, toastMessage, toastSerial, dirtyView, discardRequested,
+  authenticated, sessionReady, logoutBusy, logoutMessage, loginBusy, loginMessage, passwordSetupRequired, view, toastMessage, toastSerial, dirtyView, discardRequested,
 } = storeToRefs(store)
 
 const views: { id: MainView; label: string }[] = [
@@ -186,6 +187,8 @@ async function switchView(next: MainView) {
       </form>
     </section>
   </main>
+
+  <FirstLoginSetupView v-else-if="sessionReady && passwordSetupRequired" />
 
   <div v-else-if="sessionReady" class="app">
     <header class="masthead">
