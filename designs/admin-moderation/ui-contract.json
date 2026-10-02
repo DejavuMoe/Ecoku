@@ -211,6 +211,50 @@
         ]
       },
       "status": "implemented"
+    },
+    {
+      "id": "admin-first-login",
+      "contentProfile": "operational-strict",
+      "prototype": {
+        "entry": "first-login-v1.html",
+        "assetPath": "first-login-v1.html",
+        "files": [
+          "first-login-v1.html",
+          "first-login-v1.md",
+          "first-login-v1.test.mjs"
+        ],
+        "states": [
+          "temporary-password-login",
+          "password-setup",
+          "validation-error",
+          "save-progress",
+          "save-error-retains-input",
+          "session-expired",
+          "setup-complete",
+          "mobile-layout",
+          "dark-mode"
+        ],
+        "stableIds": [
+          "login",
+          "setup",
+          "done"
+        ]
+      },
+      "production": {
+        "routeOrWindow": "/admin/ initial authentication",
+        "status": "planned",
+        "files": [],
+        "interfaces": [
+          "adminApi.login",
+          "adminApi.getSession",
+          "adminApi.initialSetup"
+        ],
+        "tests": [
+          "packages/admin/src/admin.test.ts",
+          "designs/admin-moderation/first-login-v1.test.mjs"
+        ]
+      },
+      "status": "approved"
     }
   ],
   "content": {
@@ -218,7 +262,8 @@
     "inventory": "content-inventory.json",
     "approvedCopySources": [
       "index-v15.html",
-      "prototype-v15.js"
+      "prototype-v15.js",
+      "first-login-v1.html"
     ]
   },
   "designSources": "design-sources.json"
