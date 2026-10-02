@@ -50,6 +50,7 @@ function listResponse(
     total?: number
     commentTotal?: number
     formConfig?: {
+      i18n?: 'zh-CN' | 'zh-Hant' | 'en'
       emailRequired: boolean
       websiteRequired: boolean
       placeholder: string
@@ -510,6 +511,24 @@ describe('approved production comment surface', () => {
     expect(new URL(String(fetchMock.mock.calls[1]?.[0])).searchParams.get('sort')).toBe('oldest')
     expect(trigger.textContent).toContain(zhCN.sortOldest)
     expect(trigger.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('applies the server locale to the whole public surface and keeps custom copy intact', async () => {
+    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse([], {
+      formConfig: {
+        i18n: 'en', emailRequired: true, websiteRequired: false,
+        placeholder: zhCN.commentPlaceholder, emptyMessage: 'No custom comments yet',
+        defaultSort: 'oldest', lengthLimit: 1000,
+      },
+    })))
+    await client.init()
+
+    expect(container.querySelector('.ecoku-comments')?.getAttribute('lang')).toBe('en')
+    expect(container.querySelector('.ecoku-comment-section')?.getAttribute('aria-label')).toBe('Comments')
+    expect(container.querySelector('.ecoku-sort-option[data-sort="newest"]')?.textContent).toBe('Newest')
+    expect(container.querySelector('.ecoku-sort-option[data-sort="oldest"]')?.textContent).toBe('Oldest')
+    expect(container.querySelector<HTMLTextAreaElement>('.ecoku-textarea')?.placeholder).toBe('Write a plain-text comment')
+    expect(container.querySelector('.ecoku-empty-state')?.textContent).toContain('No custom comments yet')
   })
 
   it('renders hostile content only as text and never renders private response fields', async () => {

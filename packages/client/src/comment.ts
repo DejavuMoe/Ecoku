@@ -444,7 +444,9 @@ export class CommentSurface {
     this.email.required = next.emailRequired
     this.website.required = next.websiteRequired
     this.website.removeAttribute('placeholder')
-    this.rootContent.placeholder = next.placeholder
+    this.rootContent.placeholder = next.placeholder === DEFAULT_COMMENT_FORM_CONFIG.placeholder
+      ? this.messages.commentPlaceholder
+      : next.placeholder
     this.rootContent.maxLength = next.lengthLimit * 2
     if (initializeSort && this.sort === undefined) {
       this.sort = next.defaultSort
@@ -453,7 +455,9 @@ export class CommentSurface {
       this.syncSortUI()
     }
     const emptyCopy = this.emptyState.querySelector('p')
-    if (emptyCopy) emptyCopy.textContent = next.emptyMessage
+    if (emptyCopy) emptyCopy.textContent = next.emptyMessage === DEFAULT_COMMENT_FORM_CONFIG.emptyMessage
+      ? `${this.messages.emptyTitle}\n${this.messages.emptyBody}`
+      : next.emptyMessage
     if (this.activeReply) {
       this.activeReply.email.required = next.emailRequired
       this.activeReply.website.required = next.websiteRequired
@@ -476,10 +480,13 @@ export class CommentSurface {
 
   private applyLocale(): void {
     this.root.setAttribute('lang', this.localeLanguage())
+    this.root.querySelector<HTMLElement>('.ecoku-comment-section')?.setAttribute('aria-label', this.messages.ariaComments)
     this.retryButton.textContent = this.messages.retry
     this.previousPageButton.textContent = this.messages.previousPage
     this.nextPageButton.textContent = this.messages.nextPage
     this.rootSubmit.textContent = this.messages.submitComment
+    this.sortOptions[0].textContent = this.messages.sortNewest
+    this.sortOptions[1].textContent = this.messages.sortOldest
     this.sortMenu.setAttribute('aria-label', this.messages.ariaSort)
     this.sortTrigger.setAttribute('aria-label', `${this.messages.ariaSort}: ${this.sortTriggerLabel.textContent}`)
     this.pagination.setAttribute('aria-label', this.messages.paginationLabel)
