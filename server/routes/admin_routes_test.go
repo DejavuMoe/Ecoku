@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"ecoku-server/captcha"
 	"ecoku-server/config"
+	"ecoku-server/internal/testsite"
 	"ecoku-server/model"
 	"encoding/base64"
 	"encoding/json"
@@ -22,8 +23,6 @@ import (
 
 const (
 	adminTestOrigin  = "https://admin.example"
-	adminSiteAKey    = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	adminSiteBKey    = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 	adminTestFavicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><style>.s{fill:#b8472f}</style><path class="s" d="M0 0h64v64H0z"/></svg>`
 )
 
@@ -45,8 +44,6 @@ func setupAdminTest(t *testing.T) adminEnvironment {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("ECOKU_ADMIN_SITE_A_KEY", adminSiteAKey)
-	t.Setenv("ECOKU_ADMIN_SITE_B_KEY", adminSiteBKey)
 	t.Setenv("ECOKU_ADMIN_USERNAME", "instance-admin")
 	t.Setenv("ECOKU_ADMIN_PASSWORD_HASH", string(hash))
 	t.Setenv("ECOKU_ADMIN_TOKEN_KEY", strings.Repeat("t", 32))
@@ -62,15 +59,12 @@ func setupAdminTest(t *testing.T) adminEnvironment {
 		t.Fatal(err)
 	}
 	if err := config.ApplyConfig(&config.Config{
-		Sites: []config.RegisteredSiteConfig{
-			{ID: "site-a", Name: "站点 A", SiteURL: "https://a.example", AllowedOrigins: []string{"https://a.example"}, ManagementKeyEnv: "ECOKU_ADMIN_SITE_A_KEY"},
-			{ID: "site-b", Name: "站点 B", SiteURL: "https://b.example", AllowedOrigins: []string{"https://b.example"}, ManagementKeyEnv: "ECOKU_ADMIN_SITE_B_KEY"},
-		},
-		Admin:         config.AdminConfig{StaticDir: staticDir, AllowedOrigins: []string{adminTestOrigin}},
+		Admin:         config.AdminConfig{AllowedOrigins: []string{adminTestOrigin}},
 		Notifications: config.NotificationsConfig{InstancePublicURL: "https://comments.example"},
 	}); err != nil {
 		t.Fatal(err)
 	}
+	config.GlobalConfig.Paths.AdminStaticDir = staticDir
 	if err := config.ValidateAdmin(); err != nil {
 		t.Fatal(err)
 	}
@@ -81,6 +75,10 @@ func setupAdminTest(t *testing.T) adminEnvironment {
 	if err := model.PrepareDatabaseForStartup(database); err != nil {
 		t.Fatal(err)
 	}
+	testsite.Create(t, database,
+		testsite.Site{ID: "site-a", Name: "站点 A", SiteURL: "https://a.example", AllowedOrigins: []string{"https://a.example"}},
+		testsite.Site{ID: "site-b", Name: "站点 B", SiteURL: "https://b.example", AllowedOrigins: []string{"https://b.example"}},
+	)
 	previous := model.DB
 	model.DB = database
 	t.Cleanup(func() { model.DB = previous; sqlDB, _ := database.DB(); _ = sqlDB.Close() })
@@ -336,17 +334,12 @@ func TestCommentManagementIsPublishedDeletedOnlyAndSiteIsolated(t *testing.T) {
 	if unauthenticated.Code != http.StatusUnauthorized {
 		t.Fatalf("unauthenticated=%d", unauthenticated.Code)
 	}
-	wrongSite := requestJSON(t, env.router, http.MethodGet, "/api/admin/sites/site-b/comments", "", "EcokuSite "+adminSiteAKey, nil)
-	if wrongSite.Code != http.StatusForbidden {
-		t.Fatalf("wrong-site=%d", wrongSite.Code)
-	}
-	ownKey := requestJSON(t, env.router, http.MethodGet, "/api/admin/sites/site-a/comments?status=published", "", "EcokuSite "+adminSiteAKey, nil)
-	if ownKey.Code != http.StatusForbidden {
-		t.Fatalf("management-key list=%d %s", ownKey.Code, ownKey.Body.String())
-	}
-	ownKeyDetail := requestJSON(t, env.router, http.MethodGet, fmt.Sprintf("/api/admin/sites/site-a/comments/%d", a.ID), "", "EcokuSite "+adminSiteAKey, nil)
-	if ownKeyDetail.Code != http.StatusForbidden {
-		t.Fatalf("management-key detail=%d %s", ownKeyDetail.Code, ownKeyDetail.Body.String())
+	// Site management keys were removed; the scheme is no longer accepted.
+	for _, method := range []string{http.MethodGet, http.MethodDelete} {
+		path := fmt.Sprintf("/api/admin/sites/site-a/comments/%d", a.ID)
+		if got := requestJSON(t, env.router, method, path, "", "EcokuSite "+strings.Repeat("a", 32), nil).Code; got != http.StatusUnauthorized {
+			t.Fatalf("EcokuSite %s=%d", method, got)
+		}
 	}
 	list := requestJSON(t, env.router, http.MethodGet, "/api/admin/sites/site-a/comments?status=published", adminTestOrigin, "Bearer "+env.token, nil)
 	if list.Code != http.StatusOK || !strings.Contains(list.Body.String(), "private@example.com") || strings.Contains(list.Body.String(), "秘密") {
@@ -380,7 +373,7 @@ func TestTombstoneAndPermanentDeleteSemantics(t *testing.T) {
 	}
 	path := fmt.Sprintf("/api/admin/sites/site-a/comments/%d", root.ID)
 	for range 2 {
-		deleted := requestJSON(t, env.router, http.MethodDelete, path, "", "EcokuSite "+adminSiteAKey, nil)
+		deleted := requestJSON(t, env.router, http.MethodDelete, path, adminTestOrigin, "Bearer "+env.token, nil)
 		if deleted.Code != http.StatusOK {
 			t.Fatalf("delete=%d %s", deleted.Code, deleted.Body.String())
 		}
@@ -397,11 +390,8 @@ func TestTombstoneAndPermanentDeleteSemantics(t *testing.T) {
 		t.Fatalf("parent permanent=%d", permanentRoot.Code)
 	}
 	childPath := fmt.Sprintf("/api/admin/sites/site-a/comments/%d", child.ID)
-	if got := requestJSON(t, env.router, http.MethodDelete, childPath, "", "EcokuSite "+adminSiteAKey, nil).Code; got != http.StatusOK {
+	if got := requestJSON(t, env.router, http.MethodDelete, childPath, adminTestOrigin, "Bearer "+env.token, nil).Code; got != http.StatusOK {
 		t.Fatalf("child tombstone=%d", got)
-	}
-	if got := requestJSON(t, env.router, http.MethodDelete, childPath+"/permanent", "", "EcokuSite "+adminSiteAKey, nil).Code; got != http.StatusForbidden {
-		t.Fatalf("site-key permanent=%d", got)
 	}
 	if got := requestJSON(t, env.router, http.MethodDelete, childPath+"/permanent", adminTestOrigin, "Bearer "+env.token, nil).Code; got != http.StatusOK {
 		t.Fatalf("admin permanent=%d", got)

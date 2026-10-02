@@ -12,12 +12,12 @@ sudo docker compose logs --tail=100 ecoku
 
 ### The container keeps restarting and the log says permission denied
 
-The container runs as UID/GID `10001:10001`. It must be able to read `app/config.yaml` and write to `data/` and `app/logs/`. Fix the ownership and permissions, then restart:
+The container runs as UID/GID `10001:10001`. It needs to read `app/config.yaml` and write to `data/`. Fix ownership and permissions, then restart:
 
 ```bash
 cd ~/Ecoku
-sudo chown -R 10001:10001 data app/logs
-sudo chmod 750 data app/logs
+sudo chown -R 10001:10001 data
+sudo chmod 750 data
 sudo chown "$(id -u):$(id -g)" app app/config.yaml
 chmod 644 app/config.yaml
 sudo docker compose up -d
@@ -48,7 +48,7 @@ sudo rmdir app/config.yaml
 
 ### Saving a site says "公开站点来源不能复用管理端来源" (a public site origin cannot reuse an admin origin)
 
-The site's allowed origins overlap with the admin console's origin. The admin console's origin defaults to `notifications.instance_public_url`; if you set `admin.allowed_origins`, that list is used instead. The admin console must use a separate origin, usually Ecoku's own domain, such as `https://ecoku.example.com`. If you wrote `sites` in `app/config.yaml`, the same conflict is reported at startup as "管理员来源 … 不能复用公开站点来源" (admin origin cannot reuse a public site origin).
+The site's allowed origins overlap with the admin console's origin. The admin console's origin defaults to `notifications.instance_public_url`; if you set `admin.allowed_origins`, that list is used instead. The admin console must use a separate origin, usually Ecoku's own domain, such as `https://ecoku.example.com`.
 
 ### The log says "无法解密 … 凭据" (cannot decrypt … credentials)
 

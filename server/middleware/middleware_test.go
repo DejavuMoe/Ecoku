@@ -3,6 +3,7 @@ package middleware
 import (
 	"bytes"
 	"ecoku-server/config"
+	"ecoku-server/internal/testsite"
 	"ecoku-server/model"
 	"ecoku-server/utils"
 	"encoding/json"
@@ -44,15 +45,7 @@ func TestRateLimiterBoundsAddressStateWithoutEvictingActiveBuckets(t *testing.T)
 
 func configureMiddlewareTestSite(t *testing.T) {
 	t.Helper()
-	t.Setenv("ECOKU_MIDDLEWARE_SITE_KEY", strings.Repeat("m", 32))
-	err := config.ApplyConfig(&config.Config{
-		Sites: []config.RegisteredSiteConfig{{
-			ID:               "site-a",
-			AllowedOrigins:   []string{"https://site-a.example"},
-			ManagementKeyEnv: "ECOKU_MIDDLEWARE_SITE_KEY",
-		}},
-	})
-	if err != nil {
+	if err := config.ApplyConfig(&config.Config{}); err != nil {
 		t.Fatalf("apply config: %v", err)
 	}
 	database, err := model.OpenSQLiteDatabase(t.TempDir() + "/middleware.sqlite3")
@@ -62,6 +55,7 @@ func configureMiddlewareTestSite(t *testing.T) {
 	if err := model.PrepareDatabaseForStartup(database); err != nil {
 		t.Fatalf("initialize middleware database: %v", err)
 	}
+	testsite.Create(t, database, testsite.Site{ID: "site-a", SiteURL: "https://site-a.example", AllowedOrigins: []string{"https://site-a.example"}})
 	previous := model.DB
 	model.DB = database
 	t.Cleanup(func() {
@@ -144,18 +138,8 @@ func TestCorsPreflightUsesExactOrigin(t *testing.T) {
 
 func TestAdminCorsUsesIndependentExactOrigin(t *testing.T) {
 	gin.SetMode(gin.TestMode)
-	t.Setenv("ECOKU_ADMIN_CORS_SITE_KEY", strings.Repeat("s", 32))
-	err := config.ApplyConfig(&config.Config{
-		Sites: []config.RegisteredSiteConfig{{
-			ID:               "site-a",
-			AllowedOrigins:   []string{"https://site-a.example"},
-			ManagementKeyEnv: "ECOKU_ADMIN_CORS_SITE_KEY",
-		}},
-		Admin: config.AdminConfig{AllowedOrigins: []string{"https://admin.example"}},
-	})
-	if err != nil {
-		t.Fatalf("apply config: %v", err)
-	}
+	configureMiddlewareTestSite(t)
+	config.GlobalConfig.Admin.AllowedOrigins = []string{"https://admin.example"}
 	router := gin.New()
 	router.Use(Cors())
 	router.PATCH("/api/admin/test", func(c *gin.Context) { utils.SendSuccess(c, nil) })

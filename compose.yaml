@@ -10,7 +10,6 @@ services:
       - "127.0.0.1:12123:12123"
     volumes:
       - ./app/config.yaml:/app/config.yaml:ro
-      - ./app/logs:/var/log/ecoku
       - ./data:/data
     deploy:
       resources:

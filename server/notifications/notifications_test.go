@@ -3,6 +3,7 @@ package notifications
 import (
 	"context"
 	"ecoku-server/config"
+	"ecoku-server/internal/testsite"
 	"ecoku-server/model"
 	"encoding/base64"
 	"slices"
@@ -17,7 +18,6 @@ func setupNotificationTest(t *testing.T) *gorm.DB {
 	key := base64.RawStdEncoding.EncodeToString([]byte("0123456789abcdef0123456789abcdef"))
 	t.Setenv(config.EncryptionKeyEnv, key)
 	if err := config.ApplyConfig(&config.Config{
-		Sites:         []config.RegisteredSiteConfig{{ID: "site-a", Name: "示例站点", SiteURL: "https://site.example", AllowedOrigins: []string{"https://site.example"}}},
 		Notifications: config.NotificationsConfig{InstancePublicURL: "https://comments.example"},
 	}); err != nil {
 		t.Fatal(err)
@@ -29,6 +29,7 @@ func setupNotificationTest(t *testing.T) *gorm.DB {
 	if err := model.PrepareDatabaseForStartup(database); err != nil {
 		t.Fatal(err)
 	}
+	testsite.Create(t, database, testsite.Site{ID: "site-a", Name: "示例站点", SiteURL: "https://site.example", AllowedOrigins: []string{"https://site.example"}})
 	previous := model.DB
 	model.DB = database
 	t.Cleanup(func() { model.DB = previous; sqlDB, _ := database.DB(); _ = sqlDB.Close() })

@@ -117,9 +117,6 @@ func TestAdminTokenRequiresCredentialsAndConstantTimeComparisonsMatchValues(t *t
 	if !ConstantTimeStringEqual("admin", "admin") || ConstantTimeStringEqual("admin", "other") {
 		t.Fatal("identity comparison returned an incorrect result")
 	}
-	if !ConstantTimeSecretEqual("secret", "secret") || ConstantTimeSecretEqual("secret", "different") {
-		t.Fatal("secret comparison returned an incorrect result")
-	}
 }
 
 func testAdminCredentials() *config.AdminCredentials {

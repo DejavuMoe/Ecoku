@@ -7,7 +7,6 @@ toolchain go1.27.0
 require (
 	github.com/gin-gonic/gin v1.10.1
 	github.com/glebarez/sqlite v1.11.0
-	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gorm.io/gorm v1.30.0
 )
 

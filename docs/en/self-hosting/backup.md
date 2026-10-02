@@ -9,8 +9,6 @@ All of Ecoku's state lives in the deployment directory. A complete backup contai
 | `app/config.yaml` | Instance config. |
 | `compose.yaml` | Records the image version in use. When you restore, start the same version. |
 
-`app/logs/` is only a copy of the logs and does not need to be backed up.
-
 `ecoku.env` contains secrets. Keep backup files only in places you control.
 
 ## Cold backup with the service stopped {#cold-backup}
@@ -108,7 +106,6 @@ done
 sudo tar -xzf "$archive" --no-same-owner
 sudo chown -R 10001:10001 data
 sudo chmod 750 data
-sudo install -d -o 10001 -g 10001 -m 750 app/logs
 sudo chown "$(id -u):$(id -g)" app app/config.yaml ecoku.env compose.yaml
 chmod 755 app
 chmod 644 app/config.yaml

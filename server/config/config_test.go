@@ -33,37 +33,12 @@ func writeConfig(t *testing.T, data string) string {
 	return path
 }
 
-func TestApplyConfigRegistersSitesAndAppliesCommentDefaults(t *testing.T) {
-	t.Setenv("ECOKU_TEST_SITE_KEY", strings.Repeat("k", 32))
-	loaded := &Config{
-		Sites: []RegisteredSiteConfig{{
-			ID:               "site-a",
-			AllowedOrigins:   []string{"HTTPS://Example.COM/"},
-			ManagementKeyEnv: "ECOKU_TEST_SITE_KEY",
-		}},
-	}
-	if err := ApplyConfig(loaded); err != nil {
+func TestApplyConfigFillsRateLimitDefaults(t *testing.T) {
+	if err := ApplyConfig(&Config{}); err != nil {
 		t.Fatalf("apply config: %v", err)
 	}
 	if limit, window := GetRateLimit("comment_list"); limit != 60 || window != time.Minute {
 		t.Fatalf("list rate default=%d/%s", limit, window)
-	}
-	if loaded.Sites[0].AllowedOrigins[0] != "https://example.com" {
-		t.Fatalf("normalized origin = %q", loaded.Sites[0].AllowedOrigins[0])
-	}
-	if loaded.Database.SQLite.Path != "./data/ecoku.bin" {
-		t.Fatalf("default sqlite path = %q", loaded.Database.SQLite.Path)
-	}
-	if loaded.Site.LogPath != "" {
-		t.Fatalf("empty log_path should stay stdout, got %q", loaded.Site.LogPath)
-	}
-	if _, ok := GetRegisteredSite("unknown"); ok {
-		t.Fatal("unknown site was registered")
-	}
-	comment := loaded.Sites[0].Comment
-	if !*comment.EmailRequired || *comment.WebsiteRequired || comment.Placeholder != DefaultCommentPlaceholder ||
-		comment.DefaultSort != DefaultCommentSort || comment.LengthLimit != DefaultCommentLimit || comment.EmptyMessage != DefaultEmptyMessage {
-		t.Fatalf("default comment configuration = %#v", comment)
 	}
 }
 
@@ -86,100 +61,19 @@ func TestCommentListRateLimitConfiguration(t *testing.T) {
 	}
 }
 
-func TestApplyConfigResolvesAndValidatesCommentFormConfiguration(t *testing.T) {
-	t.Setenv("ECOKU_FORM_SITE_KEY", strings.Repeat("f", 32))
-	emailRequired := false
-	websiteRequired := true
-	loaded := &Config{Sites: []RegisteredSiteConfig{{
-		ID:               "site-form",
-		AllowedOrigins:   []string{"https://form.example"},
-		ManagementKeyEnv: "ECOKU_FORM_SITE_KEY",
-		Comment: CommentConfig{
-			EmailRequired:   &emailRequired,
-			WebsiteRequired: &websiteRequired,
-			Placeholder:     "  分享你的想法  ",
-			DefaultSort:     "oldest",
-			LengthLimit:     321,
-			EmptyMessage:    "暂时没有评论",
-		},
-	}}}
-	if err := ApplyConfig(loaded); err != nil {
-		t.Fatalf("apply form config: %v", err)
-	}
-	comment := loaded.Sites[0].Comment
-	if *comment.EmailRequired || !*comment.WebsiteRequired || comment.Placeholder != "分享你的想法" ||
-		comment.DefaultSort != "oldest" || comment.LengthLimit != 321 || comment.EmptyMessage != "暂时没有评论" {
-		t.Fatalf("resolved comment configuration = %#v", comment)
-	}
-
-	for name, placeholder := range map[string]string{
-		"too long":  strings.Repeat("字", maximumCommentPlaceholderLength+1),
-		"multiline": "第一行\n第二行",
-	} {
-		t.Run(name, func(t *testing.T) {
-			candidate := *loaded
-			candidate.Sites = append([]RegisteredSiteConfig(nil), loaded.Sites...)
-			candidate.Sites[0].Comment.Placeholder = placeholder
-			if err := ApplyConfig(&candidate); err == nil {
-				t.Fatalf("invalid placeholder %q was accepted", placeholder)
-			}
-		})
-	}
-}
-
-func TestApplyConfigAllowsSiteWithoutManagementSecret(t *testing.T) {
-	loaded := &Config{Sites: []RegisteredSiteConfig{{
-		ID:             "site-a",
-		SiteURL:        "https://example.com",
-		AllowedOrigins: []string{"https://example.com"},
-	}}}
-	if err := ApplyConfig(loaded); err != nil {
-		t.Fatalf("site without optional management key: %v", err)
-	}
-	if _, ok := GetManagementKey("site-a"); ok {
-		t.Fatal("site without a binding exposed a management key")
-	}
-}
-
 func TestTrustedProxyMustBeExactIPOrCIDR(t *testing.T) {
-	t.Setenv("ECOKU_PROXY_SITE_KEY", strings.Repeat("p", 32))
-	loaded := &Config{
-		Site: SiteConfig{TrustedProxies: []string{"*"}},
-		Sites: []RegisteredSiteConfig{{
-			ID:               "site-a",
-			AllowedOrigins:   []string{"https://example.com"},
-			ManagementKeyEnv: "ECOKU_PROXY_SITE_KEY",
-		}},
-	}
-	if err := ApplyConfig(loaded); err == nil {
+	if err := ApplyConfig(&Config{Site: SiteConfig{TrustedProxies: []string{"*"}}}); err == nil {
 		t.Fatal("wildcard trusted proxy was accepted")
 	}
 }
 
 func TestTrustedProxyRejectsArbitraryNetworks(t *testing.T) {
-	t.Setenv("ECOKU_PROXY_SITE_KEY", strings.Repeat("p", 32))
 	for _, network := range []string{"0.0.0.0/0", "::/0"} {
-		loaded := &Config{
-			Site: SiteConfig{TrustedProxies: []string{network}},
-			Sites: []RegisteredSiteConfig{{
-				ID:               "site-a",
-				AllowedOrigins:   []string{"https://example.com"},
-				ManagementKeyEnv: "ECOKU_PROXY_SITE_KEY",
-			}},
-		}
-		if err := ApplyConfig(loaded); err == nil {
+		if err := ApplyConfig(&Config{Site: SiteConfig{TrustedProxies: []string{network}}}); err == nil {
 			t.Fatalf("arbitrary trusted proxy %q was accepted", network)
 		}
 	}
-	loaded := &Config{
-		Site: SiteConfig{TrustedProxies: []string{"172.17.0.1/32"}},
-		Sites: []RegisteredSiteConfig{{
-			ID:               "site-a",
-			AllowedOrigins:   []string{"https://example.com"},
-			ManagementKeyEnv: "ECOKU_PROXY_SITE_KEY",
-		}},
-	}
-	if err := ApplyConfig(loaded); err != nil {
+	if err := ApplyConfig(&Config{Site: SiteConfig{TrustedProxies: []string{"172.17.0.1/32"}}}); err != nil {
 		t.Fatalf("docker gateway proxy rejected: %v", err)
 	}
 }
@@ -190,31 +84,28 @@ func TestExampleConfigurationLoads(t *testing.T) {
 	}
 }
 
-func TestSitesCannotShareManagementCredentials(t *testing.T) {
-	sharedKey := strings.Repeat("q", 32)
-	t.Setenv("ECOKU_SHARED_SITE_KEY_A", sharedKey)
-	t.Setenv("ECOKU_SHARED_SITE_KEY_B", sharedKey)
-	loaded := &Config{Sites: []RegisteredSiteConfig{
-		{ID: "site-a", AllowedOrigins: []string{"https://a.example"}, ManagementKeyEnv: "ECOKU_SHARED_SITE_KEY_A"},
-		{ID: "site-b", AllowedOrigins: []string{"https://b.example"}, ManagementKeyEnv: "ECOKU_SHARED_SITE_KEY_B"},
-	}}
-	if err := ApplyConfig(loaded); err == nil {
-		t.Fatal("sites sharing the same management credential were accepted")
-	}
-}
-
 func TestConfigFileRejectsUnknownFields(t *testing.T) {
 	if err := LoadConfigFile(writeConfig(t, "unknown_field: true\n")); err == nil {
 		t.Fatal("unknown YAML field was accepted")
 	}
 }
 
-func TestRemovedUserAndMySQLConfigurationIsRejected(t *testing.T) {
+func TestRemovedConfigurationIsRejected(t *testing.T) {
 	for name, data := range map[string]string{
 		"ordinary user auth": "auth:\n  user_enabled: true\n",
 		"smtp":               "smtp:\n  enabled: false\n",
 		"mysql":              "database:\n  type: mysql\n  mysql:\n    host: localhost\n",
 		"drop table":         "site:\n  drop_table: true\n",
+		"port":               "site:\n  port: 12123\n",
+		"log path":           "site:\n  log_path: \"/var/log/ecoku/ecoku.log\"\n",
+		"client static dir":  "client:\n  static_dir: \"/app/client\"\n",
+		"admin static dir":   "admin:\n  static_dir: \"/app/admin\"\n",
+		"sqlite path":        "database:\n  sqlite:\n    path: \"/data/ecoku.sqlite3\"\n",
+		"sites":              "sites:\n  - id: \"blog\"\n    site_url: \"https://blog.example.com\"\n",
+		"admin enabled":      "admin:\n  enabled: true\n",
+		"admin token ttl":    "admin:\n  token_ttl_minutes: 480\n",
+		"admin env name":     "admin:\n  username_env: \"ECOKU_ADMIN_USERNAME\"\n",
+		"encryption env":     "notifications:\n  encryption_key_env: \"ECOKU_NOTIFICATION_ENCRYPTION_KEY\"\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := LoadConfigFile(writeConfig(t, data)); err == nil {
@@ -251,16 +142,7 @@ func TestAdminConsoleNeedsAnOrigin(t *testing.T) {
 
 func TestAdminCredentialsComeFromEnvironment(t *testing.T) {
 	passwordHash := setAdminEnvironment(t, strings.Repeat("t", 32))
-	t.Setenv("ECOKU_ADMIN_VALID_SITE_KEY", strings.Repeat("s", 32))
-	loaded := &Config{
-		Sites: []RegisteredSiteConfig{{
-			ID:               "site-a",
-			AllowedOrigins:   []string{"https://site.example"},
-			ManagementKeyEnv: "ECOKU_ADMIN_VALID_SITE_KEY",
-		}},
-		Admin: AdminConfig{AllowedOrigins: []string{"HTTPS://ADMIN.EXAMPLE/"}},
-	}
-	if err := ApplyConfig(loaded); err != nil {
+	if err := ApplyConfig(&Config{Admin: AdminConfig{AllowedOrigins: []string{"HTTPS://ADMIN.EXAMPLE/"}}}); err != nil {
 		t.Fatalf("apply config: %v", err)
 	}
 	if err := ValidateAdmin(); err != nil {
@@ -281,28 +163,14 @@ func TestAdminCredentialsComeFromEnvironment(t *testing.T) {
 	}
 }
 
-func TestAdminOriginAndSigningKeyMustBeIndependent(t *testing.T) {
-	sharedKey := strings.Repeat("x", 32)
-	setAdminEnvironment(t, sharedKey)
-	t.Setenv("ECOKU_ADMIN_INDEPENDENCE_SITE_KEY", sharedKey)
-	loaded := &Config{
-		Sites: []RegisteredSiteConfig{{
-			ID:               "site-a",
-			AllowedOrigins:   []string{"https://shared.example"},
-			ManagementKeyEnv: "ECOKU_ADMIN_INDEPENDENCE_SITE_KEY",
-		}},
-		Admin: AdminConfig{AllowedOrigins: []string{"https://shared.example"}},
-	}
-	if err := ApplyConfig(loaded); err == nil {
-		t.Fatal("administrator origin was allowed to reuse a public-site origin")
-	}
-
-	loaded.Admin.AllowedOrigins = []string{"https://admin.example"}
-	if err := ApplyConfig(loaded); err != nil {
+func TestAdminSigningKeyCannotReusePasswordHash(t *testing.T) {
+	passwordHash := setAdminEnvironment(t, strings.Repeat("t", 32))
+	t.Setenv(adminTokenKeyEnv, passwordHash)
+	if err := ApplyConfig(&Config{Admin: AdminConfig{AllowedOrigins: []string{"https://admin.example"}}}); err != nil {
 		t.Fatal(err)
 	}
 	if err := ValidateAdmin(); err == nil {
-		t.Fatal("administrator signing key was allowed to reuse a site management key")
+		t.Fatal("administrator signing key was allowed to reuse the password hash")
 	}
 }
 
@@ -313,7 +181,7 @@ func TestLegacyPlaintextAdminConfigurationIsRejected(t *testing.T) {
 	}
 }
 
-func TestContainerRuntimeFillsImagePathsAndDerivesAdminOrigin(t *testing.T) {
+func TestContainerRuntimeUsesImagePathsAndDerivesAdminOrigin(t *testing.T) {
 	t.Setenv("ECOKU_RUNTIME", "container")
 	setAdminEnvironment(t, strings.Repeat("k", 32))
 	if err := LoadConfigFile(writeConfig(t, "notifications:\n  instance_public_url: \"https://Ecoku.Example.com/\"\n")); err != nil {
@@ -322,32 +190,21 @@ func TestContainerRuntimeFillsImagePathsAndDerivesAdminOrigin(t *testing.T) {
 	if err := ValidateAdmin(); err != nil {
 		t.Fatalf("minimal container config cannot serve the admin console: %v", err)
 	}
-	if GetAdminStaticDir() != "/app/admin" || GetClientStaticDir() != "/app/client" {
-		t.Fatalf("adminDir=%q clientDir=%q", GetAdminStaticDir(), GetClientStaticDir())
-	}
-	if LogFilePath != "/var/log/ecoku/ecoku.log" || GetSQLiteConfig().Path != "/data/ecoku.sqlite3" || Port != "12123" {
-		t.Fatalf("log=%q db=%q port=%q", LogFilePath, GetSQLiteConfig().Path, Port)
+	if GetAdminStaticDir() != "/app/admin" || GetClientStaticDir() != "/app/client" || GetSQLitePath() != "/data/ecoku.sqlite3" {
+		t.Fatalf("paths=%#v", GlobalConfig.Paths)
 	}
 	if got := GetAdminAllowedOrigins(); len(got) != 1 || got[0] != "https://ecoku.example.com" {
 		t.Fatalf("admin origins=%v", got)
 	}
-
-	// Explicit values still win.
-	if err := LoadConfigFile(writeConfig(t, "site:\n  log_path: \"stdout\"\ndatabase:\n  sqlite:\n    path: \"/data/custom.sqlite3\"\n")); err != nil {
-		t.Fatal(err)
-	}
-	if LogFilePath != "stdout" || GetSQLiteConfig().Path != "/data/custom.sqlite3" {
-		t.Fatalf("explicit values overridden: log=%q db=%q", LogFilePath, GetSQLiteConfig().Path)
-	}
 }
 
-func TestSourceRuntimeServesNoStaticFilesByDefault(t *testing.T) {
+func TestSourceRuntimeServesNoStaticFiles(t *testing.T) {
 	t.Setenv("ECOKU_RUNTIME", "")
 	if err := LoadConfigFile(writeConfig(t, "notifications:\n  instance_public_url: \"https://ecoku.example.com\"\n")); err != nil {
 		t.Fatal(err)
 	}
-	if GetAdminStaticDir() != "" || GetClientStaticDir() != "" || LogFilePath != "" || GetSQLiteConfig().Path != "./data/ecoku.bin" {
-		t.Fatalf("source defaults changed: admin=%q client=%q log=%q db=%q", GetAdminStaticDir(), GetClientStaticDir(), LogFilePath, GetSQLiteConfig().Path)
+	if GetAdminStaticDir() != "" || GetClientStaticDir() != "" || GetSQLitePath() != "./data/ecoku.bin" {
+		t.Fatalf("source paths changed: %#v", GlobalConfig.Paths)
 	}
 }
 
@@ -359,40 +216,5 @@ func TestDeploymentTemplateLoadsInContainerRuntime(t *testing.T) {
 	}
 	if err := ValidateAdmin(); err != nil {
 		t.Fatalf("deploy template cannot serve the admin console: %v", err)
-	}
-}
-
-func TestRetiredKeysAcceptOnlyTheirFixedValues(t *testing.T) {
-	t.Setenv("ECOKU_RUNTIME", "container")
-	setAdminEnvironment(t, strings.Repeat("k", 32))
-	template, err := os.ReadFile("testdata/v0.2.7-deploy.yaml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	legacy := string(template)
-	if err := LoadConfigFile(writeConfig(t, legacy)); err != nil {
-		t.Fatalf("v0.2.7 deployment template rejected: %v", err)
-	}
-	if err := ValidateAdmin(); err != nil {
-		t.Fatalf("v0.2.7 deployment template cannot serve the admin console: %v", err)
-	}
-
-	for key, change := range map[string][2]string{
-		"admin.enabled":                    {"enabled: true", "enabled: false"},
-		"admin.token_ttl_minutes":          {"token_ttl_minutes: 480", "token_ttl_minutes: 60"},
-		"admin.username_env":               {`username_env: "ECOKU_ADMIN_USERNAME"`, `username_env: "CUSTOM_ADMIN_USERNAME"`},
-		"admin.password_hash_env":          {`password_hash_env: "ECOKU_ADMIN_PASSWORD_HASH"`, `password_hash_env: "CUSTOM_ADMIN_HASH"`},
-		"admin.token_key_env":              {`token_key_env: "ECOKU_ADMIN_TOKEN_KEY"`, `token_key_env: "CUSTOM_ADMIN_TOKEN_KEY"`},
-		"notifications.encryption_key_env": {`encryption_key_env: "ECOKU_NOTIFICATION_ENCRYPTION_KEY"`, `encryption_key_env: "CUSTOM_KEY"`},
-	} {
-		t.Run(key, func(t *testing.T) {
-			if !strings.Contains(legacy, change[0]) {
-				t.Fatalf("fixture has no %q", change[0])
-			}
-			err := LoadConfigFile(writeConfig(t, strings.Replace(legacy, change[0], change[1], 1)))
-			if err == nil || !strings.Contains(err.Error(), key) {
-				t.Fatalf("changed %s error = %v", key, err)
-			}
-		})
 	}
 }

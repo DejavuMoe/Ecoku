@@ -5,8 +5,8 @@ hero:
   text: セルフホストの純テキストコメントシステム
   tagline: 静的ブログと個人サイトのために。Docker コンテナ 1 つ、SQLite ファイル 1 つ。コメントは投稿するとすぐに公開されます。
   image:
-    src: /ecoku-hero.png
-    alt: Ecoku コメント欄のイメージ
+    src: /logo.svg
+    alt: Ecoku のロゴ
   actions:
     - theme: brand
       text: デプロイを始める

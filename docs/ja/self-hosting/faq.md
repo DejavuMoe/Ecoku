@@ -12,12 +12,12 @@ sudo docker compose logs --tail=100 ecoku
 
 ### コンテナが再起動を繰り返し、ログに permission denied と出る
 
-コンテナは UID/GID `10001:10001` で動作し、`app/config.yaml` を読めること、`data/` と `app/logs/` に書き込めることが必要です。所有者と権限を直してから再起動します。
+コンテナは UID/GID `10001:10001` で動作し、`app/config.yaml` を読めること、`data/` に書き込めることが必要です。所有者と権限を直してから再起動します。
 
 ```bash
 cd ~/Ecoku
-sudo chown -R 10001:10001 data app/logs
-sudo chmod 750 data app/logs
+sudo chown -R 10001:10001 data
+sudo chmod 750 data
 sudo chown "$(id -u):$(id -g)" app app/config.yaml
 chmod 644 app/config.yaml
 sudo docker compose up -d
@@ -48,7 +48,7 @@ sudo rmdir app/config.yaml
 
 ### サイトの保存時に「公开站点来源不能复用管理端来源」と表示される
 
-（公開サイトのオリジンを管理画面のオリジンと共用できない、という意味です。）サイトの許可オリジンが管理画面のオリジンと重複しています。管理画面のオリジンはデフォルトで `notifications.instance_public_url` から取り、`admin.allowed_origins` を書いている場合はそちらが優先されます。管理画面には独立したオリジンを使う必要があり、通常は `https://ecoku.example.com` のような Ecoku 自身のドメインです。`app/config.yaml` に `sites` を書いている場合は、同じ競合があると起動時に「管理员来源 … 不能复用公开站点来源」（管理者オリジンを公開サイトのオリジンと共用できない）と出ます。
+（公開サイトのオリジンを管理画面のオリジンと共用できない、という意味です。）サイトの許可オリジンが管理画面のオリジンと重複しています。管理画面のオリジンはデフォルトで `notifications.instance_public_url` から取り、`admin.allowed_origins` を書いている場合はそちらが優先されます。管理画面には独立したオリジンを使う必要があり、通常は `https://ecoku.example.com` のような Ecoku 自身のドメインです。
 
 ### ログに「无法解密 … 凭据」と出る
 

@@ -34,7 +34,7 @@ pnpm docs:dev
 
 以上命令按需在不同终端运行。
 
-服务端默认为 `http://127.0.0.1:12123`，评论区开发页默认为 `http://localhost:3000`。若要由 Go 提供静态文件，先构建相应包，再在 `server/config.yaml` 中填写 `client.static_dir: ../packages/client/dist` 或 `admin.static_dir: ../packages/admin/dist`。
+服务端固定监听 `http://127.0.0.1:12123`，数据库位于 `server/data/ecoku.bin`。源码运行只提供 API，评论区与管理后台使用各自的 Vite 开发服务器；Docker 镜像提供构建后的静态页面。
 
 完整验证由 Woodpecker 执行；本地只运行与当前改动直接相关且 CI 未覆盖的检查。
 

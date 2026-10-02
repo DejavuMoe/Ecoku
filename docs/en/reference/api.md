@@ -270,7 +270,7 @@ Admin endpoints live under `/api/admin/`. When `admin.allowed_origins` below is 
 
 - **Session cookie**: after a successful `POST /api/admin/login`, the server sets a cookie named `ecoku_admin_session` (HttpOnly, SameSite=Strict, Path=`/api/admin`, with Secure in production), valid for 8 hours. The sign-in response does not contain a token.
 - The sign-in request, and every non-GET request authenticated by cookie, must carry an `Origin` from `admin.allowed_origins`.
-- Requests authenticated with `Authorization: Bearer <credential>` or a management key may omit `Origin`; if they carry one, it must still be in `admin.allowed_origins`, otherwise the response is `403`. The Bearer credential must be a currently valid session that has not been signed out. Old tokens issued before v0.2.4 are no longer valid.
+- Requests authenticated with `Authorization: Bearer <credential>` may omit `Origin`; if they carry one, it must still be in `admin.allowed_origins`, otherwise the response is `403`. The Bearer credential must be a currently valid session that has not been signed out. Old tokens issued before v0.2.4 are no longer valid.
 - Sign-in requires HTTPS. Only loopback addresses may use HTTP.
 
 ### Sign-in and sessions
@@ -326,25 +326,3 @@ Both delete endpoints are rate limited by `rate_limit.comment_delete`.
 | `POST /api/admin/notifications/telegram/test` | Send a test message. Failures are reported the same way. |
 
 Both test endpoints are rate limited by `rate_limit.notification_test`.
-
-## Site management keys {#management-key}
-
-Site management keys are for **trusted server-side automation**, such as deleting abusive comments from your own back-office system. Never put one in a browser.
-
-1. Configure `management_key_env` for the site under `sites` in `app/config.yaml`, and set the matching environment variable in `ecoku.env`. The value must be at least 32 bytes, and each site must use a different one. See the [Configuration reference](./configuration#sites).
-2. Send it with each request:
-
-   ```http
-   Authorization: EcokuSite <management key>
-   ```
-
-A management key can **only** tombstone delete comments of the site it belongs to:
-
-```http
-DELETE /api/admin/sites/blog/comments/102
-Authorization: EcokuSite <management key>
-```
-
-It cannot read comment lists or details, cannot permanently delete, and cannot access other sites or instance settings. Those requests return `403`; an invalid key returns `401`.
-
-Site settings under `sites` are written only when the database is first initialized, but `management_key_env` is read on every startup. To enable a management key on an existing instance, add an entry under `sites` whose `id` matches the existing site in the admin console, and also fill in `site_url` and `allowed_origins` so the config passes validation. The other fields of this entry do not override the settings in the admin console.

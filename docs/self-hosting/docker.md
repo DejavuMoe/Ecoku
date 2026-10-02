@@ -1,5 +1,9 @@
 # Docker 部署
 
+::: info 尚未发布的部署变更
+本页对应下一版本。已发布的 v0.2.8 镜像请使用 [v0.2.8 部署说明](https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.8/docs/self-hosting/docker.md)。现有实例升级前请阅读[配置迁移](./upgrade#unreleased-config)。
+:::
+
 本页从一台空的 Linux 主机开始，用 Docker Compose 跑起一个 Ecoku 实例。你只需要准备三个文件：`compose.yaml`、`app/config.yaml` 和 `ecoku.env`。完成后，服务只在本机 `127.0.0.1:12123` 上可访问；公网 HTTPS 在下一步[反向代理](./reverse-proxy)中配置。
 
 ## 开始之前
@@ -19,19 +23,18 @@
 ├── compose.yaml        # 容器定义
 ├── ecoku.env           # 管理员凭据、密钥、时区（权限 600）
 ├── app/
-│   ├── config.yaml     # 实例配置（只读挂载）
-│   └── logs/           # 日志文件副本
+│   └── config.yaml     # 实例配置（只读挂载）
 └── data/
     └── ecoku.sqlite3   # 全部数据：站点、评论、设置
 ```
 
 ## 1. 准备目录
 
-容器以 UID/GID `10001:10001` 运行，根文件系统只读，只有挂载进去的 `app/logs` 和 `data` 可写。部署目录和 `app/` 用你自己的账号创建，之后编辑配置不需要 `sudo`；`app/logs` 和 `data` 交给容器用户：
+容器以 UID/GID `10001:10001` 运行，根文件系统只读，只有挂载进去的 `data` 可写。部署目录和 `app/` 用你自己的账号创建，之后编辑配置不需要 `sudo`；`data` 交给容器用户：
 
 ```bash
 mkdir -p ~/Ecoku/app && cd ~/Ecoku
-sudo install -d -o 10001 -g 10001 -m 750 app/logs data
+sudo install -d -o 10001 -g 10001 -m 750 data
 ```
 
 ## 2. 创建 compose.yaml
@@ -51,7 +54,6 @@ services:
       - "127.0.0.1:12123:12123"
     volumes:
       - ./app/config.yaml:/app/config.yaml:ro
-      - ./app/logs:/var/log/ecoku
       - ./data:/data
     deploy:
       resources:
@@ -73,7 +75,7 @@ services:
     stop_grace_period: 30s
 ```
 
-容器内的端口、目录、日志和数据库路径都已固定在镜像里，和上面的挂载一一对应。要换宿主机上的位置，只改冒号前面的部分，例如把端口改成 `"127.0.0.1:8080:12123"`，或把数据放到 `/srv/ecoku-data:/data`。
+容器内的端口、目录和数据库路径都固定在镜像里，和上面的挂载一一对应。要换宿主机上的位置，只改冒号前面的部分，例如把端口改成 `"127.0.0.1:8080:12123"`，或把数据放到 `/srv/ecoku-data:/data`。日志写到标准输出，用 `docker compose logs` 查看。
 
 有两处请保持原样：
 
@@ -124,13 +126,7 @@ ECOKU_NOTIFICATION_ENCRYPTION_KEY='...'
 chmod 600 ~/Ecoku/ecoku.env
 ```
 
-| 变量 | 填什么 |
-| --- | --- |
-| `TZ` | 评论和通知的显示时区，IANA 名称，如 `Asia/Shanghai`、`Asia/Tokyo`。 |
-| `ECOKU_ADMIN_USERNAME` | 后台登录用户名，1～80 个字符。 |
-| `ECOKU_ADMIN_PASSWORD_HASH` | 后台密码的 bcrypt 哈希，不填明文密码。用下面的命令生成。 |
-| `ECOKU_ADMIN_TOKEN_KEY` | 管理员会话的签名密钥，至少 32 个字符。用下面的命令生成。更换后所有已登录会话失效。 |
-| `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 加密数据库里的 SMTP 密码、Telegram Bot Token 和人机验证 Secret Key，Base64 编码的 32 字节。用下面的命令生成。 |
+`TZ` 是评论和通知的显示时区，`ECOKU_ADMIN_USERNAME` 是后台登录用户名，其余三项用下面的命令生成。各变量的要求见[配置参考](../reference/configuration#env)。
 
 生成密码哈希（输入时不回显，把输出的整串 `$2a$10$...` 填进 `ECOKU_ADMIN_PASSWORD_HASH`）：
 

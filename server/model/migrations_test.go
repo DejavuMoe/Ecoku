@@ -1,23 +1,40 @@
 package model
 
 import (
-	"ecoku-server/config"
+	"ecoku-server/internal/testsite"
 	"gorm.io/gorm"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 )
 
-func freshTestDatabase(t *testing.T) {
-	t.Helper()
-	t.Setenv("ECOKU_MODEL_SITE_KEY", strings.Repeat("m", 32))
-	if err := config.ApplyConfig(&config.Config{Sites: []config.RegisteredSiteConfig{{
-		ID: "site-a", SiteURL: "https://example.test", AllowedOrigins: []string{"https://example.test"},
-		ManagementKeyEnv: "ECOKU_MODEL_SITE_KEY", Name: "Example",
-	}}}); err != nil {
+var exampleSite = testsite.Site{ID: "site-a", SiteURL: "https://example.test", Name: "Example", AllowedOrigins: []string{"https://example.test"}}
+
+func TestFreshDatabaseStartsWithoutSites(t *testing.T) {
+	database, err := OpenSQLiteDatabase(t.TempDir() + "/empty.sqlite3")
+	if err != nil {
 		t.Fatal(err)
 	}
+	sqlDB, _ := database.DB()
+	t.Cleanup(func() { _ = sqlDB.Close() })
+	if err := PrepareDatabaseForStartup(database); err != nil {
+		t.Fatal(err)
+	}
+	var count int64
+	if err := database.Table("sites").Count(&count).Error; err != nil || count != 0 {
+		t.Fatalf("fresh sites=%d, error=%v", count, err)
+	}
+	testsite.Create(t, database, exampleSite)
+	if err := PrepareDatabaseForStartup(database); err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Table("sites").Where("id = ?", exampleSite.ID).Count(&count).Error; err != nil || count != 1 {
+		t.Fatalf("existing sites=%d, error=%v", count, err)
+	}
+}
+
+func freshTestDatabase(t *testing.T) {
+	t.Helper()
 	database, err := OpenSQLiteDatabase(t.TempDir() + "/fresh.sqlite3")
 	if err != nil {
 		t.Fatal(err)
@@ -25,19 +42,13 @@ func freshTestDatabase(t *testing.T) {
 	if err := PrepareDatabaseForStartup(database); err != nil {
 		t.Fatal(err)
 	}
+	testsite.Create(t, database, exampleSite)
 	previous := DB
 	DB = database
 	t.Cleanup(func() { DB = previous; sqlDB, _ := database.DB(); _ = sqlDB.Close() })
 }
 
 func TestV1DatabaseMigratesInPlaceWithoutLosingBusinessData(t *testing.T) {
-	t.Setenv("ECOKU_MODEL_SITE_KEY", strings.Repeat("m", 32))
-	if err := config.ApplyConfig(&config.Config{Sites: []config.RegisteredSiteConfig{{
-		ID: "site-a", SiteURL: "https://example.test", AllowedOrigins: []string{"https://example.test"},
-		ManagementKeyEnv: "ECOKU_MODEL_SITE_KEY", Name: "Example",
-	}}}); err != nil {
-		t.Fatal(err)
-	}
 	database, err := OpenSQLiteDatabase(t.TempDir() + "/v1.sqlite3")
 	if err != nil {
 		t.Fatal(err)
@@ -47,6 +58,7 @@ func TestV1DatabaseMigratesInPlaceWithoutLosingBusinessData(t *testing.T) {
 	if err := createFreshSchema(database); err != nil {
 		t.Fatal(err)
 	}
+	testsite.Create(t, database, exampleSite)
 	now := time.Date(2026, 8, 14, 1, 2, 3, 0, time.UTC)
 	if err := database.Exec(`INSERT INTO comments
   (site_id, mark, page_title, parent_id, username, email, url, content, deleted_at, created_at, updated_at)
@@ -124,10 +136,6 @@ func TestV1DatabaseMigratesInPlaceWithoutLosingBusinessData(t *testing.T) {
 }
 
 func TestFailedV2MigrationDoesNotRecordCompletion(t *testing.T) {
-	t.Setenv("ECOKU_MODEL_SITE_KEY", strings.Repeat("m", 32))
-	if err := config.ApplyConfig(&config.Config{}); err != nil {
-		t.Fatal(err)
-	}
 	database, err := OpenSQLiteDatabase(t.TempDir() + "/failed-v2.sqlite3")
 	if err != nil {
 		t.Fatal(err)
@@ -156,13 +164,6 @@ func TestFailedV2MigrationDoesNotRecordCompletion(t *testing.T) {
 }
 
 func TestV2DatabaseMigratesBloggerBadgeInPlace(t *testing.T) {
-	t.Setenv("ECOKU_MODEL_SITE_KEY", strings.Repeat("m", 32))
-	if err := config.ApplyConfig(&config.Config{Sites: []config.RegisteredSiteConfig{{
-		ID: "site-a", SiteURL: "https://example.test", AllowedOrigins: []string{"https://example.test"},
-		ManagementKeyEnv: "ECOKU_MODEL_SITE_KEY", Name: "Example",
-	}}}); err != nil {
-		t.Fatal(err)
-	}
 	database, err := OpenSQLiteDatabase(t.TempDir() + "/v2.sqlite3")
 	if err != nil {
 		t.Fatal(err)
@@ -172,6 +173,7 @@ func TestV2DatabaseMigratesBloggerBadgeInPlace(t *testing.T) {
 	if err := createFreshSchema(database); err != nil {
 		t.Fatal(err)
 	}
+	testsite.Create(t, database, exampleSite)
 	if err := migrateSiteBloggerIdentity(database); err != nil {
 		t.Fatal(err)
 	}
@@ -208,13 +210,6 @@ func TestV2DatabaseMigratesBloggerBadgeInPlace(t *testing.T) {
 }
 
 func TestV3DatabaseMigratesTurnstileSettingsInPlace(t *testing.T) {
-	t.Setenv("ECOKU_MODEL_SITE_KEY", strings.Repeat("m", 32))
-	if err := config.ApplyConfig(&config.Config{Sites: []config.RegisteredSiteConfig{{
-		ID: "site-a", SiteURL: "https://example.test", AllowedOrigins: []string{"https://example.test"},
-		ManagementKeyEnv: "ECOKU_MODEL_SITE_KEY", Name: "Example",
-	}}}); err != nil {
-		t.Fatal(err)
-	}
 	database, err := OpenSQLiteDatabase(t.TempDir() + "/v3.sqlite3")
 	if err != nil {
 		t.Fatal(err)
@@ -224,6 +219,7 @@ func TestV3DatabaseMigratesTurnstileSettingsInPlace(t *testing.T) {
 	if err := createFreshSchema(database); err != nil {
 		t.Fatal(err)
 	}
+	testsite.Create(t, database, exampleSite)
 	if err := migrateSiteBloggerIdentity(database); err != nil {
 		t.Fatal(err)
 	}
@@ -346,13 +342,6 @@ func TestFreshCommentScopeAndTombstoneConstraints(t *testing.T) {
 }
 
 func TestV4DatabaseMigratesBloggerProofOutboxTargetsAndBackfill(t *testing.T) {
-	t.Setenv("ECOKU_MODEL_SITE_KEY", strings.Repeat("m", 32))
-	if err := config.ApplyConfig(&config.Config{Sites: []config.RegisteredSiteConfig{{
-		ID: "site-a", SiteURL: "https://example.test", AllowedOrigins: []string{"https://example.test"},
-		ManagementKeyEnv: "ECOKU_MODEL_SITE_KEY", Name: "Example",
-	}}}); err != nil {
-		t.Fatal(err)
-	}
 	database, err := OpenSQLiteDatabase(t.TempDir() + "/v4.sqlite3")
 	if err != nil {
 		t.Fatal(err)
@@ -362,6 +351,7 @@ func TestV4DatabaseMigratesBloggerProofOutboxTargetsAndBackfill(t *testing.T) {
 	if err := createFreshSchema(database); err != nil {
 		t.Fatal(err)
 	}
+	testsite.Create(t, database, exampleSite)
 	if err := migrateSiteBloggerIdentity(database); err != nil {
 		t.Fatal(err)
 	}
@@ -434,14 +424,6 @@ func TestV4DatabaseMigratesBloggerProofOutboxTargetsAndBackfill(t *testing.T) {
 }
 
 func TestV5CaptchaProviderMigrationPreservesTurnstileState(t *testing.T) {
-	t.Setenv("ECOKU_MODEL_SITE_KEY", strings.Repeat("m", 32))
-	if err := config.ApplyConfig(&config.Config{Sites: []config.RegisteredSiteConfig{{
-		ID: "site-a", SiteURL: "https://example.test", AllowedOrigins: []string{"https://example.test"},
-		ManagementKeyEnv: "ECOKU_MODEL_SITE_KEY", Name: "Example",
-	}}}); err != nil {
-		t.Fatal(err)
-	}
-
 	for _, fixture := range []struct {
 		name    string
 		enabled bool
@@ -459,6 +441,7 @@ func TestV5CaptchaProviderMigrationPreservesTurnstileState(t *testing.T) {
 			if err := createFreshSchema(database); err != nil {
 				t.Fatal(err)
 			}
+			testsite.Create(t, database, exampleSite)
 			if err := migrateSiteBloggerIdentity(database); err != nil {
 				t.Fatal(err)
 			}
@@ -556,9 +539,6 @@ func TestAuditUpgradePreservesV7State(t *testing.T) {
 }
 
 func TestV7ToV8PreservesDataAndMigrationHistory(t *testing.T) {
-	if err := config.ApplyConfig(&config.Config{Sites: []config.RegisteredSiteConfig{{ID: "site-a", SiteURL: "https://example.test", AllowedOrigins: []string{"https://example.test"}}}}); err != nil {
-		t.Fatal(err)
-	}
 	database, err := OpenSQLiteDatabase(t.TempDir() + "/v7.sqlite3")
 	if err != nil {
 		t.Fatal(err)
@@ -571,6 +551,7 @@ func TestV7ToV8PreservesDataAndMigrationHistory(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	testsite.Create(t, database, exampleSite)
 	now := time.Now().UTC()
 	if err := database.Exec(`INSERT INTO comments (site_id,mark,username,email,content,created_at,updated_at) VALUES ('site-a','/keep','guest','guest@example.test','keep',?,?)`, now, now).Error; err != nil {
 		t.Fatal(err)
@@ -617,9 +598,6 @@ func TestV7ToV8PreservesDataAndMigrationHistory(t *testing.T) {
 }
 
 func TestV8ToV9RebuildsOutboxInPlace(t *testing.T) {
-	if err := config.ApplyConfig(&config.Config{Sites: []config.RegisteredSiteConfig{{ID: "site-a", SiteURL: "https://example.test", AllowedOrigins: []string{"https://example.test"}}}}); err != nil {
-		t.Fatal(err)
-	}
 	database, err := OpenSQLiteDatabase(t.TempDir() + "/v8.sqlite3")
 	if err != nil {
 		t.Fatal(err)
@@ -632,6 +610,7 @@ func TestV8ToV9RebuildsOutboxInPlace(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	testsite.Create(t, database, exampleSite)
 	now := time.Now().UTC()
 	if err := database.Exec(`INSERT INTO comments (id,site_id,mark,username,email,content,created_at,updated_at) VALUES (1,'site-a','/keep','guest','guest@example.test','keep',?,?)`, now, now).Error; err != nil {
 		t.Fatal(err)

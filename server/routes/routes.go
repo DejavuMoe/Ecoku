@@ -85,61 +85,57 @@ func NewRouter() (*gin.Engine, error) {
 
 		protected := admin.Group("")
 		protected.Use(middleware.AdminAuthentication())
-		protected.GET("/session", middleware.RequireInstanceAdmin(), adminhandler.Session)
-		protected.POST("/logout", middleware.RequireInstanceAdmin(), adminhandler.Logout)
-		protected.GET("/sites", middleware.RequireInstanceAdmin(), adminhandler.ListSites)
+		protected.GET("/session", adminhandler.Session)
+		protected.POST("/logout", adminhandler.Logout)
+		protected.GET("/sites", adminhandler.ListSites)
 		protected.POST(
 			"/sites",
-			middleware.RequireInstanceAdmin(),
 			middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
 			adminhandler.CreateSite,
 		)
-		protected.GET("/sites/:siteId", middleware.RequireInstanceAdmin(), adminhandler.GetSite)
+		protected.GET("/sites/:siteId", adminhandler.GetSite)
 		protected.PUT(
 			"/sites/:siteId",
-			middleware.RequireInstanceAdmin(),
 			middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
 			adminhandler.UpdateSite,
 		)
-		protected.GET("/notifications", middleware.RequireInstanceAdmin(), adminhandler.GetNotificationSettings)
-		protected.GET("/captcha", middleware.RequireInstanceAdmin(), adminhandler.GetCaptchaSettings)
+		protected.GET("/notifications", adminhandler.GetNotificationSettings)
+		protected.GET("/captcha", adminhandler.GetCaptchaSettings)
 		protected.PUT(
 			"/captcha",
-			middleware.RequireInstanceAdmin(),
 			middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
 			adminhandler.SaveCaptchaSettings,
 		)
-		protected.GET("/turnstile", middleware.RequireInstanceAdmin(), adminhandler.GetTurnstileSettings)
+		protected.GET("/turnstile", adminhandler.GetTurnstileSettings)
 		protected.PUT(
 			"/turnstile",
-			middleware.RequireInstanceAdmin(),
 			middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
 			adminhandler.SaveTurnstileSettings,
 		)
 		protected.PUT(
 			"/notifications/email",
-			middleware.RequireInstanceAdmin(), middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
+			middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
 			adminhandler.SaveEmailNotificationSettings,
 		)
 		protected.POST(
 			"/notifications/email/test",
-			middleware.RequireInstanceAdmin(), middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
+			middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
 			middleware.RateLimit("notification_test"), adminhandler.TestEmailNotification,
 		)
 		protected.PUT(
 			"/notifications/telegram",
-			middleware.RequireInstanceAdmin(), middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
+			middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
 			adminhandler.SaveTelegramNotificationSettings,
 		)
 		protected.POST(
 			"/notifications/telegram/test",
-			middleware.RequireInstanceAdmin(), middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
+			middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
 			middleware.RateLimit("notification_test"), adminhandler.TestTelegramNotification,
 		)
 		site := protected.Group("/sites/:siteId")
 		site.Use(middleware.RequireAdminSiteAccess())
-		site.GET("/comments", middleware.RequireInstanceAdmin(), adminhandler.ListComments)
-		site.GET("/comments/:commentId", middleware.RequireInstanceAdmin(), adminhandler.GetComment)
+		site.GET("/comments", adminhandler.ListComments)
+		site.GET("/comments/:commentId", adminhandler.GetComment)
 		site.DELETE(
 			"/comments/:commentId",
 			middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
@@ -148,7 +144,6 @@ func NewRouter() (*gin.Engine, error) {
 		)
 		site.DELETE(
 			"/comments/:commentId/permanent",
-			middleware.RequireInstanceAdmin(),
 			middleware.LimitRequestBody(middleware.MaxRequestBodyBytes),
 			middleware.RateLimit("comment_delete"),
 			adminhandler.PermanentlyDeleteComment,
@@ -161,7 +156,7 @@ func NewRouter() (*gin.Engine, error) {
 func registerClientStatic(router *gin.Engine, directory string) error {
 	absoluteDirectory, err := filepath.Abs(directory)
 	if err != nil {
-		return fmt.Errorf("解析 client.static_dir: %w", err)
+		return fmt.Errorf("解析浏览器资源目录 %s: %w", directory, err)
 	}
 	assetNames := []string{"ecoku.umd.js", "ecoku-loader.js", "ecoku.css", "ecoku.unstyled.css"}
 	assetPaths := make(map[string]string, len(assetNames))
@@ -169,7 +164,7 @@ func registerClientStatic(router *gin.Engine, directory string) error {
 		path := filepath.Join(absoluteDirectory, name)
 		info, statErr := os.Stat(path)
 		if statErr != nil || !info.Mode().IsRegular() {
-			return fmt.Errorf("client.static_dir 缺少 %s", name)
+			return fmt.Errorf("浏览器资源目录 %s 缺少 %s", absoluteDirectory, name)
 		}
 		assetPaths[name] = path
 	}
@@ -197,12 +192,12 @@ func registerClientStatic(router *gin.Engine, directory string) error {
 func registerAdminStatic(router *gin.Engine, directory string) error {
 	absoluteDirectory, err := filepath.Abs(directory)
 	if err != nil {
-		return fmt.Errorf("解析 admin.static_dir: %w", err)
+		return fmt.Errorf("解析管理后台目录 %s: %w", directory, err)
 	}
 	indexPath := filepath.Join(absoluteDirectory, "index.html")
 	indexInfo, err := os.Stat(indexPath)
 	if err != nil || !indexInfo.Mode().IsRegular() {
-		return fmt.Errorf("admin.static_dir 缺少 index.html")
+		return fmt.Errorf("管理后台目录 %s 缺少 index.html", absoluteDirectory)
 	}
 	indexHTML, err := os.ReadFile(indexPath)
 	if err != nil {
@@ -211,7 +206,7 @@ func registerAdminStatic(router *gin.Engine, directory string) error {
 	assetsPath := filepath.Join(absoluteDirectory, "assets")
 	assetsInfo, err := os.Stat(assetsPath)
 	if err != nil || !assetsInfo.IsDir() {
-		return fmt.Errorf("admin.static_dir 缺少 assets 目录")
+		return fmt.Errorf("管理后台目录 %s 缺少 assets 目录", absoluteDirectory)
 	}
 	adminStatic := router.Group("/admin")
 	adminStatic.Use(adminStaticSecurityHeaders())
@@ -225,7 +220,7 @@ func registerAdminStatic(router *gin.Engine, directory string) error {
 		c.Data(http.StatusOK, "text/html; charset=utf-8", body)
 	})
 	adminStatic.StaticFS("/assets", gin.Dir(assetsPath, false))
-	// The tab icon is optional so that an older or custom static directory still starts.
+	// The tab icon is optional so that an admin build without one still starts.
 	faviconPath := filepath.Join(absoluteDirectory, "favicon.svg")
 	if faviconInfo, statErr := os.Stat(faviconPath); statErr == nil && faviconInfo.Mode().IsRegular() {
 		serveFavicon := func(c *gin.Context) {
@@ -285,14 +280,17 @@ func adminStaticSecurityHeaders() gin.HandlerFunc {
 	}
 }
 
+// listenAddress is fixed; compose.yaml maps the host port onto it.
+const listenAddress = ":12123"
+
 func RunServer(ctx context.Context) error {
 	r, err := NewRouter()
 	if err != nil {
 		return fmt.Errorf("路由初始化失败: %w", err)
 	}
-	log.Println("Server starting on :" + config.Port)
+	log.Println("Server starting on " + listenAddress)
 	server := &http.Server{
-		Addr:              ":" + config.Port,
+		Addr:              listenAddress,
 		Handler:           r,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       20 * time.Second,

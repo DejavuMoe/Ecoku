@@ -19,15 +19,13 @@ import (
 )
 
 const (
-	minimumSecretLength             = 32
-	adminTokenTTLMinutes            = 8 * 60
-	maximumAdminUsernameLength      = 80
-	maximumCommentPlaceholderLength = 80
-	DefaultCommentPlaceholder       = "写下评论（仅支持纯文本）"
-	DefaultCommentSort              = "newest"
-	DefaultCommentLimit             = 1000
-	DefaultEmptyMessage             = "还没有评论\n成为第一个留下评论的人。"
-	DefaultBloggerBadge             = "[博主]"
+	minimumSecretLength        = 32
+	adminTokenTTL              = 8 * time.Hour
+	maximumAdminUsernameLength = 80
+	DefaultCommentPlaceholder  = "写下评论（仅支持纯文本）"
+	DefaultCommentSort         = "newest"
+	DefaultCommentLimit        = 1000
+	DefaultEmptyMessage        = "还没有评论\n成为第一个留下评论的人。"
 
 	// Secrets are read only from these environment variables.
 	adminUsernameEnv     = "ECOKU_ADMIN_USERNAME"
@@ -35,42 +33,28 @@ const (
 	adminTokenKeyEnv     = "ECOKU_ADMIN_TOKEN_KEY"
 	EncryptionKeyEnv     = "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
 
-	// The official image sets ECOKU_RUNTIME=container. Its fixed paths then
-	// become the defaults, so a mounted config.yaml only carries choices an
-	// operator actually makes.
-	runtimeEnvironment       = "ECOKU_RUNTIME"
-	containerRuntime         = "container"
-	containerLogPath         = "/var/log/ecoku/ecoku.log"
-	containerClientStaticDir = "/app/client"
-	containerAdminStaticDir  = "/app/admin"
-	containerSQLitePath      = "/data/ecoku.sqlite3"
+	// The official image sets ECOKU_RUNTIME=container and ships its files at
+	// the paths in runtimePaths.
+	runtimeEnvironment = "ECOKU_RUNTIME"
+	containerRuntime   = "container"
 )
 
 var siteIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$`)
 
 // Config is the complete server configuration.
 type Config struct {
-	Site          SiteConfig             `yaml:"site"`
-	Client        ClientConfig           `yaml:"client"`
-	RateLimit     RateLimitConfig        `yaml:"rate_limit"`
-	Sites         []RegisteredSiteConfig `yaml:"sites"`
-	Admin         AdminConfig            `yaml:"admin"`
-	Notifications NotificationsConfig    `yaml:"notifications"`
-	Database      DatabaseConfig         `yaml:"database"`
+	Site          SiteConfig          `yaml:"site"`
+	RateLimit     RateLimitConfig     `yaml:"rate_limit"`
+	Admin         AdminConfig         `yaml:"admin"`
+	Notifications NotificationsConfig `yaml:"notifications"`
+
+	// Paths is fixed by the runtime and never read from config.yaml.
+	Paths RuntimePaths `yaml:"-"`
 }
 
-// ClientConfig controls the optional browser assets served by the Go process.
-// Keeping this path explicit avoids making source-only development depend on
-// frontend build output that may not exist yet.
-type ClientConfig struct {
-	StaticDir string `yaml:"static_dir"`
-}
-
-// SiteConfig contains process-level settings. Browser origins belong to each
-// registered site instead of this global section.
+// SiteConfig contains process-level settings. Sites themselves, with their
+// browser origins, live in SQLite and are managed in the admin console.
 type SiteConfig struct {
-	Port           int      `yaml:"port"`
-	LogPath        string   `yaml:"log_path"`
 	TrustedProxies []string `yaml:"trusted_proxies"`
 }
 
@@ -83,31 +67,23 @@ type RateLimitConfig struct {
 	NotificationTest int `yaml:"notification_test"`
 }
 
-type RegisteredSiteConfig struct {
-	ID               string        `yaml:"id"`
-	SiteURL          string        `yaml:"site_url"`
-	Name             string        `yaml:"name"`
-	AllowedOrigins   []string      `yaml:"allowed_origins"`
-	ManagementKeyEnv string        `yaml:"management_key_env"`
-	Comment          CommentConfig `yaml:"comment"`
-}
-
 // NotificationsConfig contains only process-level notification integration
 // boundaries. Channel settings and encrypted credentials live in SQLite.
 type NotificationsConfig struct {
 	InstancePublicURL string `yaml:"instance_public_url"`
-
-	// Retired: the master key is always read from EncryptionKeyEnv.
-	EncryptionKeyEnv string `yaml:"encryption_key_env"`
 }
 
-type CommentConfig struct {
-	EmailRequired   *bool  `yaml:"email_required"`
-	WebsiteRequired *bool  `yaml:"website_required"`
-	Placeholder     string `yaml:"placeholder"`
-	DefaultSort     string `yaml:"default_sort"`
-	LengthLimit     int    `yaml:"length_limit"`
-	EmptyMessage    string `yaml:"empty_message"`
+// AdminConfig configures the admin console, which is always enabled.
+type AdminConfig struct {
+	AllowedOrigins []string `yaml:"allowed_origins"`
+}
+
+// RuntimePaths are where the browser assets, the admin console and the
+// database live. A source run serves no static files.
+type RuntimePaths struct {
+	ClientStaticDir string
+	AdminStaticDir  string
+	SQLitePath      string
 }
 
 // CaptchaPublicConfig is the active, non-secret CAPTCHA configuration exposed
@@ -139,28 +115,6 @@ type SmojiPublicConfig struct {
 	ManifestURL string `json:"manifestUrl"`
 }
 
-type DatabaseConfig struct {
-	SQLite SQLiteConfig `yaml:"sqlite"`
-}
-
-type SQLiteConfig struct {
-	Path string `yaml:"path"`
-}
-
-// AdminConfig configures the admin console, which is always enabled.
-type AdminConfig struct {
-	StaticDir      string   `yaml:"static_dir"`
-	AllowedOrigins []string `yaml:"allowed_origins"`
-
-	// Retired keys stay parseable so that older config files still load;
-	// validateRetiredKeys accepts only the values that are now fixed.
-	Enabled         *bool  `yaml:"enabled"`
-	UsernameEnv     string `yaml:"username_env"`
-	PasswordHashEnv string `yaml:"password_hash_env"`
-	TokenKeyEnv     string `yaml:"token_key_env"`
-	TokenTTLMinutes int    `yaml:"token_ttl_minutes"`
-}
-
 // AdminCredentials contains the runtime-only administrator secrets resolved
 // from environment variables. It must never be serialized or logged.
 type AdminCredentials struct {
@@ -170,11 +124,7 @@ type AdminCredentials struct {
 	TokenTTL     time.Duration
 }
 
-var (
-	Port         string
-	LogFilePath  string
-	GlobalConfig *Config
-)
+var GlobalConfig *Config
 
 // InitConfigFile loads config.yaml from the process working directory.
 func InitConfigFile() {
@@ -218,35 +168,25 @@ func ApplyConfig(loaded *Config) error {
 	if err := validateConfig(loaded); err != nil {
 		return err
 	}
-	installGlobals(loaded)
+	GlobalConfig = loaded
 	return nil
 }
 
-func applyDefaults(loaded *Config) {
-	container := os.Getenv(runtimeEnvironment) == containerRuntime
-	if loaded.Site.Port == 0 {
-		loaded.Site.Port = 12123
-	}
-	loaded.Site.LogPath = strings.TrimSpace(loaded.Site.LogPath)
-	if container && loaded.Site.LogPath == "" {
-		loaded.Site.LogPath = containerLogPath
-	}
-	if strings.TrimSpace(loaded.Database.SQLite.Path) == "" {
-		loaded.Database.SQLite.Path = "./data/ecoku.bin"
-		if container {
-			loaded.Database.SQLite.Path = containerSQLitePath
+func runtimePaths() RuntimePaths {
+	if os.Getenv(runtimeEnvironment) == containerRuntime {
+		return RuntimePaths{
+			ClientStaticDir: "/app/client",
+			AdminStaticDir:  "/app/admin",
+			SQLitePath:      "/data/ecoku.sqlite3",
 		}
 	}
+	return RuntimePaths{SQLitePath: "./data/ecoku.bin"}
+}
+
+func applyDefaults(loaded *Config) {
+	loaded.Paths = runtimePaths()
 	for i := range loaded.Site.TrustedProxies {
 		loaded.Site.TrustedProxies[i] = strings.TrimSpace(loaded.Site.TrustedProxies[i])
-	}
-	loaded.Client.StaticDir = strings.TrimSpace(loaded.Client.StaticDir)
-	if container && loaded.Client.StaticDir == "" {
-		loaded.Client.StaticDir = containerClientStaticDir
-	}
-	loaded.Admin.StaticDir = strings.TrimSpace(loaded.Admin.StaticDir)
-	if container && loaded.Admin.StaticDir == "" {
-		loaded.Admin.StaticDir = containerAdminStaticDir
 	}
 
 	if loaded.RateLimit.WindowSeconds == 0 {
@@ -268,44 +208,6 @@ func applyDefaults(loaded *Config) {
 		loaded.RateLimit.NotificationTest = 5
 	}
 
-	for i := range loaded.Sites {
-		loaded.Sites[i].ID = strings.TrimSpace(loaded.Sites[i].ID)
-		loaded.Sites[i].SiteURL = strings.TrimSpace(loaded.Sites[i].SiteURL)
-		loaded.Sites[i].Name = strings.TrimSpace(loaded.Sites[i].Name)
-		loaded.Sites[i].ManagementKeyEnv = strings.TrimSpace(loaded.Sites[i].ManagementKeyEnv)
-		if loaded.Sites[i].SiteURL == "" && len(loaded.Sites[i].AllowedOrigins) > 0 {
-			// Compatibility for the YAML-to-SQLite seed: historical site entries
-			// had no canonical URL. The first explicit origin is the only safe
-			// source from which it can be derived.
-			loaded.Sites[i].SiteURL = strings.TrimSpace(loaded.Sites[i].AllowedOrigins[0])
-		}
-		if loaded.Sites[i].Comment.EmailRequired == nil {
-			value := true
-			loaded.Sites[i].Comment.EmailRequired = &value
-		}
-		if loaded.Sites[i].Comment.WebsiteRequired == nil {
-			value := false
-			loaded.Sites[i].Comment.WebsiteRequired = &value
-		}
-		placeholder := strings.TrimSpace(loaded.Sites[i].Comment.Placeholder)
-		if placeholder == "" {
-			placeholder = DefaultCommentPlaceholder
-		}
-		loaded.Sites[i].Comment.Placeholder = placeholder
-		sortMode := strings.ToLower(strings.TrimSpace(loaded.Sites[i].Comment.DefaultSort))
-		if sortMode == "" {
-			sortMode = DefaultCommentSort
-		}
-		loaded.Sites[i].Comment.DefaultSort = sortMode
-		if loaded.Sites[i].Comment.LengthLimit == 0 {
-			loaded.Sites[i].Comment.LengthLimit = DefaultCommentLimit
-		}
-		emptyMessage := strings.TrimSpace(loaded.Sites[i].Comment.EmptyMessage)
-		if emptyMessage == "" {
-			emptyMessage = DefaultEmptyMessage
-		}
-		loaded.Sites[i].Comment.EmptyMessage = emptyMessage
-	}
 	for i := range loaded.Admin.AllowedOrigins {
 		loaded.Admin.AllowedOrigins[i] = strings.TrimSpace(loaded.Admin.AllowedOrigins[i])
 	}
@@ -320,84 +222,11 @@ func applyDefaults(loaded *Config) {
 }
 
 func validateConfig(loaded *Config) error {
-	if err := validateRetiredKeys(loaded); err != nil {
-		return err
-	}
-	if loaded.Site.Port < 1 || loaded.Site.Port > 65535 {
-		return fmt.Errorf("site.port 必须在 1 到 65535 之间")
-	}
 	if err := validateTrustedProxies(loaded.Site.TrustedProxies); err != nil {
 		return err
 	}
 	if err := validateRateLimits(loaded.RateLimit); err != nil {
 		return err
-	}
-	seenSites := make(map[string]struct{}, len(loaded.Sites))
-	seenManagementEnvironments := make(map[string]string, len(loaded.Sites))
-	seenManagementKeys := make(map[string]string, len(loaded.Sites))
-	for i := range loaded.Sites {
-		site := &loaded.Sites[i]
-		if !siteIDPattern.MatchString(site.ID) {
-			return fmt.Errorf("sites[%d].id 只能包含字母、数字、点、下划线和连字符，且长度不超过 100", i)
-		}
-		if _, exists := seenSites[site.ID]; exists {
-			return fmt.Errorf("站点 ID %q 重复", site.ID)
-		}
-		seenSites[site.ID] = struct{}{}
-		normalizedSiteURL, err := NormalizeSiteURL(site.SiteURL)
-		if err != nil {
-			return fmt.Errorf("站点 %q 的 site_url: %w", site.ID, err)
-		}
-		site.SiteURL = normalizedSiteURL
-
-		if len(site.AllowedOrigins) == 0 {
-			return fmt.Errorf("站点 %q 至少需要一个 allowed_origins", site.ID)
-		}
-		seenOrigins := make(map[string]struct{}, len(site.AllowedOrigins))
-		for originIndex, rawOrigin := range site.AllowedOrigins {
-			normalized, err := NormalizeOrigin(rawOrigin)
-			if err != nil {
-				return fmt.Errorf("站点 %q 的 allowed_origins[%d]: %w", site.ID, originIndex, err)
-			}
-			if _, exists := seenOrigins[normalized]; exists {
-				return fmt.Errorf("站点 %q 的来源 %q 重复", site.ID, normalized)
-			}
-			seenOrigins[normalized] = struct{}{}
-			site.AllowedOrigins[originIndex] = normalized
-		}
-
-		if site.ManagementKeyEnv != "" {
-			if err := validateSecretEnvironment("站点 "+site.ID+" 的 management_key_env", site.ManagementKeyEnv); err != nil {
-				return err
-			}
-			if previousSite, exists := seenManagementEnvironments[site.ManagementKeyEnv]; exists {
-				return fmt.Errorf("站点 %q 与站点 %q 不能共享 management_key_env", site.ID, previousSite)
-			}
-			seenManagementEnvironments[site.ManagementKeyEnv] = site.ID
-			managementKey := os.Getenv(site.ManagementKeyEnv)
-			if previousSite, exists := seenManagementKeys[managementKey]; exists {
-				return fmt.Errorf("站点 %q 与站点 %q 必须使用不同的管理凭据", site.ID, previousSite)
-			}
-			seenManagementKeys[managementKey] = site.ID
-		}
-		if site.Comment.DefaultSort != "newest" && site.Comment.DefaultSort != "oldest" {
-			return fmt.Errorf("站点 %q 的 comment.default_sort 只支持 newest 或 oldest", site.ID)
-		}
-		if site.Comment.LengthLimit < 1 || site.Comment.LengthLimit > 10000 {
-			return fmt.Errorf("站点 %q 的 comment.length_limit 必须在 1 到 10000 之间", site.ID)
-		}
-		if utf8.RuneCountInString(site.Name) > 120 {
-			return fmt.Errorf("站点 %q 的 name 不能超过 120 个字符", site.ID)
-		}
-		if utf8.RuneCountInString(site.Comment.EmptyMessage) > 240 {
-			return fmt.Errorf("站点 %q 的 comment.empty_message 不能超过 240 个字符", site.ID)
-		}
-		if utf8.RuneCountInString(site.Comment.Placeholder) > maximumCommentPlaceholderLength {
-			return fmt.Errorf("站点 %q 的 comment.placeholder 不能超过 %d 个字符", site.ID, maximumCommentPlaceholderLength)
-		}
-		if strings.ContainsAny(site.Comment.Placeholder, "\r\n") {
-			return fmt.Errorf("站点 %q 的 comment.placeholder 不能包含换行", site.ID)
-		}
 	}
 	if err := validateAdminOrigins(loaded); err != nil {
 		return err
@@ -408,35 +237,6 @@ func validateConfig(loaded *Config) error {
 			return fmt.Errorf("notifications.instance_public_url: %w", err)
 		}
 		loaded.Notifications.InstancePublicURL = normalizedPublicURL
-	}
-
-	if strings.TrimSpace(loaded.Database.SQLite.Path) == "" {
-		return fmt.Errorf("database.sqlite.path 不能为空")
-	}
-
-	return nil
-}
-
-// validateRetiredKeys rejects any retired key that still carries a value other
-// than the one now fixed, so that startup names the line to delete instead of
-// silently changing behaviour.
-func validateRetiredKeys(loaded *Config) error {
-	admin := loaded.Admin
-	if admin.Enabled != nil && !*admin.Enabled {
-		return fmt.Errorf("管理后台始终启用；请删除 admin.enabled")
-	}
-	if admin.TokenTTLMinutes != 0 && admin.TokenTTLMinutes != adminTokenTTLMinutes {
-		return fmt.Errorf("管理员会话固定为 8 小时；请删除 admin.token_ttl_minutes 或设为 480")
-	}
-	for _, key := range []struct{ name, value, fixed string }{
-		{"admin.username_env", admin.UsernameEnv, adminUsernameEnv},
-		{"admin.password_hash_env", admin.PasswordHashEnv, adminPasswordHashEnv},
-		{"admin.token_key_env", admin.TokenKeyEnv, adminTokenKeyEnv},
-		{"notifications.encryption_key_env", loaded.Notifications.EncryptionKeyEnv, EncryptionKeyEnv},
-	} {
-		if value := strings.TrimSpace(key.value); value != "" && value != key.fixed {
-			return fmt.Errorf("环境变量名已固定为 %s；请删除 %s，并在 ecoku.env 中改用 %s", key.fixed, key.name, key.fixed)
-		}
 	}
 	return nil
 }
@@ -459,12 +259,6 @@ func validateRateLimits(limits RateLimitConfig) error {
 }
 
 func validateAdminOrigins(loaded *Config) error {
-	publicOrigins := make(map[string]struct{})
-	for _, site := range loaded.Sites {
-		for _, origin := range site.AllowedOrigins {
-			publicOrigins[origin] = struct{}{}
-		}
-	}
 	seenAdminOrigins := make(map[string]struct{}, len(loaded.Admin.AllowedOrigins))
 	for i, rawOrigin := range loaded.Admin.AllowedOrigins {
 		normalized, err := NormalizeOrigin(rawOrigin)
@@ -473,9 +267,6 @@ func validateAdminOrigins(loaded *Config) error {
 		}
 		if _, exists := seenAdminOrigins[normalized]; exists {
 			return fmt.Errorf("管理员来源 %q 重复", normalized)
-		}
-		if _, exists := publicOrigins[normalized]; exists {
-			return fmt.Errorf("管理员来源 %q 不能复用公开站点来源", normalized)
 		}
 		seenAdminOrigins[normalized] = struct{}{}
 		loaded.Admin.AllowedOrigins[i] = normalized
@@ -525,11 +316,6 @@ func ValidateAdmin() error {
 	if tokenKey == passwordHash {
 		return fmt.Errorf("管理员 token 签名密钥不能复用管理员密码哈希")
 	}
-	for _, site := range GlobalConfig.Sites {
-		if site.ManagementKeyEnv != "" && os.Getenv(site.ManagementKeyEnv) == tokenKey {
-			return fmt.Errorf("管理员 token 签名密钥不能复用站点管理凭据")
-		}
-	}
 	return nil
 }
 
@@ -562,49 +348,11 @@ func validateTrustedProxies(proxies []string) error {
 	return nil
 }
 
-func validateSecretEnvironment(label, environmentName string) error {
-	environmentName = strings.TrimSpace(environmentName)
-	if environmentName == "" {
-		return fmt.Errorf("%s 不能为空", label)
-	}
-	secret := os.Getenv(environmentName)
-	if len(secret) < minimumSecretLength {
-		return fmt.Errorf("环境变量 %s 必须至少包含 %d 个字符", environmentName, minimumSecretLength)
-	}
-	return nil
-}
-
-func installGlobals(loaded *Config) {
-	GlobalConfig = loaded
-	Port = strconv.Itoa(loaded.Site.Port)
-	LogFilePath = loaded.Site.LogPath
-}
-
-func GetRegisteredSite(siteID string) (*RegisteredSiteConfig, bool) {
-	if GlobalConfig == nil {
-		return nil, false
-	}
-	trimmed := strings.TrimSpace(siteID)
-	for i := range GlobalConfig.Sites {
-		if GlobalConfig.Sites[i].ID == trimmed {
-			return &GlobalConfig.Sites[i], true
-		}
-	}
-	return nil, false
-}
-
 func GetAdminAllowedOrigins() []string {
 	if GlobalConfig == nil {
 		return nil
 	}
 	return append([]string(nil), GlobalConfig.Admin.AllowedOrigins...)
-}
-
-func GetRegisteredSites() []RegisteredSiteConfig {
-	if GlobalConfig == nil {
-		return nil
-	}
-	return append([]RegisteredSiteConfig(nil), GlobalConfig.Sites...)
 }
 
 func NormalizeOrigin(raw string) (string, error) {
@@ -679,15 +427,6 @@ func NormalizeSmojiManifestURL(raw string) (string, error) {
 	return parsed.String(), nil
 }
 
-func GetManagementKey(siteID string) (string, bool) {
-	site, ok := GetRegisteredSite(siteID)
-	if !ok {
-		return "", false
-	}
-	key := os.Getenv(site.ManagementKeyEnv)
-	return key, len(key) >= minimumSecretLength
-}
-
 func IsValidSiteID(siteID string) bool {
 	return siteIDPattern.MatchString(strings.TrimSpace(siteID))
 }
@@ -706,7 +445,7 @@ func GetAdminCredentials() (*AdminCredentials, bool) {
 		Username:     username,
 		PasswordHash: passwordHash,
 		TokenKey:     tokenKey,
-		TokenTTL:     adminTokenTTLMinutes * time.Minute,
+		TokenTTL:     adminTokenTTL,
 	}, true
 }
 
@@ -749,19 +488,19 @@ func GetAdminStaticDir() string {
 	if GlobalConfig == nil {
 		return ""
 	}
-	return strings.TrimSpace(GlobalConfig.Admin.StaticDir)
+	return GlobalConfig.Paths.AdminStaticDir
 }
 
 func GetClientStaticDir() string {
 	if GlobalConfig == nil {
 		return ""
 	}
-	return strings.TrimSpace(GlobalConfig.Client.StaticDir)
+	return GlobalConfig.Paths.ClientStaticDir
 }
 
-func GetSQLiteConfig() *SQLiteConfig {
+func GetSQLitePath() string {
 	if GlobalConfig == nil {
-		return nil
+		return ""
 	}
-	return &GlobalConfig.Database.SQLite
+	return GlobalConfig.Paths.SQLitePath
 }

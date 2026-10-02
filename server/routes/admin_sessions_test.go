@@ -59,15 +59,6 @@ func TestAdminCookieSessionRevocationAndCSRF(t *testing.T) {
 	if response := requestJSON(t, env.router, "POST", "/api/admin/login", "", "", map[string]any{"username": "instance-admin", "password": "test-admin-password"}); response.Code != 403 {
 		t.Fatal("login without Origin accepted")
 	}
-	for _, path := range []string{"/api/admin/session", "/api/admin/logout"} {
-		method := "GET"
-		if strings.HasSuffix(path, "logout") {
-			method = "POST"
-		}
-		if got := requestJSON(t, env.router, method, path, adminTestOrigin, "EcokuSite "+adminSiteAKey, nil).Code; got != 403 {
-			t.Fatalf("site key session access: %d", got)
-		}
-	}
 	// A logout write failure must preserve the live session and cookie.
 	if err := model.DB.Exec(`CREATE TRIGGER fail_logout BEFORE DELETE ON admin_sessions BEGIN SELECT RAISE(ABORT, 'fixture'); END`).Error; err != nil {
 		t.Fatal(err)

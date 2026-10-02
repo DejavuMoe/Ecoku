@@ -5,8 +5,8 @@ hero:
   text: Self-hosted<br>plain-text comments
   tagline: For static blogs and personal websites. One Docker container, one SQLite file, and comments go live on submit.
   image:
-    src: /ecoku-hero.png
-    alt: Ecoku comment section illustration
+    src: /logo.svg
+    alt: Ecoku logo
   actions:
     - theme: brand
       text: Deploy

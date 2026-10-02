@@ -1,5 +1,9 @@
 # Docker 部署
 
+::: info 尚未發佈的部署變更
+本頁對應下一版本。已發佈的 v0.2.8 映像檔請使用 [v0.2.8 部署說明](https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.8/docs/zh-hant/self-hosting/docker.md)。既有實例升級前請閱讀[設定遷移](./upgrade#unreleased-config)。
+:::
+
 本頁從一台全新的 Linux 主機開始，用 Docker Compose 執行一個 Ecoku 實例。你只需要準備三個檔案：`compose.yaml`、`app/config.yaml` 和 `ecoku.env`。完成後，服務只能在本機 `127.0.0.1:12123` 上存取；公開網路的 HTTPS 在下一步[反向代理](./reverse-proxy)中設定。
 
 ## 開始之前
@@ -27,11 +31,11 @@
 
 ## 1. 準備目錄
 
-容器以 UID/GID `10001:10001` 執行，根檔案系統為唯讀，只有掛載進去的 `app/logs` 和 `data` 可寫入。部署目錄和 `app/` 用你自己的帳號建立，之後編輯設定不需要 `sudo`；`app/logs` 和 `data` 的擁有者則設為容器使用者：
+容器以 UID/GID `10001:10001` 執行，根檔案系統為唯讀，只有掛載的 `data` 可寫入。部署目錄和 `app/` 用自己的帳號建立，之後編輯設定不需要 `sudo`；`data` 交給容器使用者：
 
 ```bash
 mkdir -p ~/Ecoku/app && cd ~/Ecoku
-sudo install -d -o 10001 -g 10001 -m 750 app/logs data
+sudo install -d -o 10001 -g 10001 -m 750 data
 ```
 
 ## 2. 建立 compose.yaml
@@ -51,7 +55,6 @@ services:
       - "127.0.0.1:12123:12123"
     volumes:
       - ./app/config.yaml:/app/config.yaml:ro
-      - ./app/logs:/var/log/ecoku
       - ./data:/data
     deploy:
       resources:
@@ -73,7 +76,7 @@ services:
     stop_grace_period: 30s
 ```
 
-容器內的連接埠、目錄、日誌和資料庫路徑都已固定在映像檔裡，和上面的掛載一一對應。要更換主機上的位置，只改冒號前面的部分，例如把連接埠改成 `"127.0.0.1:8080:12123"`，或把資料放到 `/srv/ecoku-data:/data`。
+容器內的連接埠、目錄和資料庫路徑都已固定，與上面的掛載一一對應。要更換主機位置，只改冒號前面的部分，例如 `"127.0.0.1:8080:12123"` 或 `/srv/ecoku-data:/data`。日誌寫到標準輸出，用 `docker compose logs` 查看。
 
 有兩處請保持原樣：
 
@@ -124,13 +127,7 @@ ECOKU_NOTIFICATION_ENCRYPTION_KEY='...'
 chmod 600 ~/Ecoku/ecoku.env
 ```
 
-| 變數 | 填什麼 |
-| --- | --- |
-| `TZ` | 評論和通知的顯示時區，IANA 名稱，例如 `Asia/Shanghai`、`Asia/Tokyo`。 |
-| `ECOKU_ADMIN_USERNAME` | 後台登入使用者名稱，1～80 個字元。 |
-| `ECOKU_ADMIN_PASSWORD_HASH` | 後台密碼的 bcrypt 雜湊，不填明文密碼。用下面的指令產生。 |
-| `ECOKU_ADMIN_TOKEN_KEY` | 管理員工作階段的簽章金鑰，至少 32 個字元。用下面的指令產生。更換後所有已登入的工作階段都會失效。 |
-| `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | 加密資料庫中的 SMTP 密碼、Telegram Bot Token 和人機驗證 Secret Key，Base64 編碼的 32 位元組。用下面的指令產生。 |
+`TZ` 是評論和通知的顯示時區，`ECOKU_ADMIN_USERNAME` 是後台登入名稱，其餘三項用下面的指令產生。各變數的要求見[設定參考](../reference/configuration#env)。
 
 產生密碼雜湊（輸入時不回顯，把輸出的整串 `$2a$10$...` 填進 `ECOKU_ADMIN_PASSWORD_HASH`）：
 

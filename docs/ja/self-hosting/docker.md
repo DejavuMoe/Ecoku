@@ -1,5 +1,9 @@
 # Docker デプロイ
 
+::: info 未リリースのデプロイ変更
+このページは次のバージョンに対応します。公開済みの v0.2.8 イメージには [v0.2.8 のデプロイ手順](https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.8/docs/ja/self-hosting/docker.md)を使ってください。既存のインスタンスを更新する前に[設定の移行](./upgrade#unreleased-config)を確認してください。
+:::
+
 このページでは、何も入っていない Linux ホストから始めて、Docker Compose で Ecoku インスタンスを 1 つ起動します。用意するファイルは `compose.yaml`、`app/config.yaml`、`ecoku.env` の 3 つだけです。完了した時点では、サービスはこのマシンの `127.0.0.1:12123` からしかアクセスできません。インターネット向けの HTTPS は次の[リバースプロキシ](./reverse-proxy)で設定します。
 
 ## 始める前に
@@ -27,11 +31,11 @@
 
 ## 1. ディレクトリを用意する
 
-コンテナは UID/GID `10001:10001` で動作し、ルートファイルシステムは読み取り専用です。書き込めるのはマウントした `app/logs` と `data` だけです。デプロイ先のディレクトリと `app/` は自分のアカウントで作成するので、あとで設定を編集するときに `sudo` は不要です。`app/logs` と `data` は所有者をコンテナのユーザーにします。
+コンテナは UID/GID `10001:10001` で動作し、ルートファイルシステムは読み取り専用です。書き込めるのはマウントした `data` です。デプロイ先と `app/` は自分のアカウントで作成し、`data` の所有者をコンテナのユーザーにします。
 
 ```bash
 mkdir -p ~/Ecoku/app && cd ~/Ecoku
-sudo install -d -o 10001 -g 10001 -m 750 app/logs data
+sudo install -d -o 10001 -g 10001 -m 750 data
 ```
 
 ## 2. compose.yaml を作成する
@@ -51,7 +55,6 @@ services:
       - "127.0.0.1:12123:12123"
     volumes:
       - ./app/config.yaml:/app/config.yaml:ro
-      - ./app/logs:/var/log/ecoku
       - ./data:/data
     deploy:
       resources:
@@ -73,7 +76,7 @@ services:
     stop_grace_period: 30s
 ```
 
-コンテナ内のポート、ディレクトリ、ログ、データベースのパスはイメージに固定されており、上のマウントと対応しています。ホスト側の場所を変えたい場合は、コロンの前だけを変更します。たとえばポートを `"127.0.0.1:8080:12123"` に、データを `/srv/ecoku-data:/data` にします。
+イメージ内のポート、ディレクトリ、データベースパスは固定され、上のマウントに対応します。ホスト側の場所を変える場合はコロンの前だけを変えます。例：`"127.0.0.1:8080:12123"`、`/srv/ecoku-data:/data`。ログは標準出力に書き込み、`docker compose logs` で確認します。
 
 次の 2 か所は変更しないでください。
 
@@ -124,13 +127,7 @@ ECOKU_NOTIFICATION_ENCRYPTION_KEY='...'
 chmod 600 ~/Ecoku/ecoku.env
 ```
 
-| 変数 | 設定する値 |
-| --- | --- |
-| `TZ` | コメントと通知の表示タイムゾーン。`Asia/Shanghai`、`Asia/Tokyo` のような IANA 名を指定します。 |
-| `ECOKU_ADMIN_USERNAME` | 管理画面のログインユーザー名。1～80 文字。 |
-| `ECOKU_ADMIN_PASSWORD_HASH` | 管理画面パスワードの bcrypt ハッシュ。平文のパスワードは書きません。下のコマンドで生成します。 |
-| `ECOKU_ADMIN_TOKEN_KEY` | 管理者セッションの署名キー。32 文字以上。下のコマンドで生成します。変更すると、ログイン中のすべてのセッションが無効になります。 |
-| `ECOKU_NOTIFICATION_ENCRYPTION_KEY` | データベース内の SMTP パスワード、Telegram Bot Token、CAPTCHA の Secret Key を暗号化します。Base64 でエンコードした 32 バイト。下のコマンドで生成します。 |
+`TZ` はコメントと通知の表示タイムゾーン、`ECOKU_ADMIN_USERNAME` はログイン名です。残りの 3 項目は下のコマンドで生成します。各変数の条件は[設定リファレンス](../reference/configuration#env)を参照してください。
 
 パスワードハッシュを生成します。入力は表示されません。出力された `$2a$10$...` の全体を `ECOKU_ADMIN_PASSWORD_HASH` に書きます。
 
