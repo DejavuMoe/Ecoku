@@ -3,7 +3,6 @@ import { shared } from './shared'
 import { zh } from './zh'
 import { zhHant } from './zh-hant'
 import { en } from './en'
-import { ja } from './ja'
 
 export default defineConfig({
   ...shared,
@@ -18,6 +17,5 @@ export default defineConfig({
     root: { label: '简体中文', lang: 'zh-Hans', ...zh },
     'zh-hant': { label: '繁體中文', lang: 'zh-Hant', ...zhHant },
     en: { label: 'English', lang: 'en', ...en },
-    ja: { label: '日本語', lang: 'ja', ...ja },
   },
 })

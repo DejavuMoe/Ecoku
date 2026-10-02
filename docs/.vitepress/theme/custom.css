@@ -62,10 +62,6 @@
 :root:lang(zh-Hant) {
   --vp-font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei UI", "Microsoft JhengHei", "Noto Sans CJK TC", "Noto Sans TC", sans-serif;
 }
-:root:lang(ja) {
-  --vp-font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", "Noto Sans CJK JP", "Noto Sans JP", Meiryo, sans-serif;
-}
-
 :root, .dark {
   --vp-c-bg: var(--paper);
   --vp-c-bg-alt: var(--surface);

@@ -6,6 +6,7 @@ services:
     container_name: ecoku
     environment:
       TZ: Asia/Shanghai
+      ECOKU_ADMIN_LOCALE: zh-CN
     ports:
       - "127.0.0.1:12123:12123"
     volumes:

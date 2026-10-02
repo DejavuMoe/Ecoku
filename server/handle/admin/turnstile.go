@@ -2,6 +2,7 @@ package admin
 
 import (
 	"ecoku-server/captcha"
+	"ecoku-server/config"
 	"ecoku-server/masterkey"
 	"ecoku-server/utils"
 	"errors"
@@ -23,6 +24,7 @@ func GetLoginConfig(c *gin.Context) {
 	utils.SendResponse(c, http.StatusOK, "获取登录验证配置成功", gin.H{
 		"captcha":          public,
 		"turnstileSitekey": legacySitekey,
+		"locale":           config.GetAdminLocale(),
 	})
 }
 

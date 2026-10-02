@@ -17,8 +17,7 @@ for required_file in \
   index.html \
   404.html \
   en/index.html \
-  zh-hant/index.html \
-  ja/index.html
+  zh-hant/index.html
 do
   if [ ! -s "$site_dir/$required_file" ]; then
     echo "documentation output is missing: $required_file" >&2
@@ -31,8 +30,7 @@ for excluded_path in \
   progress \
   contribute \
   en/contribute \
-  zh-hant/contribute \
-  ja/contribute
+  zh-hant/contribute
 do
   if [ -e "$site_dir/$excluded_path" ] || [ -L "$site_dir/$excluded_path" ]; then
     echo "excluded documentation was published: $excluded_path" >&2

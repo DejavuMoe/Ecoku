@@ -43,6 +43,7 @@ services:
     container_name: ecoku
     environment:
       TZ: Asia/Shanghai
+      ECOKU_ADMIN_LOCALE: zh-CN
     ports:
       - "127.0.0.1:12123:12123"
     volumes:
@@ -130,7 +131,7 @@ sudo docker compose up -d
 
 ## 時區 {#timezone}
 
-上面的 Compose 已設定 `TZ: Asia/Shanghai`，評論和通知按此時區顯示時間。需要其他時區時，直接修改 `services.ecoku.environment.TZ`，例如 `Europe/Berlin`，然後執行 `sudo docker compose up -d` 重建容器。無需另建 `ecoku.env`。
+上面的 Compose 已設定 `TZ: Asia/Shanghai` 和 `ECOKU_ADMIN_LOCALE: zh-CN`。前者控制評論與通知時區，後者控制管理後台語言，可改為 `zh-Hant` 或 `en`。修改後執行 `sudo docker compose up -d` 重建容器。站點評論區語言在後台站點的「評論區語言」中設定，SDK 的 `i18n` 參數可以覆寫站點預設值。無需另建 `ecoku.env`。
 
 既有實例可以繼續使用原來的 `ecoku.env`。如需刪除舊管理員憑據和金鑰變數，請依[導入持久狀態、停服備份並移除舊變數](./upgrade#legacy-config)操作。如果時區仍寫在舊環境檔中，先把 `TZ` 移到 Compose，再刪除該檔案。
 

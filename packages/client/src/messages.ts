@@ -1,54 +1,25 @@
-export const zhCN = Object.freeze({
-  sortOldest: '最早评论',
-  sortNewest: '最新评论',
-  nickname: '昵称',
-  email: '邮箱',
-  website: '网址',
-  commentPlaceholder: '写下评论（仅支持纯文本）',
-  replyPlaceholder: '写下回复（仅支持纯文本）',
-  submitComment: '发布',
-  submitReply: '回复',
-  submitting: '正在提交…',
-  cancel: '取消',
-  reply: '回复',
-  replyTo: (author: string) => `@${author}`,
-  discardReplyDraft: '当前回复尚未提交，切换将丢失已填写内容。是否继续？',
-  replyTarget: '查看被回复的评论',
-  emptyTitle: '还没有评论',
-  emptyBody: '成为第一个留下纯文本评论的人。',
-  serviceErrorTitle: '评论暂时不可用',
-  serviceErrorBody: '文章内容不受影响，请稍后重试加载评论。',
-  retry: '重新加载',
-  paginationLabel: '评论分页',
-  previousPage: '‹ 上一页',
-  nextPage: '下一页 ›',
-  deletedAuthor: '已删除',
-  deletedBody: '[该评论已删除]',
-  collapse: '折叠这条讨论',
-  expand: '展开这条讨论',
-  collapsed: (count: number) => `已折叠 ${count} 条回复`,
-  commentCount: (count: number) => `${count} 条评论`,
-  noCommentCount: '暂无评论',
-  submitted: '评论已发布。',
-  replySubmitted: '回复已发布。',
-  loaded: '评论已加载。',
-  pageChanged: '已切换评论页面。',
-  nicknameRequired: '请输入昵称。',
-  nicknameTooLong: '昵称不能超过 80 个字符。',
-  emailRequiredInvalid: '请输入有效邮箱。',
-  emailInvalid: '邮箱格式不正确。',
-  websiteRequiredInvalid: '请输入以 http:// 或 https:// 开头的网址。',
-  websiteInvalid: '网址需要以 http:// 或 https:// 开头。',
-  contentRequired: '评论内容不能为空。',
-  contentTooLong: (limit: number) => `评论内容不能超过 ${limit} 个字符。`,
-  submit400: '提交内容不符合要求，请检查后重试。',
-  submit403: '当前页面来源没有评论提交权限。',
-  submit413: '提交内容超过服务器允许的大小。',
-  submit429: '提交过于频繁，请稍后再试。',
-  submit500: '评论服务暂时无法保存内容，请稍后再试。',
-  submitNetwork: '网络连接失败，评论尚未提交。',
-  challengeRequired: '请完成验证后再发布。',
-  list403: '当前页面来源没有读取评论的权限。',
-  list429: '请求过于频繁，请稍后重试。',
-  listFailure: '无法加载评论，请稍后重试。',
-})
+import type { EcokuLocale } from './config'
+
+export interface ClientMessages {
+  sortOldest: string; sortNewest: string; nickname: string; email: string; website: string
+  commentPlaceholder: string; replyPlaceholder: string; submitComment: string; submitReply: string; submitting: string; cancel: string; reply: string
+  replyTo: (author: string) => string; discardReplyDraft: string; replyTarget: string; emptyTitle: string; emptyBody: string
+  serviceErrorTitle: string; serviceErrorBody: string; retry: string; paginationLabel: string; previousPage: string; nextPage: string
+  deletedAuthor: string; deletedBody: string; collapse: string; expand: string; collapsed: (count: number) => string; commentCount: (count: number) => string
+  noCommentCount: string; submitted: string; replySubmitted: string; loaded: string; pageChanged: string; nicknameRequired: string; nicknameTooLong: string
+  emailRequiredInvalid: string; emailInvalid: string; websiteRequiredInvalid: string; websiteInvalid: string; contentRequired: string; contentTooLong: (limit: number) => string
+  submit400: string; submit403: string; submit413: string; submit429: string; submit500: string; submitNetwork: string; challengeRequired: string; list403: string; list429: string; listFailure: string
+  ariaComments: string; ariaSort: string; commentContent: string; blogger: string; previousComments: string; nextComments: string; sticker: string; stickerPack: string
+  loadingStickers: string; stickerLoadFailed: string; preview: string; commentPreview: string; noPreview: string; parentComment: string
+}
+
+export const zhCN: ClientMessages = {
+  sortOldest: '最早评论', sortNewest: '最新评论', nickname: '昵称', email: '邮箱', website: '网址', commentPlaceholder: '写下评论（仅支持纯文本）', replyPlaceholder: '写下回复（仅支持纯文本）', submitComment: '发布', submitReply: '回复', submitting: '正在提交…', cancel: '取消', reply: '回复', replyTo: author => `@${author}`, discardReplyDraft: '当前回复尚未提交，切换将丢失已填写内容。是否继续？', replyTarget: '查看被回复的评论', emptyTitle: '还没有评论', emptyBody: '成为第一个留下纯文本评论的人。', serviceErrorTitle: '评论暂时不可用', serviceErrorBody: '文章内容不受影响，请稍后重试加载评论。', retry: '重新加载', paginationLabel: '评论分页', previousPage: '‹ 上一页', nextPage: '下一页 ›', deletedAuthor: '已删除', deletedBody: '[该评论已删除]', collapse: '折叠这条讨论', expand: '展开这条讨论', collapsed: count => `已折叠 ${count} 条回复`, commentCount: count => `${count} 条评论`, noCommentCount: '暂无评论', submitted: '评论已发布。', replySubmitted: '回复已发布。', loaded: '评论已加载。', pageChanged: '已切换评论页面。', nicknameRequired: '请输入昵称。', nicknameTooLong: '昵称不能超过 80 个字符。', emailRequiredInvalid: '请输入有效邮箱。', emailInvalid: '邮箱格式不正确。', websiteRequiredInvalid: '请输入以 http:// 或 https:// 开头的网址。', websiteInvalid: '网址需要以 http:// 或 https:// 开头。', contentRequired: '评论内容不能为空。', contentTooLong: limit => `评论内容不能超过 ${limit} 个字符。`, submit400: '提交内容不符合要求，请检查后重试。', submit403: '当前页面来源没有评论提交权限。', submit413: '提交内容超过服务器允许的大小。', submit429: '提交过于频繁，请稍后再试。', submit500: '评论服务暂时无法保存内容，请稍后再试。', submitNetwork: '网络连接失败，评论尚未提交。', challengeRequired: '请完成验证后再发布。', list403: '当前页面来源没有读取评论的权限。', list429: '请求过于频繁，请稍后重试。', listFailure: '无法加载评论，请稍后重试。', ariaComments: '评论区', ariaSort: '评论排序', commentContent: '评论内容', blogger: '博主', previousComments: '上一页', nextComments: '下一页', sticker: '表情', stickerPack: '表情包', loadingStickers: '正在加载表情…', stickerLoadFailed: '表情加载失败，请重试。', preview: '预览', commentPreview: '评论预览', noPreview: '暂无可预览内容。', parentComment: '上级评论',
+}
+
+const zhHant: ClientMessages = { ...zhCN, sortOldest: '最早評論', sortNewest: '最新評論', nickname: '暱稱', email: '信箱', website: '網址', commentPlaceholder: '寫下評論（僅支援純文字）', replyPlaceholder: '寫下回覆（僅支援純文字）', submitComment: '發布', submitReply: '回覆', replyTo: author => `@${author}`, discardReplyDraft: '目前回覆尚未提交，切換會遺失已填寫內容。是否繼續？', replyTarget: '查看被回覆的評論', emptyTitle: '還沒有評論', emptyBody: '成為第一個留下純文字評論的人。', serviceErrorTitle: '評論暫時無法使用', serviceErrorBody: '文章內容不受影響，請稍後重試載入評論。', retry: '重新載入', paginationLabel: '評論分頁', previousPage: '‹ 上一頁', nextPage: '下一頁 ›', deletedAuthor: '已刪除', deletedBody: '[此評論已刪除]', collapse: '摺疊這段討論', expand: '展開這段討論', collapsed: count => `已摺疊 ${count} 則回覆`, commentCount: count => `${count} 則評論`, noCommentCount: '暫無評論', submitted: '評論已發布。', replySubmitted: '回覆已發布。', loaded: '評論已載入。', pageChanged: '已切換評論頁面。', nicknameRequired: '請輸入暱稱。', nicknameTooLong: '暱稱不能超過 80 個字元。', emailRequiredInvalid: '請輸入有效信箱。', emailInvalid: '信箱格式不正確。', websiteRequiredInvalid: '請輸入以 http:// 或 https:// 開頭的網址。', websiteInvalid: '網址必須以 http:// 或 https:// 開頭。', contentRequired: '評論內容不能為空。', contentTooLong: limit => `評論內容不能超過 ${limit} 個字元。`, submit400: '提交內容不符合要求，請檢查後重試。', submit403: '目前頁面來源沒有評論提交權限。', submit413: '提交內容超過伺服器允許的大小。', submit429: '提交過於頻繁，請稍後再試。', submit500: '評論服務暫時無法保存內容，請稍後再試。', submitNetwork: '網路連線失敗，評論尚未提交。', challengeRequired: '請完成驗證後再發布。', list403: '目前頁面來源沒有讀取評論的權限。', list429: '請求過於頻繁，請稍後重試。', listFailure: '無法載入評論，請稍後重試。', ariaComments: '評論區', ariaSort: '評論排序', commentContent: '評論內容', blogger: '部落客', previousComments: '上一頁', nextComments: '下一頁', sticker: '貼圖', stickerPack: '貼圖包', loadingStickers: '正在載入貼圖…', stickerLoadFailed: '貼圖載入失敗，請重試。', preview: '預覽', commentPreview: '評論預覽', noPreview: '暫無可預覽內容。', parentComment: '上級評論' }
+
+const en: ClientMessages = { ...zhCN, sortOldest: 'Oldest', sortNewest: 'Newest', nickname: 'Name', email: 'Email', website: 'Website', commentPlaceholder: 'Write a plain-text comment', replyPlaceholder: 'Write a plain-text reply', submitComment: 'Post', submitReply: 'Reply', submitting: 'Posting…', cancel: 'Cancel', reply: 'Reply', replyTo: author => `@${author}`, discardReplyDraft: 'This reply has not been posted. Switching will discard it. Continue?', replyTarget: 'View the comment being answered', emptyTitle: 'No comments yet', emptyBody: 'Be the first to leave a plain-text comment.', serviceErrorTitle: 'Comments are temporarily unavailable', serviceErrorBody: 'The article is unaffected. Try loading comments again later.', retry: 'Reload', paginationLabel: 'Comment pagination', previousPage: '‹ Previous', nextPage: 'Next ›', deletedAuthor: 'Deleted', deletedBody: '[Comment deleted]', collapse: 'Collapse this discussion', expand: 'Expand this discussion', collapsed: count => `${count} repl${count === 1 ? 'y' : 'ies'} collapsed`, commentCount: count => `${count} comment${count === 1 ? '' : 's'}`, noCommentCount: 'No comments', submitted: 'Comment posted.', replySubmitted: 'Reply posted.', loaded: 'Comments loaded.', pageChanged: 'Comment page changed.', nicknameRequired: 'Enter your name.', nicknameTooLong: 'Name must be 80 characters or fewer.', emailRequiredInvalid: 'Enter a valid email address.', emailInvalid: 'The email address is invalid.', websiteRequiredInvalid: 'Enter a URL beginning with http:// or https://.', websiteInvalid: 'The URL must begin with http:// or https://.', contentRequired: 'Comment content cannot be empty.', contentTooLong: limit => `Comment content must be ${limit} characters or fewer.`, submit400: 'The submission is invalid. Check it and try again.', submit403: 'This page origin cannot submit comments.', submit413: 'The submission is too large for the server.', submit429: 'You are posting too quickly. Try again later.', submit500: 'The comment service could not save this yet.', submitNetwork: 'The network request failed; your comment was not posted.', challengeRequired: 'Complete the verification before posting.', list403: 'This page origin cannot read comments.', list429: 'Too many requests. Try again later.', listFailure: 'Comments could not be loaded. Try again later.', ariaComments: 'Comments', ariaSort: 'Comment sort', commentContent: 'Comment content', blogger: 'Blogger', previousComments: 'Previous page', nextComments: 'Next page', sticker: 'Sticker', stickerPack: 'Sticker pack', loadingStickers: 'Loading stickers…', stickerLoadFailed: 'Stickers could not be loaded. Try again.', preview: 'Preview', commentPreview: 'Comment preview', noPreview: 'Nothing to preview.', parentComment: 'Parent comment' }
+
+export const messages = zhCN
+export function getMessages(locale: EcokuLocale): ClientMessages { return locale === 'en' ? en : locale === 'zh-Hant' ? zhHant : zhCN }

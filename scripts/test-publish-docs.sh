@@ -7,11 +7,11 @@ test_root=$(mktemp -d "$PWD/tmp/publish-docs.XXXXXX")
 trap 'rm -rf -- "$test_root"' EXIT
 source_dir="$test_root/dist"
 mkdir -p "$source_dir/en" "$source_dir/zh-hant" "$source_dir/ja"
-for file in index.html 404.html en/index.html zh-hant/index.html ja/index.html; do
+for file in index.html 404.html en/index.html zh-hant/index.html; do
   printf 'fixture\n' > "$source_dir/$file"
 done
 i=0
-while [ "$i" -lt 15 ]; do
+while [ "$i" -lt 16 ]; do
   printf 'asset\n' > "$source_dir/asset-$i.js"
   i=$((i + 1))
 done

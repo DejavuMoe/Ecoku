@@ -18,7 +18,7 @@ import {
   saveVisitorIdentity,
   type StoredVisitorIdentity,
 } from './identity-store'
-import { zhCN } from './messages'
+import { getMessages, type ClientMessages } from './messages'
 import { mountChallenge, type ChallengeWidget } from './captcha'
 import {
   codePointLength,
@@ -58,15 +58,16 @@ type IdentityDraft = StoredVisitorIdentity
 
 export class CommentSurface {
   private config: ResolvedEcokuConfig
+  private messages: ClientMessages = getMessages('zh-CN')
   private readonly instanceId = ++instanceSequence
   private readonly root = createElement('div', 'ecoku-comments')
   private readonly core = createElement('div', 'ecoku-core')
   private readonly serviceError = createElement('section', 'ecoku-service-error')
-  private readonly retryButton = createElement('button', 'ecoku-secondary-button', zhCN.retry)
-  private readonly count = createElement('h2', 'ecoku-section-title', zhCN.noCommentCount)
+  private readonly retryButton = createElement('button', 'ecoku-secondary-button', this.messages.retry)
+  private readonly count = createElement('h2', 'ecoku-section-title', this.messages.noCommentCount)
   private readonly sortPicker = createElement('div', 'ecoku-sort-picker')
   private readonly sortTrigger = createElement('button', 'ecoku-sort-trigger')
-  private readonly sortTriggerLabel = createElement('span', '', zhCN.sortOldest)
+  private readonly sortTriggerLabel = createElement('span', '', this.messages.sortOldest)
   private readonly sortMenu = createElement('div', 'ecoku-sort-menu')
   private readonly sortOptions: HTMLButtonElement[] = []
   private readonly rootForm = createElement('form', 'ecoku-composer')
@@ -77,14 +78,14 @@ export class CommentSurface {
   private readonly rootCaptcha = createElement('div', 'ecoku-turnstile-slot ecoku-captcha-slot')
   private readonly rootError = createElement('p', 'ecoku-form-error')
   private readonly characterCount = createElement('span', 'ecoku-character-count', `0/${DEFAULT_COMMENT_FORM_CONFIG.lengthLimit}`)
-  private readonly rootSubmit = createElement('button', 'ecoku-primary-button', zhCN.submitComment)
+  private readonly rootSubmit = createElement('button', 'ecoku-primary-button', this.messages.submitComment)
   private readonly statusLine = createElement('p', 'ecoku-status-line')
   private readonly emptyState = createElement('section', 'ecoku-empty-state')
   private readonly threadList = createElement('div', 'ecoku-thread-list')
   private readonly pagination = createElement('nav', 'ecoku-pagination')
-  private readonly previousPageButton = createElement('button', 'ecoku-pager-button', zhCN.previousPage)
+  private readonly previousPageButton = createElement('button', 'ecoku-pager-button', this.messages.previousPage)
   private readonly paginationStatus = createElement('span', 'ecoku-pagination-status', '1/1')
-  private readonly nextPageButton = createElement('button', 'ecoku-pager-button', zhCN.nextPage)
+  private readonly nextPageButton = createElement('button', 'ecoku-pager-button', this.messages.nextPage)
   private comments: CommentData[] = []
   private currentPage = 0
   private pageCount = 0
@@ -117,6 +118,7 @@ export class CommentSurface {
 
   constructor(config: ResolvedEcokuConfig) {
     this.config = config
+    this.messages = getMessages(config.i18n ?? 'zh-CN')
     this.buildSurface()
   }
 
@@ -153,7 +155,7 @@ export class CommentSurface {
     this.updateRootFormState()
     this.statusLine.textContent = ''
     await this.loadPage(1, false)
-    if (!this.destroyed) this.announce(zhCN.pageChanged)
+    if (!this.destroyed) this.announce(this.messages.pageChanged)
   }
 
   destroy(): void {
@@ -172,7 +174,7 @@ export class CommentSurface {
 
   private buildSurface(): void {
     this.root.dataset.theme = this.config.theme
-    this.root.setAttribute('lang', 'zh-CN')
+    this.root.setAttribute('lang', this.localeLanguage())
 
     if (!this.config.cssURL) {
       const style = createElement('style')
@@ -181,23 +183,23 @@ export class CommentSurface {
     }
 
     const section = createElement('section', 'ecoku-comment-section')
-    section.setAttribute('aria-label', '评论区')
+    section.setAttribute('aria-label', this.messages.ariaComments)
     const heading = createElement('div', 'ecoku-section-heading')
     this.count.setAttribute('aria-live', 'polite')
     this.sortTrigger.type = 'button'
     this.sortTrigger.setAttribute('aria-haspopup', 'listbox')
     this.sortTrigger.setAttribute('aria-expanded', 'false')
-    this.sortTrigger.setAttribute('aria-label', `评论排序：${zhCN.sortOldest}`)
+    this.sortTrigger.setAttribute('aria-label', `${this.messages.ariaSort}: ${this.messages.sortOldest}`)
     this.sortTrigger.append(this.sortTriggerLabel, createElement('span', 'ecoku-sort-chevron'))
     this.sortMenu.setAttribute('role', 'listbox')
-    this.sortMenu.setAttribute('aria-label', '评论排序')
+    this.sortMenu.setAttribute('aria-label', this.messages.ariaSort)
     this.sortMenu.hidden = true
-    const newest = createElement('button', 'ecoku-sort-option', zhCN.sortNewest)
+    const newest = createElement('button', 'ecoku-sort-option', this.messages.sortNewest)
     newest.type = 'button'
     newest.dataset.sort = 'newest'
     newest.setAttribute('role', 'option')
     newest.setAttribute('aria-selected', 'false')
-    const oldestButton = createElement('button', 'ecoku-sort-option', zhCN.sortOldest)
+    const oldestButton = createElement('button', 'ecoku-sort-option', this.messages.sortOldest)
     oldestButton.type = 'button'
     oldestButton.dataset.sort = 'oldest'
     oldestButton.setAttribute('role', 'option')
@@ -210,8 +212,8 @@ export class CommentSurface {
     this.serviceError.hidden = true
     this.serviceError.setAttribute('aria-live', 'polite')
     this.serviceError.setAttribute('aria-atomic', 'true')
-    const errorTitle = createElement('h3', '', zhCN.serviceErrorTitle)
-    const errorBody = createElement('p', '', zhCN.serviceErrorBody)
+    const errorTitle = createElement('h3', '', this.messages.serviceErrorTitle)
+    const errorBody = createElement('p', '', this.messages.serviceErrorBody)
     this.retryButton.type = 'button'
     this.serviceError.append(errorTitle, errorBody, this.retryButton)
 
@@ -225,7 +227,7 @@ export class CommentSurface {
     this.emptyState.append(createElement('p', '', this.formConfig.emptyMessage))
     this.threadList.setAttribute('role', 'list')
     this.threadList.hidden = true
-    this.pagination.setAttribute('aria-label', zhCN.paginationLabel)
+    this.pagination.setAttribute('aria-label', this.messages.paginationLabel)
     this.pagination.hidden = true
     this.previousPageButton.type = 'button'
     this.nextPageButton.type = 'button'
@@ -301,8 +303,8 @@ export class CommentSurface {
   }
 
   private chooseSort(nextSort: CommentSort): void {
-    this.sortTriggerLabel.textContent = nextSort === 'oldest' ? zhCN.sortOldest : zhCN.sortNewest
-    this.sortTrigger.setAttribute('aria-label', `评论排序：${this.sortTriggerLabel.textContent}`)
+    this.sortTriggerLabel.textContent = nextSort === 'oldest' ? this.messages.sortOldest : this.messages.sortNewest
+    this.sortTrigger.setAttribute('aria-label', `${this.messages.ariaSort}: ${this.sortTriggerLabel.textContent}`)
     for (const option of this.sortOptions) {
       option.setAttribute('aria-selected', String(option.dataset.sort === nextSort))
     }
@@ -328,18 +330,18 @@ export class CommentSurface {
     this.configureInput(this.website, 'url', 'url', 2048)
     this.nickname.required = true
     identityGrid.append(
-      this.field(zhCN.nickname, this.nickname),
-      this.field(zhCN.email, this.email),
-      this.field(zhCN.website, this.website),
+      this.field(this.messages.nickname, this.nickname),
+      this.field(this.messages.email, this.email),
+      this.field(this.messages.website, this.website),
     )
 
     const messageLabel = createElement('label', 'ecoku-message-field')
-    const visuallyHidden = createElement('span', 'ecoku-visually-hidden', '评论内容')
+    const visuallyHidden = createElement('span', 'ecoku-visually-hidden', this.messages.commentContent)
     this.rootContent.name = 'comment'
     this.rootContent.maxLength = this.formConfig.lengthLimit * 2
     this.rootContent.rows = COMPOSER_ROWS
     this.rootContent.required = true
-    this.rootContent.placeholder = zhCN.commentPlaceholder
+    this.rootContent.placeholder = this.messages.commentPlaceholder
     messageLabel.append(visuallyHidden, this.rootContent)
 
     this.rootError.id = `ecoku-root-error-${this.instanceId}`
@@ -421,6 +423,8 @@ export class CommentSurface {
   private applyFormConfig(next: CommentFormConfig, initializeSort = true): void {
     const previousSmoji = this.formConfig.smoji
     this.formConfig = { ...next, captcha: { ...next.captcha }, smoji: { ...next.smoji } }
+    this.messages = getMessages(this.config.i18n ?? next.locale)
+    this.applyLocale()
     if (previousSmoji.manifestUrl !== next.smoji.manifestUrl
       || previousSmoji.imageOrigin !== next.smoji.imageOrigin || previousSmoji.enabled !== next.smoji.enabled) {
       this.smojiManifestController?.abort()
@@ -462,19 +466,49 @@ export class CommentSurface {
     if (this.activeReply) void this.syncReplyCaptcha(this.activeReply)
   }
 
+  private localeLanguage(): string {
+    return this.config.i18n === 'en' || this.formConfig.locale === 'en'
+      ? 'en'
+      : this.config.i18n === 'zh-Hant' || this.formConfig.locale === 'zh-Hant'
+        ? 'zh-Hant'
+        : 'zh-CN'
+  }
+
+  private applyLocale(): void {
+    this.root.setAttribute('lang', this.localeLanguage())
+    this.retryButton.textContent = this.messages.retry
+    this.previousPageButton.textContent = this.messages.previousPage
+    this.nextPageButton.textContent = this.messages.nextPage
+    this.rootSubmit.textContent = this.messages.submitComment
+    this.sortMenu.setAttribute('aria-label', this.messages.ariaSort)
+    this.sortTrigger.setAttribute('aria-label', `${this.messages.ariaSort}: ${this.sortTriggerLabel.textContent}`)
+    this.pagination.setAttribute('aria-label', this.messages.paginationLabel)
+    const errorTitle = this.serviceError.querySelector('h3')
+    const errorBody = this.serviceError.querySelector('p')
+    if (errorTitle) errorTitle.textContent = this.messages.serviceErrorTitle
+    if (errorBody) errorBody.textContent = this.messages.serviceErrorBody
+    const labels = this.rootForm.querySelectorAll<HTMLElement>('.ecoku-field-label')
+    ;[this.messages.nickname, this.messages.email, this.messages.website].forEach((value, index) => {
+      if (labels[index]) labels[index].textContent = value
+    })
+    const contentLabel = this.rootForm.querySelector('.ecoku-visually-hidden')
+    if (contentLabel) contentLabel.textContent = this.messages.commentContent
+    this.sortTriggerLabel.textContent = this.sort === 'oldest' ? this.messages.sortOldest : this.messages.sortNewest
+  }
+
   private syncRootCaptcha(): void {
     const generation = ++this.captchaGeneration
     this.rootWidget?.remove()
     this.rootWidget = null
     this.rootCaptcha.replaceChildren()
     if (this.formConfig.captcha.provider === 'off') return
-    void mountChallenge(this.rootCaptcha, this.formConfig.captcha, this.config.theme).then((widget) => {
+    void mountChallenge(this.rootCaptcha, this.formConfig.captcha, this.config.theme, this.localeLanguage() === 'en' ? 'en' : this.localeLanguage() === 'zh-Hant' ? 'zh-Hant' : 'zh-CN').then((widget) => {
       if (!widget) return
       if (this.destroyed || generation !== this.captchaGeneration) {
         widget.remove()
         return
       }
-      this.rootWidget = widget
+    this.rootWidget = widget
     }).catch(() => undefined)
   }
 
@@ -485,7 +519,7 @@ export class CommentSurface {
     reply.captchaSlot.replaceChildren()
     if (this.formConfig.captcha.provider === 'off') return
     try {
-      const widget = await mountChallenge(reply.captchaSlot, this.formConfig.captcha, this.config.theme)
+      const widget = await mountChallenge(reply.captchaSlot, this.formConfig.captcha, this.config.theme, this.localeLanguage() === 'en' ? 'en' : this.localeLanguage() === 'zh-Hant' ? 'zh-Hant' : 'zh-CN')
       if (this.destroyed || this.activeReply !== reply || generation !== reply.captchaGeneration) {
         widget?.remove()
         return
@@ -498,8 +532,8 @@ export class CommentSurface {
 
   private syncSortUI(): void {
     const sort = this.sort ?? this.formConfig.defaultSort
-    this.sortTriggerLabel.textContent = sort === 'oldest' ? zhCN.sortOldest : zhCN.sortNewest
-    this.sortTrigger.setAttribute('aria-label', `评论排序：${this.sortTriggerLabel.textContent}`)
+    this.sortTriggerLabel.textContent = sort === 'oldest' ? this.messages.sortOldest : this.messages.sortNewest
+    this.sortTrigger.setAttribute('aria-label', `${this.messages.ariaSort}: ${this.sortTriggerLabel.textContent}`)
     for (const option of this.sortOptions) option.setAttribute('aria-selected', String(option.dataset.sort === sort))
   }
 
@@ -522,7 +556,7 @@ export class CommentSurface {
       this.applyFormConfig(result.formConfig)
       this.hideServiceError()
       this.renderComments()
-      if (announce) this.announce(zhCN.pageChanged)
+      if (announce) this.announce(this.messages.pageChanged)
     } catch (error) {
       if (isAbortError(error) || !this.isCurrentRequest(version, revision)) return
       this.showListFailure(error, this.comments.length === 0)
@@ -586,10 +620,10 @@ export class CommentSurface {
 
   private listErrorMessage(error: unknown): string {
     if (error instanceof EcokuRequestError) {
-      if (error.status === 403) return zhCN.list403
-      if (error.status === 429) return zhCN.list429
+      if (error.status === 403) return this.messages.list403
+      if (error.status === 429) return this.messages.list429
     }
-    return zhCN.listFailure
+    return this.messages.listFailure
   }
 
   private renderComments(): void {
@@ -616,7 +650,7 @@ export class CommentSurface {
     }
 
     const visibleCommentTotal = Math.max(this.commentTotal, rendered.size)
-    this.count.textContent = visibleCommentTotal > 0 ? zhCN.commentCount(visibleCommentTotal) : zhCN.noCommentCount
+    this.count.textContent = visibleCommentTotal > 0 ? this.messages.commentCount(visibleCommentTotal) : this.messages.noCommentCount
     const empty = rendered.size === 0
     this.emptyState.hidden = !empty
     this.threadList.hidden = empty
@@ -663,7 +697,7 @@ export class CommentSurface {
     childrenContainer.setAttribute('role', 'group')
 
     if (comment.deleted) {
-      metaMain.append(createElement('span', 'ecoku-comment-author', zhCN.deletedAuthor))
+      metaMain.append(createElement('span', 'ecoku-comment-author', this.messages.deletedAuthor))
     } else {
       metaMain.append(this.renderAuthor(comment))
     }
@@ -685,8 +719,8 @@ export class CommentSurface {
     if (children.length > 0) {
       collapse = createElement('button', 'ecoku-collapse-button', '[-]')
       collapse.type = 'button'
-      collapse.title = zhCN.collapse
-      collapse.setAttribute('aria-label', zhCN.collapse)
+      collapse.title = this.messages.collapse
+      collapse.setAttribute('aria-label', this.messages.collapse)
       collapse.setAttribute('aria-expanded', 'true')
       metaMain.append(collapse)
     }
@@ -696,12 +730,12 @@ export class CommentSurface {
     if (depth >= 3 && comment.parent !== 0) {
       const parent = byID.get(comment.parent)
       if (parent) {
-        const replyTarget = createElement('a', 'ecoku-reply-context', zhCN.replyTo(parent.username))
+        const replyTarget = createElement('a', 'ecoku-reply-context', this.messages.replyTo(parent.username))
         replyTarget.href = `#ecoku-comment-${parent.id}`
-        replyTarget.title = zhCN.replyTarget
+        replyTarget.title = this.messages.replyTarget
         replyContext = replyTarget
       } else {
-        replyContext = createElement('span', 'ecoku-reply-context', zhCN.replyTo('上级评论'))
+        replyContext = createElement('span', 'ecoku-reply-context', this.messages.replyTo(this.messages.parentComment))
       }
       metaMain.append(replyContext)
     }
@@ -709,7 +743,7 @@ export class CommentSurface {
     let replySlot: HTMLElement | null = null
     let replyButton: HTMLButtonElement | null = null
     if (!comment.deleted) {
-      const trigger = createElement('button', 'ecoku-text-action ecoku-reply-action', zhCN.reply)
+      const trigger = createElement('button', 'ecoku-text-action ecoku-reply-action', this.messages.reply)
       replyButton = trigger
       trigger.type = 'button'
       replySlot = createElement('div', 'ecoku-reply-slot')
@@ -721,7 +755,7 @@ export class CommentSurface {
 
     const copy = createElement('div', 'ecoku-comment-copy')
     const paragraph = createElement('p')
-    if (comment.deleted) paragraph.textContent = zhCN.deletedBody
+    if (comment.deleted) paragraph.textContent = this.messages.deletedBody
     else renderSmojiContent(paragraph, comment.content, this.formConfig.smoji.enabled, this.formConfig.smoji.manifestUrl, this.formConfig.smoji.imageOrigin)
     copy.append(paragraph)
     contentShell.append(copy)
@@ -742,13 +776,13 @@ export class CommentSurface {
         collapse?.setAttribute('aria-expanded', String(!collapsing))
         if (collapse) {
           collapse.textContent = collapsing ? '[+]' : '[-]'
-          collapse.title = collapsing ? zhCN.expand : zhCN.collapse
+          collapse.title = collapsing ? this.messages.expand : this.messages.collapse
           collapse.setAttribute('aria-label', collapse.title)
         }
         contentShell.hidden = collapsing
         childrenContainer.hidden = collapsing
         foldedSummary.hidden = !collapsing
-        foldedSummary.textContent = collapsing ? zhCN.collapsed(descendantCount) : ''
+        foldedSummary.textContent = collapsing ? this.messages.collapsed(descendantCount) : ''
         if (replyButton) replyButton.hidden = collapsing
         if (replyContext) replyContext.hidden = collapsing
         if (collapsing && this.activeReply?.parentId === comment.id) this.closeReply(false)
@@ -767,7 +801,7 @@ export class CommentSurface {
       return
     }
     if (this.activeReply && this.replyHasUnsavedInput(this.activeReply)
-      && !window.confirm(zhCN.discardReplyDraft)) return
+      && !window.confirm(this.messages.discardReplyDraft)) return
     this.closeReply(false)
     const form = createElement('form', 'ecoku-composer ecoku-reply-composer')
     form.noValidate = true
@@ -782,9 +816,9 @@ export class CommentSurface {
     website.required = this.formConfig.websiteRequired
     const identityGrid = createElement('div', 'ecoku-identity-grid ecoku-reply-identity-grid')
     identityGrid.append(
-      this.field(zhCN.nickname, nickname),
-      this.field(zhCN.email, email),
-      this.field(zhCN.website, website),
+      this.field(this.messages.nickname, nickname),
+      this.field(this.messages.email, email),
+      this.field(this.messages.website, website),
     )
 
     const currentIdentity = this.identity()
@@ -792,9 +826,9 @@ export class CommentSurface {
     const textarea = createElement('textarea', 'ecoku-textarea')
     textarea.maxLength = this.formConfig.lengthLimit * 2
     textarea.rows = COMPOSER_ROWS
-    textarea.placeholder = zhCN.replyPlaceholder
+    textarea.placeholder = this.messages.replyPlaceholder
     const messageLabel = createElement('label', 'ecoku-message-field')
-    const visuallyHidden = createElement('span', 'ecoku-visually-hidden', zhCN.submitReply)
+    const visuallyHidden = createElement('span', 'ecoku-visually-hidden', this.messages.submitReply)
     messageLabel.append(visuallyHidden, textarea)
     const error = createElement('p', 'ecoku-form-error')
     error.id = `ecoku-reply-error-${this.instanceId}-${comment.id}`
@@ -805,9 +839,9 @@ export class CommentSurface {
     const footer = createElement('div', 'ecoku-composer-footer ecoku-reply-footer')
     const counter = createElement('span', 'ecoku-character-count', `0/${this.formConfig.lengthLimit}`)
     const end = createElement('div', 'ecoku-composer-end')
-    const cancel = createElement('button', 'ecoku-secondary-button', zhCN.cancel)
+    const cancel = createElement('button', 'ecoku-secondary-button', this.messages.cancel)
     cancel.type = 'button'
-    const submit = createElement('button', 'ecoku-primary-button', zhCN.submitReply)
+    const submit = createElement('button', 'ecoku-primary-button', this.messages.submitReply)
     submit.type = 'submit'
     submit.disabled = true
     const smojiControl = this.createSmojiControl(textarea)
@@ -869,14 +903,14 @@ export class CommentSurface {
 
   private createSmojiControl(textarea: HTMLTextAreaElement): HTMLElement {
     const wrapper = createElement('div', 'ecoku-smoji-control')
-    const trigger = createElement('button', 'ecoku-smoji-trigger', '表情')
+    const trigger = createElement('button', 'ecoku-smoji-trigger', this.messages.sticker)
     const panel = createElement('div', 'ecoku-smoji-panel')
     trigger.type = 'button'
     trigger.setAttribute('aria-haspopup', 'dialog')
     trigger.setAttribute('aria-expanded', 'false')
     panel.id = `ecoku-smoji-${this.instanceId}-${this.smojiControls.size}`
     panel.setAttribute('role', 'dialog')
-    panel.setAttribute('aria-label', '表情')
+    panel.setAttribute('aria-label', this.messages.sticker)
     panel.tabIndex = -1
     trigger.setAttribute('aria-controls', panel.id)
     wrapper.addEventListener('keydown', (event) => {
@@ -895,7 +929,7 @@ export class CommentSurface {
       const tabs = createElement('div', 'ecoku-smoji-tabs')
       const grid = createElement('div', 'ecoku-smoji-grid')
       tabs.setAttribute('role', 'tablist')
-      tabs.setAttribute('aria-label', '表情包')
+      tabs.setAttribute('aria-label', this.messages.stickerPack)
       grid.setAttribute('role', 'tabpanel')
       grid.id = `${panel.id}-grid`
       const showPack = (index: number): void => {
@@ -961,7 +995,7 @@ export class CommentSurface {
       trigger.setAttribute('aria-expanded', String(opening))
       if (opening) panel.focus()
       if (!opening || panel.dataset.loaded === 'true') return
-      panel.replaceChildren(createElement('p', 'ecoku-smoji-state', '正在加载表情…'))
+      panel.replaceChildren(createElement('p', 'ecoku-smoji-state', this.messages.loadingStickers))
       let pending: Promise<SmojiManifest> | null = null
       try {
         if (!this.smojiManifestPromise) {
@@ -978,7 +1012,7 @@ export class CommentSurface {
       } catch {
         if (pending !== this.smojiManifestPromise) return
         this.smojiManifestPromise = null
-        if (!this.destroyed && this.smojiControls.has(wrapper)) panel.replaceChildren(createElement('p', 'ecoku-smoji-state', '表情加载失败，请重试。'))
+        if (!this.destroyed && this.smojiControls.has(wrapper)) panel.replaceChildren(createElement('p', 'ecoku-smoji-state', this.messages.stickerLoadFailed))
       }
     })
     return wrapper
@@ -993,18 +1027,18 @@ export class CommentSurface {
   }
 
   private createPreviewControl(textarea: HTMLTextAreaElement): { button: HTMLButtonElement; preview: HTMLElement } {
-    const button = createElement('button', 'ecoku-secondary-button ecoku-preview-trigger', '预览')
+    const button = createElement('button', 'ecoku-secondary-button ecoku-preview-trigger', this.messages.preview)
     const preview = createElement('div', 'ecoku-composer-preview')
     button.type = 'button'
     button.setAttribute('aria-pressed', 'false')
     preview.hidden = true
-    preview.setAttribute('aria-label', '评论预览')
+    preview.setAttribute('aria-label', this.messages.commentPreview)
 
     const render = (): void => {
       preview.replaceChildren()
       const content = textarea.value.trim()
       if (!content) {
-        preview.textContent = '暂无可预览内容。'
+        preview.textContent = this.messages.noPreview
         return
       }
       renderSmojiContent(preview, content, this.formConfig.smoji.enabled, this.formConfig.smoji.manifestUrl, this.formConfig.smoji.imageOrigin)
@@ -1093,7 +1127,7 @@ export class CommentSurface {
         let token = ''
         try { token = await widget?.waitForToken() ?? '' } catch { token = '' }
         if (!token) {
-          this.showInlineError(errorElement, contentElement, zhCN.challengeRequired)
+          this.showInlineError(errorElement, contentElement, this.messages.challengeRequired)
           return
         }
         draft.captchaToken = token
@@ -1114,7 +1148,7 @@ export class CommentSurface {
         this.rootContent.value = ''
         this.updateRootFormState()
       }
-      this.announce(reply ? zhCN.replySubmitted : zhCN.submitted)
+      this.announce(reply ? this.messages.replySubmitted : this.messages.submitted)
       await this.reload()
       if (!this.destroyed) {
         if (reply) {
@@ -1167,7 +1201,7 @@ export class CommentSurface {
       }
     }
     if (submitButton.isConnected) {
-      submitButton.textContent = busy ? zhCN.submitting : (reply ? zhCN.submitReply : zhCN.submitComment)
+      submitButton.textContent = busy ? this.messages.submitting : (reply ? this.messages.submitReply : this.messages.submitComment)
       if (!busy && reply && this.activeReply) this.updateReplyFormState(this.activeReply)
       else if (!busy) this.updateRootFormState()
     }
@@ -1251,12 +1285,12 @@ export class CommentSurface {
     if (!identity.username) {
       nickname.setAttribute('aria-invalid', 'true')
       if (focus) nickname.focus()
-      return zhCN.nicknameRequired
+      return this.messages.nicknameRequired
     }
     if (codePointLength(identity.username) > MAX_NICKNAME_LENGTH) {
       nickname.setAttribute('aria-invalid', 'true')
       if (focus) nickname.focus()
-      return zhCN.nicknameTooLong
+      return this.messages.nicknameTooLong
     }
     const emailValid = this.looksLikeBloggerProofAttempt(identity)
       || (!this.formConfig.emailRequired && identity.email === '')
@@ -1264,7 +1298,7 @@ export class CommentSurface {
     if (!emailValid) {
       email.setAttribute('aria-invalid', 'true')
       if (focus) email.focus()
-      return this.formConfig.emailRequired ? zhCN.emailRequiredInvalid : zhCN.emailInvalid
+      return this.formConfig.emailRequired ? this.messages.emailRequiredInvalid : this.messages.emailInvalid
     }
     const websiteValid = this.looksLikeBloggerProofAttempt(identity)
       || (!this.formConfig.websiteRequired && identity.url === '')
@@ -1272,7 +1306,7 @@ export class CommentSurface {
     if (!websiteValid) {
       website.setAttribute('aria-invalid', 'true')
       if (focus) website.focus()
-      return this.formConfig.websiteRequired ? zhCN.websiteRequiredInvalid : zhCN.websiteInvalid
+      return this.formConfig.websiteRequired ? this.messages.websiteRequiredInvalid : this.messages.websiteInvalid
     }
     return null
   }
@@ -1349,8 +1383,8 @@ export class CommentSurface {
   }
 
   private validateContent(value: string): string | null {
-    if (!value.trim()) return zhCN.contentRequired
-    if (codePointLength(value.trim()) > this.formConfig.lengthLimit) return zhCN.contentTooLong(this.formConfig.lengthLimit)
+    if (!value.trim()) return this.messages.contentRequired
+    if (codePointLength(value.trim()) > this.formConfig.lengthLimit) return this.messages.contentTooLong(this.formConfig.lengthLimit)
     return null
   }
 
@@ -1382,15 +1416,15 @@ export class CommentSurface {
   }
 
   private submissionErrorMessage(error: unknown): string {
-    if (!(error instanceof EcokuRequestError)) return zhCN.submitNetwork
+    if (!(error instanceof EcokuRequestError)) return this.messages.submitNetwork
     if (error.status === 400) {
-      return error.message === zhCN.challengeRequired ? zhCN.challengeRequired : zhCN.submit400
+      return error.message === this.messages.challengeRequired ? this.messages.challengeRequired : this.messages.submit400
     }
-    if (error.status === 403) return zhCN.submit403
-    if (error.status === 413) return zhCN.submit413
-    if (error.status === 429) return zhCN.submit429
-    if (error.status >= 500) return zhCN.submit500
-    return error.status === 0 ? zhCN.submitNetwork : zhCN.submit400
+    if (error.status === 403) return this.messages.submit403
+    if (error.status === 413) return this.messages.submit413
+    if (error.status === 429) return this.messages.submit429
+    if (error.status >= 500) return this.messages.submit500
+    return error.status === 0 ? this.messages.submitNetwork : this.messages.submit400
   }
 
   private announce(message: string): void {

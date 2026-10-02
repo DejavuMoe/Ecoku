@@ -89,6 +89,7 @@ func GetComments(c *gin.Context) {
 		return
 	}
 	formConfig := config.CommentFormConfig{
+		Locale:              string(config.NormalizeLocale(site.Locale)),
 		EmailRequired:       site.EmailRequired,
 		WebsiteRequired:     site.WebsiteRequired,
 		Placeholder:         site.Placeholder,

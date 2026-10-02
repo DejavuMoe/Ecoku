@@ -12,18 +12,19 @@ import { adminApi } from './api'
 import type { CaptchaPublicConfig, MainView } from './types'
 import { mountChallenge, type ChallengeWidget } from './captcha'
 import { messages } from './messages'
+import { adminLocale, adminText, installAdminTranslations, refreshAdminTranslations, setAdminLocale } from './i18n'
 
 const store = useAdminStore()
 const {
   authenticated, sessionReady, logoutBusy, logoutMessage, loginBusy, loginMessage, passwordSetupRequired, view, toastMessage, toastSerial, dirtyView, discardRequested,
 } = storeToRefs(store)
 
-const views: { id: MainView; label: string }[] = [
-  { id: 'comments', label: '评论' },
-  { id: 'sites', label: '站点' },
-  { id: 'notifications', label: '通知' },
-  { id: 'security', label: '安全' },
-]
+const views = computed(() => [
+  { id: 'comments' as const, label: adminText('comments') },
+  { id: 'sites' as const, label: adminText('sites') },
+  { id: 'notifications' as const, label: adminText('notifications') },
+  { id: 'security' as const, label: adminText('security') },
+])
 
 const username = ref('')
 const password = ref('')
@@ -37,6 +38,9 @@ const navigationBusy = computed(() => Boolean(dirtyView.value) && (store.siteBus
 let returnFocus: HTMLElement | null = null
 const visibleToast = ref('')
 let toastTimer: ReturnType<typeof setTimeout> | undefined
+let stopAdminTranslations: (() => void) | undefined
+
+watch(adminLocale, () => queueMicrotask(refreshAdminTranslations))
 
 watch(toastSerial, async () => {
   const value = toastMessage.value
@@ -98,6 +102,7 @@ function beforeUnload(event: BeforeUnloadEvent) {
 }
 
 onMounted(async () => {
+  stopAdminTranslations = installAdminTranslations(document.body)
   const expired = takeSessionNotice()
   window.addEventListener('beforeunload', beforeUnload)
   document.addEventListener('keydown', saveShortcut)
@@ -115,6 +120,7 @@ onBeforeUnmount(() => {
   if (toastTimer !== undefined) clearTimeout(toastTimer)
   loginWidget?.remove()
   loginWidget = null
+  stopAdminTranslations?.()
 })
 
 async function mountLoginChallenge() {
@@ -123,6 +129,7 @@ async function mountLoginChallenge() {
   loginCaptcha.value = { provider: 'off', sitekey: '', instanceUrl: '' }
   try {
     const config = await adminApi.getLoginConfig()
+    setAdminLocale(config.locale)
     loginCaptcha.value = config.captcha
     await nextTick()
     if (loginCaptcha.value.provider !== 'off' && loginSlot.value) {
@@ -165,7 +172,7 @@ async function switchView(next: MainView) {
 </script>
 
 <template>
-  <a class="skip-link" href="#main-content">跳到主要内容</a>
+  <a class="skip-link" href="#main-content">{{ adminText('skip') }}</a>
   <svg width="0" height="0" class="brand-symbols" aria-hidden="true">
     <symbol id="ecoku-seal" viewBox="0 0 64 64">
       <path style="fill: var(--seal)" d="M13.4 4.3C25.8 3.8 38.6 3.8 50.7 4.3c5.3.2 8.9 3.7 9.1 9 .4 12.5.4 25 0 37.5-.2 5.4-3.8 8.9-9.1 9.1-12.4.4-25 .4-37.4 0-5.3-.2-8.8-3.7-9-9-.4-12.5-.4-25.1 0-37.6.2-5.3 3.8-8.8 9.1-9Z" />
@@ -178,12 +185,12 @@ async function switchView(next: MainView) {
     <section class="auth-sheet" aria-labelledby="login-title">
       <div class="auth-brand" aria-hidden="true"><svg class="seal"><use href="#ecoku-seal" /></svg><span class="wordmark">Ecoku</span></div>
       <form class="auth-form" novalidate @submit.prevent="submitLogin">
-        <h1 id="login-title">管理员登录</h1>
+        <h1 id="login-title">{{ adminText('loginTitle') }}</h1>
         <p v-if="loginMessage" class="notice notice-error" role="alert">{{ loginMessage }}</p>
-        <label class="rule"><span class="rule-label">用户名</span><input id="login-username" ref="usernameInput" v-model="username" name="username" type="text" autocomplete="username" maxlength="80" required></label>
-        <label class="rule"><span class="rule-label">密码</span><input id="login-password" v-model="password" name="password" type="password" autocomplete="current-password" required></label>
+        <label class="rule"><span class="rule-label">{{ adminText('username') }}</span><input id="login-username" ref="usernameInput" v-model="username" name="username" type="text" autocomplete="username" maxlength="80" required></label>
+        <label class="rule"><span class="rule-label">{{ adminText('password') }}</span><input id="login-password" v-model="password" name="password" type="password" autocomplete="current-password" required></label>
         <div v-if="loginCaptcha.provider !== 'off'" ref="loginSlot" class="captcha-slot"></div>
-        <button class="button button-primary button-block" type="submit" :disabled="loginBusy || !username.trim() || !password">{{ loginBusy ? '登录中…' : '登录' }}</button>
+        <button class="button button-primary button-block" type="submit" :disabled="loginBusy || !username.trim() || !password">{{ loginBusy ? adminText('loggingIn') : adminText('login') }}</button>
       </form>
     </section>
   </main>
@@ -199,7 +206,7 @@ async function switchView(next: MainView) {
             <button v-for="item in views" :key="item.id" class="nav-link" type="button" :aria-current="view === item.id ? 'page' : undefined" :disabled="navigationBusy" @click="switchView(item.id)">{{ item.label }}</button>
           </nav>
           <p v-if="logoutMessage" class="inline-error" role="alert">{{ logoutMessage }}</p>
-          <button class="quiet-link logout" type="button" :disabled="logoutBusy || navigationBusy" @click="logout">退出登录</button>
+          <button class="quiet-link logout" type="button" :disabled="logoutBusy || navigationBusy" @click="logout">{{ adminText('logout') }}</button>
         </div>
       </div>
     </header>
@@ -213,8 +220,8 @@ async function switchView(next: MainView) {
   </div>
 
   <dialog ref="discardDialog" aria-labelledby="discard-title" aria-describedby="discard-copy" @cancel.prevent="store.resolveNavigation(false)" @close="store.resolveNavigation(false)">
-    <div class="dialog-body"><h2 id="discard-title">放弃未保存的修改？</h2><p id="discard-copy">离开后，本页的修改不会保存。</p></div>
-    <div class="dialog-actions"><button class="button button-quiet" type="button" autofocus @click="store.resolveNavigation(false)">继续编辑</button><button class="button button-danger" type="button" @click="store.resolveNavigation(true)">放弃修改</button></div>
+    <div class="dialog-body"><h2 id="discard-title">{{ adminText('discardTitle') }}</h2><p id="discard-copy">{{ adminText('discardCopy') }}</p></div>
+    <div class="dialog-actions"><button class="button button-quiet" type="button" autofocus @click="store.resolveNavigation(false)">{{ adminText('continue') }}</button><button class="button button-danger" type="button" @click="store.resolveNavigation(true)">{{ adminText('discard') }}</button></div>
   </dialog>
   <div class="visually-hidden" aria-live="polite">{{ visibleToast }}</div>
   <div v-if="visibleToast" class="toast" aria-hidden="true"><AdminIcon name="check" /><span>{{ visibleToast }}</span></div>

@@ -33,7 +33,7 @@ Logs go to stdout by default; view them with `docker compose logs`. Docker contr
 
 ## Environment variables {#env}
 
-New deployments need no `ecoku.env`. Compose’s `TZ: Asia/Shanghai` controls comment and notification timestamps. Edit that line to change the zone; `TZ` is not a YAML configuration field.
+New deployments need no `ecoku.env`. Compose’s `TZ: Asia/Shanghai` controls comment and notification timestamps, while `ECOKU_ADMIN_LOCALE: zh-CN` selects the admin language. Allowed values are `zh-CN`, `zh-Hant` and `en`. Set the site comment language with the admin site `i18n` field; the SDK `i18n` option overrides it. These are Compose environment variables, not YAML fields.
 
 The template’s `*_env` fields name environment variables read by the process, not secret values. To supply values yourself, inject the named variables through Compose `environment` or `env_file`. By default the administrator and persistent keys are created automatically. Do not override the image’s `GIN_MODE=release` or `ECOKU_RUNTIME=container`.
 

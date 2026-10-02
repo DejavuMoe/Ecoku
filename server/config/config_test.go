@@ -31,7 +31,7 @@ func TestDeploymentTemplatesUseDocumentedDefaults(t *testing.T) {
 	}
 	previousConfig, previousPort, previousLog := GlobalConfig, Port, LogFilePath
 	t.Cleanup(func() { GlobalConfig, Port, LogFilePath = previousConfig, previousPort, previousLog })
-	for _, name := range []string{"config.yaml.example", "config.en.yaml.example", "config.zh-hant.yaml.example", "config.ja.yaml.example"} {
+	for _, name := range []string{"config.yaml.example", "config.en.yaml.example", "config.zh-hant.yaml.example"} {
 		t.Run(name, func(t *testing.T) {
 			if err := LoadConfigFile(filepath.Join("..", "..", "deploy", name)); err != nil {
 				t.Fatal(err)

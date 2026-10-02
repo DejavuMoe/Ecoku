@@ -113,6 +113,8 @@ admin:
 #     name: "我的博客"
 #     # 至少一個不重複來源，不含路徑、查詢或片段，且與管理來源分開。
 #     allowed_origins: ["https://blog.example.com"]
+#     # Comment-area language. Options: zh-CN (default), zh-Hant, en. The SDK i18n option can override this.
+#     i18n: "zh-CN"
 #     # 可選：站點管理憑據的環境變數名稱。預設空，不啟用此憑據。
 #     # 僅可透過 EcokuSite 憑據對本站評論執行墓碑刪除，不能讀取管理資料。
 #     # 範例：BLOG_MANAGEMENT_KEY，值至少 32 位元組；各站點的名稱和值均須獨立。

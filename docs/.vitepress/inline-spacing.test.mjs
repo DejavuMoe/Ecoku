@@ -14,7 +14,6 @@ try {
   assert.match(render('文字\\*星号\\*结束'), /文字\*星号\*结束/)
   assert.match(render('使用SQLite保存7天，“繁體SDK”也是如此。'), /使用 SQLite 保存 7 天，「繁體 SDK」也是如此。/)
   assert.match(render('`中文SDK“原样”`'), /<code>中文SDK“原样”<\/code>/)
-  assert.match(md.render('日本語SDK', { relativePath: 'ja/guide/test.md' }), /日本語SDK/)
   assert.match(md.render('繁體SDK', { relativePath: 'zh-hant/guide/test.md' }), /繁體 SDK/)
   assert.match(render('[中文SDK](https://example.com/中文SDK)'), />中文 SDK<\/a>/)
   assert.match(render('<https://example.com/中文SDK>'), />https:\/\/example.com\/中文SDK<\/a>/)

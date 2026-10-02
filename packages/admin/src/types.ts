@@ -1,6 +1,7 @@
 export type CommentStatus = 'published' | 'deleted'
 export type MainView = 'comments' | 'sites' | 'notifications' | 'security'
 export type EmailEncryption = 'tls' | 'starttls'
+export type EcokuLocale = 'zh-CN' | 'zh-Hant' | 'en'
 
 export interface SiteSummary {
   id: string
@@ -16,6 +17,7 @@ export interface SiteSummary {
   smojiEnabled: boolean
   smojiManifestUrl: string
   smojiImageOrigin: string
+  i18n: EcokuLocale
   bloggerNickname: string
   bloggerEmail: string
   bloggerBadge: string
@@ -118,4 +120,5 @@ export interface CaptchaSettings {
 export interface LoginConfig {
   captcha: CaptchaPublicConfig
   turnstileSitekey: string
+  locale: EcokuLocale
 }

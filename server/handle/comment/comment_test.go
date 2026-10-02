@@ -221,7 +221,7 @@ func TestSiteFormConfigurationAndUnicodeLengthLimit(t *testing.T) {
 	if err := json.Unmarshal(recorder.Body.Bytes(), &envelope); err != nil {
 		t.Fatal(err)
 	}
-	want := config.CommentFormConfig{EmailRequired: false, WebsiteRequired: true, Placeholder: "分享你的想法", DefaultSort: "oldest", LengthLimit: 321, EmptyMessage: "暂时没有评论", BloggerBadge: model.DefaultBloggerBadge, Captcha: config.CaptchaPublicConfig{Provider: captcha.ProviderOff}}
+	want := config.CommentFormConfig{Locale: "zh-CN", EmailRequired: false, WebsiteRequired: true, Placeholder: "分享你的想法", DefaultSort: "oldest", LengthLimit: 321, EmptyMessage: "暂时没有评论", BloggerBadge: model.DefaultBloggerBadge, Captcha: config.CaptchaPublicConfig{Provider: captcha.ProviderOff}}
 	if envelope.Data.FormConfig != want {
 		t.Fatalf("form=%#v", envelope.Data.FormConfig)
 	}

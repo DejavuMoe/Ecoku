@@ -143,6 +143,7 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&page=1&pageSize=10&sor
 | `commentTotal` | 從根評論可到達的全部評論數（含回覆與墓碑）。 |
 | `pageCount` | 總頁數。 |
 | `timeZone` | 伺服器端的顯示時區（IANA 名稱）。 |
+| `i18n` | 站點評論區預設語言：`zh-CN`、`zh-Hant` 或 `en`。SDK 接入設定中的 `i18n` 可以覆寫它。 |
 | `formConfig` | 該站點的評論表單設定，見下表。 |
 
 `formConfig` 欄位：
@@ -292,7 +293,7 @@ Origin: https://blog.example.com
 | `GET /api/admin/sites/:siteId` | 單一站點。 |
 | `PUT /api/admin/sites/:siteId` | 更新站點。請求本文需帶上讀取時取得的 `revision`，缺少時回傳 `400`；期間被其他工作階段修改過時回傳 `409`。 |
 
-站點欄位：`id`、`site_url`、`name`、`allowed_origins`、`default_sort`、`email_required`、`website_required`、`placeholder`、`comment_limit`、`empty_message`、`smoji_enabled`、`smoji_manifest_url`、`smoji_image_origin`、`blogger_nickname`、`blogger_email`、`blogger_badge`、`blogger_passphrase`（唯寫）、`revision`。回應中以 `blogger_passphrase_set` 表示是否已設定口令，另含唯讀的 `created_at`、`updated_at`。站點清單在 `data.data` 陣列中，單一站點以及建立、更新的結果在 `data.site` 中。
+站點欄位：`id`、`site_url`、`name`、`allowed_origins`、`i18n`、`default_sort`、`email_required`、`website_required`、`placeholder`、`comment_limit`、`empty_message`、`smoji_enabled`、`smoji_manifest_url`、`smoji_image_origin`、`blogger_nickname`、`blogger_email`、`blogger_badge`、`blogger_passphrase`（唯寫）、`revision`。回應中以 `blogger_passphrase_set` 表示是否已設定口令，另含唯讀的 `created_at`、`updated_at`。站點清單在 `data.data` 陣列中，單一站點以及建立、更新的結果在 `data.site` 中。
 
 `smoji_image_origin`是選填的受信任圖片來源，例如 `https://s3-cdn.zsh.moe`。留空使用清單來源；更新請求省略此欄位時保留原值，傳空字串恢復預設。公開的 `formConfig.smoji.imageOrigin` 僅在已設定時回傳。載入、提交、顯示和郵件通知使用同一規則，見 [Smoji 託管設定](../integration/smoji#hosting)。
 
