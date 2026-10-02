@@ -1,6 +1,6 @@
 # Features
 
-This page lists the features of the current Ecoku release (v0.2.9), grouped by who uses them. The link after each item points to the details.
+This page lists the features of the current Ecoku release (v0.3.0), grouped by who uses them. The link after each item points to the details.
 
 ## Visitors
 
@@ -37,7 +37,7 @@ This page lists the features of the current Ecoku release (v0.2.9), grouped by w
 ## Operations
 
 - A single Docker container that runs as non-root on a read-only file system. [Docker deployment](../self-hosting/docker)
-- All data lives in one SQLite file. Stop the service and copy it to back up. [Backup and restore](../self-hosting/backup)
+- Stop the service and back up the data directory, persistent keys and configuration. [Backup and restore](../self-hosting/backup)
 - The database is migrated automatically on upgrade, and existing data stays in place. [Upgrade](../self-hosting/upgrade)
 - Per-IP rate limits, with support for running behind a reverse proxy or CDN. [Reverse proxy](../self-hosting/reverse-proxy)
 - Notifications are sent asynchronously through a database queue, with automatic retries on failure, and never hold up comment submission.

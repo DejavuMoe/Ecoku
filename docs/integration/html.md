@@ -58,7 +58,7 @@
 | Hexo | `<%- url_for(page.path) %>` |
 | Jekyll | `{{ page.url }}` |
 | Astro | `{Astro.url.pathname}` |
-| VitePress | 在自定义主题中读取 `useRoute().path`，并使用 [SDK](./sdk) 接入 |
+| VitePress | 在自定义主题中读取 `useRoute().path`，并使用 [SDK](./sdk#vitepress) 接入 |
 :::
 
 以上仅供参考，请在浏览器中查看生成的 HTML，确认输出的是稳定的路径，例如 `/posts/hello-world/`，而不是完整 URL。
@@ -66,7 +66,7 @@
 ## 加载过程
 
 1. 页面解析完成后，加载器读取外壳上的属性。缺少 `data-server-url`、`data-site-id`、`data-page-key`，或缺少四个 `data-ecoku-*` 子元素中的任何一个时，它会**静默跳过**，页面上不出现任何内容。
-2. 加载器从自己所在的目录加载 `ecoku.umd.js`，并初始化评论区。加载期间不显示“正在加载”之类的文字。
+2. 加载器从自己所在的目录加载 `ecoku.umd.js`，并初始化评论区。加载期间不显示「正在加载」之类的文字。
 3. 脚本加载或初始化任一阶段超过 12 秒、或者失败时，显示错误信息和「重新加载评论」按钮，访客可以点击重试。
 
 一个页面上可以有多个外壳，每个都会独立初始化。

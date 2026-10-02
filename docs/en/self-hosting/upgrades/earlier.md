@@ -1,6 +1,10 @@
 # Earlier release candidates
 
-The following `v0.1.0-rc.*` releases may still appear in the `compose.yaml` of early instances. See [Upgrade](../upgrade) for how to upgrade. Rolling back across a schema change always requires restoring from a cold backup.
+::: warning Internal test release — do not use
+This page preserves the tag, changes and historical upgrade notes. Public deployments start at v0.3.0; old images are no longer supported for deployment. Use the [current deployment guide](../docker).
+:::
+
+`v0.1.0-rc.1` · [v0.1.0-rc.2](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.2) · [v0.1.0-rc.3](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.3) · [v0.1.0-rc.5](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.5) · [v0.1.0-rc.6](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.6) · [v0.1.0-rc.7](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.7) · [v0.1.0-rc.8](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.8) · [v0.1.0-rc.9](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.9) · [v0.1.0-rc.10](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.10)
 
 ## v0.1.0-rc.8 – rc.10
 

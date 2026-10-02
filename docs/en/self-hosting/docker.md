@@ -1,8 +1,6 @@
 # Docker deployment
 
-::: info Upgrade and configuration migration
-This page describes deployment with v0.3.0. Before upgrading v0.2.8, read [upgrade and legacy configuration migration](./upgrade#legacy-config). Existing deployments may keep their old `ecoku.env` and Compose file; remove the old environment variables only after the migration has completed and the new login works.
-:::
+This guide covers public releases from v0.3.0, using GHCR images. For an existing instance, read [upgrading](./upgrade) first.
 
 A new Docker deployment needs `compose.yaml`, `app/config.yaml`, and `data/`. Ecoku creates the administrator password, session signing key, and notification encryption key on the first start.
 
@@ -39,7 +37,7 @@ sudo chmod 750 data
 ```yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.3.0"
+    image: "ghcr.io/dejavumoe/ecoku:v0.3.0"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -74,7 +72,7 @@ The container port remains `12123`. To change the host port, change only the par
 
 ## 3. Create app/config.yaml {#config}
 
-The complete `app/config.yaml` template below places explanations, defaults, allowed values, and examples beside each field. Replace `instance_public_url` with Ecoku’s own HTTPS URL; keep the commented legacy options disabled.
+This template collects supported settings, defaults, allowed values and examples from the current implementation. Replace `instance_public_url` with Ecoku’s own HTTPS URL; the other active values are defaults. Commented assignments are optional overrides. Uncomment only when needed and adjust mounts or ports as documented.
 
 <div class="config-template">
 

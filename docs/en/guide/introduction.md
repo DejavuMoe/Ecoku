@@ -8,7 +8,7 @@ It is deliberately simple:
 - **Comments go live on submit.** There is no moderation queue. An admin deletes inappropriate comments after the fact.
 - **Visitors do not register.** They enter a nickname, an email address (which a site can make optional), and an optional website, and then they can post.
 - **One instance serves multiple websites.** Each website is registered as a site in the admin console, with its own comments and settings.
-- **All data lives in one SQLite file.** You do not need MySQL, Redis, or any other external service. A backup is a copy of one directory.
+- **SQLite stores application data; keys are stored separately.** The core service needs no external database or Redis. Back up the entire `data/` directory, Compose and instance configuration together.
 
 ## Who it is for
 
@@ -61,7 +61,7 @@ The container runs as a non-root user and listens only on `127.0.0.1:12123` on t
 
 ## Getting started
 
-1. [Docker deployment](../self-hosting/docker): prepare the directories, config file, and secrets, then start the container.
+1. [Docker deployment](../self-hosting/docker): prepare directories and instance configuration; startup creates the administrator and keys.
 2. [Reverse proxy](../self-hosting/reverse-proxy): set up an HTTPS domain for Ecoku.
 3. [Admin console](../self-hosting/admin): sign in, register your website, and set up the blogger identity if you want one.
 4. [Embed the comment section](../integration/html): add the embed code to your post template.

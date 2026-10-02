@@ -1,6 +1,10 @@
 # それ以前の候補版
 
-次の `v0.1.0-rc.*` バージョンは、初期のインスタンスの `compose.yaml` にまだ残っている可能性があります。アップグレード方法は[アップグレード](../upgrade)を参照してください。スキーマをまたぐロールバックには、いずれもコールドバックアップからの復元が必要です。
+::: warning 内部テスト版・使用しないでください
+タグ、変更点、過去の移行上の注意のみを保存しています。公開デプロイは v0.3.0 以降を対象とし、旧イメージのデプロイはサポートしません。[現在のデプロイ手順](../docker) を利用してください。
+:::
+
+`v0.1.0-rc.1` · [v0.1.0-rc.2](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.2) · [v0.1.0-rc.3](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.3) · [v0.1.0-rc.5](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.5) · [v0.1.0-rc.6](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.6) · [v0.1.0-rc.7](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.7) · [v0.1.0-rc.8](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.8) · [v0.1.0-rc.9](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.9) · [v0.1.0-rc.10](https://github.com/DejavuMoe/Ecoku/tree/v0.1.0-rc.10)
 
 ## v0.1.0-rc.8 ～ rc.10
 

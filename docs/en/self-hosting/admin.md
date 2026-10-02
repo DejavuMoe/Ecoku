@@ -4,7 +4,7 @@ The admin console lives at `https://ecoku.example.com/admin/`. You use it to reg
 
 ## Sign in
 
-A new instance prints a temporary password for the `admin` account in the first-start log. The first sign-in must set the permanent username and password. During migration, an existing instance may keep using the credentials in `ecoku.env`. If CAPTCHA is enabled, the sign-in page also shows the verification widget.
+A new instance prints a temporary password for `admin` in its first-start log. Set a permanent password on first sign-in; you may keep the username `admin`. Existing instances use their persistent account. For internal test credential migration see [legacy configuration](./upgrade#legacy-config). When enabled, CAPTCHA also appears on the sign-in page.
 
 Sign-in is rejected unless both of these hold:
 
@@ -13,7 +13,7 @@ Sign-in is rejected unless both of these hold:
 
 After you sign in, the session lasts a fixed 8 hours. Reloading the page or closing and reopening the browser does not require signing in again, but activity does not extend those 8 hours either. When the session expires, the page asks you to sign in again. **Sign out** (退出登录) ends the current session on the server. If the sign-out request fails, the page stays open and asks you to try again; it does not pretend you are signed out.
 
-The session credential is stored in an HttpOnly cookie that is sent only to `/api/admin`, so page scripts cannot read it. After you change the admin password or `ECOKU_ADMIN_TOKEN_KEY` and recreate the container, all old sessions stop working immediately.
+Session credentials use an HttpOnly cookie scoped to `/api/admin`, inaccessible to page scripts. If you forget the password, use [admin reset-password](../reference/cli#admin-reset-password), which revokes old sessions. Do not edit or delete persistent key files to reset a password.
 
 If a CAPTCHA misconfiguration keeps you from signing in, see [CAPTCHA](./captcha#disable).
 
@@ -61,7 +61,7 @@ If someone edited the same site in another browser tab while you were editing it
 
 ### Sticker packs
 
-Enable 「表情包」 (Sticker packs) and enter the Smoji manifest URL. The next release adds optional 「图片来源」 (Image origin): enter the CDN origin when images are hosted separately, or leave it empty to preserve the manifest-origin rule. Resource hosts serve files directly and can see visitor IP addresses. See [host the Smoji manifest and images](../integration/smoji#hosting) for exact values.
+Enable 「表情包」 (Sticker packs) and enter the Smoji manifest URL. v0.3.0 provides optional 「图片来源」 (Image origin): enter the CDN origin when images are hosted separately, or leave it empty to preserve the manifest-origin rule. Resource hosts serve files directly and can see visitor IP addresses. See [host the Smoji manifest and images](../integration/smoji#hosting) for exact values.
 
 ### Blogger identity {#blogger}
 

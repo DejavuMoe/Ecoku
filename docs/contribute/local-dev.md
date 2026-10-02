@@ -1,6 +1,6 @@
 # 本地开发
 
-本地开发使用仓库根 `mise.toml` 固定的 Go、Node.js 与 pnpm，不使用 Corepack。CI 与容器构建直接使用相同版本的官方 Node/Go 镜像，不安装 mise；生产部署仍以 Docker Compose 为准。
+本地开发使用仓库根 `mise.toml` 固定的 Go、Node.js 与 pnpm，不使用 Corepack。GitHub Actions 安装对应版本的工具链；容器构建和 Woodpecker 文档部署使用官方镜像，不安装 mise。生产部署仍使用 Docker Compose。
 
 ## 初始化
 
@@ -30,6 +30,6 @@ pnpm docs:dev
 
 本地通过 `http://127.0.0.1:12123` 访问 API，默认端口为 `12123`，数据库位于 `server/data/ecoku.bin`，持久密钥位于同目录的 `ecoku-secrets.json`。源码运行默认不提供浏览器静态资源，评论区与管理后台使用各自的 Vite 开发服务器；Docker 镜像提供构建后的静态页面。
 
-完整验证由 Woodpecker 执行；本地只运行与当前改动直接相关且 CI 未覆盖的检查。
+完整验证由 GitHub Actions 执行；本地只运行与当前改动直接相关且 CI 未覆盖的检查。
 
 管理端开发页的来源（示例配置中的 `http://localhost:5174`）必须写在独立的 `admin.allowed_origins` 中，开发页通过 Vite 的同源 `/api` 代理访问服务端。仅 `http://localhost`、回环 IP 的明确允许来源使用非 Secure Cookie，生产必须 HTTPS。

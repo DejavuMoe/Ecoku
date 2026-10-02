@@ -52,7 +52,9 @@ SDK 的 `repository.url` 设为 `git+https://github.com/DejavuMoe/Ecoku.git`，`
 
 ## 与 Woodpecker 的分工
 
-`.woodpecker/` 保持原样。现有文档站点仍由 Woodpecker 发布，GitHub 只构建、检查并保存文档产物；GitHub 不访问文档服务器或应用生产环境。保留的 Woodpecker tag 镜像流程仍会向 Forgejo registry 发布，Compose 继续使用已有的 Forgejo 精确镜像地址。
+Woodpecker 仅启用 `docs-deploy.yml`，负责现有文档站点的构建与部署。其余五个 YAML 保留原步骤，原触发条件以注释保存，并通过 `when: [{ evaluate: 'false' }]` 显式禁用；不能只注释掉 `when`，否则会失去运行限制。
+
+完整验证、GHCR 镜像、npm SDK 和 GitHub Release 均由 GitHub Actions 负责。GitHub 只构建、检查并保存文档产物，不连接文档服务器或应用生产环境。源码仍推送到 Forgejo，再由推送镜像同步到 GitHub；不再向 Forgejo registry 发布新版本。Compose 使用 GHCR 的精确镜像版本，已发布的旧 Forgejo 镜像不删除。
 
 ## 本地检查
 

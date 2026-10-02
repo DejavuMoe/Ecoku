@@ -1,6 +1,6 @@
 # Local development
 
-The root `mise.toml` pins Go, Node.js, and pnpm for local development; Corepack is not used. CI and container builds use matching official Node/Go images directly, without installing mise. Production deployment still uses Docker Compose.
+The root `mise.toml` pins Go, Node.js, and pnpm for local development; Corepack is not used. GitHub Actions installs the matching toolchains. Container builds and Woodpecker documentation deployment use official images without installing mise. Production deployment still uses Docker Compose.
 
 ## Set up
 
@@ -30,6 +30,6 @@ Run the commands you need in separate terminals.
 
 Access the API locally at `http://127.0.0.1:12123`; the default port is `12123`. The database is `server/data/ecoku.bin`, with `ecoku-secrets.json` in the same directory. Source runs do not serve browser assets by default; use the Vite development servers for the client and admin console. The Docker image serves built assets.
 
-Woodpecker runs the full gate. Locally, run only checks directly relevant to the change and not already covered by CI.
+GitHub Actions runs the full gate. Locally, run only checks directly relevant to the change and not already covered by CI.
 
 The admin development origin (`http://localhost:5174` in the example config) must be listed in the separate `admin.allowed_origins`; the development page reaches the server through the Vite same-origin `/api` proxy. Only explicitly allowed HTTP localhost/loopback origins get a non-Secure cookie; production requires HTTPS.

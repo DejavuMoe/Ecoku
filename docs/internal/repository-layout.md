@@ -10,8 +10,9 @@
 | `packages/admin/` | Vue 管理端源码 | 仅构建后的 `dist` |
 | `designs/` | 当前设计基线、测试 fixture 与历史原型 | 否 |
 | `examples/` | 无私有数据的最小站点接入示例 | 否 |
-| `compose.yaml`、`deploy/` | Forgejo 精确版本镜像、公开配置模板与私有环境变量占位 | Compose 进入源码，私有文件不进入 Git |
-| `.woodpecker/` | `master`/PR 完整测试（含文档站点构建）、tag 一致性校验、带独立 registry cache 的 amd64/arm64 构建和多架构 manifest 工作流 | 否 |
+| `compose.yaml`、`deploy/` | GHCR 精确版本镜像、公开配置模板与私有环境变量占位 | Compose 进入源码，私有文件不进入 Git |
+| `.woodpecker/` | 仅启用 `master` push 的文档构建与部署；其他工作流保留 YAML 并显式禁用 | 否 |
+| `.github/workflows/` | `master`/PR 完整验证、tag 版本校验、GHCR 双架构镜像、npm SDK 与 GitHub Release 发布 | 否 |
 | `docs/` | VitePress 文档站点（简体中文默认，另有 `en/`、`zh-hant/`、`ja/`） | 否 |
 | `docs/internal/` | 产品约束与仓库约定，供实现与 Agent 对照，不进入站点导航 | 否 |
 | `docs/progress/` | 历史验收记录，不约束当前实现 | 否 |

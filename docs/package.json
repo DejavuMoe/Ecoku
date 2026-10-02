@@ -2,6 +2,9 @@
   "name": "ecoku-docs",
   "private": true,
   "type": "module",
+  "dependencies": {
+    "ecoku": "0.3.0"
+  },
   "scripts": {
     "dev": "vitepress dev",
     "build": "node .vitepress/inline-spacing.test.mjs && vitepress build",

@@ -30,7 +30,7 @@
 
 ```bash
 cd ~/Ecoku
-sudo docker compose down
+sudo docker compose stop ecoku
 sudo install -o 10001 -g 10001 -m 600 /path/to/twikoo.json data/twikoo.json
 ```
 

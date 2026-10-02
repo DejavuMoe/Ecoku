@@ -1,8 +1,6 @@
 # Docker デプロイ
 
-::: info アップグレードと設定移行
-このページは v0.3.0 のデプロイ手順です。v0.2.8 を更新する前に[アップグレードと旧設定の移行](./upgrade#legacy-config)を確認してください。既存のインスタンスは古い `ecoku.env` と Compose をそのまま使えます。新しいログインを確認してから古い環境変数を削除します。
-:::
+この手順は v0.3.0 以降の公開版と GHCR イメージを対象とします。既存環境では先に [アップグレード](./upgrade) を確認してください。
 
 新規デプロイに必要なのは `compose.yaml`、`app/config.yaml`、`data/` だけです。Ecoku は初回起動時に管理者パスワード、セッション署名キー、通知暗号化マスターキーを自動生成します。
 
@@ -39,7 +37,7 @@ sudo chmod 750 data
 ```yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.3.0"
+    image: "ghcr.io/dejavumoe/ecoku:v0.3.0"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -74,7 +72,7 @@ services:
 
 ## 3. app/config.yaml を作成する {#config}
 
-以下は完全な `app/config.yaml` テンプレートです。用途、既定値、選択肢、例を各項目のコメントに記載しています。`instance_public_url` を Ecoku 自体の HTTPS URL に変更し、旧版互換項目のコメントはそのままにしてください。
+現在の実装で有効な項目、既定値、選択肢、例をまとめたテンプレートです。`instance_public_url` を Ecoku 自体の HTTPS URL に変更し、それ以外の有効な値は既定のまま使えます。コメント内の代入は任意の上書き設定です。必要な場合だけ有効にし、記載に従ってマウントやポートも変更してください。
 
 <div class="config-template">
 

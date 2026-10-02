@@ -24,8 +24,9 @@
 
 - 链接、粗体、斜体、删除线及行内代码与相邻正文之间留一个半角空格；行首、行尾和标记内部不额外加空格。
   VitePress 在 Markdown 解析后统一补齐显示空格；不得用全文正则替换破坏代码块、URL、转义或嵌套标记。
+- 简体、繁体中文正文中，中英文及数字之间留半角空格，中文双引号使用「」。代码、URL、原始输出不套正文替换。
 - `app/config.yaml` 的字段、默认值、可选值、用途与示例集中维护在 `deploy/config.yaml.example` 及对应语言模板中，
-  部署页和配置参考直接引用模板，不再分别维护字段表。兼容字段保留注释并明确标注，不作为新部署的必填项。
+  部署页和配置参考直接引用模板，不再分别维护字段表。当前仍生效的参数按默认值、可选值、示例和用途说明；可选覆盖项保持注释，不再标注「旧版兼容」。忽略或废弃的配置项不列为可配置字段。
 - 简体中文（`docs/` 根下各目录）是源文；繁中、英文、日文从简中翻译，文件集合、标题顺序、表格与代码块保持一致。
   新增或删除页面时，同步四套 locale，并在 `docs/.vitepress/config/shared.ts` 的 sidebar 与四个 locale 配置的 `copy` 中登记。
 - 被链接的标题必须带显式 ASCII 锚点（如 `## 配置 trusted_proxies {#trusted-proxies}`），链接只指向这些锚点；
@@ -38,6 +39,7 @@
   同一件事只在一处详写，其他页面链接过去。本地若有 `.agents/skills/chinese-writing/`（已 gitignore），改写中文文档时按它执行。
 - 升级说明页统一结构：发布日期 / schema / 镜像 → 变更 → 兼容性 → 升级 → 回滚；通用步骤链接 `upgrade#steps`，
   不在每页重复整段脚本。发版时同时更新 `upgrade.md` 的版本列表，并把 `shared.ts` 中的“最新”标记移到新版本。
+- 公开部署从 v0.3.0 开始。v0.2.9 及更早升级页仅归档 tag、变更及升级事项，并标注「内测版本，请勿使用」，不提供旧镜像安装／降级步骤；历史归档集中折叠展示。本次归档整理可改历史升级页，不修改已发布 CHANGELOG 和迁移源码。
 
 ## 产品边界
 
@@ -58,18 +60,19 @@
 - 根 `VERSION` 是容器版本的唯一文本来源（一行、无 `v`）。它不进入 Go / `pnpm` 日常构建，
   SDK 的 `packages/client/package.json` 版本须与它一致，admin 的 package 版本保持独立。
 - 发版提交必须同步五项：`VERSION`、根 `package.json` 与 `packages/client/package.json` 的 `version`、`compose.yaml` 的
-  `image`（`git.via.moe/dejavu/ecoku:v` + `VERSION`，禁止占位符或浮动 tag）、`CHANGELOG.md`
+  `image`（`ghcr.io/dejavumoe/ecoku:v` + `VERSION`，禁止占位符或浮动 tag）、`CHANGELOG.md`
   对应章节与页脚链接。若该 tag 影响部署，同时在 `docs/self-hosting/upgrades/` 增加对应页面（四套 locale）。
-- Git tag 必须为 `v` + `VERSION`。Woodpecker 只在 `v*` tag 上构建镜像，并用 `CI_COMMIT_TAG`
-  作为镜像 tag。tag 流水线会校验 tag 与 `VERSION`、`compose.yaml` 一致。改 `VERSION` 不会出镜像。
+- Git tag 必须为 `v` + `VERSION`。GitHub Actions 只在 `v*` tag 上自动发布镜像与 npm SDK，
+  发布前校验 tag 与 `VERSION`、包版本、`compose.yaml` 一致。改 `VERSION` 不会出镜像。
   镜像 CI 不部署应用生产、不碰生产库。文档站点仅由 `master` push 的 Woodpecker 流程自动构建并原子发布，
   固定调度到 `role=netcup-nano`、`server=netcup-nano` 的 agent；发布 step 通过 trusted volume
   仅挂载 `/var/www/ecoku.zsh.moe:/deploy`；站点目录内的 `html` 软链接原子切换到 `releases/<发布标识>`，
   `.deploy.lock` 位于站点目录内，成功后仅保留当前版与刚被替换的上一版，清理更早发布目录。Web 服务根目录为 `/var/www/ecoku.zsh.moe/html`。
 - GitHub Actions 的 `.github/workflows/ci.yml` 验证 `master` push / PR；`release.yml` 在 `v*` tag 上先校验版本并复用 CI
   验证该 tag，再发布 GHCR 双架构镜像与同版本 npm SDK，最后创建 GitHub Release。文档仅保存构建产物，不部署。
-  Woodpecker 配置保留；GitHub 的 GHCR 发布不替换现有 Compose 的 Forgejo 精确镜像。发布设置见 `packages/client/PUBLISH.md`。
-- 文档与 Compose 模板中的 Docker 镜像统一使用实际注册地址与精确发布版本号（`git.via.moe/dejavu/ecoku:v` + `VERSION`，禁止占位镜像或浮动 tag，当前为 `v0.3.0`）；真实域名、密码、token、SMTP、Telegram、数据库和日志等敏感信息仍使用占位符，不得进 Git。
+  Woodpecker 仅启用 `docs-deploy.yml`；其余 YAML 保留原步骤与已注释触发条件，用 `when: [{ evaluate: 'false' }]` 禁用，不能只删除 `when`。
+  不再向 Forgejo 发布新镜像。发布设置见 `packages/client/PUBLISH.md`。
+- 当前文档与 Compose 模板中的 Docker 镜像统一使用 GHCR 与精确发布版本号（`ghcr.io/dejavumoe/ecoku:v` + `VERSION`，禁止占位镜像或浮动 tag，当前为 `v0.3.0`）；内测归档不再展示镜像下载地址。真实域名、密码、token、SMTP、Telegram、数据库和日志等敏感信息仍使用占位符，不得进 Git。
 - 提交、推送、tag、镜像发布、生产部署和真实数据库操作需要当前任务的明确授权。
 - 新 tag 若可能影响平滑升级（schema、Compose 挂载、配置键、日志出口、镜像契约），回复中先写：
   停服冷备份 → 改精确镜像 tag → `sudo docker compose pull && sudo docker compose up -d` →
@@ -84,11 +87,11 @@
 
 ## 验证
 
-Woodpecker 在 `master` push 与目标为 `master` 的 pull request 上运行
+GitHub Actions 在 `master` push 与目标为 `master` 的 pull request 上运行
 `pnpm verify:client`、`pnpm verify:admin`、`pnpm docs:build`、`go test -count=1 ./...`、`go vet ./...` 和 server 构建；
-`v*` tag 不重复测试，只做 tag / `VERSION` / `compose.yaml` 一致性校验后直接并行构建 amd64/arm64
-镜像并发布 manifest。文档发布流程在 `master` push 时独立运行，不依赖完整测试流程。这些不要在本地重复跑，交给 CI。
-GitHub Actions 复用相同验证命令；tag 发布前也验证准确的 tag 内容。修改 Actions 后本地检查工作流语法与发布校验脚本，完整构建交给 CI。
+`v*` tag 校验版本一致性并复用相同验证命令，随后并行构建 amd64/arm64 镜像、发布 npm SDK，最后创建 GitHub Release。
+Woodpecker 只在 `master` push 时独立构建并发布文档，不依赖 GitHub 完整测试流程。这些不要在本地重复跑，交给 CI。
+修改工作流后本地检查语法、触发条件与发布校验脚本，完整构建交给 CI。
 
 本地只做 CI 覆盖不到的：
 

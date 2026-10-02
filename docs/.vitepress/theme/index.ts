@@ -1,6 +1,8 @@
 import DefaultTheme from 'vitepress/theme'
+import { h } from 'vue'
 import './custom.css'
 import type { Theme } from 'vitepress'
+import EcokuComments from './EcokuComments.vue'
 
 let mermaidPromise: Promise<typeof import('mermaid')> | null = null
 
@@ -84,6 +86,9 @@ async function renderMermaidDiagrams() {
 
 export default {
   extends: DefaultTheme,
+  Layout: () => h(DefaultTheme.Layout, null, {
+    'doc-after': () => h(EcokuComments),
+  }),
   enhanceApp({ router }) {
     if (typeof window !== 'undefined') {
       router.onAfterRouteChanged = () => {

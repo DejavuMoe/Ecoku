@@ -4,7 +4,7 @@ The annotated template below collects every `app/config.yaml` field, default, al
 
 ## Complete configuration template {#template}
 
-For a new deployment, copy the template and replace `instance_public_url`. Active options use defaults. Keep legacy compatibility options commented unless retaining old deployment behavior. Each top-level YAML section must appear only once; do not append a second `site:` or `admin:` section.
+Copy the template and replace `instance_public_url`. Other active values are defaults; uncomment optional assignments as needed. Each top-level YAML section may appear only once, so do not append duplicate `site:` or `admin:` sections. The admin console is always enabled and session duration is fixed, not tunable.
 
 <div class="config-template">
 
@@ -29,16 +29,14 @@ Defaults, units, and examples for every `rate_limit` field are in the template. 
 
 ## Logs {#logs}
 
-Logs go to stdout by default; use `docker compose logs`. Docker controls retention and rotation. `site.log_path` in the template is a legacy option; new deployments need no log directory mount.
+Logs go to stdout by default; view them with `docker compose logs`. Docker controls retention and rotation. `site.log_path` optionally enables file logging alongside stdout when set to a real path, requiring a writable mounted directory. See the template for accepted values.
 
 ## Environment variables {#env}
 
 New deployments need no `ecoku.env`. Compose’s `TZ: Asia/Shanghai` controls comment and notification timestamps. Edit that line to change the zone; `TZ` is not a YAML configuration field.
 
-The template’s `*_env` fields are old environment variable names, not secret values. New instances create the administrator, temporary password, and persistent keys automatically. Existing instances must import and back up before removing old variables. The image sets `GIN_MODE=release` and `ECOKU_RUNTIME=container`; do not override them.
+The template’s `*_env` fields name environment variables read by the process, not secret values. To supply values yourself, inject the named variables through Compose `environment` or `env_file`. By default the administrator and persistent keys are created automatically. Do not override the image’s `GIN_MODE=release` or `ECOKU_RUNTIME=container`.
 
-## Legacy configuration migration {#legacy}
+## Initialization and persistent data {#legacy}
 
-The template documents all compatibility fields still accepted and their defaults. Site seeds are imported only into brand-new databases and never overwrite existing sites. Manage sites, SMTP, Telegram, CAPTCHA, and Smoji in the console.
-
-See [legacy instance configuration migration](../self-hosting/upgrade#legacy-config) for upgrade and environment-variable removal steps. Back up the database and its sibling `ecoku-secrets.json` together.
+The `sites` seeds are imported only when creating a brand-new database and do not overwrite existing sites. Later site edits, SMTP, Telegram, CAPTCHA and Smoji settings belong in the console. Back up the database and its sibling `ecoku-secrets.json` together. Changing the database path does not move data.

@@ -2,8 +2,8 @@
 layout: home
 hero:
   name: Ecoku
-  text: Self-hosted<br>plain-text comments
-  tagline: For static blogs and personal websites. One Docker container, one SQLite file, and comments go live on submit.
+  text: Self-hosted comments for multiple sites
+  tagline: Plain-text conversations for blogs and personal sites. No visitor accounts; comments appear on submission, and you keep the data.
   image:
     src: /logo.svg
     alt: Ecoku logo
@@ -22,11 +22,11 @@ features:
   - title: Live on submit
     details: No moderation queue. Replies open under the comment they answer, and deletes leave a tombstone, so the discussion keeps its context.
     link: /en/guide/concepts#threads
-  - title: No visitor tracking
-    details: IP addresses and User-Agents are not stored, and public APIs never return email addresses. Visitor identity is kept encrypted in the browser for 7 days.
+  - title: No visitor IP storage
+    details: Comments store names, text and supplied email or website details. Public APIs omit email; IP and User-Agent are not stored. Browsers can remember identity encrypted for 7 days.
     link: /en/guide/concepts#data
-  - title: One container, one file
-    details: A single Go program serves the API, the admin console, and the embed script. All data lives in one SQLite file.
+  - title: One container, self-hosted
+    details: One Go program serves the API, admin console and embed assets. SQLite stores application data; keys persist separately. Back up the data directory and configuration.
     link: /en/guide/introduction#components
   - title: Multiple sites
     details: One instance serves several websites. Each site has its own allowed origins, comment settings, and blogger identity.

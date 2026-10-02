@@ -1,8 +1,9 @@
 # Ecoku 完整配置模板。保存为 app/config.yaml；修改后重建容器生效。
 # 未注释的值均为默认值，instance_public_url 使用需要自行替换的示例地址。
 # 每个顶层段只写一次；YAML 不支持在这里展开 ${ENV} 环境变量。
-# SMTP、Telegram、人机验证、Smoji 和站点在后台设置，不写进此文件。
-# 标注“旧版兼容”的项保持注释；已有实例可以保留原值，新部署无需启用。
+# SMTP、Telegram、人机验证和 Smoji 在后台设置；sites 可提供初始站点和管理凭据绑定。
+# 实例级选项省略时使用默认值；管理来源需由 instance_public_url 或 admin.allowed_origins 提供。
+# 注释中的赋值也是可用参数，只在需要覆盖默认行为时取消注释。
 
 notifications:
   # Ecoku 自己的公网 URL，供管理后台访问来源校验及启用通知时检查。
@@ -12,11 +13,11 @@ notifications:
   # URL 可带路径，但此字段不会配置反向代理或改变程序路由。
   instance_public_url: "https://ecoku.example.com"
 
-  # 旧版兼容：保存通知加密主密钥的环境变量名，不是密钥本身。
+  # 可选：保存通知加密主密钥的环境变量名，不是密钥本身。
   # 默认：ECOKU_NOTIFICATION_ENCRYPTION_KEY。自定义示例：MY_ECOKU_KEY。
   # 变量值须为 32 字节密钥的标准 Base64，可带或不带末尾填充。
   # 新实例自动生成密钥并保存在数据库旁的 ecoku-secrets.json。
-  # 旧实例完成持久化迁移前，不要更换原密钥，否则已加密配置无法解密。
+  # 自行注入时，环境变量值须与持久文件中的通知密钥一致；不一致会拒绝启动。
   # encryption_key_env: "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
 
 site:
@@ -29,10 +30,11 @@ site:
   # 禁止 0.0.0.0/0 和 ::/0；不要把示例网关直接当成自己的网关。
   trusted_proxies: []
 
-  # 旧版兼容：监听端口。默认 12123；可选整数 1～65535，0 使用默认值。
+  # 可选：监听端口。默认 12123；可选整数 1～65535，0 使用默认值。
   # Docker 用户改 Compose 的宿主机映射端口即可，无需改容器端口。
+  # 如需修改容器监听端口，还须同步 Compose 的容器端口和健康检查。
   # port: 12123
-  # 旧版兼容：文件日志路径。默认 ""，写到标准输出，用 docker compose logs 查看。
+  # 可选：文件日志路径。默认 ""，写到标准输出，用 docker compose logs 查看。
   # 示例：/var/log/ecoku/ecoku.log。启用文件日志需自行挂载可写目录。
   # 也可填写 "-"、"stdout" 或 "/dev/stdout"，均只写标准输出；其他路径同时保留 stdout 与文件日志。
   # log_path: ""
@@ -65,41 +67,42 @@ admin:
   # 如果此处与 instance_public_url 都为空，服务启动时会报缺少管理来源。
   allowed_origins: []
 
-  # 旧版兼容：后台始终启用。默认 true；即使填 false 也会被忽略。
-  # enabled: true
-  # 旧版兼容：会话固定 480 分钟（8 小时），不是可自由调节的超时。
+  # 可选：会话固定 480 分钟（8 小时），不是可自由调节的超时。
   # 可省略、填 0 或 480；其他整数拒绝启动。活跃操作不会延长会话。
   # token_ttl_minutes: 480
-  # 旧版兼容：管理后台静态目录，Docker 默认 /app/admin，本地源码运行默认空。
+  # 可选：管理后台静态目录，Docker 默认 /app/admin，本地源码运行默认空。
   # 空目录配置在本地表示不提供后台静态页面；管理 API 仍启用。
+  # 路径示例：../packages/admin/dist；Docker 留空仍使用 /app/admin。
   # static_dir: "/app/admin"
 
-  # 旧版兼容：以下三项是环境变量名，不是账号、哈希或签名密钥本身。
+  # 可选的管理员初始化凭据来源；不填写环境变量时使用持久账户或自动创建账户。
+  # 三项是环境变量名，不是账号、哈希或密钥值；仅写 YAML 不会注入环境变量。
   # 默认值见各行；自定义示例：MY_ADMIN_USER、MY_ADMIN_HASH、MY_ADMIN_KEY。
   # 名称建议由字母或下划线开头，仅含字母、数字、下划线，三者不得相同。
-  # 一旦提供任意旧管理员凭据变量，就必须同时提供完整的三项凭据。
+  # 一旦提供任意管理员凭据变量，就必须同时提供完整的三项凭据。
   # 用户名 1～80 个字符；密码值须为 bcrypt 哈希且 cost >= 10；签名密钥至少 32 字节。
-  # 新实例不需要这些环境变量：首次启动打印 admin 临时密码，首次登录必须改密。
+  # 不注入这些凭据变量时，首次创建账户会打印 admin 临时密码，首次登录必须改密。
   # username_env: "ECOKU_ADMIN_USERNAME"
   # password_hash_env: "ECOKU_ADMIN_PASSWORD_HASH"
   # token_key_env: "ECOKU_ADMIN_TOKEN_KEY"
 
-# 旧版兼容：浏览器评论脚本的静态目录。Docker 默认 /app/client。
+# 可选：浏览器评论脚本的静态目录。Docker 默认 /app/client。
 # 本地源码运行默认空，不提供静态脚本；示例：../packages/client/dist。
 # client:
 #   static_dir: "/app/client"
 
-# 旧版兼容：仅支持 SQLite，值是数据库文件路径，不是目录。
+# 可选：仅支持 SQLite，值是数据库文件路径，不是目录。
 # Docker 默认 /data/ecoku.sqlite3；本地源码运行默认 ./data/ecoku.bin。
 # 示例：/data/comments.sqlite3。目录需可写；不要指向临时或未挂载位置。
 # 持久密钥 ecoku-secrets.json 与数据库放在同一目录；搬迁时一起备份和移动。
+# 修改数据库路径不会搬迁原数据；新路径不存在时会创建新数据库。
 # database:
 #   sqlite:
 #     path: "/data/ecoku.sqlite3"
 
-# 旧版兼容：YAML 站点种子。默认 []，新部署直接在后台创建站点。
+# 可选：YAML 站点种子。默认 []，新部署直接在后台创建站点。
 # 仅创建全新数据库时导入；修改这里不会更新已有数据库中的站点。
-# 如要使用该兼容格式，取消下面整个 sites 段的注释。
+# 如需预置初始站点，取消下面整个 sites 段的注释。
 # sites:
 #   # 必填 ID；字母或数字开头，可含字母、数字、点、下划线和连字符，最多 100 字符。
 #   - id: "blog"
@@ -110,9 +113,11 @@ admin:
 #     name: "我的博客"
 #     # 必填至少一个不重复的来源，不含路径、查询或片段；与管理端来源分开。
 #     allowed_origins: ["https://blog.example.com"]
-#     # 旧站点管理密钥的环境变量名，默认空，表示不启用此兼容凭据。
+#     # 可选：站点管理凭据的环境变量名。默认空，不启用该凭据。
+#     # 仅可通过 EcokuSite 凭据对本站评论执行墓碑删除，不能读取管理数据。
 #     # 示例：BLOG_MANAGEMENT_KEY，变量值至少 32 字节，各站点的名称和值均需独立。
 #     # 不要放到浏览器或公开接入代码中。
+#     # 这项凭据绑定每次启动都生效，不限于站点种子的首次导入。
 #     management_key_env: ""
 #     comment:
 #       # 邮箱必填，默认 true；可选 true / false。

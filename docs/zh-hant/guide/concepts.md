@@ -74,7 +74,7 @@ Ecoku 用兩個值確定「一篇文章的評論區」：
 - 不轉譯 Markdown，不會把網址自動變成連結；
 - 保留換行。
 
-唯一的例外是 [Smoji 貼圖](../integration/smoji)：站點啟用貼圖包後，符合格式與站點圖片來源規則的 `![smoji:名稱](圖片網址)` 會顯示為圖片，其餘一律以文字顯示。預設使用清單來源；下一版本支援管理員另行指定圖片來源，見[清單與圖片分別託管](../integration/smoji#hosting)。
+唯一的例外是 [Smoji 貼圖](../integration/smoji)：站點啟用貼圖包後，符合格式與站點圖片來源規則的 `![smoji:名稱](圖片網址)` 會顯示為圖片，其餘一律以文字顯示。預設使用清單來源；v0.3.0 支援管理員另行指定圖片來源，見[清單與圖片分別託管](../integration/smoji#hosting)。
 
 訪客網址只作為暱稱上的連結出現，並帶有 `rel="nofollow ugc noopener noreferrer"`。
 
@@ -99,4 +99,4 @@ Ecoku 不儲存訪客的 IP、User-Agent 或地理位置，日誌裡也不記錄
 
 ## 時間與時區
 
-評論時間以 `YYYY-MM-DD HH:mm` 格式顯示，時區由容器的 `TZ` 環境變數決定（在 `ecoku.env` 中設定）。滑鼠停在時間上會顯示時區名稱和偏移量，例如 `Asia/Shanghai UTC+8`。
+評論時間以 `YYYY-MM-DD HH:mm` 顯示，時區由 Compose `environment` 中的 `TZ` 決定，未設定時回退到 `Asia/Shanghai`。滑鼠停在時間上可查看時區和偏移量。

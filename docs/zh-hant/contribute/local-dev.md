@@ -1,6 +1,6 @@
 # 本機開發
 
-本機開發使用倉庫根目錄 `mise.toml` 固定的 Go、Node.js 與 pnpm，不使用 Corepack。CI 與容器建置直接使用相同版本的官方 Node/Go 映像，不安裝 mise；生產部署仍以 Docker Compose 為準。
+本機開發使用倉庫根目錄 `mise.toml` 固定的 Go、Node.js 與 pnpm，不使用 Corepack。GitHub Actions 安裝對應版本的工具鏈；容器建置和 Woodpecker 文件部署使用官方映像，不安裝 mise。生產部署仍使用 Docker Compose。
 
 ## 初始化
 
@@ -30,6 +30,6 @@ pnpm docs:dev
 
 本機透過 `http://127.0.0.1:12123` 存取 API，預設連接埠為 `12123`，資料庫位於 `server/data/ecoku.bin`，持久金鑰位於同目錄的 `ecoku-secrets.json`。原始碼執行預設不提供瀏覽器靜態資源，評論區與管理後台使用各自的 Vite 開發伺服器；Docker 映像提供建置後的靜態頁面。
 
-完整驗證由 Woodpecker 執行；本機只執行與目前改動直接相關且 CI 未覆蓋的檢查。
+完整驗證由 GitHub Actions 執行；本機只執行與目前改動直接相關且 CI 未覆蓋的檢查。
 
 開發後台的來源（範例設定中的 `http://localhost:5174`）必須寫在獨立的 `admin.allowed_origins` 中，開發頁透過 Vite 同源 `/api` 代理存取伺服器。只有明確允許的 HTTP localhost/回環來源可用非 Secure Cookie，正式環境必須 HTTPS。

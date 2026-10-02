@@ -9,34 +9,14 @@ cd ~/Ecoku
 sudo docker compose run --rm --no-deps ecoku <サブコマンド> [引数]
 ```
 
-`hash-password` 以外のサブコマンドは、いずれも `app/config.yaml` を読み込んでデータベースを開きます。データベースのバージョンが現在のイメージより低い場合は、先にマイグレーションも実行します。稼働中のインスタンスと同時にデータベースに書き込まないよう、先に `sudo docker compose down` でサービスを停止してから実行してください。
-
-## hash-password {#hash-password}
-
-標準入力からパスワードを 1 行読み取り、旧インスタンスの `ECOKU_ADMIN_PASSWORD_HASH` に使う bcrypt ハッシュ（cost 10）を出力します。新規インスタンスは初回起動時に管理者を自動作成するため、このコマンドは不要です。設定を読み込まず、データベースにもアクセスしないので、サービスの稼働中でも実行できます。
-
-```bash
-read -rsp '管理者パスワード: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.9 hash-password
-unset P
-```
-
-パスワードは空にできず、UTF-8 で 72 バイト（bcrypt の上限）を超えることもできません。超えた場合、コマンドはエラーで終了します。
-
-出力を `ecoku.env` に書くときは、シングルクォートで囲んでください。
-
-```bash
-ECOKU_ADMIN_PASSWORD_HASH='$2a$10$...'
-```
-
-その後、コンテナを作り直して反映させます。
+`hash-password` 以外のサブコマンドは、いずれも `app/config.yaml` を読み込んでデータベースを開きます。データベースのバージョンが現在のイメージより低い場合は、先にマイグレーションも実行します。稼働中のインスタンスと同時にデータベースに書き込まないよう、先に `sudo docker compose stop ecoku` でサービスを停止してから実行してください。
 
 ## admin reset-password {#admin-reset-password}
 
 永続管理者アカウントの新しい仮パスワードを生成します。先に実行中のサービスを停止してください。
 
 ```bash
-sudo docker compose down
+sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku admin reset-password
 sudo docker compose up -d
 ```
@@ -62,7 +42,7 @@ provider=turnstile turnstile_secret_set=true cap_secret_set=false
 CAPTCHA を無効にします。検証サービスの設定ミスで管理者が管理画面にログインできなくなった場合に使います。
 
 ```bash
-sudo docker compose down
+sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku captcha disable
 sudo docker compose up -d
 ```
@@ -103,3 +83,27 @@ Twikoo 导入完成：评论=128 根评论=90 回复=38 页面=24 邮箱=110 网
 （各項目は、コメント、ルートコメント、返信、ページ、メールアドレス、Web サイト、親レコードの欠落の件数です。）
 
 詳しい手順、フィールドの対応、注意点は [Twikoo からの移行](../self-hosting/twikoo)を参照してください。
+
+::: details 内部テスト設定：パスワードハッシュ
+
+## hash-password {#hash-password}
+
+標準入力からパスワードを 1 行読み取り、旧インスタンスの `ECOKU_ADMIN_PASSWORD_HASH` に使う bcrypt ハッシュ（cost 10）を出力します。新規インスタンスは初回起動時に管理者を自動作成するため、このコマンドは不要です。設定を読み込まず、データベースにもアクセスしないので、サービスの稼働中でも実行できます。
+
+```bash
+read -rsp '管理者パスワード: ' P; echo
+printf '%s\n' "$P" | sudo docker run --rm -i ghcr.io/dejavumoe/ecoku:v0.3.0 hash-password
+unset P
+```
+
+パスワードは空にできず、UTF-8 で 72 バイト（bcrypt の上限）を超えることもできません。超えた場合、コマンドはエラーで終了します。
+
+出力を `ecoku.env` に書くときは、シングルクォートで囲んでください。
+
+```bash
+ECOKU_ADMIN_PASSWORD_HASH='$2a$10$...'
+```
+
+その後、コンテナを作り直して反映させます。
+
+:::

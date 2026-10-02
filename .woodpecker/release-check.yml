@@ -4,9 +4,14 @@ labels:
   role: netcup-vps1000
   server: netcup-vps1000
 
+# Disabled: verification and image releases now run in GitHub Actions.
 when:
-  event: tag
-  ref: refs/tags/v*
+  - evaluate: 'false'
+
+# Previous triggers, retained for reference:
+# when:
+#   event: tag
+#   ref: refs/tags/v*
 
 steps:
   - name: validate-release-tag

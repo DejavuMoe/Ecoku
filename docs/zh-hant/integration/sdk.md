@@ -2,50 +2,20 @@
 
 [HTML 接入](./html)適合每篇文章都是獨立頁面的靜態網站。在 Vue、React 這類單頁應用程式中，切換文章時頁面不會重新整理，評論區需要跟著切換，這時請直接使用 SDK。
 
-## 取得 SDK
+## 取得 SDK {#install}
 
-每個 Ecoku 實例都在 `/client/ecoku.umd.js` 提供 SDK，載入後會註冊全域變數 `Ecoku`。
-
-SDK 的 npm 套件名稱為 `ecoku`，版本跟隨專案 tag。在對應 npm 發布任務成功後，可在網站專案中安裝精確版本：
+[ecoku](https://www.npmjs.com/package/ecoku) 已發布到 npm，目前版本為 `0.3.0`，提供 ESM、CommonJS 和 TypeScript 型別宣告。SDK 在瀏覽器中掛載評論區，需要連接你部署的 Ecoku 服務；安裝 npm 套件不會替你部署伺服器。
 
 ```bash
 pnpm add --save-exact ecoku@0.3.0
 ```
 
-```ts
-import Ecoku from 'ecoku'
-```
-
-VitePress 的自訂主題也使用這個入口；只在瀏覽器掛載後建立實例，並在路由切換時更新頁面 key。發布尚未完成時，可先使用下方實例託管的 UMD 檔案，或在原始碼儲存庫的 `packages/client` 執行 `pnpm build`，從 `dist/` 取得產物。
-
-在單頁應用程式中，可以用一個函式依需要載入 UMD 檔案，確保只載入一次：
-
-```js
-const ECOKU_URL = 'https://ecoku.example.com'
-let ecokuPromise
-
-export function loadEcoku() {
-  if (window.Ecoku) return Promise.resolve(window.Ecoku)
-  ecokuPromise ??= new Promise((resolve, reject) => {
-    const script = document.createElement('script')
-    script.src = `${ECOKU_URL}/client/ecoku.umd.js`
-    script.async = true
-    script.onload = () => (window.Ecoku ? resolve(window.Ecoku) : reject(new Error('Ecoku 未加载')))
-    script.onerror = () => {
-      ecokuPromise = undefined
-      script.remove()
-      reject(new Error('无法加载 Ecoku'))
-    }
-    document.head.append(script)
-  })
-  return ecokuPromise
-}
-```
+不使用 npm 時，可透過 `<script src="https://ecoku.example.com/client/ecoku.umd.js"></script>` 載入實例提供的 UMD 檔案，再使用全域 `Ecoku` 建構函式。靜態文章頁優先使用 [HTML 載入器](./html)。
 
 ## 建立評論區
 
 ```js
-const Ecoku = await loadEcoku()
+import Ecoku from 'ecoku'
 const comments = new Ecoku({
   container: '#comments',
   serverURL: 'https://ecoku.example.com',
@@ -67,11 +37,14 @@ await comments.init()
 | `pageTitle` | `string` | 否 | `''` | 文章標題，顯示在通知中，最多 200 個字元。 |
 | `pageSize` | `number` | 否 | `10` | 每頁根評論數，1～100 的整數。 |
 | `theme` | `'auto' \| 'light' \| 'dark'` | 否 | `'auto'` | 配色。`auto` 跟隨頁面的明暗設定。 |
-| `cssURL` | `string` | 否 | `''` | 留空時注入預設樣式。填寫任何值（樣式表網址或 `'none'`）都會停止注入，見下文。 |
+| `cssURL` | `string` | 否 | `''` | 留空時注入預設樣式。填寫有效值（樣式表網址或 `'none'`）都會停止注入，見下文。 |
 
 建構函式不驗證參數；參數不合法時，`init()` 會擲出 `TypeError`。
 
 舊的設定項目 `apiBaseUrl` 是 `serverURL` 的別名，仍可使用，但已棄用。
+
+
+建構設定中的 `pageTitle` 會依 JavaScript 字串的前 200 個 UTF-16 碼元截斷；`setPageKey()` 的標題不截斷，伺服器依 Unicode 字元驗證 200 字元上限。`cssURL` 只接受 HTTP(S) 絕對位址、以 `/` 開頭的路徑、`none` 或相容值 `-`，不是任意字串。
 
 ### 樣式 {#styles}
 
@@ -112,20 +85,77 @@ await comments.init()
 
 回傳實例目前是否已初始化。
 
+## VitePress {#vitepress}
+
+在 `.vitepress/theme/EcokuComments.vue` 中使用 VitePress 自帶的 `useRoute`，不要從 `vue-router` 匯入。路由路徑作為穩定的頁面 key，頁面資料提供標題。只在瀏覽器掛載時建立實例，切換文章時更新，卸載時銷毀。
+
+```vue
+<script setup>
+import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { useData, useRoute } from 'vitepress'
+import Ecoku from 'ecoku'
+
+const route = useRoute()
+const { page } = useData()
+const el = ref(null)
+let comments = null
+
+onMounted(() => {
+  comments = new Ecoku({
+    container: el.value,
+    serverURL: 'https://ecoku.example.com',
+    siteId: 'docs',
+    pageKey: route.path,
+    pageTitle: page.value.title,
+  })
+  comments.init().catch(console.error)
+})
+
+watch(
+  () => [route.path, page.value.title],
+  ([path, title]) => { comments?.setPageKey(path, title).catch(console.error) },
+  { flush: 'post' },
+)
+
+onBeforeUnmount(() => {
+  comments?.destroy()
+  comments = null
+})
+</script>
+
+<template>
+  <div ref="el"></div>
+</template>
+```
+
+在既有 `.vitepress/theme/index.ts` 中將元件放入預設版面的 `doc-after` 插槽，保留已有主題設定和 CSS 匯入。以下是最小接入；請修改服務位址和站點 ID，並在後台登記文件網站的來源。首頁使用 home 版面時不會顯示此插槽。
+
+```ts
+import { h } from 'vue'
+import DefaultTheme from 'vitepress/theme'
+import EcokuComments from './EcokuComments.vue'
+
+export default {
+  extends: DefaultTheme,
+  Layout: () => h(DefaultTheme.Layout, null, {
+    'doc-after': () => h(EcokuComments),
+  }),
+}
+```
+
 ## Vue 3
 
 ```vue
 <script setup>
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { loadEcoku } from './load-ecoku'
+import Ecoku from 'ecoku'
 
 const route = useRoute()
 const el = ref(null)
 let comments = null
 
-onMounted(async () => {
-  const Ecoku = await loadEcoku()
+onMounted(() => {
   comments = new Ecoku({
     container: el.value,
     serverURL: 'https://ecoku.example.com',
@@ -133,12 +163,12 @@ onMounted(async () => {
     pageKey: route.path,
     pageTitle: document.title,
   })
-  await comments.init()
+  comments.init().catch(console.error)
 })
 
 watch(
   () => route.path,
-  (path) => comments?.setPageKey(path, document.title),
+  (path) => { comments?.setPageKey(path, document.title).catch(console.error) },
   { flush: 'post' },
 )
 
@@ -159,29 +189,21 @@ onBeforeUnmount(() => {
 
 ```jsx
 import { useEffect, useRef } from 'react'
-import { loadEcoku } from './load-ecoku'
+import Ecoku from 'ecoku'
 
 export function Comments({ pageKey, pageTitle }) {
   const el = useRef(null)
 
   useEffect(() => {
-    let comments
-    let cancelled = false
-    loadEcoku().then((Ecoku) => {
-      if (cancelled) return
-      comments = new Ecoku({
-        container: el.current,
-        serverURL: 'https://ecoku.example.com',
-        siteId: 'blog',
-        pageKey,
-        pageTitle,
-      })
-      comments.init().catch(console.error)
+    const comments = new Ecoku({
+      container: el.current,
+      serverURL: 'https://ecoku.example.com',
+      siteId: 'blog',
+      pageKey,
+      pageTitle,
     })
-    return () => {
-      cancelled = true
-      comments?.destroy()
-    }
+    comments.init().catch(console.error)
+    return () => comments.destroy()
   }, [pageKey, pageTitle])
 
   return <div ref={el} />

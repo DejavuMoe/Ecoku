@@ -2,50 +2,20 @@
 
 [HTML で埋め込む](./html)方法は、記事ごとに独立したページがある静的サイトに向いています。Vue や React のようなシングルページアプリでは、記事を切り替えてもページが再読み込みされないため、コメント欄も合わせて切り替える必要があります。その場合は SDK を直接使います。
 
-## SDK を入手する
+## SDK を入手する {#install}
 
-どの Ecoku インスタンスも `/client/ecoku.umd.js` で SDK を提供しており、読み込むとグローバル変数 `Ecoku` が登録されます。
-
-SDK の npm パッケージ名は `ecoku` で、バージョンはプロジェクトの tag と一致します。対応する npm 公開ジョブの成功後、サイトのプロジェクトに固定バージョンをインストールできます。
+[ecoku](https://www.npmjs.com/package/ecoku) は npm に `0.3.0` として公開され、ESM、CommonJS、TypeScript 型定義を提供します。ブラウザーにコメント欄を表示し、自分で配置した Ecoku サーバーに接続します。パッケージのインストールだけではサーバーは配置されません。
 
 ```bash
 pnpm add --save-exact ecoku@0.3.0
 ```
 
-```ts
-import Ecoku from 'ecoku'
-```
-
-VitePress のカスタムテーマも同じエントリーポイントを使います。ブラウザーでのマウント後にのみインスタンスを作成し、ルート変更時にページ key を更新してください。公開が完了していない場合は、以下のインスタンス配信 UMD を使うか、ソースの `packages/client` で `pnpm build` を実行して `dist/` の成果物を利用できます。
-
-シングルページアプリでは、UMD ファイルを必要なときに一度だけ読み込む関数を用意できます。
-
-```js
-const ECOKU_URL = 'https://ecoku.example.com'
-let ecokuPromise
-
-export function loadEcoku() {
-  if (window.Ecoku) return Promise.resolve(window.Ecoku)
-  ecokuPromise ??= new Promise((resolve, reject) => {
-    const script = document.createElement('script')
-    script.src = `${ECOKU_URL}/client/ecoku.umd.js`
-    script.async = true
-    script.onload = () => (window.Ecoku ? resolve(window.Ecoku) : reject(new Error('Ecoku が読み込まれていません')))
-    script.onerror = () => {
-      ecokuPromise = undefined
-      script.remove()
-      reject(new Error('Ecoku を読み込めません'))
-    }
-    document.head.append(script)
-  })
-  return ecokuPromise
-}
-```
+npm を使わない場合は `<script src="https://ecoku.example.com/client/ecoku.umd.js"></script>` でインスタンスの UMD を読み込み、グローバルな `Ecoku` コンストラクターを使用できます。静的な記事ページには [HTML ローダー](./html) が適しています。
 
 ## コメント欄を作成する
 
 ```js
-const Ecoku = await loadEcoku()
+import Ecoku from 'ecoku'
 const comments = new Ecoku({
   container: '#comments',
   serverURL: 'https://ecoku.example.com',
@@ -67,11 +37,14 @@ await comments.init()
 | `pageTitle` | `string` | いいえ | `''` | 記事のタイトル。通知に表示されます。最大 200 文字。 |
 | `pageSize` | `number` | いいえ | `10` | 1 ページあたりのルートコメント数。1～100 の整数。 |
 | `theme` | `'auto' \| 'light' \| 'dark'` | いいえ | `'auto'` | 配色。`auto` はページのライト / ダーク設定に従います。 |
-| `cssURL` | `string` | いいえ | `''` | 空の場合はデフォルトのスタイルを注入します。何らかの値（スタイルシートのアドレスまたは `'none'`）を指定すると注入を停止します。後述を参照してください。 |
+| `cssURL` | `string` | いいえ | `''` | 空の場合はデフォルトのスタイルを注入します。有効な値（スタイルシートのアドレスまたは `'none'`）を指定すると注入を停止します。後述を参照してください。 |
 
 コンストラクターは引数を検証しません。引数が不正な場合は `init()` が `TypeError` を投げます。
 
 古い設定項目 `apiBaseUrl` は `serverURL` の別名で、引き続き使えますが非推奨です。
+
+
+コンストラクター設定の `pageTitle` は JavaScript の UTF-16 コード単位で先頭 200 個に切り詰めます。`setPageKey()` は切り詰めず、サーバーが Unicode 文字数 200 の上限を検証します。`cssURL` は HTTP(S) 絶対 URL、`/` で始まるパス、`none`、互換用の `-` のみ受け付けます。
 
 ### スタイル {#styles}
 
@@ -112,20 +85,77 @@ await comments.init()
 
 インスタンスが現在初期化されているかどうかを返します。
 
+## VitePress {#vitepress}
+
+`.vitepress/theme/EcokuComments.vue` では `vue-router` ではなく VitePress の `useRoute` を使います。ルートのパスを安定したページ key にし、ページデータからタイトルを取得します。ブラウザーでのマウント時に作成し、移動時に更新、アンマウント時に破棄します。
+
+```vue
+<script setup>
+import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { useData, useRoute } from 'vitepress'
+import Ecoku from 'ecoku'
+
+const route = useRoute()
+const { page } = useData()
+const el = ref(null)
+let comments = null
+
+onMounted(() => {
+  comments = new Ecoku({
+    container: el.value,
+    serverURL: 'https://ecoku.example.com',
+    siteId: 'docs',
+    pageKey: route.path,
+    pageTitle: page.value.title,
+  })
+  comments.init().catch(console.error)
+})
+
+watch(
+  () => [route.path, page.value.title],
+  ([path, title]) => { comments?.setPageKey(path, title).catch(console.error) },
+  { flush: 'post' },
+)
+
+onBeforeUnmount(() => {
+  comments?.destroy()
+  comments = null
+})
+</script>
+
+<template>
+  <div ref="el"></div>
+</template>
+```
+
+既存の `.vitepress/theme/index.ts` で既定レイアウトの `doc-after` スロットに配置し、テーマ設定や CSS インポートを維持します。以下は最小の例です。サーバー URL とサイト ID を置き換え、管理画面でドキュメントサイトのオリジンを登録してください。home レイアウトではこのスロットは表示されません。
+
+```ts
+import { h } from 'vue'
+import DefaultTheme from 'vitepress/theme'
+import EcokuComments from './EcokuComments.vue'
+
+export default {
+  extends: DefaultTheme,
+  Layout: () => h(DefaultTheme.Layout, null, {
+    'doc-after': () => h(EcokuComments),
+  }),
+}
+```
+
 ## Vue 3
 
 ```vue
 <script setup>
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { loadEcoku } from './load-ecoku'
+import Ecoku from 'ecoku'
 
 const route = useRoute()
 const el = ref(null)
 let comments = null
 
-onMounted(async () => {
-  const Ecoku = await loadEcoku()
+onMounted(() => {
   comments = new Ecoku({
     container: el.value,
     serverURL: 'https://ecoku.example.com',
@@ -133,12 +163,12 @@ onMounted(async () => {
     pageKey: route.path,
     pageTitle: document.title,
   })
-  await comments.init()
+  comments.init().catch(console.error)
 })
 
 watch(
   () => route.path,
-  (path) => comments?.setPageKey(path, document.title),
+  (path) => { comments?.setPageKey(path, document.title).catch(console.error) },
   { flush: 'post' },
 )
 
@@ -159,29 +189,21 @@ onBeforeUnmount(() => {
 
 ```jsx
 import { useEffect, useRef } from 'react'
-import { loadEcoku } from './load-ecoku'
+import Ecoku from 'ecoku'
 
 export function Comments({ pageKey, pageTitle }) {
   const el = useRef(null)
 
   useEffect(() => {
-    let comments
-    let cancelled = false
-    loadEcoku().then((Ecoku) => {
-      if (cancelled) return
-      comments = new Ecoku({
-        container: el.current,
-        serverURL: 'https://ecoku.example.com',
-        siteId: 'blog',
-        pageKey,
-        pageTitle,
-      })
-      comments.init().catch(console.error)
+    const comments = new Ecoku({
+      container: el.current,
+      serverURL: 'https://ecoku.example.com',
+      siteId: 'blog',
+      pageKey,
+      pageTitle,
     })
-    return () => {
-      cancelled = true
-      comments?.destroy()
-    }
+    comments.init().catch(console.error)
+    return () => comments.destroy()
   }, [pageKey, pageTitle])
 
   return <div ref={el} />

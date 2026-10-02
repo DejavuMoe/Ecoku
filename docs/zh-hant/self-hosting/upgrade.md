@@ -1,6 +1,10 @@
 # 升級
 
+公開版本從 v0.3.0 開始。新部署直接使用 [Docker 部署](./docker)；本頁用於既有實例升級。
+
 目前版本是 **v0.3.0**（2026-10-03 發布，schema v11）。
+
+新映像檔統一發布到 GHCR。使用 Forgejo 映像檔的實例，後續升級請將 `image` 改為 `ghcr.io/dejavumoe/ecoku:v0.3.0` 或目標版本的精確 tag，保留原本的資料與設定掛載；Forgejo registry 不再發布新版本。同版本切換倉庫不必重新初始化實例。
 
 ## 升級時會發生什麼
 
@@ -13,28 +17,6 @@
 
 因此，升級前的備份是回滾到舊 schema 的唯一途徑。
 
-可以跨版本直接升級，例如從 v0.1.8 直接換到 v0.3.0，中間的遷移會依序執行。但請把跨過的每個版本的升級說明都讀一遍，有些版本需要調整設定（例如 [v0.2.4](./upgrades/v0.2.4) 要求 `admin.token_ttl_minutes` 為 480 或省略）。
-
-## v0.2.9 舊設定遷移 {#legacy-config}
-
-v0.2.9 在 schema v9 上新增 v10 管理員帳戶表。既有站點、評論、通知、驗證設定和舊管理員憑據都會保留，既有實例升級前不必修改設定。
-
-保留原本的 `compose.yaml`、`app/config.yaml` 和 `ecoku.env`，按[升級步驟](#steps)停服備份後啟動新映像檔。首次啟動會導入舊管理員憑據、把通知加密主金鑰寫入 `data/ecoku-secrets.json`，保留舊連接埠、檔案日誌、靜態目錄、SQLite 路徑、YAML `sites` 和 `management_key_env` 的相容行為，不會產生臨時密碼，也不會強迫舊管理員改密碼。
-
-確認新版本正常後，再遷移為簡化設定：
-
-1. 確認可以登入後台，站點數量、歷史評論和通知設定正確；
-2. 確認 `data/ecoku-secrets.json` 已建立，日誌沒有解密憑據錯誤；
-3. 停服並備份整個 `data/`、`app/config.yaml`、`compose.yaml` 和舊的 `ecoku.env`；
-4. 停服後從 `ecoku.env` 刪除管理員變數和 `ECOKU_NOTIFICATION_ENCRYPTION_KEY`。需要 `TZ` 時移到 Compose 的 `environment`；若留在 `ecoku.env`，則須保留 `env_file`；
-5. 不再需要環境檔案時才從 Compose 刪除 `env_file`；如果仍透過它注入 `TZ` 或站點管理金鑰，則保留；
-6. 保留 `notifications.instance_public_url`、實際使用的 `site.trusted_proxies`、`admin.allowed_origins` 和 `rate_limit`。確認不再需要舊資料庫路徑、檔案日誌或 `EcokuSite` 自動化後，才刪除舊欄位；
-7. 重建容器，再次檢查後台、評論和通知。
-
-舊的通知加密主金鑰與 `data/ecoku-secrets.json` 不一致時，服務會拒絕啟動，以免已有憑據無法解密。舊資料庫路徑仍然有效，不要直接刪除 `database.sqlite.path` 後掛載空的 `/data`。
-
-回滾到 v0.2.8 時，停止服務並還原原本的 Compose、設定、`ecoku.env` 和完整 `data/`。v10 遷移完成後，回滾必須使用升級前的冷備份。
-
 ## 升級步驟 {#steps}
 
 **1. 閱讀升級說明**。在下方的[版本清單](#versions)中找到目標版本，確認是否有設定變更、是否涉及 schema 遷移。
@@ -44,7 +26,7 @@ v0.2.9 在 schema v9 上新增 v10 管理員帳戶表。既有站點、評論、
 **3. 修改映像檔版本**。編輯 `~/Ecoku/compose.yaml`，把 `image` 改成目標版本，例如：
 
 ```yaml
-    image: "git.via.moe/dejavu/ecoku:v0.3.0"
+    image: "ghcr.io/dejavumoe/ecoku:v0.3.0"
 ```
 
 請寫明確的版本號，不要用 `latest`。如果升級說明要求修改 `app/config.yaml` 或 `ecoku.env`，請一併修改。
@@ -80,6 +62,14 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 | 版本 | 發布日期 | schema | 重點 |
 | --- | --- | --- | --- |
 | [v0.3.0](./upgrades/v0.3.0) | 2026-10-03 | v10 → v11 | Smoji 獨立圖片來源、npm SDK 與 GHCR 發布、設定範本及文件主題更新。 |
+
+表中 schema 欄只寫一個版本號的，表示該版本沒有資料庫遷移。
+
+::: details 內測版本記錄（請勿使用）
+僅保留版本標籤、變更和歷史升級事項。公開部署從 v0.3.0 開始；舊映像檔不再提供部署支援。請使用 [目前部署文件](./docker)。
+
+| 版本 | 日期 | schema | 歷史變更 |
+| --- | --- | --- | --- |
 | [v0.2.9](./upgrades/v0.2.9) | 2026-10-02 | v9 → v10 | 首次登入改密碼、持久管理員與金鑰、舊設定相容及後台修復。 |
 | [v0.2.8](./upgrades/v0.2.8) | 2026-10-01 | v9 | 管理後台改為評論流與列式設定，增加快捷鍵和底部導覽；容器內建預設設定，部署範本精簡。 |
 | [v0.2.7](./upgrades/v0.2.7) | 2026-09-29 | v8 → v9 | 通知郵件改用紙墨視覺與系統字型，主旨附帶文章標題；刪除評論時取消未寄出的通知並撤回已寄出的 Telegram 訊息；通知佇列不再重試注定失敗的投遞。 |
@@ -101,5 +91,27 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 | [v0.1.1](./upgrades/v0.1.1) | 2026-08-15 | v4 | 摺疊按鈕改為固定寬度，切換時不再跳動。 |
 | [v0.1.0](./upgrades/v0.1.0) | 2026-08-15 | v4 | 第一個正式版本。 |
 | [更早的候選版本](./upgrades/earlier) | 2026-08-14 | v1 ～ v4 | `v0.1.0-rc.*` 系列。 |
+:::
 
-表中 schema 欄只寫一個版本號的，表示該版本沒有資料庫遷移。
+<details id="legacy-config" class="details custom-block">
+<summary>內測實例的舊設定遷移</summary>
+
+v0.2.9 在 schema v9 上新增 v10 管理員帳戶表。既有站點、評論、通知、驗證設定和舊管理員憑據都會保留，既有實例升級前不必修改設定。
+
+保留原本的 `compose.yaml`、`app/config.yaml` 和 `ecoku.env`，按[升級步驟](#steps)停服備份後啟動新映像檔。首次啟動會導入舊管理員憑據、把通知加密主金鑰寫入 `data/ecoku-secrets.json`，保留舊連接埠、檔案日誌、靜態目錄、SQLite 路徑、YAML `sites` 和 `management_key_env` 的相容行為，不會產生臨時密碼，也不會強迫舊管理員改密碼。
+
+確認新版本正常後，再遷移為簡化設定：
+
+1. 確認可以登入後台，站點數量、歷史評論和通知設定正確；
+2. 確認 `data/ecoku-secrets.json` 已建立，日誌沒有解密憑據錯誤；
+3. 停服並備份整個 `data/`、`app/config.yaml`、`compose.yaml` 和舊的 `ecoku.env`；
+4. 停服後從 `ecoku.env` 刪除管理員變數和 `ECOKU_NOTIFICATION_ENCRYPTION_KEY`。需要 `TZ` 時移到 Compose 的 `environment`；若留在 `ecoku.env`，則須保留 `env_file`；
+5. 不再需要環境檔案時才從 Compose 刪除 `env_file`；如果仍透過它注入 `TZ` 或站點管理金鑰，則保留；
+6. 保留 `notifications.instance_public_url`、實際使用的 `site.trusted_proxies`、`admin.allowed_origins` 和 `rate_limit`。確認不再需要舊資料庫路徑、檔案日誌或 `EcokuSite` 自動化後，才刪除舊欄位；
+7. 重建容器，再次檢查後台、評論和通知。
+
+舊的通知加密主金鑰與 `data/ecoku-secrets.json` 不一致時，服務會拒絕啟動，以免已有憑據無法解密。舊資料庫路徑仍然有效，不要直接刪除 `database.sqlite.path` 後掛載空的 `/data`。
+
+內測版本不再提供正式環境回滾映像檔。歷史 schema 的還原需要當時的完整冷備份；此處僅保留設定遷移記錄。
+
+</details>

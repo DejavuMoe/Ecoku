@@ -15,7 +15,7 @@ Ecoku 可以要求訪客在發布評論前、管理員在登入前先通過一�
 - 瀏覽器在送出評論或登入時附帶一個一次性 token，伺服器端向 Turnstile 或 Cap 核驗後才繼續處理。核驗發生在檢查部落客口令之前，沒通過驗證就無法試探口令。
 - 核驗失敗、缺少 token，或者驗證服務逾時、無法使用，請求都會被拒絕，不會自動放行，也不會改用另一種方式。
 - 伺服器端核驗時只傳送 token 和 Secret Key，不附帶訪客 IP。
-- Secret Key 以 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 加密後存進資料庫，後台只顯示「已设置，输入新值以更换」。沒有設定這把金鑰時，無法儲存新的 Secret Key。
+- Secret Key 使用 `data/ecoku-secrets.json` 中的通知加密主金鑰加密後存入資料庫；主金鑰首次啟動時自動產生，後台只顯示「已设置，输入新值以更换」。備份時必須同時保存資料庫和此金鑰檔案。
 - 切換或關閉驗證方式時，另一種方式已填寫的設定會保留，切換回來時不必重填。
 
 ## Cloudflare Turnstile
@@ -196,7 +196,7 @@ Cap key 如果啟用了 instrumentation（執行階段偵測），`script-src` �
 
 ```bash
 cd ~/Ecoku
-sudo docker compose down
+sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku captcha status
 sudo docker compose run --rm --no-deps ecoku captcha disable
 sudo docker compose up -d

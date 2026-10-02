@@ -2,8 +2,8 @@
 layout: home
 hero:
   name: Ecoku
-  text: 自託管的<br>純文字評論系統
-  tagline: 給靜態部落格和個人網站使用。一個 Docker 容器，一個 SQLite 檔案，評論送出即公開。
+  text: 自託管，多站點<br>專注文字討論
+  tagline: 給部落格與個人網站的評論系統。訪客無需註冊，評論送出即公開，資料由你保管。
   image:
     src: /logo.svg
     alt: Ecoku 標誌
@@ -22,11 +22,11 @@ features:
   - title: 送出即公開
     details: 沒有審核佇列。回覆在被回覆的評論下方展開，刪除時保留墓碑，討論上下文不會中斷。
     link: /zh-hant/guide/concepts#threads
-  - title: 不蒐集訪客資訊
-    details: 不儲存 IP 和 User-Agent，公開 API 不回傳信箱。訪客身分只在瀏覽器中加密保存 7 天。
+  - title: 不記錄訪客 IP
+    details: 評論會儲存暱稱、正文及填寫的信箱、網址；公開 API 不回傳信箱，不儲存 IP 和 User-Agent。瀏覽器可加密記住身分 7 天。
     link: /zh-hant/guide/concepts#data
-  - title: 一個容器，一個檔案
-    details: 一個 Go 程式同時提供 API、管理後台和嵌入腳本，全部資料都在一個 SQLite 檔案中。
+  - title: 一個容器，便於自託管
+    details: Go 程式提供 API、後台和嵌入腳本；SQLite 儲存業務資料，金鑰獨立持久化。備份整個資料目錄和設定。
     link: /zh-hant/guide/introduction#components
   - title: 多站點
     details: 一個實例服務多個網站，每個站點有獨立的來源白名單、評論設定和部落客身分。

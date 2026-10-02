@@ -1,8 +1,6 @@
 # Docker 部署
 
-::: info 升級與設定遷移
-本頁描述 v0.3.0 的部署方式。升級 v0.2.8 前請先閱讀[升級與舊設定遷移](./upgrade#legacy-config)。既有實例可以繼續保留舊的 `ecoku.env` 和 Compose；確認新登入正常後再刪除舊環境變數。
-:::
+本頁適用於 v0.3.0 及後續公開版本，映像檔使用 GHCR。既有實例請先閱讀 [升級說明](./upgrade)。
 
 新部署只需要 `compose.yaml`、`app/config.yaml` 和 `data/`。Ecoku 會在首次啟動時自動建立管理員密碼、工作階段簽章金鑰和通知加密主金鑰。
 
@@ -39,7 +37,7 @@ sudo chmod 750 data
 ```yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.3.0"
+    image: "ghcr.io/dejavumoe/ecoku:v0.3.0"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -74,7 +72,7 @@ services:
 
 ## 3. 建立 app/config.yaml {#config}
 
-以下是完整的 `app/config.yaml` 範本，欄位用途、預設值、可選值與範例都寫在註解旁。將 `instance_public_url` 替換為 Ecoku 自己的 HTTPS 網址；已註解的舊版相容項無需啟用。
+以下範本集中列出目前原始碼仍支援的設定、預設值、可選值與範例。先將 `instance_public_url` 替換為 Ecoku 自己的 HTTPS 位址；其他未註解的值保持預設。註解中的賦值是可選覆寫項，只在需要時取消註解，並依說明同步掛載或連接埠。
 
 <div class="config-template">
 

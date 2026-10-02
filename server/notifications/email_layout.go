@@ -18,6 +18,8 @@ const (
 	emailLineSoft = "rgba(30,28,25,0.12)"
 	emailWash     = "#efebe3"
 	emailAccent   = "#9a4733"
+	emailSeal     = "#b8472f"
+	emailSealCut  = "#f7f4ee"
 
 	emailFontSans     = "-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei UI','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC','Noto Sans SC','Helvetica Neue',Arial,sans-serif"
 	emailFontMono     = "ui-monospace,'SF Mono','Cascadia Mono',Menlo,Consolas,monospace"
@@ -32,7 +34,8 @@ const (
 		".email-rule{border-color:rgba(238,232,221,0.12)!important}" +
 		".email-wash{background-color:#26231f!important}" +
 		".email-frame{border-color:#4b453d!important}" +
-		".email-mark{border-color:#eee8dd!important;color:#eee8dd!important}" +
+		".email-seal{background-color:#c55a40!important}" +
+		".email-seal-cut{border-color:#1a1816!important}" +
 		".email-button{background-color:#eee8dd!important}" +
 		".email-button-link{color:#1a1816!important}"
 	emailNarrowRules = ".email-pad{padding-right:22px!important;padding-left:22px!important}" +
@@ -106,17 +109,18 @@ func renderEmailDocument(doc emailDocument) string {
 	b.WriteString(`<!--[if mso]><table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->`)
 	b.WriteString(`<table class="email-shell" role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;border:1px solid ` + emailLineSoft + `;border-radius:6px;border-collapse:separate;background-color:` + emailSurface + `;font-family:` + emailFontSans + `;">`)
 
-	b.WriteString(`<tr><td class="email-pad email-rule" style="padding:22px 36px;border-bottom:1px solid ` + emailLineSoft + `;">`)
+	b.WriteString(`<tr><td class="email-pad email-rule" style="padding:20px 32px;border-bottom:1px solid ` + emailLineSoft + `;">`)
 	b.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>`)
-	b.WriteString(`<td width="36" valign="middle" style="width:36px;"><table role="presentation" width="26" cellpadding="0" cellspacing="0" border="0" style="width:26px;border-collapse:separate;"><tr>`)
-	b.WriteString(`<td class="email-mark" align="center" height="24" style="height:24px;border:1px solid ` + emailInk + `;border-radius:13px;color:` + emailInk + `;font-family:` + emailFontWordmark + `;font-size:14px;font-weight:bold;line-height:24px;mso-line-height-rule:exactly;">E</td></tr></table></td>`)
-	b.WriteString(`<td class="email-copy" valign="middle" style="color:` + emailInk + `;font-family:` + emailFontWordmark + `;font-size:17px;font-weight:bold;line-height:24px;letter-spacing:0.01em;">Ecoku</td>`)
+	b.WriteString(`<td width="36" valign="middle" style="width:36px;"><table class="email-seal" role="presentation" width="26" height="26" cellpadding="0" cellspacing="0" border="0" bgcolor="` + emailSeal + `" style="width:26px;height:26px;border-collapse:separate;border-radius:6px;background-color:` + emailSeal + `;"><tr><td align="center" valign="middle">`)
+	b.WriteString(`<table role="presentation" width="18" height="18" cellpadding="0" cellspacing="0" border="0" style="width:18px;height:18px;border-collapse:collapse;"><tr><td class="email-seal-cut" width="7" height="5" style="width:7px;height:5px;border:2px solid ` + emailSealCut + `;border-radius:1px;"></td><td width="11" style="width:11px;"></td></tr><tr><td colspan="2" height="4" style="height:4px;"></td></tr><tr><td colspan="2"><table role="presentation" width="18" cellpadding="0" cellspacing="0" border="0" style="width:18px;border-collapse:collapse;"><tr><td class="email-seal-cut" width="5" height="5" style="width:5px;height:5px;border:2px solid ` + emailSealCut + `;"></td><td width="2" style="width:2px;"></td><td class="email-seal-cut" width="5" height="5" style="width:5px;height:5px;border:2px solid ` + emailSealCut + `;"></td><td width="2" style="width:2px;"></td><td class="email-seal-cut" width="5" height="5" style="width:5px;height:5px;border:2px solid ` + emailSealCut + `;"></td></tr></table></td></tr></table>`)
+	b.WriteString(`</td></tr></table></td>`)
+	b.WriteString(`<td class="email-copy" valign="middle" style="padding-left:2px;color:` + emailInk + `;font-family:` + emailFontWordmark + `;font-size:18px;font-weight:bold;line-height:24px;letter-spacing:0.005em;">Ecoku</td>`)
 	b.WriteString(`<td class="email-muted" align="right" valign="middle" style="color:` + emailMuted + `;font-size:12px;line-height:18px;word-break:break-word;">` + html.EscapeString(doc.SiteName) + `</td>`)
 	b.WriteString(`</tr></table></td></tr>`)
 
-	b.WriteString(`<tr><td class="email-pad" style="padding:32px 36px 4px;">`)
+	b.WriteString(`<tr><td class="email-pad" style="padding:28px 32px 4px;">`)
 	b.WriteString(`<p class="email-accent" style="margin:0 0 10px;color:` + emailAccent + `;font-size:12px;font-weight:bold;letter-spacing:0.08em;line-height:18px;">` + html.EscapeString(doc.Label) + `</p>`)
-	b.WriteString(`<h1 class="email-title email-copy" style="margin:0;color:` + emailInk + `;font-family:` + emailFontSans + `;font-size:24px;font-weight:bold;line-height:32px;word-break:break-word;">` + html.EscapeString(doc.Heading) + `</h1></td></tr>`)
+	b.WriteString(`<h1 class="email-title email-copy" style="margin:0;color:` + emailInk + `;font-family:` + emailFontSans + `;font-size:25px;font-weight:700;line-height:32px;letter-spacing:-0.01em;word-break:break-word;">` + html.EscapeString(doc.Heading) + `</h1></td></tr>`)
 
 	for _, section := range doc.Sections {
 		b.WriteString(section)

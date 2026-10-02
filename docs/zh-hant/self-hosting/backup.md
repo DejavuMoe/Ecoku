@@ -17,18 +17,23 @@
 set -eu
 umask 077
 cd "$HOME/Ecoku"
-install -d -m 700 "$HOME/backups"
-sudo docker compose down
-archive="$HOME/backups/ecoku-$(date +%Y%m%d_%H%M%S).tar.gz"
-sudo tar -czf - data/ app/config.yaml compose.yaml ${ECOKU_BACKUP_ENV:-} > "$archive"
+install -d -m 700 backups
+sudo docker compose stop ecoku
+archive="backups/ecoku-$(date +%Y%m%d_%H%M%S).tar.gz"
+set -- data/ app/config.yaml compose.yaml
+if [ -f ecoku.env ]; then set -- "$@" ecoku.env; fi
+sudo tar -czf - "$@" > "$archive"
+tar -tzf "$archive" >/dev/null
 printf 'Verified backup: %s\n' "$archive"
 sudo docker compose up -d
 )
 ```
 
-舊實例備份前設定 `ECOKU_BACKUP_ENV=ecoku.env`；新實例不要設定。必須打包整個 `data/`，不能只複製 SQLite 主檔案。
+命令會自動包含仍存在的 `ecoku.env`。歸檔必須包含整個 `data/`，不能只複製 SQLite 主檔案。`Verified backup` 表示歸檔已寫入且可以列出內容，不代表已完成還原演練。備份失敗時服務保持停止；修正後重試，或執行 `sudo docker compose up -d ecoku` 恢復執行。
 
 ## 還原 {#restore}
+
+還原時先停止服務，將目前的 `data/` 移到另一個目錄留存，再完整解壓縮同一份備份。不要直接覆寫執行中的資料庫，也不要混用新版本的 WAL 和舊資料庫。
 
 停止服務後還原完整的 `data/`、`app/config.yaml` 和 `compose.yaml`。舊實例再還原 `ecoku.env`：
 
@@ -36,6 +41,7 @@ sudo docker compose up -d
 cd ~/Ecoku
 sudo chown -R 10001:10001 data
 sudo chmod 750 data
+sudo chmod 600 data/ecoku-secrets.json
 sudo docker compose up -d
 curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 ```

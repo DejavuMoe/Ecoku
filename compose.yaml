@@ -1,6 +1,6 @@
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.3.0"
+    image: "ghcr.io/dejavumoe/ecoku:v0.3.0"
     init: true
     restart: unless-stopped
     container_name: ecoku

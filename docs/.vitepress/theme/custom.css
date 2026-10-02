@@ -34,6 +34,31 @@
   --seal: #c55a40;
 }
 
+/* Standard scrollbars cover Firefox; WebKit rules refine Chromium and Safari. */
+:root, :root *, :root .aside-container {
+  scrollbar-width: thin;
+  scrollbar-color: var(--muted) var(--paper);
+}
+@supports selector(::-webkit-scrollbar) {
+  :root, :root *, :root .aside-container { scrollbar-width: auto; scrollbar-color: auto; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--paper); }
+  ::-webkit-scrollbar-thumb {
+    background: var(--muted);
+    border: 2px solid var(--paper);
+    border-radius: 8px;
+    min-height: 36px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--ink-soft); }
+  ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+  ::-webkit-scrollbar-corner { background: var(--paper); }
+}
+@media (forced-colors: active) {
+  :root, :root *, :root .aside-container { scrollbar-width: auto; scrollbar-color: auto; }
+  ::-webkit-scrollbar-track, ::-webkit-scrollbar-corner { background: Canvas; }
+  ::-webkit-scrollbar-thumb { background: CanvasText; border-color: Canvas; }
+}
+
 :root:lang(zh-Hant) {
   --vp-font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei UI", "Microsoft JhengHei", "Noto Sans CJK TC", "Noto Sans TC", sans-serif;
 }
@@ -114,6 +139,7 @@
 .VPSidebar { border-right: 1px solid var(--line-soft); }
 .VPHome .VPButton.medium, .VPHome .VPButton.big { border-radius: 5px; }
 .VPHero .name, .VPHero .text { font-weight: 600; letter-spacing: -0.025em; }
+.VPHero .text { text-wrap: balance; }
 .VPHero .tagline { color: var(--muted); line-height: 1.65; }
 .VPHomeHero .image-src { width: 180px; max-height: 180px; }
 .VPHome .VPFeatures .VPFeature { border: 1px solid var(--line-soft); border-radius: 5px; background: var(--surface); }
@@ -134,14 +160,23 @@
 .vp-doc .config-template pre, .vp-doc .config-template pre code { white-space: pre-wrap; overflow-wrap: anywhere; }
 .vp-doc .custom-block { margin: 20px 0; padding: 16px 20px; border: 1px solid var(--line-soft); border-radius: 4px; }
 .vp-doc .custom-block p { line-height: 1.8; }
-.vp-doc table { display: block; width: max-content; min-width: 100%; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: 14px; scrollbar-width: thin; }
+.ecoku-doc-comments {
+  width: min(100%, 760px);
+  margin: 56px auto 24px;
+  padding-top: 32px;
+  border-top: 1px solid var(--line-soft);
+}
+.ecoku-doc-comments .ecoku-comments {
+  --ecoku-font-family: var(--vp-font-family-base);
+}
+.vp-doc table { display: block; width: max-content; min-width: 100%; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: 14px; }
 .vp-doc th, .vp-doc td { border-color: var(--line-soft); padding: 10px 16px; line-height: 1.75; }
 .vp-doc th { background: var(--wash); font-weight: 600; }
 .vp-doc tr { background: var(--paper); }
 .vp-doc tr:nth-child(2n) { background: var(--surface); }
 .VPDocFooter .pager-link { border-color: var(--line); border-radius: 4px; }
 .VPDocFooter .pager-link:hover { border-color: var(--accent); }
-.mermaid { display: flex; justify-content: center; margin: 24px 0; padding: 24px; overflow-x: auto; background: var(--surface); border: 1px solid var(--line-soft); border-radius: 4px; scrollbar-width: thin; }
+.mermaid { display: flex; justify-content: center; margin: 24px 0; padding: 24px; overflow-x: auto; background: var(--surface); border: 1px solid var(--line-soft); border-radius: 4px; }
 .mermaid svg { max-width: 100%; height: auto; }
 .mermaid foreignObject p, .mermaid foreignObject div, .mermaid .nodeLabel { margin: 0 !important; padding: 0 !important; line-height: 1.45 !important; }
 
@@ -151,6 +186,9 @@
   .VPHero .tagline { font-size: 20px; }
 }
 @media (max-width: 639px) {
+  .VPHomeHero.VPHero { padding-top: 24px; }
+  .VPHomeHero .image { margin: 0 0 16px; }
+  .VPHomeHero .image-container { transform: none; }
   .VPHomeHero .image-src { width: 88px; max-height: 88px; }
   .VPHero .image-container { height: 136px; }
   .VPHero .name { font-size: 36px; line-height: 1.25; }

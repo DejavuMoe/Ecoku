@@ -58,7 +58,7 @@
 | Hexo | `<%- url_for(page.path) %>` |
 | Jekyll | `{{ page.url }}` |
 | Astro | `{Astro.url.pathname}` |
-| VitePress | 在自訂主題中讀取 `useRoute().path`，並使用 [SDK](./sdk) 接入 |
+| VitePress | 在自訂主題中讀取 `useRoute().path`，並使用 [SDK](./sdk#vitepress) 接入 |
 :::
 
 以上僅供參考。請在瀏覽器中檢視產生的 HTML，確認輸出的是穩定的路徑，例如 `/posts/hello-world/`，而不是完整網址。

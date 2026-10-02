@@ -15,14 +15,14 @@ Ecoku 可以要求访客在发布评论前、管理员在登录前通过一次�
 - 浏览器在提交评论或登录时附带一个一次性 token，服务端向 Turnstile 或 Cap 核验后才继续处理。核验发生在检查博主口令之前，没通过验证就无法试探口令。
 - 核验失败、token 缺失，或者验证服务超时、不可用，请求都会被拒绝，不会自动放行，也不会改用另一种方式。
 - 服务端核验时只发送 token 和 Secret Key，不附带访客 IP。
-- Secret Key 用 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 加密后存进数据库，后台只显示“已设置，输入新值以更换”。没有配置这把密钥时，无法保存新的 Secret Key。
+- Secret Key 使用 `data/ecoku-secrets.json` 中的通知加密主密钥加密后存入数据库；主密钥首次启动时自动生成，后台只显示「已设置，输入新值以更换」。备份时必须同时保存数据库和该密钥文件。
 - 切换或关闭验证方式时，另一种方式已填写的配置会保留，切回来不必重填。
 
 ## Cloudflare Turnstile
 
 1. 在 Cloudflare 控制台的 Turnstile 页面新建一个组件（widget）。
 2. 在 Hostname 列表中加入所有博客域名（如 `blog.example.com`），以及 Ecoku 的域名（如 `ecoku.example.com`，后台登录页需要）。
-3. 组件模式按需选择。Ecoku 以“仅在需要交互时显示”的方式渲染组件，宽度不超过 300px。
+3. 组件模式按需选择。Ecoku 以「仅在需要交互时显示」的方式渲染组件，宽度不超过 300px。
 4. 复制 Sitekey 和 Secret key，在后台「安全」页选择 Cloudflare Turnstile，填入并保存。
 
 官方文档：[Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/)
@@ -196,7 +196,7 @@ Cap key 如果启用了 instrumentation（运行时检测），`script-src` 还�
 
 ```bash
 cd ~/Ecoku
-sudo docker compose down
+sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku captcha status
 sudo docker compose run --rm --no-deps ecoku captcha disable
 sudo docker compose up -d
