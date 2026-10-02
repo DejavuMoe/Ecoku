@@ -42,3 +42,17 @@ func TestLegacyNotificationKeyMismatchFailsClosed(t *testing.T) {
 		t.Fatal("notification key mismatch was accepted")
 	}
 }
+
+func TestExistingKeyFileMustBePrivateRegularFile(t *testing.T) {
+	ResetForTests()
+	path := filepath.Join(t.TempDir(), "ecoku-secrets.json")
+	if _, err := Initialize(path, "", ""); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Initialize(path, "", ""); err == nil {
+		t.Fatal("world-readable key file was accepted")
+	}
+}
