@@ -2,60 +2,11 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig, type DefaultTheme, type HeadConfig } from 'vitepress'
+import { inlineSpacing } from '../inline-spacing'
 
 const caddyfileGrammar = JSON.parse(
   readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../caddyfile.tmLanguage.json'), 'utf8'),
 )
-
-export const shared = defineConfig({
-  title: 'Ecoku',
-  lastUpdated: true,
-  cleanUrls: true,
-  ignoreDeadLinks: [
-    /^https?:\/\/([a-zA-Z0-9_-]+\.)?example\.com/,
-    /^https?:\/\/localhost/,
-    /^https?:\/\/127\.0\.0\.1/,
-  ],
-  srcExclude: ['**/internal/**', '**/progress/**', '**/contribute/**'],
-  head: [
-    ['link', { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' }],
-    ['meta', { name: 'theme-color', content: '#0f766e' }],
-    ['meta', { name: 'og:type', content: 'website' }],
-    ['meta', { name: 'og:site_name', content: 'Ecoku' }],
-  ] satisfies HeadConfig[],
-  markdown: {
-    // TextMate grammar for ```caddyfile fences (Shiki has no built-in Caddyfile).
-    languages: [caddyfileGrammar],
-    config(md) {
-      const defaultFence = md.renderer.rules.fence!
-      md.renderer.rules.fence = (tokens, idx, options, env, self) => {
-        const token = tokens[idx]
-        const info = token.info.trim()
-        if (info === 'mermaid') {
-          const rawCode = token.content.trim()
-          const encodedCode = encodeURIComponent(rawCode)
-          return `<div class="mermaid" data-code="${encodedCode}" v-pre>${md.utils.escapeHtml(rawCode)}</div>`
-        }
-        return defaultFence(tokens, idx, options, env, self)
-      }
-    },
-  },
-  themeConfig: {
-    logo: { src: '/logo.svg', alt: 'Ecoku' },
-    outline: [2, 3],
-    search: {
-      provider: 'local',
-      options: {
-        locales: {
-          root: { translations: zhSearch },
-          'zh-hant': { translations: zhHantSearch },
-          en: { translations: enSearch },
-          ja: { translations: jaSearch },
-        },
-      },
-    },
-  },
-})
 
 const zhSearch: DefaultTheme.LocalSearchOptions['translations'] = {
   button: { buttonText: '搜索文档', buttonAriaLabel: '搜索文档' },
@@ -251,3 +202,75 @@ export interface SidebarCopy extends NavCopy {
   versionCurrent: string
   versionLatest: string
 }
+
+export const shared = defineConfig({
+  title: 'Ecoku',
+  lastUpdated: true,
+  cleanUrls: true,
+  ignoreDeadLinks: [
+    /^https?:\/\/([a-zA-Z0-9_-]+\.)?example\.com/,
+    /^https?:\/\/localhost/,
+    /^https?:\/\/127\.0\.0\.1/,
+  ],
+  srcExclude: ['**/internal/**', '**/progress/**', '**/contribute/**'],
+  head: [
+    ['link', { rel: 'icon', href: '/favicon.svg', type: 'image/svg+xml' }],
+    ['meta', { name: 'theme-color', content: '#f7f4ee', media: '(prefers-color-scheme: light)' }],
+    ['meta', { name: 'theme-color', content: '#1a1816', media: '(prefers-color-scheme: dark)' }],
+    ['meta', { name: 'og:type', content: 'website' }],
+    ['meta', { name: 'og:site_name', content: 'Ecoku' }],
+  ] satisfies HeadConfig[],
+  markdown: {
+    theme: {
+      light: {
+        name: 'ecoku-light',
+        settings: [
+          { settings: { foreground: '#35312b', background: '#ece7de' } },
+          { scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#6b655b' } },
+          { scope: ['string', 'constant.other'], settings: { foreground: '#3d6a4e' } },
+          { scope: ['keyword', 'storage', 'entity.name.tag'], settings: { foreground: '#9a4733' } },
+        ],
+      },
+      dark: {
+        name: 'ecoku-dark',
+        settings: [
+          { settings: { foreground: '#d3ccbf', background: '#2a2723' } },
+          { scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#a29a8c' } },
+          { scope: ['string', 'constant.other'], settings: { foreground: '#9cc3a8' } },
+          { scope: ['keyword', 'storage', 'entity.name.tag'], settings: { foreground: '#d57c64' } },
+        ],
+      },
+    },
+    // TextMate grammar for ```caddyfile fences (Shiki has no built-in Caddyfile).
+    languages: [caddyfileGrammar],
+    config(md) {
+      inlineSpacing(md)
+      const defaultFence = md.renderer.rules.fence!
+      md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+        const token = tokens[idx]
+        const info = token.info.trim()
+        if (info === 'mermaid') {
+          const rawCode = token.content.trim()
+          const encodedCode = encodeURIComponent(rawCode)
+          return `<div class="mermaid" data-code="${encodedCode}" v-pre>${md.utils.escapeHtml(rawCode)}</div>`
+        }
+        return defaultFence(tokens, idx, options, env, self)
+      }
+    },
+  },
+  themeConfig: {
+    logo: { src: '/logo.svg', alt: 'Ecoku' },
+    outline: [2, 3],
+    search: {
+      provider: 'local',
+      options: {
+        translations: zhSearch,
+        locales: {
+          'zh-hant': { translations: zhHantSearch },
+          en: { translations: enSearch },
+          ja: { translations: jaSearch },
+        },
+      },
+    },
+  },
+})

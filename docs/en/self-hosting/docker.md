@@ -43,6 +43,8 @@ services:
     init: true
     restart: unless-stopped
     container_name: ecoku
+    environment:
+      TZ: Asia/Shanghai
     ports:
       - "127.0.0.1:12123:12123"
     volumes:
@@ -72,16 +74,19 @@ The container port remains `12123`. To change the host port, change only the par
 
 ## 3. Create app/config.yaml {#config}
 
-```yaml
-notifications:
-  instance_public_url: "https://ecoku.example.com"
-```
+The complete `app/config.yaml` template below places explanations, defaults, allowed values, and examples beside each field. Replace `instance_public_url` with Ecoku’s own HTTPS URL; keep the commented legacy options disabled.
+
+<div class="config-template">
+
+<<< ../../../deploy/config.en.yaml.example{yaml}
+
+</div>
+
+Allow the container’s non-root user to read the configuration:
 
 ```bash
 chmod 644 ~/Ecoku/app/config.yaml
 ```
-
-After configuring the reverse proxy, add `site.trusted_proxies` if you need rate limits to use the visitor address; see [Reverse proxy](./reverse-proxy#trusted-proxies). Everything else has a default.
 
 ## 4. Start
 
@@ -104,6 +109,8 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 ## 5. First sign-in
 
+Before opening the console, follow [configure HTTPS reverse proxying for the Ecoku domain](./reverse-proxy) to set up Caddy or Nginx and check the public health endpoint. The container’s published port is bound to host loopback by default and cannot be opened directly from the internet.
+
 Open `https://ecoku.example.com/admin/`. Sign in as `admin` with the temporary password from the first-start log. You must then set a permanent password:
 
 - keep `admin` or choose another username;
@@ -123,21 +130,16 @@ sudo docker compose up -d
 
 The command prints a new temporary password and revokes all administrator sessions.
 
-## Time zone
+## Time zone {#timezone}
 
-A new deployment does not need `ecoku.env`. To set the display time zone for comments and notifications, add this optional environment entry to the Compose service:
+The Compose file above already sets `TZ: Asia/Shanghai` for comment and notification timestamps. To use another zone, edit `services.ecoku.environment.TZ`, for example to `Europe/Berlin`, then run `sudo docker compose up -d` to recreate the container. No separate `ecoku.env` is needed.
 
-```yaml
-    environment:
-      TZ: Asia/Shanghai
-```
-
-Existing deployments may keep their old `ecoku.env`. Its administrator credentials and keys are imported into persistent state during the upgrade; see [upgrade](./upgrade#legacy-config).
+Existing instances can keep their original `ecoku.env`. To remove old administrator credentials and key variables, follow [import persistent state, stop and back up, then remove legacy variables](./upgrade#legacy-config). If the time zone is still in that environment file, move `TZ` into Compose before deleting the file.
 
 ## Next steps
 
-1. [Configure the reverse proxy](./reverse-proxy) for `https://ecoku.example.com`.
-2. Create the first site in **Sites**.
-3. [Embed the comment client](../integration/html).
+1. [Create the first site](./admin#sites) in the console to obtain its site ID.
+2. Follow [HTML integration](../integration/html) to embed comments in your blog.
+3. Follow [backup and restore](./backup) to back up configuration, the database, and persistent keys.
 
 To import Twikoo history, create the site first and then follow [Twikoo migration](./twikoo).

@@ -157,7 +157,7 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&page=1&pageSize=10&sor
 | `bloggerProofEnabled` | 站點是否已設定部落客口令。 |
 | `captcha` | 目前的人機驗證方式：`provider` 為 `off`、`turnstile` 或 `cap`；`sitekey` 為公開的 Site key；使用 Cap 時另有 `instanceUrl`。 |
 | `turnstileSitekey` | 為舊版用戶端保留。僅在 Turnstile 模式下有值。 |
-| `smoji` | 貼圖包是否啟用，以及清單網址。 |
+| `smoji` | `enabled` 表示是否啟用，`manifestUrl` 為清單網址；下一版本增加選填的 `imageOrigin`，未回傳或為空時使用清單來源。 |
 
 #### 讀取上限
 
@@ -292,7 +292,9 @@ Origin: https://blog.example.com
 | `GET /api/admin/sites/:siteId` | 單一站點。 |
 | `PUT /api/admin/sites/:siteId` | 更新站點。請求本文需帶上讀取時取得的 `revision`，缺少時回傳 `400`；期間被其他工作階段修改過時回傳 `409`。 |
 
-站點欄位：`id`、`site_url`、`name`、`allowed_origins`、`default_sort`、`email_required`、`website_required`、`placeholder`、`comment_limit`、`empty_message`、`smoji_enabled`、`smoji_manifest_url`、`blogger_nickname`、`blogger_email`、`blogger_badge`、`blogger_passphrase`（唯寫）、`revision`。回應中以 `blogger_passphrase_set` 表示是否已設定口令，另含唯讀的 `created_at`、`updated_at`。站點清單在 `data.data` 陣列中，單一站點以及建立、更新的結果在 `data.site` 中。
+站點欄位：`id`、`site_url`、`name`、`allowed_origins`、`default_sort`、`email_required`、`website_required`、`placeholder`、`comment_limit`、`empty_message`、`smoji_enabled`、`smoji_manifest_url`、`smoji_image_origin`、`blogger_nickname`、`blogger_email`、`blogger_badge`、`blogger_passphrase`（唯寫）、`revision`。回應中以 `blogger_passphrase_set` 表示是否已設定口令，另含唯讀的 `created_at`、`updated_at`。站點清單在 `data.data` 陣列中，單一站點以及建立、更新的結果在 `data.site` 中。
+
+`smoji_image_origin`（未發布）是選填的受信任圖片來源，例如 `https://s3-cdn.zsh.moe`。留空使用清單來源；更新請求省略此欄位時保留原值，傳空字串恢復預設。公開的 `formConfig.smoji.imageOrigin` 僅在已設定時回傳。載入、提交、顯示和郵件通知使用同一規則，見 [Smoji 託管設定](../integration/smoji#hosting)。
 
 新增站點時 ID 已存在，或 `allowed_origins` 與 `admin.allowed_origins` 重複，都會回傳 `409`。
 

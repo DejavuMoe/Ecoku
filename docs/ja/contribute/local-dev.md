@@ -11,17 +11,11 @@ cp server/config.yaml.example server/config.yaml
 mkdir -p server/data
 ```
 
-マシン固有のビルド成果物、実行データ、一時的なリリース検証は、Git が無視するルートの `tmp/` に置き、ソースディレクトリには書き込まないでください。
+一時的なビルド成果物と検証ファイルは、Git が無視するルートの `tmp/` に置きます。開発用 DB と永続キーは設定に従って `server/data/` に保存されます。実行データはコミットしないでください。
 
-ローカルサービスは SQLite ファイルと `server/config.yaml` を使用します。管理画面は常に有効なので、サーバーを起動する前に管理者の認証情報を現在の shell に設定してください。コミットはしないでください。下の例のログインパスワードは `local-dev-password` です。
+ローカルでは SQLite と `server/config.yaml` を使います。新しい DB の初回起動時に `admin` を自動作成し、仮パスワードを端末に出力して、永続キーを `server/data/ecoku-secrets.json` に保存します。仮パスワードで管理画面にログインし、初回に変更してください。管理者認証情報や通知暗号化キーの環境変数を事前に設定する必要はありません。
 
-```bash
-export ECOKU_ADMIN_USERNAME=admin
-export ECOKU_ADMIN_PASSWORD_HASH="$(printf '%s\n' 'local-dev-password' | (cd server && go run . hash-password))"
-export ECOKU_ADMIN_TOKEN_KEY="$(openssl rand -hex 32)"
-```
-
-管理画面で SMTP パスワード、Telegram Bot Token、CAPTCHA のシークレットキーを保存する場合は、`ECOKU_NOTIFICATION_ENCRYPTION_KEY` も設定します（`openssl rand -base64 32` で生成できます）。
+既存の開発 DB では元の管理者アカウントを維持します。旧環境変数を使っていた場合は、永続状態への移行を終えてから削除してください。[旧設定の移行](../self-hosting/upgrade#legacy-config) を参照してください。
 
 ## 起動
 
@@ -34,7 +28,7 @@ pnpm docs:dev
 
 必要なコマンドを別々のターミナルで実行してください。
 
-サーバーは `http://127.0.0.1:12123` で待ち受け、データベースは `server/data/ecoku.bin` に保存します。ソースからの実行は API のみを提供します。コメント欄と管理画面にはそれぞれ Vite 開発サーバーを使い、Docker イメージはビルド済みの静的ページを提供します。
+API はローカルの `http://127.0.0.1:12123` でアクセスでき、既定のポートは `12123` です。DB は `server/data/ecoku.bin`、永続キーは同じディレクトリの `ecoku-secrets.json` です。ソース実行では既定でブラウザ用の静的ファイルを配信しないため、コメント欄と管理画面は各 Vite 開発サーバーを使います。Docker イメージはビルド済みファイルを配信します。
 
 完全な検証は Woodpecker が実行します。ローカルでは、現在の変更に直接関係し、CI がカバーしない検証だけを実行します。
 

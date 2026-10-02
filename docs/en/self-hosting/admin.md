@@ -61,7 +61,7 @@ If someone edited the same site in another browser tab while you were editing it
 
 ### Sticker packs
 
-After you select 「启用」 (enable) under 「表情包」 (sticker packs) and enter a Smoji manifest URL, the comment box shows a **Stickers** (表情) button. The manifest URL must use HTTPS (except for loopback addresses). Sticker images are served to the visitor's browser directly by the server that hosts the manifest, and that server can see the visitor's IP address. See [Smoji sticker packs](../integration/smoji) for the manifest format and how to host one.
+Enable 「表情包」 (Sticker packs) and enter the Smoji manifest URL. The next release adds optional 「图片来源」 (Image origin): enter the CDN origin when images are hosted separately, or leave it empty to preserve the manifest-origin rule. Resource hosts serve files directly and can see visitor IP addresses. See [host the Smoji manifest and images](../integration/smoji#hosting) for exact values.
 
 ### Blogger identity {#blogger}
 

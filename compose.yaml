@@ -4,6 +4,8 @@ services:
     init: true
     restart: unless-stopped
     container_name: ecoku
+    environment:
+      TZ: Asia/Shanghai
     ports:
       - "127.0.0.1:12123:12123"
     volumes:

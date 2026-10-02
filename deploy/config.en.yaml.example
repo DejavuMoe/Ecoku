@@ -1,0 +1,129 @@
+# Complete Ecoku configuration. Save as app/config.yaml; recreate the container after changes.
+# Active values are defaults, except the example instance_public_url that you must replace.
+# Write each top-level section once. YAML does not expand ${ENV} variables here.
+# Configure SMTP, Telegram, CAPTCHA, Smoji and sites in the admin console, not this file.
+# Keep legacy compatibility fields commented out. Existing instances may retain their old values.
+
+notifications:
+  # Public URL of Ecoku itself, used for admin-origin checks and when enabling notifications.
+  # Default: empty string. For a new deployment, set your actual HTTPS URL, not the blog URL.
+  # Values: full http:// or https:// URL, without credentials, query parameters or fragment.
+  # Local development example: http://127.0.0.1:12123. Public example below.
+  # A path is accepted, but this field does not configure your reverse proxy or change application routes.
+  instance_public_url: "https://ecoku.example.com"
+
+  # Legacy compatibility: environment variable NAME holding the encryption key, not the key itself.
+  # Default: ECOKU_NOTIFICATION_ENCRYPTION_KEY. Custom example: MY_ECOKU_KEY.
+  # The variable value must be a 32-byte key in standard Base64, with or without padding.
+  # New instances generate keys and save them in ecoku-secrets.json beside the database.
+  # Do not rotate the old key before persistent-state migration; existing ciphertext would become unreadable.
+  # encryption_key_env: "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
+
+site:
+  # Trusted direct proxies. Default: []. Accepts IPv4, IPv6 addresses or CIDR networks.
+  # Example: ["172.18.0.1/32"]. A YAML list with one address per line also works.
+  # For a host reverse proxy forwarding through Docker, normally use the actual Docker gateway.
+  # Query: sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
+  # Trust only proxies you control; the proxy must overwrite client-supplied X-Forwarded-For.
+  # Empty ignores forwarding headers; visitors behind a proxy may share one rate-limit allowance.
+  # 0.0.0.0/0 and ::/0 are forbidden. Do not assume the example gateway is your gateway.
+  trusted_proxies: []
+
+  # Legacy compatibility: listen port. Default 12123; integer 1–65535; 0 selects the default.
+  # Docker users can change the host-side Compose port mapping without changing the container port.
+  # port: 12123
+  # Legacy compatibility: log file path. Default "" writes to stdout; view with docker compose logs.
+  # Example: /var/log/ecoku/ecoku.log. File logging needs a writable directory mount.
+  # "-", "stdout" and "/dev/stdout" also select stdout only; other paths keep both stdout and file logs.
+  # log_path: ""
+
+rate_limit:
+  # All fields below are integers. Omitted or 0 selects the default; negatives prevent startup.
+  # Effective values must be positive. There is no disable value; use reasonable small integers.
+  # Count separately per peer IP or trusted forwarded visitor IP, with separate endpoint categories.
+  # Excess requests return HTTP 429 and Retry-After. In-memory counters reset on restart.
+
+  # Window duration in seconds. Default 60; example 120 means a two-minute window.
+  window_seconds: 60
+  # Comment submissions including replies per window. Default 5; example 10.
+  comment_submit: 5
+  # Public comment-list requests per window. Default 60; example 120.
+  comment_list: 60
+  # Comment deletions per window. Default 30; example 60.
+  comment_delete: 30
+  # Administrator login attempts per window. Default 5; example 10.
+  admin_login: 5
+  # Test notification requests per window. Default 5; example 10.
+  notification_test: 5
+
+admin:
+  # Browser origins allowed for the admin API. Default [] derives the origin from instance_public_url.
+  # Values: unique http(s)://host[:port] entries, without a path, query or fragment.
+  # Example: ["https://ecoku.example.com", "https://admin.example.com"].
+  # Set explicitly only for multiple admin URLs or separate frontend/backend development.
+  # Keep separate from blog comment origins. Public admin origins must use HTTPS.
+  # If both this list and instance_public_url are empty, startup fails for lack of an admin origin.
+  allowed_origins: []
+
+  # Legacy compatibility: admin is always enabled. Default true; false is ignored.
+  # enabled: true
+  # Legacy compatibility: sessions are fixed at 480 minutes (8 hours), not a tunable timeout.
+  # Omit it, set 0 or 480. Other integers prevent startup. Activity does not extend the session.
+  # token_ttl_minutes: 480
+  # Legacy compatibility: admin static directory. Docker default /app/admin; source-run default empty.
+  # Empty in source runs disables static admin pages, but leaves the admin API enabled.
+  # static_dir: "/app/admin"
+
+  # Legacy compatibility: these are variable NAMES, not the username, hash or signing key values.
+  # Defaults below. Custom examples: MY_ADMIN_USER, MY_ADMIN_HASH, MY_ADMIN_KEY.
+  # Prefer letters/digits/underscores with a letter or underscore first; the three names must differ.
+  # Supplying any legacy administrator credential variable requires supplying all three.
+  # Username: 1–80 characters; password: bcrypt hash with cost >= 10; signing key: at least 32 bytes.
+  # New instances need none of these: first startup prints an admin temporary password that must be changed.
+  # username_env: "ECOKU_ADMIN_USERNAME"
+  # password_hash_env: "ECOKU_ADMIN_PASSWORD_HASH"
+  # token_key_env: "ECOKU_ADMIN_TOKEN_KEY"
+
+# Legacy compatibility: static comment-client directory. Docker default /app/client.
+# Source-run default: empty, serving no static scripts. Example: ../packages/client/dist.
+# client:
+#   static_dir: "/app/client"
+
+# Legacy compatibility: SQLite only. Specify a database FILE path, not a directory.
+# Docker default: /data/ecoku.sqlite3. Source-run default: ./data/ecoku.bin.
+# Example: /data/comments.sqlite3. The directory must be writable and persist outside the container.
+# ecoku-secrets.json lives beside the database. Back up and move them together.
+# database:
+#   sqlite:
+#     path: "/data/ecoku.sqlite3"
+
+# Legacy compatibility: YAML site seeds. Default []. Create new sites in the admin console.
+# Imported only when creating a brand-new database. Editing this does not update existing database sites.
+# To use this compatibility format, uncomment the entire sites section below.
+# sites:
+#   # Required ID: letter/digit first; letters, digits, dots, underscores, hyphens; at most 100 characters.
+#   - id: "blog"
+#     # Site URL has no fixed default. Empty falls back to the first allowed_origins entry.
+#     # Full http(s) URL without credentials, query or fragment. The example is the blog root URL.
+#     site_url: "https://blog.example.com"
+#     # Display name. Default empty falls back to the domain. At most 120 characters.
+#     name: "我的博客"
+#     # At least one unique origin is required, without path/query/fragment and distinct from admin origins.
+#     allowed_origins: ["https://blog.example.com"]
+#     # Old site-management key variable name. Default empty disables this compatibility credential.
+#     # Example: BLOG_MANAGEMENT_KEY, at least 32 bytes; each site needs a different variable and key.
+#     # Never expose it in a browser or public integration code.
+#     management_key_env: ""
+#     comment:
+#       # Require email. Default true; values true / false.
+#       email_required: true
+#       # Require website. Default false; values true / false.
+#       website_required: false
+#       # Input placeholder, default below. At most 80 characters, no newline; empty uses the default.
+#       placeholder: "写下评论（仅支持纯文本）"
+#       # Default order: newest (default) or oldest.
+#       default_sort: "newest"
+#       # Comment character limit. Default 1000; values 1–10000; 0 selects the default.
+#       length_limit: 1000
+#       # Empty-state text, default below. At most 240 characters; \n for line breaks; empty uses the default.
+#       empty_message: "还没有评论\n成为第一个留下评论的人。"

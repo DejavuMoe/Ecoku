@@ -8,6 +8,8 @@
 
 ::: info npm 包尚未发布
 SDK 的包名为 `ecoku`，但目前还没有发布到 npm，`npm install ecoku` 无法使用。需要 ES 模块或 TypeScript 类型时，可以从源码仓库的 `packages/client` 目录自行构建（`pnpm build`），产物位于 `dist/`。
+
+仓库已配置随 GitHub release tag 发布 npm 包，SDK 版本与 tag 去掉 `v` 后的版本一致。首次发布成功后，可在网站项目中执行 `pnpm add --save-exact ecoku`，再使用 `import Ecoku from 'ecoku'`；VitePress 的自定义主题也使用这一入口。工作流配置完成不代表包已可安装，首次发布前仍使用下方的实例托管文件。
 :::
 
 在单页应用中，可以用一个函数按需加载 UMD 文件，保证只加载一次：

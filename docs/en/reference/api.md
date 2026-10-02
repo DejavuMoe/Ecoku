@@ -157,7 +157,7 @@ Other fields:
 | `bloggerProofEnabled` | Whether the site has a blogger passphrase set. |
 | `captcha` | The current CAPTCHA mode: `provider` is `off`, `turnstile`, or `cap`; `sitekey` is the public site key; for Cap there is also `instanceUrl`. |
 | `turnstileSitekey` | Kept for old clients. Has a value only in Turnstile mode. |
-| `smoji` | Whether sticker packs are enabled, and the manifest URL. |
+| `smoji` | `enabled` controls stickers and `manifestUrl` is the manifest URL. The next release adds optional `imageOrigin`; missing or empty means the manifest origin. |
 
 #### Read limits
 
@@ -292,7 +292,9 @@ Admin endpoints live under `/api/admin/`. When `admin.allowed_origins` below is 
 | `GET /api/admin/sites/:siteId` | A single site. |
 | `PUT /api/admin/sites/:siteId` | Update a site. The request body must include the `revision` you got when reading it; if it is missing, the response is `400`. If another session changed the site in the meantime, the response is `409`. |
 
-Site fields: `id`, `site_url`, `name`, `allowed_origins`, `default_sort`, `email_required`, `website_required`, `placeholder`, `comment_limit`, `empty_message`, `smoji_enabled`, `smoji_manifest_url`, `blogger_nickname`, `blogger_email`, `blogger_badge`, `blogger_passphrase` (write-only), `revision`. Responses use `blogger_passphrase_set` to show whether a passphrase is set, and also include the read-only `created_at` and `updated_at`. The site list is in the `data.data` array; a single site, and the result of creating or updating one, is in `data.site`.
+Site fields: `id`, `site_url`, `name`, `allowed_origins`, `default_sort`, `email_required`, `website_required`, `placeholder`, `comment_limit`, `empty_message`, `smoji_enabled`, `smoji_manifest_url`, `smoji_image_origin`, `blogger_nickname`, `blogger_email`, `blogger_badge`, `blogger_passphrase` (write-only), `revision`. Responses use `blogger_passphrase_set` to show whether a passphrase is set, and also include the read-only `created_at` and `updated_at`. The site list is in the `data.data` array; a single site, and the result of creating or updating one, is in `data.site`.
+
+`smoji_image_origin` (unreleased) is an optional trusted image origin, for example `https://s3-cdn.zsh.moe`. Empty means the manifest origin. Omitting it on update preserves the existing value; an empty string restores the default. Public `formConfig.smoji.imageOrigin` is returned only when configured. Loading, submission, rendering, and email use the same rule. See [Smoji hosting settings](../integration/smoji#hosting).
 
 Creating a site whose ID already exists, or whose `allowed_origins` duplicates `admin.allowed_origins`, returns `409`.
 

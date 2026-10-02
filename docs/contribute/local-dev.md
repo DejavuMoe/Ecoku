@@ -11,17 +11,11 @@ cp server/config.yaml.example server/config.yaml
 mkdir -p server/data
 ```
 
-本机构建产物、运行数据与一次性发布验证统一放在 Git 排除的根目录 `tmp/`，不要写入源码目录。
+一次性构建产物与验证文件放在 Git 排除的根目录 `tmp/`。本地数据库和持久密钥由服务按配置写入 `server/data/`，不要提交这些运行数据。
 
-本地服务使用 SQLite 文件与 `server/config.yaml`。管理后台始终启用，启动服务前在当前 shell 中导出管理员凭据，不要写入仓库。下面的登录密码是 `local-dev-password`：
+本地服务使用 SQLite 文件与 `server/config.yaml`。新数据库首次启动时会自动创建管理员 `admin`，在终端打印临时密码，并在 `server/data/ecoku-secrets.json` 保存持久密钥。用临时密码登录后台后必须改密；无需预先导出管理员凭据或通知加密密钥。
 
-```bash
-export ECOKU_ADMIN_USERNAME=admin
-export ECOKU_ADMIN_PASSWORD_HASH="$(printf '%s\n' 'local-dev-password' | (cd server && go run . hash-password))"
-export ECOKU_ADMIN_TOKEN_KEY="$(openssl rand -hex 32)"
-```
-
-在后台保存 SMTP 密码、Telegram Bot Token 或人机验证密钥时，还需要导出 `ECOKU_NOTIFICATION_ENCRYPTION_KEY`（可用 `openssl rand -base64 32` 生成）。
+已有开发数据库继续使用原管理员账号；如之前配置过旧环境变量，请先完成持久化迁移再移除，参见 [旧配置迁移](../self-hosting/upgrade#legacy-config)。
 
 ## 启动
 
@@ -34,7 +28,7 @@ pnpm docs:dev
 
 以上命令按需在不同终端运行。
 
-服务端固定监听 `http://127.0.0.1:12123`，数据库位于 `server/data/ecoku.bin`。源码运行只提供 API，评论区与管理后台使用各自的 Vite 开发服务器；Docker 镜像提供构建后的静态页面。
+本地通过 `http://127.0.0.1:12123` 访问 API，默认端口为 `12123`，数据库位于 `server/data/ecoku.bin`，持久密钥位于同目录的 `ecoku-secrets.json`。源码运行默认不提供浏览器静态资源，评论区与管理后台使用各自的 Vite 开发服务器；Docker 镜像提供构建后的静态页面。
 
 完整验证由 Woodpecker 执行；本地只运行与当前改动直接相关且 CI 未覆盖的检查。
 

@@ -43,6 +43,8 @@ services:
     init: true
     restart: unless-stopped
     container_name: ecoku
+    environment:
+      TZ: Asia/Shanghai
     ports:
       - "127.0.0.1:12123:12123"
     volumes:
@@ -72,16 +74,19 @@ services:
 
 ## 3. 建立 app/config.yaml {#config}
 
-```yaml
-notifications:
-  instance_public_url: "https://ecoku.example.com"
-```
+以下是完整的 `app/config.yaml` 範本，欄位用途、預設值、可選值與範例都寫在註解旁。將 `instance_public_url` 替換為 Ecoku 自己的 HTTPS 網址；已註解的舊版相容項無需啟用。
+
+<div class="config-template">
+
+<<< ../../../deploy/config.zh-hant.yaml.example{yaml}
+
+</div>
+
+讓容器中的非 root 使用者可以讀取設定：
 
 ```bash
 chmod 644 ~/Ecoku/app/config.yaml
 ```
-
-設定反向代理後，如需按訪客地址限流，再加入 `site.trusted_proxies`，見[反向代理](./reverse-proxy#trusted-proxies)。其他設定都有預設值。
 
 ## 4. 啟動
 
@@ -104,6 +109,8 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 ## 5. 首次登入
 
+開啟後台前，請先依[為 Ecoku 網域設定 HTTPS 反向代理](./reverse-proxy)完成 Caddy 或 Nginx 設定，並確認公開健康介面可存取。容器預設只綁定主機迴路連接埠，不能直接從外網開啟。
+
 開啟 `https://ecoku.example.com/admin/`，以 `admin` 和首次啟動日誌中的臨時密碼登入。接著必須設定正式密碼：
 
 - 可以保留 `admin`，也可以改用其他使用者名稱；
@@ -123,21 +130,16 @@ sudo docker compose up -d
 
 命令會列印新的臨時密碼，所有管理員工作階段都會失效。
 
-## 時區
+## 時區 {#timezone}
 
-新部署不需要 `ecoku.env`。如果要指定評論和通知的顯示時區，可在 Compose 服務中加入：
+上面的 Compose 已設定 `TZ: Asia/Shanghai`，評論和通知按此時區顯示時間。需要其他時區時，直接修改 `services.ecoku.environment.TZ`，例如 `Europe/Berlin`，然後執行 `sudo docker compose up -d` 重建容器。無需另建 `ecoku.env`。
 
-```yaml
-    environment:
-      TZ: Asia/Shanghai
-```
-
-既有實例可以保留舊的 `ecoku.env`。升級時其中的管理員憑據和金鑰會導入持久狀態，見[升級](./upgrade#legacy-config)。
+既有實例可以繼續使用原來的 `ecoku.env`。如需刪除舊管理員憑據和金鑰變數，請依[導入持久狀態、停服備份並移除舊變數](./upgrade#legacy-config)操作。如果時區仍寫在舊環境檔中，先把 `TZ` 移到 Compose，再刪除該檔案。
 
 ## 下一步
 
-1. [設定反向代理](./reverse-proxy) 讓 `https://ecoku.example.com` 可從公開網路存取；
-2. 在「站點」頁面建立第一個站點；
-3. [嵌入評論區](../integration/html)。
+1. 在後台[建立第一個站點](./admin#sites)，取得接入所需的站點 ID；
+2. 依 [HTML 接入步驟](../integration/html)將評論區嵌入部落格頁面；
+3. 依[備份與還原](./backup)備份設定、資料庫和持久金鑰。
 
 要匯入 Twikoo 歷史評論，先建立站點，再依[Twikoo 遷移](./twikoo)操作。

@@ -2,6 +2,8 @@
 
 本页说明 Ecoku 文档站点自身的构建与发布方式，供仓库维护者参考，不进入站点导航。
 
+文档部署仍由 Woodpecker 负责。新增的 `.github/workflows/ci.yml` 仅构建、检查并保存文档产物；GitHub Actions 的镜像、npm SDK 和 GitHub Release 发布见 [发布说明](../../packages/client/PUBLISH.md)。GitHub 工作流不连接文档服务器。
+
 ## 流程
 
 `.woodpecker/docs-deploy.yml` 在 `master` 分支 push 时运行，与完整测试流程互相独立：

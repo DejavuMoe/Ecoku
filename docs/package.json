@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vitepress dev",
-    "build": "vitepress build",
+    "build": "node .vitepress/inline-spacing.test.mjs && vitepress build",
     "preview": "vitepress preview"
   },
   "devDependencies": {

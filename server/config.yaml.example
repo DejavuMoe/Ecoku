@@ -1,5 +1,6 @@
 # 本地开发配置：复制为 server/config.yaml。字段说明见 docs/reference/configuration.md，
-# 管理员凭据只从环境变量读取，见 docs/contribute/local-dev.md。站点在管理后台创建。
+# 首次启动自动生成管理员和临时密码；本地开发步骤见 docs/contribute/local-dev.md。
+# 站点在管理后台创建；完整字段与兼容项见 deploy/config.yaml.example。
 
 notifications:
   instance_public_url: "http://127.0.0.1:12123"
