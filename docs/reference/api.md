@@ -278,8 +278,9 @@ Origin: https://blog.example.com
 | 方法与路径 | 说明 |
 | --- | --- |
 | `GET /api/admin/login-config` | 无需登录。返回登录页需要的人机验证配置（`captcha`、`turnstileSitekey`）。 |
-| `POST /api/admin/login` | 请求体 `{"username", "password", "captchaToken"}`。成功返回 `{"expires_at", "expires_in"}` 并设置 Cookie。受 `rate_limit.admin_login` 限流。 |
-| `GET /api/admin/session` | 返回当前会话的 `expires_at` 与剩余秒数 `expires_in`，不延长会话。 |
+| `POST /api/admin/login` | 请求体 `{"username", "password", "captchaToken"}`。成功返回 `{"expires_at", "expires_in"}` 并设置 Cookie；首次临时密码登录时额外返回 `requires_password_change: true`。受 `rate_limit.admin_login` 限流。 |
+| `GET /api/admin/session` | 返回当前会话的 `expires_at`、剩余秒数 `expires_in` 和是否需要首次改密的 `requires_password_change`，不延长会话。 |
+| `POST /api/admin/initial-setup` | 只接受首次临时密码会话。请求体为 `{"username", "password"}`，成功后撤销临时会话并设置普通管理员会话。 |
 | `POST /api/admin/logout` | 注销当前会话并清除 Cookie。返回 `503` 时表示注销没有成功。 |
 
 ### 站点

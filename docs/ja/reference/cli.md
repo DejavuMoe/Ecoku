@@ -31,6 +31,18 @@ ECOKU_ADMIN_PASSWORD_HASH='$2a$10$...'
 
 その後、コンテナを作り直して反映させます。
 
+## admin reset-password {#admin-reset-password}
+
+永続管理者アカウントの新しい仮パスワードを生成します。先に実行中のサービスを停止してください。
+
+```bash
+sudo docker compose down
+sudo docker compose run --rm --no-deps ecoku admin reset-password
+sudo docker compose up -d
+```
+
+コマンドは仮パスワードを表示し、すべての管理者セッションを無効にします。次回ログイン後にユーザー名と正式なパスワードを設定します。
+
 ## captcha status
 
 現在の CAPTCHA の設定を表示します。

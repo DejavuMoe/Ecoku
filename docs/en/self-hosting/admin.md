@@ -4,7 +4,7 @@ The admin console lives at `https://ecoku.example.com/admin/`. You use it to reg
 
 ## Sign in
 
-The username comes from `ECOKU_ADMIN_USERNAME` in `ecoku.env`, and the password is the one you entered when generating the password hash. If CAPTCHA is enabled, the sign-in page also shows the verification widget.
+A new instance prints a temporary password for the `admin` account in the first-start log. The first sign-in must set the permanent username and password. During migration, an existing instance may keep using the credentials in `ecoku.env`. If CAPTCHA is enabled, the sign-in page also shows the verification widget.
 
 Sign-in is rejected unless both of these hold:
 

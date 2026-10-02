@@ -54,14 +54,13 @@ sudo rmdir app/config.yaml
 
 資料庫中儲存過 SMTP、Telegram 或人機驗證的憑據，但 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 缺失或與儲存時不同。請從備份中找回原本的 `ecoku.env`，還原這把金鑰。金鑰無法找回時，只能從先前的備份還原整個實例。
 
-### 修改了 ecoku.env 但沒有生效
+### 修改設定後沒有生效
 
-`docker compose restart` 不會重新讀取 `env_file`。修改 `ecoku.env` 或 `app/config.yaml` 後，請用下面的指令重建容器：
+新部署不使用 `ecoku.env`。修改 `app/config.yaml` 或 Compose 後，請用下面的指令重建容器：
 
 ```bash
 cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 ```
-
 ## 評論區
 
 ### 頁面上沒有出現評論區
@@ -105,19 +104,15 @@ Ecoku 放在反向代理後面，但沒有設定 `trusted_proxies`，所有訪�
 
 ### 忘記了管理員密碼
 
-重新產生密碼雜湊，取代 `ecoku.env` 中 `ECOKU_ADMIN_PASSWORD_HASH` 的值（保留兩側的單引號，否則雜湊中的 `$` 會被 Compose 展開），再重建容器：
+新部署使用 `data/` 中的持久帳戶。停止服務後產生新的臨時密碼：
 
 ```bash
-cd ~/Ecoku
-read -rsp '新密码: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.8 hash-password
-unset P
+sudo docker compose down
+sudo docker compose run --rm --no-deps ecoku admin reset-password
+sudo docker compose up -d
 ```
 
-更換後所有已登入的工作階段都會失效。
-
-## 通知與人機驗證
-
+命令會列印臨時密碼並撤銷所有管理員工作階段。
 ### 測試郵件寄送失敗
 
 見[通知](./notifications#troubleshooting)。

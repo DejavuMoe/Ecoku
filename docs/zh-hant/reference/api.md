@@ -278,8 +278,9 @@ Origin: https://blog.example.com
 | 方法與路徑 | 說明 |
 | --- | --- |
 | `GET /api/admin/login-config` | 不需登入。回傳登入頁需要的人機驗證設定（`captcha`、`turnstileSitekey`）。 |
-| `POST /api/admin/login` | 請求本文為 `{"username", "password", "captchaToken"}`。成功時回傳 `{"expires_at", "expires_in"}` 並設定 Cookie。受 `rate_limit.admin_login` 速率限制。 |
-| `GET /api/admin/session` | 回傳目前工作階段的 `expires_at` 與剩餘秒數 `expires_in`，不延長工作階段。 |
+| `POST /api/admin/login` | 請求本文為 `{"username", "password", "captchaToken"}`。成功時回傳 `{"expires_at", "expires_in"}` 並設定 Cookie；首次臨時密碼登入時另外回傳 `requires_password_change: true`。受 `rate_limit.admin_login` 速率限制。 |
+| `GET /api/admin/session` | 回傳目前工作階段的 `expires_at`、剩餘秒數 `expires_in` 和 `requires_password_change`，不延長工作階段。 |
+| `POST /api/admin/initial-setup` | 只接受首次臨時密碼工作階段。請求本文為 `{"username", "password"}`；成功後撤銷臨時工作階段並設定普通管理員工作階段。 |
 | `POST /api/admin/logout` | 登出目前的工作階段並清除 Cookie。回傳 `503` 時表示登出沒有成功。 |
 
 ### 站點

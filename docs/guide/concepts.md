@@ -99,4 +99,4 @@ Ecoku 不保存访客的 IP、User-Agent 或地理位置，日志里也不记录
 
 ## 时间与时区
 
-评论时间以 `YYYY-MM-DD HH:mm` 格式显示，时区由容器的 `TZ` 环境变量决定（在 `ecoku.env` 中设置）。鼠标悬停在时间上会显示时区名和偏移，如 `Asia/Shanghai UTC+8`。
+评论时间以 `YYYY-MM-DD HH:mm` 格式显示，时区由容器的可选 `TZ` 环境变量决定（新部署可在 Compose 的 `environment` 中设置）。鼠标悬停在时间上会显示时区名和偏移，如 `Asia/Shanghai UTC+8`。

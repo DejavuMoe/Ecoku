@@ -278,8 +278,9 @@ Origin: https://blog.example.com
 | メソッドとパス | 説明 |
 | --- | --- |
 | `GET /api/admin/login-config` | ログイン不要。ログインページに必要な CAPTCHA の設定（`captcha`、`turnstileSitekey`）を返します。 |
-| `POST /api/admin/login` | リクエストボディは `{"username", "password", "captchaToken"}`。成功すると `{"expires_at", "expires_in"}` を返し、Cookie を設定します。`rate_limit.admin_login` でレート制限されます。 |
-| `GET /api/admin/session` | 現在のセッションの `expires_at` と残り秒数 `expires_in` を返します。セッションは延長しません。 |
+| `POST /api/admin/login` | リクエストボディは `{"username", "password", "captchaToken"}`。成功すると `{"expires_at", "expires_in"}` を返して Cookie を設定します。仮パスワードでの初回ログインでは `requires_password_change: true` も返します。`rate_limit.admin_login` でレート制限されます。 |
+| `GET /api/admin/session` | 現在の `expires_at`、残り秒数 `expires_in`、`requires_password_change` を返します。セッションは延長しません。 |
+| `POST /api/admin/initial-setup` | 初回の仮パスワードセッションだけが利用できます。本文は `{"username", "password"}` で、成功すると仮セッションを無効にして通常の管理者セッションを設定します。 |
 | `POST /api/admin/logout` | 現在のセッションを無効にし、Cookie を消去します。`503` が返った場合は、ログアウトに成功していません。 |
 
 ### サイト

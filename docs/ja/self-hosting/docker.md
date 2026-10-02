@@ -1,46 +1,40 @@
 # Docker デプロイ
 
-::: info 未リリースのデプロイ変更
-このページは次のバージョンに対応します。公開済みの v0.2.8 イメージには [v0.2.8 のデプロイ手順](https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.8/docs/ja/self-hosting/docker.md)を使ってください。既存のインスタンスを更新する前に[設定の移行](./upgrade#unreleased-config)を確認してください。
+::: warning 未リリースのデプロイ手順
+このページは次のバージョンに対応します。v0.2.8 を更新する前に[アップグレードと旧設定の移行](./upgrade#unreleased-config)を確認してください。既存のインスタンスは古い `ecoku.env` と Compose をそのまま使えます。新しいログインを確認してから古い環境変数を削除します。
 :::
 
-このページでは、何も入っていない Linux ホストから始めて、Docker Compose で Ecoku インスタンスを 1 つ起動します。用意するファイルは `compose.yaml`、`app/config.yaml`、`ecoku.env` の 3 つだけです。完了した時点では、サービスはこのマシンの `127.0.0.1:12123` からしかアクセスできません。インターネット向けの HTTPS は次の[リバースプロキシ](./reverse-proxy)で設定します。
+新規デプロイに必要なのは `compose.yaml`、`app/config.yaml`、`data/` だけです。Ecoku は初回起動時に管理者パスワード、セッション署名キー、通知暗号化マスターキーを自動生成します。
 
 ## 始める前に
 
-必要なもの：
-
-- Docker Engine と Compose v2（`docker compose` コマンド）が入った Linux ホストと、`sudo` 権限。
-- Ecoku 専用のドメイン（例：`ecoku.example.com`）。管理画面はこのドメインでアクセスし、ブログはこのドメインからコメント欄のスクリプトを読み込みます。ブログと同じドメインは使えません。理由は[手順 3](#config) を参照してください。
-- HTTPS を終端するための、このホスト上で動く Caddy または Nginx。
-
-このページに出てくる `ecoku.example.com` と `blog.example.com` はプレースホルダーです。自分のドメインに置き換えてください。イメージは現在のリリースバージョン `git.via.moe/dejavu/ecoku:v0.2.8` を使います。
-
-デプロイ後のディレクトリ構成は次のとおりです。
+Docker Engine と Compose v2 が入った Linux ホスト、`ecoku.example.com` のような専用ドメイン、公開 HTTPS を終端するリバースプロキシを用意します。`instance_public_url` は自分で設定してください。Ecoku は信頼できない Host や転送ヘッダーから管理画面のオリジンを推測しません。
 
 ```text
 ~/Ecoku/
-├── compose.yaml        # コンテナ定義
-├── ecoku.env           # 管理者の認証情報、シークレット、タイムゾーン（権限 600）
-├── app/
-│   ├── config.yaml     # インスタンス設定（読み取り専用でマウント）
-│   └── logs/           # ログファイルのコピー
+├── compose.yaml
+├── app/config.yaml
 └── data/
-    └── ecoku.sqlite3   # すべてのデータ：サイト、コメント、設定
+    ├── ecoku.sqlite3
+    ├── ecoku.sqlite3-wal
+    ├── ecoku.sqlite3-shm
+    └── ecoku-secrets.json
 ```
 
-## 1. ディレクトリを用意する
+`data/` のファイルは Ecoku が作成します。データベースと永続キーを一緒にバックアップしてください。
 
-コンテナは UID/GID `10001:10001` で動作し、ルートファイルシステムは読み取り専用です。書き込めるのはマウントした `data` です。デプロイ先と `app/` は自分のアカウントで作成し、`data` の所有者をコンテナのユーザーにします。
+## 1. ディレクトリを準備する
+
+コンテナは UID/GID `10001:10001` で動作し、書き込めるのはマウントした `data` だけです。
 
 ```bash
-mkdir -p ~/Ecoku/app && cd ~/Ecoku
-sudo install -d -o 10001 -g 10001 -m 750 data
+mkdir -p ~/Ecoku/app ~/Ecoku/data
+cd ~/Ecoku
+sudo chown -R 10001:10001 data
+sudo chmod 750 data
 ```
 
 ## 2. compose.yaml を作成する
-
-`~/Ecoku` に次の内容で `compose.yaml` を作成します。
 
 ```yaml
 services:
@@ -49,8 +43,6 @@ services:
     init: true
     restart: unless-stopped
     container_name: ecoku
-    env_file:
-      - ./ecoku.env
     ports:
       - "127.0.0.1:12123:12123"
     volumes:
@@ -76,109 +68,74 @@ services:
     stop_grace_period: 30s
 ```
 
-イメージ内のポート、ディレクトリ、データベースパスは固定され、上のマウントに対応します。ホスト側の場所を変える場合はコロンの前だけを変えます。例：`"127.0.0.1:8080:12123"`、`/srv/ecoku-data:/data`。ログは標準出力に書き込み、`docker compose logs` で確認します。
-
-次の 2 か所は変更しないでください。
-
-- **ポートは `127.0.0.1` にだけバインドします。**`12123:12123` と書くと、Docker がすべてのネットワークインターフェースでポートを開き、外部からリバースプロキシを経由せずに直接アクセスできてしまいます。レート制限も効かなくなります。
-- **イメージには正確なバージョン番号を書きます。**`latest` は使わないでください。アップグレードするときはこの行を変更し、ロールバックするときは旧バージョン番号に戻します。詳しくは[アップグレード](./upgrade)を参照してください。
-
-そのほかのオプションはコンテナの権限を絞るためのものです。`read_only` と `tmpfs` により、コンテナが書き込めるのは `/tmp`（16 MB）とマウントしたディレクトリだけになります。`cap_drop: ALL` と `no-new-privileges` はすべての Linux capability を取り除きます。`healthcheck` は 30 秒ごとにコンテナ内の `/api/health` にリクエストします。
+コンテナ内のポートは `12123` 固定です。ホスト側を変える場合はコロンの前だけを変更します。例：`"127.0.0.1:8080:12123"`。ログは標準出力に出力し、`docker compose logs` で確認します。保存とローテーションは Docker が管理します。
 
 ## 3. app/config.yaml を作成する {#config}
-
-`app/config.yaml` を作成します。書く必要があるのは Ecoku の公開 URL だけです。
 
 ```yaml
 notifications:
   instance_public_url: "https://ecoku.example.com"
 ```
 
-続いて権限を設定します。
-
 ```bash
 chmod 644 ~/Ecoku/app/config.yaml
 ```
 
-`instance_public_url` には 2 つの役割があります。
+リバースプロキシ設定後、訪問者のアドレスでレート制限する場合は `site.trusted_proxies` を追加します。[リバースプロキシ](./reverse-proxy#trusted-proxies)を参照してください。それ以外はデフォルトで動作します。
 
-- 管理画面は、このアドレス（スキーム + ドメイン + 任意のポート）から送られたリクエストだけを受け付けます。つまり、管理画面を開いたときにブラウザのアドレスバーに表示されるオリジンです。これは**どのサイトの許可オリジンとも重複してはいけません**。管理画面でサイトを保存するときも、これと同じオリジンは拒否されます。Ecoku に専用ドメインが必要なのはこのためです。
-- メールまたは Telegram の通知を有効にする前に必ず設定してください。設定していないと、管理画面で通知設定を保存するときに失敗します。
-
-リバースプロキシを設定した後は、ここに `site.trusted_proxies` も追加します。[リバースプロキシ](./reverse-proxy#trusted-proxies)を参照してください。レート制限の回数などほかのフィールドにはデフォルト値があるので、必要になったら[設定リファレンス](../reference/configuration)に従って追加します。フィールド名を間違えると起動に失敗します。
-
-`config.yaml` にはパスワードやシークレットが含まれないので、自分のアカウントの所有のまま権限 `644` にしておけば十分です。コンテナはこれを読み取り専用でマウントし、あとで変更するときも `sudo` は不要です。
-
-## 4. ecoku.env を作成する {#env}
-
-`ecoku.env` を次の形式で作成します。bcrypt ハッシュに含まれる `$` が Compose に変数として展開されないよう、各値はシングルクォートで囲みます。
-
-```ini
-TZ='Asia/Shanghai'
-ECOKU_ADMIN_USERNAME='admin'
-ECOKU_ADMIN_PASSWORD_HASH='$2a$10$...'
-ECOKU_ADMIN_TOKEN_KEY='...'
-ECOKU_NOTIFICATION_ENCRYPTION_KEY='...'
-```
-
-続いて、自分だけが読み書きできるように権限を設定します。
-
-```bash
-chmod 600 ~/Ecoku/ecoku.env
-```
-
-`TZ` はコメントと通知の表示タイムゾーン、`ECOKU_ADMIN_USERNAME` はログイン名です。残りの 3 項目は下のコマンドで生成します。各変数の条件は[設定リファレンス](../reference/configuration#env)を参照してください。
-
-パスワードハッシュを生成します。入力は表示されません。出力された `$2a$10$...` の全体を `ECOKU_ADMIN_PASSWORD_HASH` に書きます。
-
-```bash
-read -rsp '管理者パスワード: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.8 hash-password
-unset P
-```
-
-2 つのキーを生成します。それぞれ 1 回実行し、出力を対応する変数に書きます。
-
-```bash
-openssl rand -hex 32      # ECOKU_ADMIN_TOKEN_KEY
-openssl rand -base64 32   # ECOKU_NOTIFICATION_ENCRYPTION_KEY
-```
-
-::: danger マスターキーはデータベースと一緒にバックアップしてください
-管理画面で SMTP、Telegram、CAPTCHA の認証情報を保存した後は、`ECOKU_NOTIFICATION_ENCRYPTION_KEY` がそれらを復号する唯一の鍵になります。キーを失ったり変更したりすると、Ecoku は起動時に復号できず、実行を拒否します。[バックアップ](./backup)では、`ecoku.env` を `data/` と同じアーカイブに入れる必要があります。
-:::
-
-## 5. 起動して確認する
+## 4. 起動する
 
 ```bash
 cd ~/Ecoku
-sudo docker compose config --quiet   # 構文を確認します。何も出力されなければ正常です
+sudo docker compose config --quiet
 sudo docker compose pull
 sudo docker compose up -d
 sudo docker compose ps
 sudo docker compose logs --tail=100 ecoku
 ```
 
-初回起動時、Ecoku は `data/ecoku.sqlite3` にデータベースを作成し、最新のスキーマまで初期化します。ログに `Server starting on :12123` が出れば、サービスは待ち受けを開始しています。
-
-ホスト上でヘルスチェック API を確認します。
+初回起動時に SQLite を初期化し、`admin` を作成し、一度だけ使えるランダムな仮パスワードをログに出力します。セッション署名キーと通知暗号化マスターキーは `data/ecoku-secrets.json` に保存します。再起動しても仮パスワードやキーは変わりません。Docker ログを読める人は仮パスワードを見られるため、ログイン後に変更してください。
 
 ```bash
 curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 ```
 
-正常なら次のように返ります。
+## 5. 初回ログイン
 
-```json
-{"code":200,"message":"Success","data":{"status":"healthy","timestamp":1790000000}}
+`https://ecoku.example.com/admin/` を開き、ユーザー名 `admin` と初回ログの仮パスワードでログインします。その後、必ず正式なパスワードを設定します。
+
+- `admin` を維持するか、別のユーザー名に変更できます。
+- 12 文字以上、UTF-8 で 72 バイト以下にします。
+- 仮パスワードは再利用できません。
+- 設定が終わるまでサイト、コメント、通知、セキュリティ画面には進めません。
+
+保存すると仮セッションを無効にし、既存の「站点」（サイト）画面を「新增站点」（サイト追加）状態で開きます。
+
+仮パスワードを失った場合はサービスを停止して本機でリセットします。
+
+```bash
+sudo docker compose down
+sudo docker compose run --rm --no-deps ecoku admin reset-password
+sudo docker compose up -d
 ```
 
-ヘルスチェック API が示すのは、プロセスがリクエストに応答していることだけです。コンテナが再起動を繰り返す場合は、まず `docker compose logs` を確認してください。設定の誤り、空の環境変数、ディレクトリ権限の誤りは、いずれもログに原因が書かれます。よくあるケースは[よくある質問](./faq)を参照してください。
+新しい仮パスワードが表示され、すべての管理者セッションが無効になります。
 
-## 次のステップ
+## タイムゾーン
 
-1. [リバースプロキシを設定](./reverse-proxy)し、インターネットから `https://ecoku.example.com` にアクセスできるようにします。
-2. `https://ecoku.example.com/admin/` を開いて[管理画面にログイン](./admin)し、最初のサイトを登録します。
-3. コメント欄を[ブログのページに埋め込み](../integration/html)ます。
+新規デプロイでは `ecoku.env` は不要です。コメントと通知の表示タイムゾーンを指定する場合は Compose サービスに追加します。
 
-Twikoo から過去のコメントを移行する場合は、手順 2 でサイトを登録した後、誰かが新しいコメントを投稿する前に済ませてください。[Twikoo からの移行](./twikoo)を参照してください。
+```yaml
+    environment:
+      TZ: Asia/Shanghai
+```
+
+既存インスタンスは古い `ecoku.env` を使い続けられます。アップグレード時に管理者認証情報とキーを永続状態へ取り込みます。[アップグレード](./upgrade#unreleased-config)を参照してください。
+
+## 次の手順
+
+1. [リバースプロキシを設定](./reverse-proxy)して `https://ecoku.example.com` を公開する。
+2. 「站点」（サイト）で最初のサイトを作成する。
+3. [コメントクライアントを埋め込む](../integration/html)。
+
+Twikoo の履歴を移行する場合は、先にサイトを作成してから[Twikoo 移行](./twikoo)を実行してください。

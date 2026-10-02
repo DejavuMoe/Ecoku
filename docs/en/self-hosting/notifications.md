@@ -12,7 +12,7 @@ After changing a channel, click 「保存」 (save) in the bottom save bar. Emai
 ## Before you enable notifications
 
 - `notifications.instance_public_url` is set in `app/config.yaml`. Otherwise no channel can be enabled.
-- `ECOKU_NOTIFICATION_ENCRYPTION_KEY` is set in `ecoku.env`. The SMTP password and bot token can be saved only after they are encrypted with it.
+- A new instance creates the notification encryption master key in `data/ecoku-secrets.json`. During migration, an old instance may still read `ECOKU_NOTIFICATION_ENCRYPTION_KEY` from `ecoku.env`; remove it only after a stopped backup confirms the migration.
 - The server can reach an external SMTP port (usually 465 or 587) or `api.telegram.org`. Some cloud providers block outbound SMTP ports by default.
 
 ## When notifications are sent
@@ -105,6 +105,6 @@ A sent Telegram message cannot be rewritten if the notification was sent more th
 
 **Enabling a channel fails to save with "请求参数不符合要求，请检查后重试。" (the request parameters are invalid; check and try again)**: if the form is filled in correctly, the instance public URL is most likely not set. Set `notifications.instance_public_url` in `app/config.yaml` and recreate the container.
 
-**Saving shows "服务端暂时无法完成操作，数据没有被修改。" (the server cannot complete the operation right now; no data was changed)**: most likely the encryption master key is not configured. Set `ECOKU_NOTIFICATION_ENCRYPTION_KEY` in `ecoku.env` and recreate the container. See [Docker deployment](./docker#env).
+**Saving shows "服务端暂时无法完成操作，数据没有被修改。" (the server cannot complete the operation right now; no data was changed)**: check that `data/ecoku-secrets.json` exists and is readable by the container. During migration, restore the original `ECOKU_NOTIFICATION_ENCRYPTION_KEY` from backup and remove it only after the persistent key has been verified.
 
 **The test email times out**: usually the server's outbound SMTP port is blocked. First confirm connectivity on the server with `nc -vz smtp.example.com 465`, then check that the port matches the encryption mode (465 goes with SSL/TLS, 587 with STARTTLS).

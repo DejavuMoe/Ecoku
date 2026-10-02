@@ -4,8 +4,6 @@ services:
     init: true
     restart: unless-stopped
     container_name: ecoku
-    env_file:
-      - ./ecoku.env
     ports:
       - "127.0.0.1:12123:12123"
     volumes:

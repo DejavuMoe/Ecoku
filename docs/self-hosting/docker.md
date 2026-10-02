@@ -1,45 +1,49 @@
 # Docker 部署
 
-::: info 尚未发布的部署变更
-本页对应下一版本。已发布的 v0.2.8 镜像请使用 [v0.2.8 部署说明](https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.8/docs/self-hosting/docker.md)。现有实例升级前请阅读[配置迁移](./upgrade#unreleased-config)。
+::: warning 未发布的部署流程
+本页描述下一版本的部署方式。v0.2.8 用户升级前请先阅读[升级与旧配置迁移](./upgrade#unreleased-config)。升级后可以继续保留旧的 `ecoku.env` 和旧 Compose；迁移完成并确认服务正常后，再删除旧环境变量。
 :::
 
-本页从一台空的 Linux 主机开始，用 Docker Compose 跑起一个 Ecoku 实例。你只需要准备三个文件：`compose.yaml`、`app/config.yaml` 和 `ecoku.env`。完成后，服务只在本机 `127.0.0.1:12123` 上可访问；公网 HTTPS 在下一步[反向代理](./reverse-proxy)中配置。
+本页从一台空的 Linux 主机开始，用 Docker Compose 跑起 Ecoku。新部署只需要三个部分：`compose.yaml`、`app/config.yaml` 和 `data/`。管理员密码、会话签名密钥和通知加密主密钥都在首次启动时自动生成，不需要手工写进配置文件。
 
 ## 开始之前
 
 你需要：
 
-- 一台装有 Docker Engine 与 Compose v2（`docker compose` 命令）的 Linux 主机，以及 `sudo` 权限。
-- 一个专门给 Ecoku 用的域名，例如 `ecoku.example.com`。管理后台通过它访问，博客通过它加载评论区脚本。它不能与博客域名相同，原因见[第 3 步](#config)。
-- 在这台主机上运行的 Caddy 或 Nginx，用来终止 HTTPS。
+- 一台装有 Docker Engine 与 Compose v2 的 Linux 主机，以及 `sudo` 权限；
+- 一个专门给 Ecoku 使用的域名，例如 `ecoku.example.com`；
+- 一个反向代理，用来终止公网 HTTPS。
 
-本页中的 `ecoku.example.com`、`blog.example.com` 都是占位，请替换成自己的域名。镜像使用当前发布版本 `git.via.moe/dejavu/ecoku:v0.2.8`。
+`instance_public_url` 必须手工填写。Ecoku 不会从不可信的 Host 或转发头推断管理后台来源。
 
-部署完成后，目录结构如下：
+部署目录如下：
 
 ```text
 ~/Ecoku/
-├── compose.yaml        # 容器定义
-├── ecoku.env           # 管理员凭据、密钥、时区（权限 600）
+├── compose.yaml
 ├── app/
-│   └── config.yaml     # 实例配置（只读挂载）
+│   └── config.yaml
 └── data/
-    └── ecoku.sqlite3   # 全部数据：站点、评论、设置
+    ├── ecoku.sqlite3
+    ├── ecoku.sqlite3-wal
+    ├── ecoku.sqlite3-shm
+    └── ecoku-secrets.json
 ```
+
+`data/` 中的文件由 Ecoku 自动创建。数据库和持久密钥必须一起备份。
 
 ## 1. 准备目录
 
-容器以 UID/GID `10001:10001` 运行，根文件系统只读，只有挂载进去的 `data` 可写。部署目录和 `app/` 用你自己的账号创建，之后编辑配置不需要 `sudo`；`data` 交给容器用户：
+容器以 UID/GID `10001:10001` 运行，只有挂载的 `data` 可写：
 
 ```bash
-mkdir -p ~/Ecoku/app && cd ~/Ecoku
-sudo install -d -o 10001 -g 10001 -m 750 data
+mkdir -p ~/Ecoku/app ~/Ecoku/data
+cd ~/Ecoku
+sudo chown -R 10001:10001 data
+sudo chmod 750 data
 ```
 
 ## 2. 创建 compose.yaml
-
-在 `~/Ecoku` 下新建 `compose.yaml`，内容如下：
 
 ```yaml
 services:
@@ -48,8 +52,6 @@ services:
     init: true
     restart: unless-stopped
     container_name: ecoku
-    env_file:
-      - ./ecoku.env
     ports:
       - "127.0.0.1:12123:12123"
     volumes:
@@ -75,109 +77,83 @@ services:
     stop_grace_period: 30s
 ```
 
-容器内的端口、目录和数据库路径都固定在镜像里，和上面的挂载一一对应。要换宿主机上的位置，只改冒号前面的部分，例如把端口改成 `"127.0.0.1:8080:12123"`，或把数据放到 `/srv/ecoku-data:/data`。日志写到标准输出，用 `docker compose logs` 查看。
-
-有两处请保持原样：
-
-- **端口只绑定 `127.0.0.1`**。写成 `12123:12123` 会让 Docker 在所有网卡上开放端口，外部可以绕过反向代理直接访问，限流也会失效。
-- **镜像写精确版本号**。不要用 `latest`。升级时改这一行，回滚时改回旧版本号，详见[升级](./upgrade)。
-
-其余选项用于收紧容器权限：`read_only` 与 `tmpfs` 让容器只能写 `/tmp`（16 MB）和挂载目录；`cap_drop: ALL` 与 `no-new-privileges` 去掉所有 Linux capability；`healthcheck` 每 30 秒请求一次容器内的 `/api/health`。
+端口只绑定 `127.0.0.1`。如果需要更换宿主机端口，只改冒号前面的部分，例如 `"127.0.0.1:8080:12123"`；容器内端口始终是 `12123`。日志写到标准输出，用 `docker compose logs` 查看，Docker 负责日志保留和轮转。
 
 ## 3. 创建 app/config.yaml {#config}
-
-新建 `app/config.yaml`，只需要写 Ecoku 的公网地址：
 
 ```yaml
 notifications:
   instance_public_url: "https://ecoku.example.com"
 ```
 
-然后设置权限：
-
 ```bash
 chmod 644 ~/Ecoku/app/config.yaml
 ```
 
-`instance_public_url` 有两个用途：
+配置反向代理后，如果需要按真实访客地址限流，再加上 `site.trusted_proxies`，见[反向代理](./reverse-proxy#trusted-proxies)。其他配置都有默认值。
 
-- 管理后台只接受从这个地址（协议 + 域名 + 可选端口）发来的请求，也就是你打开后台时浏览器地址栏里的来源。它**不能与任何站点的允许来源重复**，后台保存站点时会拒绝与它相同的来源。这就是 Ecoku 需要一个独立域名的原因。
-- 启用邮件或 Telegram 通知前必须填写，否则后台保存通知设置会失败。
-
-配置反向代理之后，还需要在这里加上 `site.trusted_proxies`，见[反向代理](./reverse-proxy#trusted-proxies)。限流次数等其他字段都有默认值，需要时再按[配置参考](../reference/configuration)添加。写错字段名会导致启动失败。
-
-`config.yaml` 不含密码或密钥，保持属于你自己、权限 `644` 即可：容器以只读方式挂载它，以后修改也不需要 `sudo`。
-
-## 4. 创建 ecoku.env {#env}
-
-新建 `ecoku.env`，按下面的格式填写，每个值都用单引号包住，避免 bcrypt 哈希里的 `$` 被 Compose 当成变量展开：
-
-```ini
-TZ='Asia/Shanghai'
-ECOKU_ADMIN_USERNAME='admin'
-ECOKU_ADMIN_PASSWORD_HASH='$2a$10$...'
-ECOKU_ADMIN_TOKEN_KEY='...'
-ECOKU_NOTIFICATION_ENCRYPTION_KEY='...'
-```
-
-然后设置权限，只允许自己读写：
-
-```bash
-chmod 600 ~/Ecoku/ecoku.env
-```
-
-`TZ` 是评论和通知的显示时区，`ECOKU_ADMIN_USERNAME` 是后台登录用户名，其余三项用下面的命令生成。各变量的要求见[配置参考](../reference/configuration#env)。
-
-生成密码哈希（输入时不回显，把输出的整串 `$2a$10$...` 填进 `ECOKU_ADMIN_PASSWORD_HASH`）：
-
-```bash
-read -rsp '管理员密码: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i git.via.moe/dejavu/ecoku:v0.2.8 hash-password
-unset P
-```
-
-生成两把密钥（各运行一次，分别填入）：
-
-```bash
-openssl rand -hex 32      # ECOKU_ADMIN_TOKEN_KEY
-openssl rand -base64 32   # ECOKU_NOTIFICATION_ENCRYPTION_KEY
-```
-
-::: danger 请把主密钥和数据库一起备份
-在后台保存过 SMTP、Telegram 或人机验证凭据之后，`ECOKU_NOTIFICATION_ENCRYPTION_KEY` 就是解开它们的唯一钥匙。密钥丢失或被改动，Ecoku 会在启动时因为无法解密而拒绝运行。[备份](./backup)时 `ecoku.env` 必须与 `data/` 放在同一份归档里。
-:::
-
-## 5. 启动并检查
+## 4. 启动
 
 ```bash
 cd ~/Ecoku
-sudo docker compose config --quiet   # 检查语法，没有输出即正常
+sudo docker compose config --quiet
 sudo docker compose pull
 sudo docker compose up -d
 sudo docker compose ps
 sudo docker compose logs --tail=100 ecoku
 ```
 
-首次启动时，Ecoku 会在 `data/ecoku.sqlite3` 创建数据库并初始化到最新 schema。日志里出现 `Server starting on :12123` 即表示服务已监听。
+首次启动时，Ecoku 会：
 
-在宿主机上确认健康接口：
+1. 初始化 SQLite 数据库并执行迁移；
+2. 生成管理员 `admin`；
+3. 生成一次性随机临时密码并打印到日志；
+4. 在 `data/ecoku-secrets.json` 保存会话签名密钥和通知加密主密钥。
+
+临时密码只在首次创建账户时生成。重启不会生成新密码，也不会再次覆盖持久密钥。临时密码会出现在 Docker 日志中，能读取 Docker 日志的操作者也能看到它；登录后改密即可使它失效。
+
+确认健康接口：
 
 ```bash
 curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 ```
 
-正常时返回：
+## 5. 首次登录
 
-```json
-{"code":200,"message":"Success","data":{"status":"healthy","timestamp":1790000000}}
+打开 `https://ecoku.example.com/admin/`，用户名填写 `admin`，密码填写首次启动日志中的临时密码。登录后必须完成首次设置：
+
+- 用户名可以保留 `admin`，也可以改成自己的用户名；
+- 新密码至少 12 个字符，最多 72 个 UTF-8 字节；
+- 新密码不能继续使用临时密码；
+- 完成前不能进入站点、评论、通知或安全页面。
+
+保存成功后，Ecoku 会撤销临时会话并进入「站点」页面，直接打开「新增站点」。
+
+忘记临时密码时，先停服，再运行本机重置命令：
+
+```bash
+sudo docker compose down
+sudo docker compose run --rm --no-deps ecoku admin reset-password
+sudo docker compose up -d
 ```
 
-健康接口只说明进程在响应请求。如果容器反复重启，先看 `docker compose logs`：配置错误、环境变量为空、目录权限不对都会在日志里写明原因，常见情况见[常见问题](./faq)。
+命令会打印新的临时密码；已有管理员会话全部失效。
+
+## 时区
+
+新部署不需要 `ecoku.env`。如果需要指定评论和通知的显示时区，可在 Compose 的服务中增加：
+
+```yaml
+    environment:
+      TZ: Asia/Shanghai
+```
+
+旧实例可以继续使用原来的 `ecoku.env`。其中的管理员凭据和密钥会在升级时导入持久状态，迁移步骤见[升级](./upgrade#unreleased-config)。
 
 ## 下一步
 
-1. [配置反向代理](./reverse-proxy)，让 `https://ecoku.example.com` 可以从公网访问。
-2. 打开 `https://ecoku.example.com/admin/` [登录后台](./admin)，注册第一个站点。
+1. [配置反向代理](./reverse-proxy)，让 `https://ecoku.example.com` 可以从公网访问；
+2. 在「站点」页面创建第一个站点；
 3. 把评论区[嵌入博客页面](../integration/html)。
 
-如果要从 Twikoo 迁移历史评论，请在第 2 步注册站点之后、有人发表新评论之前完成，见[从 Twikoo 迁移](./twikoo)。
+如果要迁移 Twikoo 历史评论，请先创建站点，再按[从 Twikoo 迁移](./twikoo)操作。

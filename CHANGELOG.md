@@ -7,14 +7,10 @@
 
 ### 变更
 
-- 管理后台始终启用，会话固定为 8 小时；删除 `admin.enabled`、`admin.token_ttl_minutes`。
-- 删除 `admin.username_env`、`admin.password_hash_env`、`admin.token_key_env`、`notifications.encryption_key_env`：管理员凭据与加密主密钥固定读取 `ECOKU_ADMIN_USERNAME`、`ECOKU_ADMIN_PASSWORD_HASH`、`ECOKU_ADMIN_TOKEN_KEY`、`ECOKU_NOTIFICATION_ENCRYPTION_KEY`。
-- 删除 `site.port`、`site.log_path`、`client.static_dir`、`admin.static_dir`、`database.sqlite.path`。端口固定为 12123；镜像固定提供 `/client/` 与 `/admin/`，数据库固定在 `/data/ecoku.sqlite3`。日志只写标准输出，移除文件轮转依赖与 Compose 的 `./app/logs` 挂载。
-- 删除 YAML `sites` 预置与 `management_key_env`，新实例在管理后台创建站点；已有站点仍保存在 SQLite 中。取消 `EcokuSite` 管理密钥认证，管理 API 只接受管理员会话。
-- 删除旧配置兼容层，以上字段即使填写旧默认值也会按未知字段拒绝启动；现有实例需先按升级页迁移配置。schema 仍为 v9，已有评论、站点和通知凭据不变。
-- `captcha`、`import-twikoo` 命令不再检查管理员凭据，服务启动时照常检查。
-- 源码运行只提供 API，数据库固定在 `./data/ecoku.bin`；前端页面使用 Vite 开发服务器。
-
+- 新实例不再要求填写管理员密码哈希、会话签名密钥或通知加密主密钥。首次启动自动创建 `admin`、随机临时密码和 `data/ecoku-secrets.json`，首次登录必须设置正式用户名和密码。
+- 增加 schema v10 持久管理员账户表、首次改密会话和本机 `admin reset-password` 命令。改密成功后临时会话失效，并直接进入后台的「新增站点」状态。
+- v0.2.8 及更早实例继续读取旧的管理员环境变量、通知主密钥、数据库路径、文件日志路径、YAML `sites` 和 `management_key_env`。升级时先导入持久状态；确认运行正常后可停服备份并删除旧环境变量，让程序改用 `/data`。
+- 新部署 Compose 删除 `env_file` 和 `app/logs` 挂载，日志写到 stdout；旧 Compose 在兼容期内仍可运行。
 ### 修复
 
 - 管理后台的标签页图标不再返回 404：服务端提供 `/admin/favicon.svg`；静态目录里没有该文件时服务照常启动。
