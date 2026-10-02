@@ -182,8 +182,8 @@
         {
           "path": "first-login-v1.html",
           "createdAt": "2026-10-02T04:06:27.745Z",
-          "status": "needs-review",
-          "subtitle": "Temporary-password login and mandatory password change",
+          "status": "approved",
+          "subtitle": "Approved temporary-password login and mandatory password change",
           "viewport": {
             "width": 1440,
             "height": 900
@@ -193,5 +193,5 @@
     }
   },
   "createdAt": "2026-08-12T22:31:10.516Z",
-  "updatedAt": "2026-10-02T04:06:27.746Z"
+  "updatedAt": "2026-10-02T05:00:40.628Z"
 }
