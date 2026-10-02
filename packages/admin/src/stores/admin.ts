@@ -43,12 +43,16 @@ export const useAdminStore = defineStore('admin', () => {
   const expiresAt = ref('')
   const loginBusy = ref(false)
   const loginMessage = ref('')
+  const passwordSetupRequired = ref(false)
+  const passwordSetupBusy = ref(false)
+  const passwordSetupMessage = ref('')
   const view = ref<MainView>('comments')
   const dirtyView = ref<MainView | null>(null)
   const discardRequested = ref(false)
   let pendingNavigation: (() => void | Promise<unknown>) | null = null
   const sites = ref<SiteSummary[]>([])
   const selectedSiteId = ref('')
+  const createSiteRequest = ref(0)
   const siteBusy = ref(false)
   const siteMessage = ref('')
   const status = ref<CommentStatus>('published')
@@ -95,6 +99,7 @@ export const useAdminStore = defineStore('admin', () => {
     queueBusy.value = false; queueQuiet.value = false; detailBusy.value = false
     cancelAdminRequests()
     authenticated.value = false; expiresAt.value = ''; sites.value = []; selectedSiteId.value = ''
+    passwordSetupRequired.value = false; passwordSetupMessage.value = ''
     comments.value = []; selectedComment.value = null; counts.value = emptyCounts()
     notificationSettings.value = null; captchaSettings.value = null
     view.value = 'comments'; dirtyView.value = null; discardRequested.value = false; pendingNavigation = null; loginMessage.value = reason
@@ -119,8 +124,9 @@ export const useAdminStore = defineStore('admin', () => {
     loginBusy.value = true; loginMessage.value = ''
     try {
       const session = await adminApi.login(username, password, captchaToken)
-      authenticated.value = true; expiresAt.value = session.expiresAt; armExpiry(session.expiresAt)
-      await loadSites(true); return authenticated.value
+      authenticated.value = true; expiresAt.value = session.expiresAt; passwordSetupRequired.value = session.requiresPasswordChange; armExpiry(session.expiresAt)
+      if (!passwordSetupRequired.value) await loadSites(true)
+      return authenticated.value
     } catch (error) { clearSession(failureMessage(error, true)); return false }
     finally { loginBusy.value = false }
   }
@@ -128,13 +134,28 @@ export const useAdminStore = defineStore('admin', () => {
     if (authenticated.value) { sessionReady.value = true; return }
     try {
       const session = await adminApi.getSession()
-      authenticated.value = true; expiresAt.value = session.expiresAt; armExpiry(session.expiresAt)
+      authenticated.value = true; expiresAt.value = session.expiresAt; passwordSetupRequired.value = session.requiresPasswordChange; armExpiry(session.expiresAt)
       sessionReady.value = true
-      if (authenticated.value) await loadSites(true)
+      if (authenticated.value && !passwordSetupRequired.value) await loadSites(true)
     } catch (error) {
       clearSession(error instanceof ApiError && error.status === 401 ? '' : messages.loginUnavailable)
     } finally { sessionReady.value = true }
   }
+  async function completeInitialSetup(username: string, password: string) {
+    if (passwordSetupBusy.value) return false
+    passwordSetupBusy.value = true; passwordSetupMessage.value = ''
+    try {
+      const session = await adminApi.initialSetup(username, password)
+      passwordSetupRequired.value = false; expiresAt.value = session.expiresAt; armExpiry(session.expiresAt)
+      view.value = 'sites'; createSiteRequest.value += 1
+      await loadSites(true)
+      return true
+    } catch (error) {
+      passwordSetupMessage.value = failureMessage(error)
+      return false
+    } finally { passwordSetupBusy.value = false }
+  }
+  function consumeCreateSiteRequest() { createSiteRequest.value = 0 }
   async function logout() {
     if (logoutBusy.value) return false
     logoutBusy.value = true; logoutMessage.value = ''
@@ -292,10 +313,10 @@ export const useAdminStore = defineStore('admin', () => {
     } catch (error) { fail(error, 'security'); return null }
     finally { captchaBusy.value = false }
   }
-  return { sessionReady, logoutBusy, logoutMessage, expiresAt, loginBusy, loginMessage, authenticated, view, dirtyView, discardRequested, sites, selectedSiteId, selectedSite, siteBusy, siteMessage,
+  return { sessionReady, logoutBusy, logoutMessage, expiresAt, loginBusy, loginMessage, passwordSetupRequired, passwordSetupBusy, passwordSetupMessage, authenticated, view, dirtyView, discardRequested, sites, selectedSiteId, selectedSite, createSiteRequest, siteBusy, siteMessage,
     status, sort, page, pageSize, pageCount, total, counts, comments, selectedComment, queueBusy, queueQuiet, detailBusy, actionBusy, queueMessage, actionMessage, toastMessage, toastSerial,
     notificationSettings, notificationBusy, notificationMessage, emailTestState, emailTestMessage, telegramTestState, telegramTestMessage,
     captchaSettings, captchaBusy, captchaMessage,
-    login, logout, restoreSession, switchView, loadSites, saveSite, loadComments, loadDetail, selectSite, selectStatus, toggleSort, selectPage, selectComment, mutateCurrent,
+    login, completeInitialSetup, consumeCreateSiteRequest, logout, restoreSession, switchView, loadSites, saveSite, loadComments, loadDetail, selectSite, selectStatus, toggleSort, selectPage, selectComment, mutateCurrent,
     loadNotifications, saveEmail, saveTelegram, testEmail, testTelegram, loadCaptcha, saveCaptcha, setDirty, requestNavigation, resolveNavigation }
 })

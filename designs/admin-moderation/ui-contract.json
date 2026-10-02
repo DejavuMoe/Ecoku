@@ -242,8 +242,18 @@
       },
       "production": {
         "routeOrWindow": "/admin/ initial authentication",
-        "status": "planned",
-        "files": [],
+        "status": "implemented",
+        "files": [
+          "packages/admin/src/App.vue",
+          "packages/admin/src/api.ts",
+          "packages/admin/src/stores/admin.ts",
+          "packages/admin/src/components/FirstLoginSetupView.vue",
+          "packages/admin/src/components/SiteManagementView.vue",
+          "packages/admin/src/style.css",
+          "server/handle/admin/auth.go",
+          "server/adminidentity/identity.go",
+          "server/model/admin_account.go"
+        ],
         "interfaces": [
           "adminApi.login",
           "adminApi.getSession",
@@ -251,10 +261,12 @@
         ],
         "tests": [
           "packages/admin/src/admin.test.ts",
-          "designs/admin-moderation/first-login-v1.test.mjs"
+          "designs/admin-moderation/first-login-v1.test.mjs",
+          "server/routes/admin_routes_test.go",
+          "server/adminidentity/identity_test.go"
         ]
       },
-      "status": "approved"
+      "status": "implemented"
     }
   ],
   "content": {

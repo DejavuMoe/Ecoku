@@ -56,7 +56,7 @@ export function cancelAdminRequests() {
 function mapSession(raw: Record<string, unknown>): AdminSession {
   const expiresAt = text(raw.expires_at)
   if (!expiresAt || !Number.isFinite(Date.parse(expiresAt))) throw new ApiError(500, 'invalid-session')
-  return { expiresAt, expiresIn: number(raw.expires_in) }
+  return { expiresAt, expiresIn: number(raw.expires_in), requiresPasswordChange: raw.requires_password_change === true }
 }
 
 async function request<T>(path: string, init: RequestInit = {}, allowEmpty = false): Promise<T> {
@@ -270,6 +270,14 @@ export const adminApi = {
 
   async getSession(): Promise<AdminSession> {
     return mapSession(await request<Record<string, unknown>>('/api/admin/session'))
+  },
+
+  async initialSetup(username: string, password: string): Promise<AdminSession> {
+    const raw = await request<Record<string, unknown>>('/api/admin/initial-setup', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    })
+    return mapSession(raw)
   },
 
   async logout(): Promise<void> {

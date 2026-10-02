@@ -7,7 +7,7 @@ import SitePicker from './SitePicker.vue'
 import SaveBar from './SaveBar.vue'
 
 const store = useAdminStore()
-const { sites, selectedSite, siteBusy, siteMessage } = storeToRefs(store)
+const { sites, selectedSite, siteBusy, siteMessage, createSiteRequest } = storeToRefs(store)
 const creating = ref(false)
 const baseline = ref('')
 const dirty = computed(() => creating.value || JSON.stringify([draft, originsText.value]) !== baseline.value)
@@ -29,6 +29,7 @@ watch(selectedSite, site => { if (!creating.value) applySite(site) })
 watch(siteBusy, busy => {
   if (!busy && !selectedSite.value && !creating.value && !siteMessage.value) startCreating()
 })
+watch(createSiteRequest, request => { if (request > 0) { startCreating(); store.consumeCreateSiteRequest() } })
 watch(dirty, value => store.setDirty('sites', value), { immediate: true, flush: 'sync' })
 onBeforeUnmount(() => store.setDirty('sites', false))
 function startCreating() { creating.value = true; Object.assign(draft, defaults()); originsText.value = ''; clearErrors() }

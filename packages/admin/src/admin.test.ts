@@ -728,6 +728,20 @@ it('times out while reading an admin response body', async () => {
 })
 
 describe('persistent administrator session', () => {
+  it('keeps a temporary login out of management views and opens site creation after setup', async () => {
+    const store = useAdminStore()
+    vi.spyOn(adminApi, 'login').mockResolvedValue({ expiresAt: new Date(Date.now() + 3600000).toISOString(), expiresIn: 3600, requiresPasswordChange: true })
+    vi.spyOn(adminApi, 'initialSetup').mockResolvedValue({ expiresAt: new Date(Date.now() + 3600000).toISOString(), expiresIn: 3600, requiresPasswordChange: false })
+    vi.spyOn(adminApi, 'listSites').mockResolvedValue([])
+    await store.login('admin', 'temporary-password')
+    expect(store.passwordSetupRequired).toBe(true)
+    expect(adminApi.listSites).not.toHaveBeenCalled()
+    await store.completeInitialSetup('owner', 'new-password-for-admin')
+    expect(store.passwordSetupRequired).toBe(false)
+    expect(store.view).toBe('sites')
+    expect(store.createSiteRequest).toBe(1)
+  })
+
   it('restores the server expiry without storing a credential and keeps a failed logout active', async () => {
     vi.useFakeTimers()
     try {

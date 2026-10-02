@@ -58,6 +58,7 @@ export interface CommentPage {
 export interface AdminSession {
   expiresAt: string
   expiresIn: number
+  requiresPasswordChange: boolean
 }
 
 export interface CommentMutation { comment: CommentReview; unchanged: boolean }
