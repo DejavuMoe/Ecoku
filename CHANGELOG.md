@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### 修复
+
+- 修复 npm 发布 tarball 路径缺少 `./` 而被识别为 GitHub 仓库的问题，CI 增加真实 npm 发布 dry-run；支持从已验证的原始 Release 产物手动恢复 npm 发布，无需移动 tag。
+
 ## [0.3.0] - 2026-10-03
 
 ### 变更

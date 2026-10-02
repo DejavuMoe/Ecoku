@@ -48,6 +48,8 @@ SDK 的 `repository.url` 设为 `git+https://github.com/DejavuMoe/Ecoku.git`，`
 - SDK、文档与 digest 的 Actions artifacts 保留 7 天。超过保留期不能依赖旧产物重跑下游 job，应检查已发布状态后重新安排发布。
 - npm 版本不可覆盖。GitHub Release 使用创建操作，已存在时不会覆盖正文或附件。仅失败 job 重跑是首选恢复方式；发布成功的 tag 不移动、不重用。
 
+若 tag 中的发布命令本身有误，重跑旧 job 不会读取主线修复。可手动运行 `recover-npm.yml`，填写原 tag 和原 Release run ID；该流程要求同一 tag 提交的全部验证与镜像 manifest 已成功，只发布原流水线保存的 SDK 包，不重建产物、不移动 tag、不覆盖镜像。使用 OIDC 时须单独授权该工作流；首次发布可使用现有临时 `NPM_TOKEN`。恢复 npm 后，再使用原 tag 的更新日志和 SDK 产物创建 GitHub Release。
+
 ## 与 Woodpecker 的分工
 
 `.woodpecker/` 保持原样。现有文档站点仍由 Woodpecker 发布，GitHub 只构建、检查并保存文档产物；GitHub 不访问文档服务器或应用生产环境。保留的 Woodpecker tag 镜像流程仍会向 Forgejo registry 发布，Compose 继续使用已有的 Forgejo 精确镜像地址。
