@@ -62,3 +62,26 @@ func UpdateAdminAccount(account AdminAccount) error {
 	}
 	return nil
 }
+
+func UpdateAdminAccountAndRevokeSessions(account AdminAccount) error {
+	if DB == nil {
+		return errors.New("数据库尚未初始化")
+	}
+	return DB.Transaction(func(tx *gorm.DB) error {
+		result := tx.Table("admin_accounts").Where("id = 1 AND revision = ?", account.Revision).Updates(map[string]any{
+			"username":               account.Username,
+			"password_hash":          account.PasswordHash,
+			"must_change_password":   account.MustChangePassword,
+			"managed_by_environment": account.ManagedByEnvironment,
+			"revision":               gorm.Expr("revision + 1"),
+			"updated_at":             time.Now().UTC(),
+		})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return ErrAdminAccountConflict
+		}
+		return tx.Exec("DELETE FROM admin_sessions").Error
+	})
+}

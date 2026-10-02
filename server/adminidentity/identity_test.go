@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -85,5 +86,32 @@ func TestLegacyEnvironmentCredentialsAreImportedWithoutForcedSetup(t *testing.T)
 	account, err := model.GetAdminAccount()
 	if err != nil || account == nil || account.Username != "legacy-admin" || account.MustChangePassword || !account.ManagedByEnvironment {
 		t.Fatalf("legacy account=%#v error=%v", account, err)
+	}
+}
+
+func TestInitialSetupRollsBackWhenSessionRevocationFails(t *testing.T) {
+	setupIdentityTest(t)
+	t.Setenv("ECOKU_ADMIN_USERNAME", "")
+	t.Setenv("ECOKU_ADMIN_PASSWORD_HASH", "")
+	t.Setenv("ECOKU_ADMIN_TOKEN_KEY", "")
+	t.Setenv(config.EncryptionKeyEnv, "")
+	if err := Initialize(); err != nil {
+		t.Fatal(err)
+	}
+	if err := model.DB.Exec("INSERT INTO admin_sessions (token_digest, expires_at) VALUES (?, ?)", strings.Repeat("a", 64), time.Now().Add(time.Hour).Unix()).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := model.DB.Exec(`CREATE TRIGGER fail_admin_session_revoke BEFORE DELETE ON admin_sessions BEGIN SELECT RAISE(ABORT, 'fixture'); END`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := CompleteInitialSetup("owner", "new-password-for-admin"); err == nil {
+		t.Fatal("setup succeeded despite session revocation failure")
+	}
+	if err := model.DB.Exec(`DROP TRIGGER fail_admin_session_revoke`).Error; err != nil {
+		t.Fatal(err)
+	}
+	account, err := model.GetAdminAccount()
+	if err != nil || account == nil || account.Username != "admin" || !account.MustChangePassword {
+		t.Fatalf("setup transaction partially committed: %#v error=%v", account, err)
 	}
 }
