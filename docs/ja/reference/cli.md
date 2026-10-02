@@ -13,7 +13,7 @@ sudo docker compose run --rm --no-deps ecoku <サブコマンド> [引数]
 
 ## hash-password {#hash-password}
 
-標準入力からパスワードを 1 行読み取り、`ECOKU_ADMIN_PASSWORD_HASH` に使う bcrypt ハッシュ（cost 10）を出力します。設定を読み込まず、データベースにもアクセスしないので、サービスの稼働中でも実行できます。
+標準入力からパスワードを 1 行読み取り、旧インスタンスの `ECOKU_ADMIN_PASSWORD_HASH` に使う bcrypt ハッシュ（cost 10）を出力します。新規インスタンスは初回起動時に管理者を自動作成するため、このコマンドは不要です。設定を読み込まず、データベースにもアクセスしないので、サービスの稼働中でも実行できます。
 
 ```bash
 read -rsp '管理者パスワード: ' P; echo
