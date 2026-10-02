@@ -122,11 +122,8 @@ func CompleteInitialSetup(username, password string) error {
 	account.PasswordHash = string(hash)
 	account.MustChangePassword = false
 	account.ManagedByEnvironment = false
-	if err := model.UpdateAdminAccount(*account); err != nil {
+	if err := model.UpdateAdminAccountAndRevokeSessions(*account); err != nil {
 		return err
-	}
-	if err := model.DB.Exec("DELETE FROM admin_sessions").Error; err != nil {
-		return fmt.Errorf("撤销临时管理员会话: %w", err)
 	}
 	return Initialize()
 }
@@ -146,11 +143,8 @@ func ResetTemporaryPassword() (string, error) {
 	account.PasswordHash = hash
 	account.MustChangePassword = true
 	account.ManagedByEnvironment = false
-	if err := model.UpdateAdminAccount(*account); err != nil {
+	if err := model.UpdateAdminAccountAndRevokeSessions(*account); err != nil {
 		return "", err
-	}
-	if err := model.DB.Exec("DELETE FROM admin_sessions").Error; err != nil {
-		return "", fmt.Errorf("撤销管理员会话: %w", err)
 	}
 	if err := Initialize(); err != nil {
 		return "", err
