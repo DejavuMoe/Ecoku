@@ -36,6 +36,16 @@ func Initialize(path, legacyAdminTokenKey, legacyNotificationKey string) (Keys, 
 	data, err := os.ReadFile(path)
 	switch {
 	case err == nil:
+		info, statErr := os.Lstat(path)
+		if statErr != nil {
+			return Keys{}, fmt.Errorf("检查持久密钥文件: %w", statErr)
+		}
+		if !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 {
+			return Keys{}, fmt.Errorf("持久密钥文件必须是普通文件")
+		}
+		if info.Mode().Perm()&0o077 != 0 {
+			return Keys{}, fmt.Errorf("持久密钥文件权限过宽；请设为 600")
+		}
 		if err := json.Unmarshal(data, &stored); err != nil {
 			return Keys{}, fmt.Errorf("解析持久密钥文件: %w", err)
 		}
