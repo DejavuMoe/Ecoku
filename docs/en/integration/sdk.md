@@ -6,11 +6,17 @@
 
 Every Ecoku instance serves the SDK at `/client/ecoku.umd.js`. Once loaded, it registers the global variable `Ecoku`.
 
-::: info The npm package is not published yet
-The SDK's package name is `ecoku`, but it has not been published to npm yet, so `npm install ecoku` does not work. If you need ES modules or TypeScript types, build it yourself from the `packages/client` directory of the source repository (`pnpm build`). The output is in `dist/`.
+The npm package is `ecoku`, with versions matching project tags. After the corresponding npm publication job succeeds, install an exact version in your website project:
 
-The repository is configured to publish the npm package on GitHub release tags, with the SDK version matching the tag without `v`. After the first successful publication, run `pnpm add --save-exact ecoku` in your website project and use `import Ecoku from 'ecoku'`; VitePress custom themes use the same entry point. Having a workflow does not mean the package is installable yet. Until the first publication succeeds, use the instance-hosted file below.
-:::
+```bash
+pnpm add --save-exact ecoku@0.3.0
+```
+
+```ts
+import Ecoku from 'ecoku'
+```
+
+VitePress custom themes use the same entry point. Create instances only after browser mounting and update the page key on route changes. While publication is pending, use the instance-hosted UMD file below, or run `pnpm build` in the source repository's `packages/client` directory to obtain `dist/` output.
 
 In a single-page app, you can use a function that loads the UMD file on demand and makes sure it is loaded only once:
 

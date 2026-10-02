@@ -1,7 +1,7 @@
 # Docker deployment
 
 ::: info Upgrade and configuration migration
-This page describes deployment with v0.2.9. Before upgrading v0.2.8, read [upgrade and legacy configuration migration](./upgrade#legacy-config). Existing deployments may keep their old `ecoku.env` and Compose file; remove the old environment variables only after the migration has completed and the new login works.
+This page describes deployment with v0.3.0. Before upgrading v0.2.8, read [upgrade and legacy configuration migration](./upgrade#legacy-config). Existing deployments may keep their old `ecoku.env` and Compose file; remove the old environment variables only after the migration has completed and the new login works.
 :::
 
 A new Docker deployment needs `compose.yaml`, `app/config.yaml`, and `data/`. Ecoku creates the administrator password, session signing key, and notification encryption key on the first start.
@@ -39,7 +39,7 @@ sudo chmod 750 data
 ```yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.2.9"
+    image: "git.via.moe/dejavu/ecoku:v0.3.0"
     init: true
     restart: unless-stopped
     container_name: ecoku

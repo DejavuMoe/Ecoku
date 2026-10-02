@@ -6,11 +6,14 @@ plain-text, no-avatar, threaded comment surface.
 
 ## Install
 
-The npm publication workflow is prepared, but the first npm release is still
-pending. Until it succeeds, use the SDK served by your Ecoku instance or build
-this package from source. After publication, install `ecoku` with your package
-manager and pin a released version matching your server. SDK versions follow
-the repository's release tags.
+Install the SDK version matching your release after the npm publication job succeeds:
+
+```bash
+npm install --save-exact ecoku@0.3.0
+```
+
+SDK versions follow repository release tags. You can also use the SDK served by
+your Ecoku instance or build this package from source.
 
 The SDK exposes the same default `Ecoku` constructor through ESM, CommonJS,
 and a browser UMD global:

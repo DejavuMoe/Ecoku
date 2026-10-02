@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-03
+
 ### 变更
 
 - 新增 GitHub Actions 验证与 tag 发布流程：缓存依赖、并行验证前后端与文档，原生构建 GHCR 双架构镜像，以同版本发布 npm SDK，成功后创建附带 SDK 包与校验和的 GitHub Release。Woodpecker 配置和文档部署保持不变。
@@ -542,4 +544,5 @@
 [0.2.7]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.7
 [0.2.8]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.8
 [0.2.9]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.9
-[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.2.9...master
+[0.3.0]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.3.0
+[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.3.0...master

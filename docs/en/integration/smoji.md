@@ -1,7 +1,7 @@
 # Smoji sticker packs
 
-::: info Unreleased feature
-「图片来源」 (Image origin) is for the next release, not v0.2.9. In v0.2.9 the manifest and images must share an origin. Use the public manifest or host your custom manifest and images together.
+::: info Image origin support since v0.3.0
+「图片来源」 (Image origin) allows separate hosting of manifests and images. v0.2.9 and earlier require the same origin; upgraded sites keep that rule by default.
 :::
 
 [Smoji](https://github.com/DejavuMoe/Smoji) provides a sticker gallery and manifest export tools. In the [Smoji workbench](https://smoji.zsh.moe/), you can copy individual stickers or select categories and custom groups to export a manifest for the comment picker's contents.
