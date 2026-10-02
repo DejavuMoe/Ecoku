@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>Ecoku · 首次登录</title>
+  <link rel="icon" href="../brand/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles-v15.css">
+  <style>
+    .auth-sheet { width: min(100%, 420px); }
+    .auth-form { --label-w: 70px; padding: 28px; }
+    .intro { color: var(--muted); font-size: 13px; line-height: 1.8; margin: 0 0 22px; }
+    .auth-form h1 { margin-bottom: 8px; }
+    .auth-form .help, .auth-form .field-error { padding-left: 0; margin: 8px 0; }
+    .rule input { min-height: 44px; }
+    .foot { text-align: center; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .show-password { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 13px; color: var(--muted); }
+    .show-password input { accent-color: var(--ink); width: 16px; height: 16px; }
+    .auth-form a.button { text-decoration: none; }
+    .review { position: fixed; right: 16px; bottom: 16px; z-index: 200; font-size: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; max-width: calc(100% - 32px); }
+    .review summary { cursor: pointer; min-height: 24px; }
+    .review label { display: block; margin-top: 8px; }
+    .review select { background: var(--surface); border: 1px solid var(--line); padding: 6px; border-radius: 3px; }
+    @media (max-width: 480px) { .auth { padding: 32px 16px 100px; } .auth-form { padding: 24px 20px; } }
+  </style>
+</head>
+<body>
+  <main class="auth">
+    <section class="auth-sheet" aria-labelledby="screen-title">
+      <div class="auth-brand" aria-hidden="true"><img class="seal" src="../brand/ecoku-mark.svg" alt=""><span class="wordmark">Ecoku</span></div>
+      <form id="login" class="auth-form" novalidate data-screen-label="临时密码登录">
+        <h1 id="screen-title" tabindex="-1">管理员登录</h1>
+        <p class="intro">首次登录请使用启动日志中的临时密码。</p>
+        <p class="notice notice-error" id="login-error" role="alert" hidden></p>
+        <label class="rule"><span class="rule-label">用户名</span><input id="login-name" autocomplete="username" maxlength="80" value="admin" required></label>
+        <label class="rule"><span class="rule-label">密码</span><input id="login-password" type="password" autocomplete="current-password" required></label>
+        <button class="button button-primary button-block" type="submit">登录</button>
+      </form>
+      <form id="setup" class="auth-form" novalidate data-screen-label="首次设置密码" hidden>
+        <h1 id="setup-title" tabindex="-1">设置你的密码</h1>
+        <p class="intro">更换临时密码后，即可进入管理后台。用户名可以保留为 admin。</p>
+        <p class="notice notice-error" id="setup-error" role="alert" hidden></p>
+        <fieldset id="setup-fields">
+          <label class="rule"><span class="rule-label">用户名</span><input id="username" autocomplete="username" maxlength="80" value="admin" required></label>
+          <label class="rule"><span class="rule-label">新密码</span><input id="password" type="password" autocomplete="new-password" aria-describedby="password-help" required></label>
+          <label class="rule"><span class="rule-label">确认密码</span><input id="confirm" type="password" autocomplete="new-password" required></label>
+          <p id="password-help" class="help">至少 12 个字符，最多 72 个 UTF-8 字节；可粘贴密码管理器生成的密码。</p>
+          <label class="show-password"><input id="show-password" type="checkbox">显示密码</label>
+        </fieldset>
+        <button id="save" class="button button-primary button-block" type="submit">保存并进入后台</button>
+      </form>
+      <section id="done" class="auth-form" data-screen-label="账号设置完成" hidden>
+        <h1 id="done-title" tabindex="-1">密码已更新</h1>
+        <p class="intro">临时密码已失效。接下来创建站点，接入你的评论区。</p>
+        <a class="button button-primary button-block" href="index-v15.html#sites-create">创建站点</a>
+      </section>
+      <p class="foot" id="setup-foot" hidden>完成设置前，暂不能管理站点或评论。</p>
+    </section>
+  </main>
+  <details class="review" data-prototype-controls>
+    <summary>原型场景</summary>
+    <label>状态 <select id="scenario"><option value="login">首次登录</option><option value="setup">设置密码</option><option value="offline">保存失败</option><option value="expired">会话过期</option><option value="done">已完成</option></select></label>
+    <label>外观 <select id="theme"><option value="auto">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label>
+  </details>
+  <script>
+    const $ = id => document.getElementById(id);
+    let temporaryPassword = '', busy = false;
+    const delay = () => new Promise(resolve => setTimeout(resolve, 450));
+    function show(screen) {
+      for (const id of ['login', 'setup', 'done']) $(id).hidden = id !== screen;
+      $('setup-foot').hidden = screen !== 'setup';
+      const title = screen === 'login' ? 'screen-title' : `${screen}-title`;
+      document.querySelector('.auth-sheet').setAttribute('aria-labelledby', title);
+      $(title).focus();
+    }
+    function error(form, text, field) {
+      $(form + '-error').textContent = text;
+      $(form + '-error').hidden = false;
+      if (field) { $(field).setAttribute('aria-invalid', 'true'); $(field).focus(); }
+    }
+    function resetErrors() {
+      for (const form of ['login', 'setup']) $(form + '-error').hidden = true;
+      document.querySelectorAll('[aria-invalid]').forEach(el => el.removeAttribute('aria-invalid'));
+    }
+    $('login').addEventListener('submit', event => {
+      event.preventDefault(); resetErrors();
+      if (!$('login-name').value.trim()) return error('login', '请输入用户名。', 'login-name');
+      if (!$('login-password').value) return error('login', '请输入启动日志中的临时密码。', 'login-password');
+      temporaryPassword = $('login-password').value;
+      $('login-password').value = '';
+      $('username').value = $('login-name').value.trim();
+      show('setup');
+    });
+    $('setup').addEventListener('submit', async event => {
+      event.preventDefault(); if (busy) return; resetErrors();
+      const password = $('password').value;
+      if (!$('username').value.trim()) return error('setup', '请输入用户名，或保留 admin。', 'username');
+      if ([...password].length < 12 || new TextEncoder().encode(password).length > 72) return error('setup', '新密码至少 12 个字符，且不能超过 72 个 UTF-8 字节。', 'password');
+      if (password === temporaryPassword) return error('setup', '请设置一个不同于临时密码的新密码。', 'password');
+      if ($('confirm').value !== password) return error('setup', '两次输入的密码不一致。', 'confirm');
+      busy = true; $('setup-fields').disabled = true; $('save').disabled = true; $('save').textContent = '正在保存…'; $('setup').setAttribute('aria-busy', 'true');
+      await delay();
+      busy = false; $('setup-fields').disabled = false; $('save').disabled = false; $('save').textContent = '保存并进入后台'; $('setup').removeAttribute('aria-busy');
+      if ($('scenario').value === 'offline') return error('setup', '保存失败，请检查连接后重试。输入的内容已保留。', 'save');
+      if ($('scenario').value === 'expired') {
+        $('password').value = $('confirm').value = ''; show('login');
+        return error('login', '管理会话已过期，请重新登录。', 'login-password');
+      }
+      $('password').value = $('confirm').value = ''; temporaryPassword = ''; show('done');
+    });
+    $('show-password').addEventListener('change', event => {
+      for (const id of ['password', 'confirm']) $(id).type = event.target.checked ? 'text' : 'password';
+    });
+    $('scenario').addEventListener('change', event => {
+      if (busy) return;
+      resetErrors(); $('password').value = $('confirm').value = ''; temporaryPassword = '';
+      show(['login', 'done'].includes(event.target.value) ? event.target.value : 'setup');
+    });
+    $('theme').addEventListener('change', event => document.documentElement.dataset.theme = event.target.value);
+  </script>
+</body>
+</html>

@@ -5,6 +5,8 @@
 颜色、圆角与深色 token 与评论区 v17「纸与墨」一致，界面使用操作系统自带的 CJK 与英文无衬线字体栈，不加载网络字体。
 仅供服务端渲染参考的通知模板为 v6（`email-notification-v6.html`、`telegram-notification-v6.html`），与 v15 使用同一套纸墨 token 与系统字体栈。v12 的关闭 / Cloudflare Turnstile / 自托管 Cap 三态语义与 Cap 官方组件几何在 v15 中保留，只映射 Ecoku token。停服恢复命令只属于自托管文档，不进入界面。原型文件本身不调用真实 API，也不进入运行时镜像。
 
+`first-login-v1.html` 是首次临时密码登录与强制改密的待审扩展，范围和实现边界见 [首次登录 v1](./first-login-v1.md)；不替代 v15 的已批准基线。
+
 ## 当前产品边界
 
 - 评论提交后直接发布；管理队列只包含“已发布”和“已删除”。
