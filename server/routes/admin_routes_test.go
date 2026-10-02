@@ -210,8 +210,9 @@ func TestAdminStaticStartsWithoutTheTabIcon(t *testing.T) {
 
 func TestAdminTurnstileSettingsAndLoginChallenge(t *testing.T) {
 	env := setupAdminTest(t)
+	t.Setenv("ECOKU_ADMIN_LOCALE", "en")
 	unauthenticated := requestJSON(t, env.router, http.MethodGet, "/api/admin/login-config", adminTestOrigin, "", nil)
-	if unauthenticated.Code != http.StatusOK || !strings.Contains(unauthenticated.Body.String(), `"turnstileSitekey":""`) {
+	if unauthenticated.Code != http.StatusOK || !strings.Contains(unauthenticated.Body.String(), `"turnstileSitekey":""`) || !strings.Contains(unauthenticated.Body.String(), `"locale":"en"`) {
 		t.Fatalf("empty login-config=%d %s", unauthenticated.Code, unauthenticated.Body.String())
 	}
 	saved := requestJSON(t, env.router, http.MethodPut, "/api/admin/turnstile", adminTestOrigin, "Bearer "+env.token, map[string]any{
@@ -438,6 +439,7 @@ func TestSiteWriteContractOmitsDerivedDomainAndReviewMode(t *testing.T) {
 	payload := map[string]any{
 		"id": "site-c", "site_url": "https://c.example/path", "name": "站点 C",
 		"allowed_origins": []string{"https://c.example"}, "default_sort": "oldest",
+		"i18n": "en",
 		"email_required": false, "website_required": true, "placeholder": "说点什么",
 		"comment_limit": 2048, "empty_message": "暂时没有评论",
 		"smoji_enabled": true, "smoji_manifest_url": "https://static.example/smoji.json",
@@ -452,8 +454,18 @@ func TestSiteWriteContractOmitsDerivedDomainAndReviewMode(t *testing.T) {
 			t.Fatalf("response contains %s: %s", forbidden, body)
 		}
 	}
-	if !strings.Contains(body, "站点 C") || !strings.Contains(body, "\"comment_limit\":2048") || !strings.Contains(body, `"smoji_enabled":true`) || !strings.Contains(body, `"smoji_manifest_url":"https://static.example/smoji.json"`) {
+	if !strings.Contains(body, "站点 C") || !strings.Contains(body, `"i18n":"en"`) || !strings.Contains(body, "\"comment_limit\":2048") || !strings.Contains(body, `"smoji_enabled":true`) || !strings.Contains(body, `"smoji_manifest_url":"https://static.example/smoji.json"`) {
 		t.Fatalf("response=%s", body)
+	}
+	delete(payload, "i18n")
+	payload["revision"] = 1
+	updated := requestJSON(t, env.router, http.MethodPut, "/api/admin/sites/site-c", adminTestOrigin, "Bearer "+env.token, payload)
+	if updated.Code != http.StatusOK || !strings.Contains(updated.Body.String(), `"i18n":"en"`) {
+		t.Fatalf("omitted i18n changed the site locale: %d %s", updated.Code, updated.Body.String())
+	}
+	public := requestJSON(t, env.router, http.MethodGet, "/api/comment/list?siteId=site-c&key=/post", "https://c.example", "", nil)
+	if public.Code != http.StatusOK || !strings.Contains(public.Body.String(), `"i18n":"en"`) {
+		t.Fatalf("public form config lost the site locale: %d %s", public.Code, public.Body.String())
 	}
 	payload["id"] = "site-http-smoji"
 	payload["smoji_manifest_url"] = "http://static.example/smoji.json"
