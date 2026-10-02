@@ -22,6 +22,10 @@
 
 ## 文档写作
 
+- 链接、粗体、斜体、删除线及行内代码与相邻正文之间留一个半角空格；行首、行尾和标记内部不额外加空格。
+  VitePress 在 Markdown 解析后统一补齐显示空格；不得用全文正则替换破坏代码块、URL、转义或嵌套标记。
+- `app/config.yaml` 的字段、默认值、可选值、用途与示例集中维护在 `deploy/config.yaml.example` 及对应语言模板中，
+  部署页和配置参考直接引用模板，不再分别维护字段表。兼容字段保留注释并明确标注，不作为新部署的必填项。
 - 简体中文（`docs/` 根下各目录）是源文；繁中、英文、日文从简中翻译，文件集合、标题顺序、表格与代码块保持一致。
   新增或删除页面时，同步四套 locale，并在 `docs/.vitepress/config/shared.ts` 的 sidebar 与四个 locale 配置的 `copy` 中登记。
 - 被链接的标题必须带显式 ASCII 锚点（如 `## 配置 trusted_proxies {#trusted-proxies}`），链接只指向这些锚点；
@@ -52,8 +56,8 @@
 - 运行时：`server/`、`packages/client/`、`packages/admin/`。`designs/`、`examples/`、
   `docs/progress/`、`docs/internal/` 不进镜像。
 - 根 `VERSION` 是容器版本的唯一文本来源（一行、无 `v`）。它不进入 Go / `pnpm` 日常构建，
-  也不驱动 client/admin 的 package 版本。
-- 发版提交必须同步四项：`VERSION`、根 `package.json` 的 `version`、`compose.yaml` 的
+  SDK 的 `packages/client/package.json` 版本须与它一致，admin 的 package 版本保持独立。
+- 发版提交必须同步五项：`VERSION`、根 `package.json` 与 `packages/client/package.json` 的 `version`、`compose.yaml` 的
   `image`（`git.via.moe/dejavu/ecoku:v` + `VERSION`，禁止占位符或浮动 tag）、`CHANGELOG.md`
   对应章节与页脚链接。若该 tag 影响部署，同时在 `docs/self-hosting/upgrades/` 增加对应页面（四套 locale）。
 - Git tag 必须为 `v` + `VERSION`。Woodpecker 只在 `v*` tag 上构建镜像，并用 `CI_COMMIT_TAG`
@@ -62,6 +66,9 @@
   固定调度到 `role=netcup-nano`、`server=netcup-nano` 的 agent；发布 step 通过 trusted volume
   仅挂载 `/var/www/ecoku.zsh.moe:/deploy`；站点目录内的 `html` 软链接原子切换到 `releases/<发布标识>`，
   `.deploy.lock` 位于站点目录内，成功后仅保留当前版与刚被替换的上一版，清理更早发布目录。Web 服务根目录为 `/var/www/ecoku.zsh.moe/html`。
+- GitHub Actions 的 `.github/workflows/ci.yml` 验证 `master` push / PR；`release.yml` 在 `v*` tag 上先校验版本并复用 CI
+  验证该 tag，再发布 GHCR 双架构镜像与同版本 npm SDK，最后创建 GitHub Release。文档仅保存构建产物，不部署。
+  Woodpecker 配置保留；GitHub 的 GHCR 发布不替换现有 Compose 的 Forgejo 精确镜像。发布设置见 `packages/client/PUBLISH.md`。
 - 文档与 Compose 模板中的 Docker 镜像统一使用实际注册地址与精确发布版本号（`git.via.moe/dejavu/ecoku:v` + `VERSION`，禁止占位镜像或浮动 tag，当前为 `v0.2.9`）；真实域名、密码、token、SMTP、Telegram、数据库和日志等敏感信息仍使用占位符，不得进 Git。
 - 提交、推送、tag、镜像发布、生产部署和真实数据库操作需要当前任务的明确授权。
 - 新 tag 若可能影响平滑升级（schema、Compose 挂载、配置键、日志出口、镜像契约），回复中先写：
@@ -70,7 +77,10 @@
 
 ## UI
 
-用户可见界面：先改已批准原型 → 用户明确批准 → 再改生产代码。不要自行提升未批准的原型版本。
+- 评论区、管理后台等应用界面：先改已批准原型 → 用户明确批准 → 再改生产代码。不要自行提升未批准的原型版本。
+- **项目文档不适用 `prototype-first-ui`**。范围包括 README、`docs/` 文档内容，以及 VitePress 文档站的主题、配色、字体、样式、布局、导航和文档组件。
+  直接修改对应源码，通过 `pnpm docs:dev` 提供实际文档站的本地预览，再根据用户意见调整；不要求先制作 HTML 原型、登记原型审批或等待原型批准。
+  现有文档原型不构成实施门禁。本条优先于技能中的原型流程；源码核对、多语言同步和发布授权等其他约定仍然适用。
 
 ## 验证
 
@@ -78,13 +88,14 @@ Woodpecker 在 `master` push 与目标为 `master` 的 pull request 上运行
 `pnpm verify:client`、`pnpm verify:admin`、`pnpm docs:build`、`go test -count=1 ./...`、`go vet ./...` 和 server 构建；
 `v*` tag 不重复测试，只做 tag / `VERSION` / `compose.yaml` 一致性校验后直接并行构建 amd64/arm64
 镜像并发布 manifest。文档发布流程在 `master` push 时独立运行，不依赖完整测试流程。这些不要在本地重复跑，交给 CI。
+GitHub Actions 复用相同验证命令；tag 发布前也验证准确的 tag 内容。修改 Actions 后本地检查工作流语法与发布校验脚本，完整构建交给 CI。
 
 本地只做 CI 覆盖不到的：
 
 | 改动 | 本地 |
 | --- | --- |
 | 已批准原型 | 对应 `designs/**/*.test.mjs` |
-| 发版四项 | 核对 `VERSION`、根 `package.json`、`compose.yaml` image、`CHANGELOG` 一致 |
+| 发版五项 | 核对 `VERSION`、根与 client `package.json`、`compose.yaml` image、`CHANGELOG` 一致 |
 | 改迁移 | 补 fixture（写测试，不是本地跑 `go test`） |
 | 文档发布脚本 | shell 语法检查与隔离临时目录发布验证，不触碰 `/var/www` |
 

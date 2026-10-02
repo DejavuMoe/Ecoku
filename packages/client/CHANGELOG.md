@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- 包版本改为 `0.1.0`。
+- SDK 版本与仓库 release tag 对齐，准备通过 GitHub Actions 发布 npm 包。
 - 发表框与已发布正文共用字号和颜色；接入与 SDK 不再显示「正在加载评论…」。
 - 可选 `cssURL`：设置后不再注入默认样式。
 - 按服务端公开配置在 Turnstile 与自托管 Cap 之间挂载当前 Widget，统一提交单次 `captchaToken`；Cap 资产来自配置实例并沿用官方几何。
