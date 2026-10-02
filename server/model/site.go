@@ -2,8 +2,10 @@ package model
 
 import (
 	"context"
+	"ecoku-server/config"
 	"errors"
 	"fmt"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -31,6 +33,7 @@ type Site struct {
 	EmptyMessage          string    `gorm:"column:empty_message"`
 	SmojiEnabled          bool      `gorm:"column:smoji_enabled"`
 	SmojiManifestURL      string    `gorm:"column:smoji_manifest_url"`
+	SmojiImageOrigin      string    `gorm:"column:smoji_image_origin"`
 	BloggerNickname       string    `gorm:"column:blogger_nickname"`
 	BloggerEmail          string    `gorm:"column:blogger_email"`
 	BloggerBadge          string    `gorm:"column:blogger_badge"`
@@ -54,6 +57,7 @@ type SiteWrite struct {
 	EmptyMessage          string
 	SmojiEnabled          bool
 	SmojiManifestURL      string
+	SmojiImageOrigin      string
 	BloggerNickname       string
 	BloggerEmail          string
 	BloggerBadge          string
@@ -128,7 +132,8 @@ func CreateSite(input SiteWrite, now time.Time) (Site, error) {
 			Placeholder: input.Placeholder, CommentLimit: input.CommentLimit,
 			EmptyMessage: input.EmptyMessage, BloggerNickname: input.BloggerNickname,
 			SmojiEnabled: input.SmojiEnabled, SmojiManifestURL: input.SmojiManifestURL,
-			BloggerEmail: input.BloggerEmail, BloggerBadge: input.BloggerBadge,
+			SmojiImageOrigin: input.SmojiImageOrigin,
+			BloggerEmail:     input.BloggerEmail, BloggerBadge: input.BloggerBadge,
 			BloggerPassphraseHash: input.BloggerPassphraseHash,
 			Revision:              1, CreatedAt: now, UpdatedAt: now,
 		}
@@ -159,6 +164,7 @@ func UpdateSite(siteID string, input SiteWrite, now time.Time) (Site, error) {
 			"empty_message":      input.EmptyMessage,
 			"smoji_enabled":      input.SmojiEnabled,
 			"smoji_manifest_url": input.SmojiManifestURL,
+			"smoji_image_origin": input.SmojiImageOrigin,
 			"blogger_nickname":   input.BloggerNickname,
 			"blogger_email":      input.BloggerEmail,
 			"blogger_badge":      input.BloggerBadge,
@@ -193,6 +199,26 @@ func UpdateSite(siteID string, input SiteWrite, now time.Time) (Site, error) {
 		return Site{}, err
 	}
 	return getSite(DB, siteID)
+}
+
+// SmojiOrigin is shared by comment validation and notification rendering.
+func (site Site) SmojiOrigin() string {
+	if !site.SmojiEnabled {
+		return ""
+	}
+	manifest, err := config.NormalizeSmojiManifestURL(site.SmojiManifestURL)
+	if err != nil || manifest == "" {
+		return ""
+	}
+	if site.SmojiImageOrigin != "" {
+		origin, err := config.NormalizeSmojiImageOrigin(site.SmojiImageOrigin)
+		if err != nil {
+			return ""
+		}
+		return origin
+	}
+	parsed, _ := url.Parse(manifest)
+	return parsed.Scheme + "://" + parsed.Host
 }
 
 func (site Site) IsBloggerComment(username string, email *string) bool {

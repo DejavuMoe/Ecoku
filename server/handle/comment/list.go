@@ -101,6 +101,7 @@ func GetComments(c *gin.Context) {
 		BloggerProofEnabled: site.BloggerProofConfigured(),
 		Smoji: config.SmojiPublicConfig{
 			Enabled: site.SmojiEnabled, ManifestURL: site.SmojiManifestURL,
+			ImageOrigin: site.SmojiImageOrigin,
 		},
 	}
 	key := strings.TrimSpace(c.Query("key"))

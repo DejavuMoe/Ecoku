@@ -463,6 +463,45 @@ func TestSiteWriteContractOmitsDerivedDomainAndReviewMode(t *testing.T) {
 	}
 }
 
+func TestSiteSmojiImageOriginRoundTrip(t *testing.T) {
+	env := setupAdminTest(t)
+	payload := map[string]any{
+		"id": "site-smoji", "site_url": "https://blog.example", "allowed_origins": []string{"https://blog.example"},
+		"smoji_enabled": true, "smoji_manifest_url": "https://blog.example/smoji.json", "smoji_image_origin": "https://CDN.example:443/",
+	}
+	created := requestJSON(t, env.router, http.MethodPost, "/api/admin/sites", adminTestOrigin, "Bearer "+env.token, payload)
+	if created.Code != http.StatusCreated || !strings.Contains(created.Body.String(), `"smoji_image_origin":"https://cdn.example"`) {
+		t.Fatalf("create=%d %s", created.Code, created.Body.String())
+	}
+	public := requestJSON(t, env.router, http.MethodGet, "/api/comment/list?siteId=site-smoji&key=/post", "https://blog.example", "", nil)
+	if public.Code != http.StatusOK || !strings.Contains(public.Body.String(), `"imageOrigin":"https://cdn.example"`) {
+		t.Fatalf("public=%d %s", public.Code, public.Body.String())
+	}
+	delete(payload, "smoji_image_origin")
+	payload["revision"] = 1
+	updated := requestJSON(t, env.router, http.MethodPut, "/api/admin/sites/site-smoji", adminTestOrigin, "Bearer "+env.token, payload)
+	if updated.Code != http.StatusOK || !strings.Contains(updated.Body.String(), `"smoji_image_origin":"https://cdn.example"`) {
+		t.Fatalf("legacy write lost origin: %d %s", updated.Code, updated.Body.String())
+	}
+	payload["revision"] = 2
+	for _, invalid := range []string{"http://cdn.example", "https://cdn.example/path", "https://cdn.example?", "https://cdn.example#", "https://*.example"} {
+		payload["smoji_image_origin"] = invalid
+		rejected := requestJSON(t, env.router, http.MethodPut, "/api/admin/sites/site-smoji", adminTestOrigin, "Bearer "+env.token, payload)
+		if rejected.Code != http.StatusBadRequest {
+			t.Fatalf("invalid origin %q: %d %s", invalid, rejected.Code, rejected.Body.String())
+		}
+	}
+	payload["smoji_image_origin"] = ""
+	cleared := requestJSON(t, env.router, http.MethodPut, "/api/admin/sites/site-smoji", adminTestOrigin, "Bearer "+env.token, payload)
+	if cleared.Code != http.StatusOK {
+		t.Fatalf("clear=%d %s", cleared.Code, cleared.Body.String())
+	}
+	site, err := model.GetSite("site-smoji")
+	if err != nil || site.SmojiImageOrigin != "" || site.SmojiOrigin() != "https://blog.example" {
+		t.Fatalf("clear did not restore same origin: %#v %v", site, err)
+	}
+}
+
 func TestSiteWritePersistsBloggerBadge(t *testing.T) {
 	env := setupAdminTest(t)
 	payload := map[string]any{

@@ -5,7 +5,16 @@ export interface SmojiManifest { version: 1; packs: SmojiPack[] }
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
 const MARKER_PATTERN = /!\[smoji:([^\]\r\n]+)\]\((https?:\/\/[^()\s]+)\)/g
 
-export async function loadSmojiManifest(manifestUrl: string, signal?: AbortSignal): Promise<SmojiManifest> {
+export function resolveSmojiImageOrigin(manifestUrl: string, imageOrigin = ''): string {
+  const url = new URL(imageOrigin || manifestUrl)
+  const loopback = url.hostname === 'localhost' || /^127\.\d+\.\d+\.\d+$/.test(url.hostname) || url.hostname === '[::1]'
+  if ((url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback))
+    || url.username || url.password || url.href.includes('?') || url.href.includes('#') || url.hostname.includes('*')
+    || (imageOrigin && url.pathname !== '/')) throw new Error('invalid-image-origin')
+  return url.origin
+}
+
+export async function loadSmojiManifest(manifestUrl: string, signal?: AbortSignal, imageOrigin = ''): Promise<SmojiManifest> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), 8000)
   const abort = (): void => controller.abort()
@@ -61,23 +70,23 @@ export async function loadSmojiManifest(manifestUrl: string, signal?: AbortSigna
       throw new Error('invalid-manifest')
     }
 
-    return normalizeManifest(value, manifestUrl)
+    return normalizeManifest(value, manifestUrl, imageOrigin)
   } finally {
     clearTimeout(timeout)
     signal?.removeEventListener('abort', abort)
   }
 }
 
-function normalizeManifest(value: unknown, manifestUrl: string): SmojiManifest {
+function normalizeManifest(value: unknown, manifestUrl: string, imageOrigin: string): SmojiManifest {
   if (!value || typeof value !== 'object') throw new Error('invalid-manifest')
   const raw = value as Record<string, unknown>
   if (!hasExactKeys(raw, 'base' in raw ? ['version', 'base', 'packs'] : ['version', 'packs']) || raw.version !== 1 || !Array.isArray(raw.packs) || raw.packs.length < 1 || raw.packs.length > 64) throw new Error('invalid-manifest')
-  const manifestOrigin = new URL(manifestUrl).origin
+  const trustedOrigin = resolveSmojiImageOrigin(manifestUrl, imageOrigin)
   if ('base' in raw) {
     if (typeof raw.base !== 'string' || !raw.base.includes('{pack}') || !raw.base.includes('{id}')) throw new Error('invalid-manifest')
     const sample = raw.base.split('{pack}').join('pack').split('{id}').join('item')
     const base = new URL(sample, manifestUrl)
-    if (/[{}]/.test(sample) || base.origin !== manifestOrigin || !['http:', 'https:'].includes(base.protocol) || base.username || base.password || base.href.includes('?') || base.href.includes('#')) throw new Error('invalid-manifest')
+    if (/[{}]/.test(sample) || base.origin !== trustedOrigin || !['http:', 'https:'].includes(base.protocol) || base.username || base.password || base.href.includes('?') || base.href.includes('#')) throw new Error('invalid-manifest')
   }
   let itemCount = 0
   const packIDs = new Set<string>()
@@ -100,7 +109,7 @@ function normalizeManifest(value: unknown, manifestUrl: string): SmojiManifest {
       itemIDs.add(entry.id)
       const path = typeof entry.src === 'string' ? entry.src : (raw.base as string).split('{pack}').join(source.id as string).split('{id}').join(entry.id)
       const src = new URL(path, manifestUrl)
-      if (src.origin !== manifestOrigin || !['http:', 'https:'].includes(src.protocol) || src.username || src.password || src.href.includes('?') || src.href.includes('#')) throw new Error('invalid-manifest')
+      if (src.origin !== trustedOrigin || !['http:', 'https:'].includes(src.protocol) || src.username || src.password || src.href.includes('?') || src.href.includes('#')) throw new Error('invalid-manifest')
       itemCount += 1
       if (itemCount > 6000) throw new Error('invalid-manifest')
       return { id: entry.id, label: entry.label.trim(), src: src.toString() }
@@ -123,12 +132,14 @@ export function smojiMarker(item: SmojiItem): string {
   return `![smoji:${item.label}](${item.src.replace(/\(/g, '%28').replace(/\)/g, '%29')})`
 }
 
-export function renderSmojiContent(target: HTMLElement, content: string, enabled: boolean, manifestUrl: string): void {
+export function renderSmojiContent(target: HTMLElement, content: string, enabled: boolean, manifestUrl: string, imageOrigin = ''): void {
   if (!enabled) {
     target.textContent = content
     return
   }
-  const origin = new URL(manifestUrl).origin
+  let origin: string
+  try { origin = resolveSmojiImageOrigin(manifestUrl, imageOrigin) }
+  catch { target.textContent = content; return }
   let cursor = 0
   for (const match of content.matchAll(MARKER_PATTERN)) {
     if (match.index === undefined) continue

@@ -51,6 +51,19 @@ func outboxStatus(t *testing.T, database *gorm.DB, eventType string, commentID u
 	return row.Status, code
 }
 
+func TestEmailUsesExplicitSmojiImageOrigin(t *testing.T) {
+	site := model.Site{SmojiEnabled: true, SmojiManifestURL: "https://blog.example/smoji.json", SmojiImageOrigin: "https://cdn.example"}
+	content := "![smoji:允许](https://cdn.example/face.webp) ![smoji:拒绝](https://blog.example/face.webp)"
+	got := emailContentHTML(content, site)
+	if !strings.Contains(got, `<img src="https://cdn.example/face.webp"`) || strings.Contains(got, `<img src="https://blog.example/face.webp"`) {
+		t.Fatalf("wrong trust boundary: %s", got)
+	}
+	site.SmojiEnabled = false
+	if strings.Contains(emailContentHTML(content, site), "<img") {
+		t.Fatal("disabled stickers rendered in email")
+	}
+}
+
 func TestEmailV6RendersSmojiTimeZoneAndDesignTokens(t *testing.T) {
 	database := setupNotificationTest(t)
 	t.Setenv("TZ", "Asia/Shanghai")

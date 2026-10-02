@@ -60,7 +60,7 @@ function listResponse(
       turnstileSitekey?: string
       bloggerProofEnabled?: boolean
       captcha?: { provider: 'off' | 'turnstile' | 'cap'; sitekey: string; instanceUrl?: string }
-      smoji?: { enabled: boolean; manifestUrl: string }
+      smoji?: { enabled: boolean; manifestUrl: string; imageOrigin?: string }
     }
     timeZone?: string
   } = {},
@@ -940,6 +940,42 @@ it('removes a reply challenge that resolves after the reply closes', async () =>
   const widget = { remove: vi.fn(), reset: vi.fn(), waitForToken: vi.fn() }
   resolveWidget(widget)
   await vi.waitFor(() => expect(widget.remove).toHaveBeenCalledOnce())
+})
+
+it('invalidates Smoji requests, picker and preview when the trust settings change', async () => {
+  const manifestUrl = 'https://blog.example/smoji.json'
+  const config = { enabled: true, manifestUrl, imageOrigin: 'https://old.example' }
+  let resolveOld!: (value: smoji.SmojiManifest) => void
+  let signal: AbortSignal | undefined
+  const loader = vi.spyOn(smoji, 'loadSmojiManifest')
+    .mockImplementationOnce((_url, incoming) => { signal = incoming; return new Promise(resolve => { resolveOld = resolve }) })
+    .mockResolvedValue({ version: 1, packs: [{ id: 'new', label: '新', items: [{ id: 'face', label: '脸', src: 'https://new.example/face.webp' }] }] })
+  const { client, container } = createClient(vi.fn(async () => listResponse([], {
+    formConfig: { emailRequired: false, websiteRequired: false, placeholder: '评论', smoji: config },
+  })))
+  await client.init()
+  const textarea = container.querySelector<HTMLTextAreaElement>('.ecoku-composer textarea')!
+  setValue(textarea, '![smoji:旧](https://old.example/face.webp)')
+  const preview = container.querySelector<HTMLElement>('.ecoku-composer-preview')!
+  container.querySelector<HTMLButtonElement>('.ecoku-preview-trigger')!.click()
+  expect(preview.querySelector('img')).not.toBeNull()
+  const trigger = container.querySelector<HTMLButtonElement>('.ecoku-smoji-trigger')!
+  trigger.click()
+  config.imageOrigin = 'https://new.example'
+  await client.reload()
+  expect(signal?.aborted).toBe(true)
+  expect(preview.hidden).toBe(true)
+  expect(preview.querySelector('img')).toBeNull()
+  resolveOld({ version: 1, packs: [{ id: 'old', label: '旧', items: [{ id: 'face', label: '旧', src: 'https://old.example/face.webp' }] }] })
+  await Promise.resolve()
+  expect(container.querySelector('.ecoku-smoji-item')).toBeNull()
+  trigger.click()
+  await vi.waitFor(() => expect(container.querySelector('.ecoku-smoji-item img')?.getAttribute('src')).toBe('https://new.example/face.webp'))
+  expect(loader).toHaveBeenLastCalledWith(manifestUrl, expect.any(AbortSignal), 'https://new.example')
+  config.enabled = false
+  await client.reload()
+  expect(trigger.parentElement?.hidden).toBe(true)
+  expect(container.querySelector('.ecoku-smoji-item')).toBeNull()
 })
 
 it('aborts Smoji on destroy and ignores a late manifest', async () => {

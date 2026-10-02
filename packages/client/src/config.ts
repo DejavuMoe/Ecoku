@@ -24,6 +24,7 @@ export interface CommentFormConfig {
 export interface SmojiPublicConfig {
   enabled: boolean
   manifestUrl: string
+  imageOrigin?: string
 }
 
 export const DEFAULT_CAPTCHA_CONFIG: Readonly<CaptchaPublicConfig> = Object.freeze({

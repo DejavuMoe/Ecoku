@@ -6,6 +6,7 @@ import {
   type ResolvedEcokuConfig,
 } from './config'
 import { isAbortError, resolveTimeZone } from './util'
+import { resolveSmojiImageOrigin } from './smoji'
 
 export type CommentSort = 'oldest' | 'newest'
 
@@ -142,7 +143,9 @@ function normalizeSmojiConfig(value: unknown): CommentFormConfig['smoji'] {
     const loopback = manifest.hostname === 'localhost' || /^127\.\d+\.\d+\.\d+$/.test(manifest.hostname) || manifest.hostname === '[::1]'
     if ((manifest.protocol !== 'https:' && !(manifest.protocol === 'http:' && loopback))
       || manifest.username || manifest.password || manifest.href.includes('?') || manifest.href.includes('#')) throw new Error()
-    return { enabled: true, manifestUrl: manifest.toString() }
+    if (raw.imageOrigin !== undefined && typeof raw.imageOrigin !== 'string') throw new Error()
+    const imageOrigin = typeof raw.imageOrigin === 'string' ? raw.imageOrigin.trim() : ''
+    return { enabled: true, manifestUrl: manifest.toString(), ...(imageOrigin ? { imageOrigin: resolveSmojiImageOrigin(manifest.href, imageOrigin) } : {}) }
   } catch {
     return { enabled: false, manifestUrl: '' }
   }

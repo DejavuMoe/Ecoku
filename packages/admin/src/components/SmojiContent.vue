@@ -6,10 +6,11 @@ const props = withDefaults(defineProps<{
   content: string
   enabled: boolean
   manifestUrl: string
+  imageOrigin?: string
   compact?: boolean
 }>(), { compact: false })
 
-const tokens = computed(() => tokenizeAdminSmoji(props.content, props.enabled, props.manifestUrl))
+const tokens = computed(() => tokenizeAdminSmoji(props.content, props.enabled, props.manifestUrl, props.imageOrigin))
 </script>
 
 <template>

@@ -15,6 +15,7 @@ export interface SiteSummary {
   emptyMessage: string
   smojiEnabled: boolean
   smojiManifestUrl: string
+  smojiImageOrigin: string
   bloggerNickname: string
   bloggerEmail: string
   bloggerBadge: string

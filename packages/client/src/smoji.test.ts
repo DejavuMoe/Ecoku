@@ -1,7 +1,34 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { loadSmojiManifest, renderSmojiContent, smojiMarker } from './smoji'
+import { loadSmojiManifest, renderSmojiContent, resolveSmojiImageOrigin, smojiMarker } from './smoji'
 
 afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
+
+it('loads a locally hosted custom group only with its explicit trusted CDN', async () => {
+  const url = 'https://blog.example/smoji.json'
+  const imageOrigin = 'https://cdn.example'
+  const value = { version: 1, base: `${imageOrigin}/{pack}/{id}.webp`, packs: [{ id: 'favorites', label: '常用', items: [
+    { id: 'face', label: '挠脸', src: `${imageOrigin}/aodamiao/face.webp` },
+    { id: 'wave', label: '挥手' },
+  ] }] }
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(value), { headers: { 'content-type': 'application/json' } })))
+  await expect(loadSmojiManifest(url)).rejects.toThrow('invalid-manifest')
+  const manifest = await loadSmojiManifest(url, undefined, imageOrigin)
+  expect(manifest.packs[0].items.map(item => item.src)).toEqual([`${imageOrigin}/aodamiao/face.webp`, `${imageOrigin}/favorites/wave.webp`])
+  const target = document.createElement('p')
+  renderSmojiContent(target, `${smojiMarker(manifest.packs[0].items[0])} ![smoji:外站](https://blog.example/x.webp)`, true, url, imageOrigin)
+  expect(target.querySelectorAll('img')).toHaveLength(1)
+  expect(target.textContent).toContain('![smoji:外站]')
+  value.packs[0].items[0].src = 'https://tracker.example/x.webp'
+  await expect(loadSmojiManifest(url, undefined, imageOrigin)).rejects.toThrow('invalid-manifest')
+  value.packs[0].items[0].src = './x.webp'
+  await expect(loadSmojiManifest(url, undefined, imageOrigin)).rejects.toThrow('invalid-manifest')
+  for (const raw of ['https://cdn.example/path', 'https://cdn.example?', 'https://cdn.example#', 'https://user@cdn.example', 'http://cdn.example', 'https://*.example']) {
+    expect(() => resolveSmojiImageOrigin(url, raw)).toThrow('invalid-image-origin')
+    const invalid = document.createElement('p')
+    renderSmojiContent(invalid, smojiMarker(manifest.packs[0].items[0]), true, url, raw)
+    expect(invalid.querySelector('img')).toBeNull()
+  }
+})
 
 describe('Smoji manifest and marker handling', () => {
   it('normalizes same-origin relative item URLs and omits credentials', async () => {
