@@ -1,6 +1,6 @@
 # 升级
 
-当前版本是 **v0.2.8**（2026-10-01 发布，schema v9）。
+当前版本是 **v0.2.9**（2026-10-02 发布，schema v10）。
 
 ## 升级时会发生什么
 
@@ -13,11 +13,11 @@
 
 所以，升级前的备份是回滚到旧 schema 的唯一途径。
 
-可以跨版本直接升级，比如从 v0.1.8 直接换到 v0.2.8，中间的迁移会依次执行。但请把跨过的每个版本的升级说明都读一遍，有的版本需要调整配置（例如 [v0.2.4](./upgrades/v0.2.4) 要求 `admin.token_ttl_minutes` 为 480 或省略）。
+可以跨版本直接升级，比如从 v0.1.8 直接换到 v0.2.9，中间的迁移会依次执行。但请把跨过的每个版本的升级说明都读一遍，有的版本需要调整配置（例如 [v0.2.4](./upgrades/v0.2.4) 要求 `admin.token_ttl_minutes` 为 480 或省略）。
 
-## 下一版本的配置迁移（未发布） {#unreleased-config}
+## v0.2.9 旧配置迁移 {#legacy-config}
 
-下一版本在 schema v9 上增加 v10 管理员账户表。现有站点、评论、通知、验证码和历史管理员凭据都会保留；旧实例不需要在升级前修改配置。
+v0.2.9 在 schema v9 上增加 v10 管理员账户表。现有站点、评论、通知、验证码和历史管理员凭据都会保留；旧实例不需要在升级前修改配置。
 
 升级时保留原来的 `compose.yaml`、`app/config.yaml` 和 `ecoku.env`，按[升级步骤](#steps)停服备份后启动新镜像。新版本第一次启动会：
 
@@ -28,17 +28,18 @@
 
 确认新版本正常运行后，再迁移为简化配置：
 
-1. 停服并按[备份](./backup#cold-backup)保存整个 `data/`、`app/config.yaml`、`compose.yaml` 和旧的 `ecoku.env`。
-2. 确认能登录后台、站点数量和历史评论正确，通知设置可以打开；
-3. 确认 `data/ecoku-secrets.json` 已创建，并且日志没有“无法解密凭据”；
-4. 停服后删除 `ecoku.env` 中的管理员变量和 `ECOKU_NOTIFICATION_ENCRYPTION_KEY`。如果仍需要 `TZ`，只保留 `TZ`，或者把它移到 Compose 的 `environment`；
-5. 删除 Compose 中的 `env_file`，新 Compose 只挂载 `app/config.yaml` 和 `data/`；
+1. 确认能登录后台、站点数量和历史评论正确，通知设置可以打开；
+2. 确认 `data/ecoku-secrets.json` 已创建，并且日志没有“无法解密凭据”；
+3. 停服并按[备份](./backup#cold-backup)保存整个 `data/`、`app/config.yaml`、`compose.yaml` 和旧的 `ecoku.env`。
+4. 停服后删除 `ecoku.env` 中的管理员变量和 `ECOKU_NOTIFICATION_ENCRYPTION_KEY`。如果仍需要 `TZ`，把它移到 Compose 的 `environment`；保留 `env_file` 时也可以只保留 `TZ`；
+5. 不再需要该环境文件时才删除 Compose 的 `env_file`。如果仍通过它注入 `TZ` 或站点管理密钥，就保留 `env_file`；
 6. 新配置保留 `notifications.instance_public_url`、实际使用的 `site.trusted_proxies`、`admin.allowed_origins` 和 `rate_limit`。旧字段可以暂时保留，删除前先确认不再使用旧数据库路径、文件日志或 `EcokuSite` 自动化；
 7. 重建容器并再次检查后台、评论和通知。
 
 旧的 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 与 `data/ecoku-secrets.json` 不一致时，服务会拒绝启动，以免覆盖后无法解密已有凭据。旧数据库路径继续生效，不能只删除 `database.sqlite.path` 后把空的 `/data` 挂载进去。
 
 如果回滚到 v0.2.8，停止服务，恢复原来的 Compose、配置、`ecoku.env` 和整个 `data/`。schema 不同或 v10 迁移已经完成时，回滚必须使用升级前的冷备份。
+
 ## 升级步骤 {#steps}
 
 **1. 阅读升级说明**。在下方的[版本列表](#versions)中找到目标版本，确认是否有配置变更、是否涉及 schema 迁移。
@@ -48,7 +49,7 @@
 **3. 修改镜像版本**。编辑 `~/Ecoku/compose.yaml`，把 `image` 改成目标版本，例如：
 
 ```yaml
-    image: "git.via.moe/dejavu/ecoku:v0.2.8"
+    image: "git.via.moe/dejavu/ecoku:v0.2.9"
 ```
 
 请写精确的版本号，不要用 `latest`。如果升级说明要求修改 `app/config.yaml` 或 `ecoku.env`，一并修改。
@@ -83,6 +84,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | 版本 | 发布日期 | schema | 要点 |
 | --- | --- | --- | --- |
+| [v0.2.9](./upgrades/v0.2.9) | 2026-10-02 | v9 → v10 | 首次登录改密、持久管理员与密钥、旧配置兼容及后台修复。 |
 | [v0.2.8](./upgrades/v0.2.8) | 2026-10-01 | v9 | 管理后台改为评论流与行式设置，增加快捷键和底部导航；容器内置默认配置，部署模板精简。 |
 | [v0.2.7](./upgrades/v0.2.7) | 2026-09-29 | v8 → v9 | 通知邮件改用纸墨视觉与系统字体，主题附带文章标题；删除评论时取消未发通知并撤回已发 Telegram 消息；通知队列不再重试注定失败的投递。 |
 | [v0.2.6](./upgrades/v0.2.6) | 2026-09-29 | v8 | 管理后台改用与评论区一致的纸墨配色和系统字体，重排各页面布局；功能与接口不变。 |

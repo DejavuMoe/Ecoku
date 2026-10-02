@@ -1,7 +1,7 @@
 # 設定リファレンス
 
-::: warning 未リリースの設定契約
-このページは次のバージョンに対応します。既存の v0.2.8 インスタンスは先に[アップグレードと旧設定の移行](../self-hosting/upgrade#unreleased-config)を確認してください。
+::: info アップグレードと設定移行
+このページは v0.2.9 に対応します。既存の v0.2.8 インスタンスは先に[アップグレードと旧設定の移行](../self-hosting/upgrade#legacy-config)を確認してください。
 :::
 
 新規デプロイで手動設定するのは `app/config.yaml` だけです。
@@ -69,4 +69,4 @@ notifications:
 
 ## 旧設定フィールド {#legacy}
 
-新しいテンプレートには書きませんが、互換層は `site.port`、`site.log_path`、`client.static_dir`、`admin.static_dir`、`database.sqlite.path`、`sites`、`management_key_env`、`admin.enabled`、`admin.token_ttl_minutes`、管理者・通知の `*_env` を読み取ります。新しいインスタンスには追加しないでください。[アップグレード](../self-hosting/upgrade#unreleased-config)を参照してください。
+新しいテンプレートには書きませんが、互換層は `site.port`、`site.log_path`、`client.static_dir`、`admin.static_dir`、`database.sqlite.path`、`sites`、`management_key_env`、`admin.enabled`、`admin.token_ttl_minutes`、管理者・通知の `*_env` を読み取ります。新しいインスタンスには追加しないでください。[アップグレード](../self-hosting/upgrade#legacy-config)を参照してください。

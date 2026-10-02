@@ -1,7 +1,7 @@
 # 配置参考
 
-::: warning 未发布的配置契约
-本页对应下一版本。现有 v0.2.8 实例请先阅读[升级与旧配置迁移](../self-hosting/upgrade#unreleased-config)。
+::: info 升级与配置迁移
+本页适用于 v0.2.9。现有 v0.2.8 实例请先阅读[升级与旧配置迁移](../self-hosting/upgrade#legacy-config)。
 :::
 
 新部署的手工配置只有 `app/config.yaml`：
@@ -13,7 +13,7 @@ notifications:
 
 站点、评论、通知、人机验证和管理员账户保存在 SQLite 中，在[管理后台](../self-hosting/admin)修改。官方镜像固定使用端口 `12123`、浏览器资源 `/app/client`、管理页面 `/app/admin` 和数据库 `/data/ecoku.sqlite3`。新实例的会话签名密钥、通知加密主密钥和管理员账户也保存在 `data/` 中。
 
-配置文件只能包含一个 YAML 文档。未知字段会拒绝启动；旧版本字段在兼容期内仍可读取，见[旧配置迁移](../self-hosting/upgrade#unreleased-config)。
+配置文件只能包含一个 YAML 文档。未知字段会拒绝启动；旧版本字段在兼容期内仍可读取，见[旧配置迁移](../self-hosting/upgrade#legacy-config)。
 
 ## site
 
@@ -71,6 +71,6 @@ notifications:
 
 ## 旧配置字段 {#legacy}
 
-新模板不再写这些字段，但兼容期内旧配置仍可读取：`site.port`、`site.log_path`、`client.static_dir`、`admin.static_dir`、`database.sqlite.path`、`sites`、`management_key_env`、`admin.enabled`、`admin.token_ttl_minutes`、管理员和通知的 `*_env` 字段。新实例不要添加这些字段；迁移方式见[升级](../self-hosting/upgrade#unreleased-config)。
+新模板不再写这些字段，但兼容期内旧配置仍可读取：`site.port`、`site.log_path`、`client.static_dir`、`admin.static_dir`、`database.sqlite.path`、`sites`、`management_key_env`、`admin.enabled`、`admin.token_ttl_minutes`、管理员和通知的 `*_env` 字段。新实例不要添加这些字段；迁移方式见[升级](../self-hosting/upgrade#legacy-config)。
 
 镜像内固定设置 `GIN_MODE=release` 与 `ECOKU_RUNTIME=container`，新部署不要覆盖它们。

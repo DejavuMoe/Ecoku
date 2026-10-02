@@ -1,7 +1,7 @@
 # Docker 部署
 
-::: warning 尚未發佈的部署流程
-本頁描述下一版本。升級 v0.2.8 前請先閱讀[升級與舊設定遷移](./upgrade#unreleased-config)。既有實例可以繼續保留舊的 `ecoku.env` 和 Compose；確認新登入正常後再刪除舊環境變數。
+::: info 升級與設定遷移
+本頁描述 v0.2.9 的部署方式。升級 v0.2.8 前請先閱讀[升級與舊設定遷移](./upgrade#legacy-config)。既有實例可以繼續保留舊的 `ecoku.env` 和 Compose；確認新登入正常後再刪除舊環境變數。
 :::
 
 新部署只需要 `compose.yaml`、`app/config.yaml` 和 `data/`。Ecoku 會在首次啟動時自動建立管理員密碼、工作階段簽章金鑰和通知加密主金鑰。
@@ -39,7 +39,7 @@ sudo chmod 750 data
 ```yaml
 services:
   ecoku:
-    image: "git.via.moe/dejavu/ecoku:v0.2.8"
+    image: "git.via.moe/dejavu/ecoku:v0.2.9"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -132,7 +132,7 @@ sudo docker compose up -d
       TZ: Asia/Shanghai
 ```
 
-既有實例可以保留舊的 `ecoku.env`。升級時其中的管理員憑據和金鑰會導入持久狀態，見[升級](./upgrade#unreleased-config)。
+既有實例可以保留舊的 `ecoku.env`。升級時其中的管理員憑據和金鑰會導入持久狀態，見[升級](./upgrade#legacy-config)。
 
 ## 下一步
 

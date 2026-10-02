@@ -27,7 +27,7 @@ const copy: SidebarCopy & NavCopy = {
   cli: '命令列',
   api: 'REST API',
   earlierVersions: '更早的候選版本',
-  versionCurrent: 'v0.2.8',
+  versionCurrent: 'v0.2.9',
   versionLatest: '（最新）',
 }
 

@@ -5,12 +5,15 @@
 
 ## [Unreleased]
 
+## [0.2.9] - 2026-10-02
+
 ### 变更
 
 - 新实例不再要求填写管理员密码哈希、会话签名密钥或通知加密主密钥。首次启动自动创建 `admin`、随机临时密码和 `data/ecoku-secrets.json`，首次登录必须设置正式用户名和密码。
 - 增加 schema v10 持久管理员账户表、首次改密会话和本机 `admin reset-password` 命令。改密成功后临时会话失效，并直接进入后台的「新增站点」状态。
 - v0.2.8 及更早实例继续读取旧的管理员环境变量、通知主密钥、数据库路径、文件日志路径、YAML `sites` 和 `management_key_env`。升级时先导入持久状态；确认运行正常后可停服备份并删除旧环境变量，让程序改用 `/data`。
 - 新部署 Compose 删除 `env_file` 和 `app/logs` 挂载，日志写到 stdout；旧 Compose 在兼容期内仍可运行。
+
 ### 修复
 
 - 管理后台的标签页图标不再返回 404：服务端提供 `/admin/favicon.svg`；静态目录里没有该文件时服务照常启动。
@@ -24,7 +27,7 @@
 
 ### 文档
 
-- 配置、API、部署、备份与本地开发说明同步精简；部署页保留环境变量示例与生成命令，字段表统一放在配置参考。四种语言的升级页增加未发布配置迁移说明，包含旧配置删除项、数据库位置、日志挂载与回滚。
+- 配置、API、部署、备份与本地开发说明同步精简；部署页改为自动创建管理员与密钥，旧实例迁移步骤独立说明。四种语言新增 v0.2.9 升级说明，包含 schema v10、首次启动、旧配置兼容、持久密钥迁移、日志挂载与回滚。
 - 管理后台说明中的站点字段改为「访客邮箱」「访客网站」两行；英文、日文 Smoji 说明恢复与标记示例一致的清单示例和标记格式占位。
 
 ## [0.2.8] - 2026-10-01
@@ -524,4 +527,5 @@
 [0.2.6]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.6
 [0.2.7]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.7
 [0.2.8]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.8
-[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.2.8...master
+[0.2.9]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.9
+[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.2.9...master

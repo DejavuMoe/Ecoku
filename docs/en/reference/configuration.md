@@ -1,7 +1,7 @@
 # Configuration reference
 
-::: warning Unreleased configuration contract
-This page describes the next version. Existing v0.2.8 instances must read [upgrade and legacy configuration migration](../self-hosting/upgrade#unreleased-config) first.
+::: info Upgrade and configuration migration
+This reference describes v0.2.9. Existing v0.2.8 instances must read [upgrade and legacy configuration migration](../self-hosting/upgrade#legacy-config) first.
 :::
 
 A new deployment only needs `app/config.yaml`:
@@ -13,7 +13,7 @@ notifications:
 
 Sites, comments, notifications, CAPTCHA, and the administrator account live in SQLite and are managed in the [admin console](../self-hosting/admin). The official image fixes port `12123`, browser assets at `/app/client`, the admin pages at `/app/admin`, and the database at `/data/ecoku.sqlite3`. New instances also store the session signing key, notification encryption key, and administrator account under `data/`.
 
-The config file may contain only one YAML document. Unknown fields prevent startup. Legacy fields remain readable during the compatibility period; see [legacy configuration migration](../self-hosting/upgrade#unreleased-config).
+The config file may contain only one YAML document. Unknown fields prevent startup. Legacy fields remain readable during the compatibility period; see [legacy configuration migration](../self-hosting/upgrade#legacy-config).
 
 ## site
 
@@ -71,6 +71,6 @@ After the variables have been imported and verified, stop the service, make a ba
 
 ## Legacy configuration fields {#legacy}
 
-New templates no longer write these fields, but the compatibility layer still reads them: `site.port`, `site.log_path`, `client.static_dir`, `admin.static_dir`, `database.sqlite.path`, `sites`, `management_key_env`, `admin.enabled`, `admin.token_ttl_minutes`, and the administrator or notification `*_env` fields. Do not add them to new instances; see [upgrade](../self-hosting/upgrade#unreleased-config).
+New templates no longer write these fields, but the compatibility layer still reads them: `site.port`, `site.log_path`, `client.static_dir`, `admin.static_dir`, `database.sqlite.path`, `sites`, `management_key_env`, `admin.enabled`, `admin.token_ttl_minutes`, and the administrator or notification `*_env` fields. Do not add them to new instances; see [upgrade](../self-hosting/upgrade#legacy-config).
 
 The image sets `GIN_MODE=release` and `ECOKU_RUNTIME=container`. Do not override them in a new deployment.

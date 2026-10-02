@@ -27,7 +27,7 @@ const copy: SidebarCopy & NavCopy = {
   cli: 'Command Line',
   api: 'REST API',
   earlierVersions: 'Earlier release candidates',
-  versionCurrent: 'v0.2.8',
+  versionCurrent: 'v0.2.9',
   versionLatest: ' (latest)',
 }
 
