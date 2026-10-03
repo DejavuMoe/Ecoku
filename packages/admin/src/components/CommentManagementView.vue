@@ -8,6 +8,7 @@ import type { CommentReview, CommentStatus } from '../types'
 import AdminIcon from './AdminIcon.vue'
 import SitePicker from './SitePicker.vue'
 import SmojiContent from './SmojiContent.vue'
+import { adminLocale, commentCountNoun } from '../i18n'
 
 const store = useAdminStore()
 const { status, sort, page, pageCount, total, counts, comments, selectedComment, queueBusy, queueQuiet, actionBusy, queueMessage, actionMessage, selectedSite, selectedSiteId, siteBusy, siteMessage } = storeToRefs(store)
@@ -23,6 +24,7 @@ let flashTimer: ReturnType<typeof setTimeout> | undefined
 const rows = computed(() => comments.value.map(c => selectedComment.value?.id === c.id ? selectedComment.value ?? c : c))
 const groups = computed(() => {
   const result: { key: string; name: string; sub: string; comments: CommentReview[] }[] = []
+  const locale = adminLocale.value
   const today = formatDate(new Date().toISOString()).slice(0, 10)
   const yesterday = formatDate(new Date(Date.now() - 86400000).toISOString()).slice(0, 10)
   for (const comment of rows.value) {
@@ -32,8 +34,8 @@ const groups = computed(() => {
       const [year, month, day] = key.split('/')
       const date = new Date(comment.createdAt)
       const valid = !Number.isNaN(date.getTime())
-      const md = valid ? `${Number(month)}月${Number(day)}日` : '时间未知'
-      const week = valid ? new Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai', weekday: 'short' }).format(date) : ''
+      const md = !valid ? '时间未知' : locale === 'zh-CN' ? `${Number(month)}月${Number(day)}日` : new Intl.DateTimeFormat(locale, { timeZone: 'Asia/Shanghai', month: 'long', day: 'numeric' }).format(date)
+      const week = valid ? new Intl.DateTimeFormat(locale, { timeZone: 'Asia/Shanghai', weekday: 'short' }).format(date) : ''
       group = { key, name: key === today ? '今天' : key === yesterday ? '昨天' : md, sub: !valid ? '' : key === today || key === yesterday ? `${md} ${week}` : `${year === today.slice(0, 4) ? '' : `${year} · `}${week}`, comments: [] }
       result.push(group)
     }
@@ -150,7 +152,7 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', keyboard); docum
       <div class="in-margin head-margin"><SitePicker @select="store.selectSite" /></div>
       <div class="in-main head-main">
         <div class="title-row">
-          <h1 id="comments-title" class="page-title" tabindex="-1"><span class="visually-hidden">评论管理：</span><span class="num">{{ total }}</span> {{ status === 'deleted' ? '条已删除评论' : '条评论' }}</h1>
+          <h1 id="comments-title" class="page-title" tabindex="-1"><span class="visually-hidden">评论管理：</span><span class="num">{{ total }}</span> <span>{{ commentCountNoun(total, status === 'deleted') }}</span></h1>
           <div v-if="selectedSite" class="head-tools">
             <div ref="sortPicker" class="menu-anchor">
               <button ref="sortTrigger" class="quiet-trigger" type="button" aria-haspopup="listbox" :aria-expanded="sortOpen" :aria-label="`评论排序：${sort === 'newest' ? '最新在前' : '最早在前'}`" :disabled="queueBusy || actionBusy" @click="toggleSortMenu">{{ sort === 'newest' ? '最新在前' : '最早在前' }}<AdminIcon name="chevron" class="chevron" /></button>
@@ -172,11 +174,11 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', keyboard); docum
         <header class="in-margin day-label"><p class="day-name">{{ group.name }}</p><p class="day-date">{{ group.sub }}</p><p class="day-count">{{ group.comments.length }} 条</p></header>
         <div class="in-main day-entries">
           <article v-for="comment in group.comments" :id="`c-${comment.id}`" :key="comment.id" class="entry" :class="{ 'is-tombstone': comment.deleted, 'is-flash': flashId === comment.id, 'is-leaving': leavingId === comment.id }" tabindex="-1" :aria-current="selectedComment?.id === comment.id ? 'true' : undefined" :aria-label="`#${comment.id} ${comment.deleted ? '已删除' : comment.username}`" @pointerdown="select(comment)">
-            <header class="entry-head"><div class="entry-who"><span class="entry-author">{{ comment.deleted ? '已删除' : comment.username }}</span><span v-if="!comment.deleted && comment.email" class="entry-mail" title="私有邮箱"><span class="visually-hidden">私有邮箱 </span>{{ comment.email }}</span><a v-if="!comment.deleted && safeWebsite(comment.url)" class="entry-site" :href="safeWebsite(comment.url)" target="_blank" rel="noopener noreferrer" :title="`访客网站 ${comment.url}`"><span class="visually-hidden">访客网站 </span>{{ comment.url?.replace(/^https?:\/\//, '').replace(/\/$/, '') }}</a></div><time class="entry-time" :datetime="comment.createdAt" :title="formatDate(comment.createdAt)">{{ formatDate(comment.createdAt).slice(11) || '时间未知' }}</time></header>
-            <a v-if="comment.parent && parents.get(comment.parent) && !comment.deleted" class="entry-quote" :href="`#c-${comment.parent}`" @click.prevent="jump(comment.parent)"><span class="quote-ref">回复 {{ parents.get(comment.parent)?.username }}</span><span class="quote-text">{{ quoteText(parents.get(comment.parent)) }}</span></a>
+            <header class="entry-head"><div class="entry-who"><span class="entry-author">{{ comment.deleted ? '已删除' : comment.username }}</span><span v-if="!comment.deleted && comment.email" class="entry-mail" title="私有邮箱"><span class="visually-hidden">私有邮箱 </span><span translate="no">{{ comment.email }}</span></span><a v-if="!comment.deleted && safeWebsite(comment.url)" class="entry-site" :href="safeWebsite(comment.url)" target="_blank" rel="noopener noreferrer" :title="`访客网站 ${comment.url}`"><span class="visually-hidden">访客网站 </span><span translate="no">{{ comment.url?.replace(/^https?:\/\//, '').replace(/\/$/, '') }}</span></a></div><time class="entry-time" :datetime="comment.createdAt" :title="formatDate(comment.createdAt)">{{ formatDate(comment.createdAt).slice(11) || '时间未知' }}</time></header>
+            <a v-if="comment.parent && parents.get(comment.parent) && !comment.deleted" class="entry-quote" :href="`#c-${comment.parent}`" @click.prevent="jump(comment.parent)"><span class="quote-ref">回复 <span translate="no">{{ parents.get(comment.parent)?.username }}</span></span><span class="quote-text" translate="no">{{ quoteText(parents.get(comment.parent)) }}</span></a>
             <p v-else-if="comment.parent" class="entry-quote"><span class="quote-ref"><span class="visually-hidden">父评论 </span>回复 #{{ comment.parent }}</span><span v-if="!comment.deleted" class="quote-text">不在当前页</span></p>
             <p class="entry-copy"><template v-if="comment.deleted">该评论已删除</template><SmojiContent v-else :content="comment.content" :enabled="selectedSite?.smojiEnabled === true" :manifest-url="selectedSite?.smojiManifestUrl || ''" :image-origin="selectedSite?.smojiImageOrigin" /></p>
-            <footer class="entry-foot"><span class="entry-page" :title="`${comment.pageTitle ? `${comment.pageTitle} · ` : ''}${comment.mark}`"><span v-if="comment.pageTitle" class="entry-title"><span class="visually-hidden">文章标题 </span>《{{ comment.pageTitle }}》</span><span class="entry-key"><span class="visually-hidden">页面 key </span>{{ comment.mark }}</span></span><span class="entry-actions"><span class="entry-id">#{{ comment.id }}</span><a v-if="sourceURL(comment)" class="quiet-link" :href="sourceURL(comment)" target="_blank" rel="noopener noreferrer" :title="`查看原评论 #${comment.id}`">查看原评论</a><button v-if="!comment.deleted || !comment.hasChildren" class="quiet-link is-danger" type="button" :disabled="actionBusy || queueBusy" @click="openConfirm(comment)">{{ comment.deleted ? '彻底删除' : '墓碑删除' }}</button><span v-else class="entry-hint">仍有回复，不能彻底删除</span></span></footer>
+            <footer class="entry-foot"><span class="entry-page" :title="`${comment.pageTitle ? `${comment.pageTitle} · ` : ''}${comment.mark}`"><span v-if="comment.pageTitle" class="entry-title"><span class="visually-hidden">文章标题 </span><span translate="no">《{{ comment.pageTitle }}》</span></span><span class="entry-key"><span class="visually-hidden">页面 key </span><span translate="no">{{ comment.mark }}</span></span></span><span class="entry-actions"><span class="entry-id">#{{ comment.id }}</span><a v-if="sourceURL(comment)" class="quiet-link" :href="sourceURL(comment)" target="_blank" rel="noopener noreferrer" :title="`查看原评论 #${comment.id}`">查看原评论</a><button v-if="!comment.deleted || !comment.hasChildren" class="quiet-link is-danger" type="button" :disabled="actionBusy || queueBusy" @click="openConfirm(comment)">{{ comment.deleted ? '彻底删除' : '墓碑删除' }}</button><span v-else class="entry-hint">仍有回复，不能彻底删除</span></span></footer>
             <p v-if="actionErrorId === comment.id && actionMessage" class="notice notice-error" role="alert">{{ actionMessage }}</p>
             <div v-if="confirmation?.id === comment.id" class="entry-confirm" role="alertdialog" :aria-labelledby="`confirm-${comment.id}-title`" :aria-describedby="`confirm-${comment.id}-copy`">
               <p><strong :id="`confirm-${comment.id}-title`">{{ confirmation.kind === 'tombstone' ? '墓碑删除这条评论？' : '彻底删除这条墓碑？' }}</strong><span :id="`confirm-${comment.id}-copy`">{{ confirmation.kind === 'tombstone' ? '昵称、私有邮箱、网站和正文会被清除，公开页面改为显示“已删除”，下面的回复保留不变。此操作无法撤销。' : '这条墓碑会从数据库中移除。此操作无法撤销。' }}</span></p>

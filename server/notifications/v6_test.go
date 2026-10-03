@@ -4,10 +4,18 @@ import (
 	"bytes"
 	"context"
 	"ecoku-server/model"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"image/png"
+	"io"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/mail"
+	"net/textproto"
+	"os"
 	"regexp"
 	"strings"
 	"testing"
@@ -93,8 +101,7 @@ func TestEmailV6RendersSmojiTimeZoneAndDesignTokens(t *testing.T) {
 		"color:#9a4733",
 		"font-family:-apple-system",
 		`<!--[if mso]>`,
-		`class="email-seal"`,
-		`background-color:#b8472f`,
+		`<img src="cid:ecoku-mark" width="28" height="28" alt=""`,
 		`@media (prefers-color-scheme:dark)`,
 		"#ecoku-comment-900",
 	} {
@@ -102,7 +109,7 @@ func TestEmailV6RendersSmojiTimeZoneAndDesignTokens(t *testing.T) {
 			t.Fatalf("HTML missing %q", want)
 		}
 	}
-	for _, unwanted := range []string{"![smoji:", "other.example", "font-family:Arial", "display:grid", "white-space:pre-wrap", "rgb(43,91,113)"} {
+	for _, unwanted := range []string{"![smoji:", "other.example", "font-family:Arial", "display:grid", "white-space:pre-wrap", "rgb(43,91,113)", "email-seal", "<svg", "data:image"} {
 		if strings.Contains(message.HTML, unwanted) {
 			t.Fatalf("HTML contains %q", unwanted)
 		}
@@ -118,6 +125,96 @@ func TestEmailV6RendersSmojiTimeZoneAndDesignTokens(t *testing.T) {
 		if got := utcOffsetLabel(seconds); got != want {
 			t.Fatalf("offset %d = %q, want %q", seconds, got, want)
 		}
+	}
+}
+
+// The seal travels inside the message: text and HTML alternatives, the HTML
+// related to one inline PNG that it names by Content-ID.
+func TestSMTPPayloadEmbedsTheSealNextToTheHTML(t *testing.T) {
+	design, err := os.ReadFile("../../designs/brand/ecoku-mark-email.png")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(design, emailMarkPNG) {
+		t.Fatal("server/notifications/ecoku-mark.png differs from designs/brand/ecoku-mark-email.png")
+	}
+	html := renderEmailDocument(emailDocument{Title: "t", SiteName: "site.example", Label: "新评论", Heading: "h", Footer: "f"})
+	payload, err := buildSMTPPayload("notify@mail.example", "owner@example.test", emailMessage{Subject: "s", Text: "plain", HTML: html})
+	if err != nil {
+		t.Fatal(err)
+	}
+	message, err := mail.ReadMessage(bytes.NewReader(payload))
+	if err != nil {
+		t.Fatal(err)
+	}
+	alternatives := readMultipart(t, message.Header.Get("Content-Type"), message.Body, "multipart/alternative")
+	if len(alternatives) != 2 || !strings.HasPrefix(alternatives[0].header.Get("Content-Type"), "text/plain") {
+		t.Fatalf("alternatives=%v", alternatives)
+	}
+	contentType := alternatives[1].header.Get("Content-Type")
+	if _, params, _ := mime.ParseMediaType(contentType); params["type"] != "text/html" {
+		t.Fatalf("related part type=%q", contentType)
+	}
+	related := readMultipart(t, contentType, bytes.NewReader(alternatives[1].body), "multipart/related")
+	if len(related) != 2 || !strings.HasPrefix(related[0].header.Get("Content-Type"), "text/html") || !strings.Contains(string(related[0].body), `src="cid:ecoku-mark"`) {
+		t.Fatalf("related=%v", related)
+	}
+	image := related[1]
+	for key, want := range map[string]string{"Content-Type": "image/png", "Content-Id": "<ecoku-mark>", "Content-Disposition": `inline; filename="ecoku-mark.png"`} {
+		if got := image.header.Get(key); got != want {
+			t.Fatalf("%s=%q, want %q", key, got, want)
+		}
+	}
+	// NextPart decodes quoted-printable but leaves base64 as sent.
+	for _, line := range strings.Split(strings.TrimSpace(string(image.body)), "\r\n") {
+		if len(line) > 76 {
+			t.Fatalf("base64 line of %d characters", len(line))
+		}
+	}
+	decoded, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(string(image.body), "\r\n", ""))
+	if err != nil || !bytes.Equal(decoded, emailMarkPNG) {
+		t.Fatalf("decoded seal differs: err=%v", err)
+	}
+	config, err := png.DecodeConfig(bytes.NewReader(decoded))
+	if err != nil || config.Width != 84 || config.Height != 84 {
+		t.Fatalf("seal=%+v err=%v", config, err)
+	}
+
+	plain, err := buildSMTPPayload("notify@mail.example", "owner@example.test", emailMessage{Subject: "s", Text: "plain", HTML: "<p>h</p>"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(plain, []byte("multipart/related")) || bytes.Contains(plain, []byte("image/png")) {
+		t.Fatal("HTML without the seal carried the image")
+	}
+}
+
+type mimePart struct {
+	header textproto.MIMEHeader
+	body   []byte
+}
+
+func readMultipart(t *testing.T, contentType string, body io.Reader, want string) []mimePart {
+	t.Helper()
+	mediaType, params, err := mime.ParseMediaType(contentType)
+	if err != nil || mediaType != want {
+		t.Fatalf("content type %q, want %s: %v", contentType, want, err)
+	}
+	reader := multipart.NewReader(body, params["boundary"])
+	var parts []mimePart
+	for {
+		part, err := reader.NextPart()
+		if errors.Is(err, io.EOF) {
+			return parts
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, err := io.ReadAll(part)
+		if err != nil {
+			t.Fatal(err)
+		}
+		parts = append(parts, mimePart{header: part.Header, body: data})
 	}
 }
 

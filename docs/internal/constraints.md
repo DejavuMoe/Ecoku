@@ -2,7 +2,7 @@
 
 面向实现与 Agent 的边界说明，不进入 VitePress 站点导航。公开运维文档见 `docs/self-hosting/`。
 
-> 状态：P0～P4 历史阶段已验收；评论区 index-v17、管理端 index-v15 与服务端 v6 通知模板均已批准实施。
+> 状态：P0～P4 历史阶段已验收；评论区 index-v17、管理端 index-v16、服务端邮件 v7 与 Telegram v6 通知模板均已批准实施。
 > 历史验收记录只描述当时版本，不约束当前直接发布模型。
 - 评论时间统一按可选的 `TZ` 环境变量显示；新部署可在 Compose `environment` 中设置，旧实例迁移期仍可从 `ecoku.env` 读取。
 ## 评论体验
@@ -79,11 +79,12 @@
 - 管理端包含登录、站点注册与评论表单配置、按 `published/deleted` 筛选并按日期分组的评论流、就地展示的详情、
   墓碑删除和无后代墓碑的彻底删除。不提供审核队列、用户管理、RBAC、Count 或站点密钥管理界面。
   另有实例级「安全」页，以三态单选配置关闭、Turnstile 或 Cap；Turnstile 保存 Sitekey/Secret，Cap 保存 HTTPS 实例地址、Site key/Secret。停服恢复命令只写入自托管文档，不在管理界面展示。
-- 管理端以 `designs/admin-moderation/index-v15.html` 为登录、评论管理、站点管理、通知设置与安全的当前已批准基线，发送模板以 `designs/admin-moderation/email-notification-v6.html`、`telegram-notification-v6.html` 为准；对应 v6 通知模板只供服务端投递时渲染，管理端不展示模板预览，也不公开模板静态页面。浏览器管理员凭据仅通过 host-only HttpOnly Cookie 保存（Path=/api/admin、SameSite=Strict，生产 Secure，明确允许的回环 HTTP 开发 Origin 除外），不进入登录 JSON、JavaScript、localStorage、sessionStorage 或 URL。刷新及关闭重开恢复有效会话，恢复接口不续期。登录与 Cookie 写操作要求明确的管理端白名单 Origin；安全 GET 可无 Origin。退出只有服务端撤销成功或已失效才清空界面，失败保留会话并提示重试。
+- 管理端以 `designs/admin-moderation/index-v16.html` 为登录、评论管理、站点管理、通知设置与安全的当前已批准基线，发送模板以 `designs/admin-moderation/email-notification-v7.html`、`telegram-notification-v6.html` 为准；通知模板只供服务端投递时渲染，管理端不展示模板预览，也不公开模板静态页面。邮件页眉的「區」印章是编译进服务端的 PNG（与 `designs/brand/ecoku-mark-email.png` 一致），以 `multipart/related` 内嵌附件（Content-ID `ecoku-mark`）随邮件发送；邮件不得引用远程图片、SVG 或 data URI 作为标志，图片 `alt` 为空，字标 Ecoku 保留为文字。浏览器管理员凭据仅通过 host-only HttpOnly Cookie 保存（Path=/api/admin、SameSite=Strict，生产 Secure，明确允许的回环 HTTP 开发 Origin 除外），不进入登录 JSON、JavaScript、localStorage、sessionStorage 或 URL。刷新及关闭重开恢复有效会话，恢复接口不续期。登录与 Cookie 写操作要求明确的管理端白名单 Origin；安全 GET 可无 Origin。退出只有服务端撤销成功或已失效才清空界面，失败保留会话并提示重试。
 - 管理端配色默认 `auto`，跟随系统 `prefers-color-scheme`；浅色与深色的纸张、表面与正文 token 与评论区 v17 默认值逐值对齐。不提供主题切换器，也不把配色写入本地存储。界面字体使用系统 CJK 与英文无衬线字体栈（`-apple-system`、`Segoe UI`、`PingFang SC`、`Microsoft YaHei`、`Noto Sans CJK SC` 等），不加载网络字体。评论区前端继续 inherit 宿主字体。
-- 站点、通知和安全表单使用行式字段；有修改时显示保存栏，离开页面、切换站点或退出前确认放弃修改；刷新或关闭页面使用浏览器的未保存修改确认。邮件和 Telegram 分别校验、分别保存，未成功保存的草稿保留。评论删除在对应评论旁确认，确认目标 ID 不随选中评论改变。
+- 站点、通知和安全表单使用带边框的输入框，窄屏标签在输入框上方；登录卡片保留行式字段。允许来源、通知收件人和 Telegram 接收目标逐项编辑：每项一个输入框，Enter 进入下一项而不提交表单，空项按退格删除，粘贴多行或逗号分隔内容自动拆分；离开该项或保存时才提示该项错误，来源缺协议或带路径时提供一键修正，重复项保存时合并；空项不算修改，来源最多 32 项，开启的通知渠道至少一项。有修改时显示保存栏，离开页面、切换站点或退出前确认放弃修改；刷新或关闭页面使用浏览器的未保存修改确认。邮件和 Telegram 分别校验、分别保存，未成功保存的草稿保留。评论删除在对应评论旁确认，确认目标 ID 不随选中评论改变。
 - 管理端是「评论管理」而非审核队列；已发布评论和公开墓碑使用
   `site_url + pageKey + #ecoku-comment-ID` 精确跳转。
+- 界面语言只有 `zh-CN`、`zh-Hant`、`en`。后台语言由 `ECOKU_ADMIN_LOCALE` 决定，未登录与已恢复会话都使用同一语言；评论区语言按 SDK `i18n` → 站点 `i18n` → `zh-CN` 取值，站点写入未知语言返回 400。评论正文、昵称、邮箱、网站、页面标题、页面 key 与站点名称等用户内容在任何语言下都按原文显示，不参与界面翻译。站点默认的占位文案、无评论文案和博主标志随评论区语言切换，自定义值保持原文。服务端报错、CLI 输出以及邮件、Telegram 通知模板目前只有简体中文。
 
 ## 站点注册与通知
 
