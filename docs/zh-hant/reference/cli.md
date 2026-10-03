@@ -90,7 +90,7 @@ Twikoo 导入完成：评论=128 根评论=90 回复=38 页面=24 邮箱=110 网
 
 ```bash
 read -rsp '管理员密码: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i ghcr.io/dejavumoe/ecoku:v0.3.1 hash-password
+printf '%s\n' "$P" | sudo docker run --rm -i ghcr.io/dejavumoe/ecoku:v0.3.2 hash-password
 unset P
 ```
 

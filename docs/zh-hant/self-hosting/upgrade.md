@@ -2,9 +2,9 @@
 
 公開版本從 v0.3.0 開始。新部署直接使用 [Docker 部署](./docker)；本頁用於既有實例升級。
 
-目前版本是 **v0.3.1**（2026-10-03 發布，schema v12）。
+目前版本是 **v0.3.2**（2026-10-04 發布，schema v12）。
 
-新映像檔統一發布到 GHCR。使用 Forgejo 映像檔的實例，後續升級請將 `image` 改為 `ghcr.io/dejavumoe/ecoku:v0.3.1` 或目標版本的精確 tag，保留原本的資料與設定掛載；Forgejo registry 不再發布新版本。同版本切換倉庫不必重新初始化實例。
+新映像檔統一發布到 GHCR。使用 Forgejo 映像檔的實例，後續升級請將 `image` 改為 `ghcr.io/dejavumoe/ecoku:v0.3.2` 或目標版本的精確 tag，保留原本的資料與設定掛載；Forgejo registry 不再發布新版本。同版本切換倉庫不必重新初始化實例。
 
 ## 升級時會發生什麼
 
@@ -26,7 +26,7 @@
 **3. 修改映像檔版本**。編輯 `~/Ecoku/compose.yaml`，把 `image` 改成目標版本，例如：
 
 ```yaml
-    image: "ghcr.io/dejavumoe/ecoku:v0.3.1"
+    image: "ghcr.io/dejavumoe/ecoku:v0.3.2"
 ```
 
 請寫明確的版本號，不要用 `latest`。如果升級說明要求修改 `app/config.yaml` 或 `ecoku.env`，請一併修改。
@@ -61,6 +61,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | 版本 | 發布日期 | schema | 重點 |
 | --- | --- | --- | --- |
+| [v0.3.2](./upgrades/v0.3.2) | 2026-10-04 | v12 | 後台設定改用輸入框與逐項列表、郵件頁首印章、SDK 語言優先順序修正。 |
 | [v0.3.1](./upgrades/v0.3.1) | 2026-10-03 | v11 → v12 | 三語後台與評論區、站點語言、文件主題同步。 |
 | [v0.3.0](./upgrades/v0.3.0) | 2026-10-03 | v10 → v11 | Smoji 獨立圖片來源、npm SDK 與 GHCR 發布、設定範本及文件主題更新。 |
 
