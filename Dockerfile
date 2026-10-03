@@ -11,7 +11,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/admin/package.json packages/admin/package.json
 COPY packages/client/package.json packages/client/package.json
 RUN --mount=type=cache,id=ecoku-pnpm,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile
+    pnpm install --frozen-lockfile --prefer-offline --store-dir=/root/.local/share/pnpm/store
 COPY packages/admin packages/admin
 COPY packages/client packages/client
 RUN pnpm --dir packages/client build \
