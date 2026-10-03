@@ -85,7 +85,11 @@ function listResponse(
   })
 }
 
-function createClient(fetchMock: typeof fetch, pageKey = 'article-a'): { client: Ecoku; container: HTMLElement } {
+function createClient(
+  fetchMock: typeof fetch,
+  pageKey = 'article-a',
+  options: { i18n?: 'zh-CN' | 'zh-Hant' | 'en' } = {},
+): { client: Ecoku; container: HTMLElement } {
   vi.stubGlobal('fetch', fetchMock)
   const container = document.createElement('div')
   document.body.append(container)
@@ -97,6 +101,7 @@ function createClient(fetchMock: typeof fetch, pageKey = 'article-a'): { client:
     pageTitle: '测试文章',
     pageSize: 3,
     theme: 'light',
+    ...options,
   })
   activeClients.push(client)
   return { client, container }
@@ -531,6 +536,60 @@ describe('approved production comment surface', () => {
     expect(container.querySelector('.ecoku-empty-state')?.textContent).toContain('No custom comments yet')
   })
 
+  it('lets the SDK i18n option override the site language for copy, lang and the challenge widget', async () => {
+    const mount = vi.spyOn(captcha, 'mountChallenge').mockResolvedValue(null)
+    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse([], {
+      formConfig: {
+        i18n: 'en', emailRequired: true, websiteRequired: false,
+        placeholder: zhCN.commentPlaceholder, emptyMessage: '还没有评论\n成为第一个留下评论的人。',
+        captcha: { provider: 'cap', sitekey: 'cap-site', instanceUrl: 'https://cap.example' },
+      },
+    })), 'article-a', { i18n: 'zh-Hant' })
+    await client.init()
+
+    expect(container.querySelector('.ecoku-comments')?.getAttribute('lang')).toBe('zh-Hant')
+    expect(container.querySelector('.ecoku-composer .ecoku-primary-button')?.textContent).toBe('發布')
+    expect(container.querySelector('.ecoku-empty-state')?.textContent).toBe('還沒有評論\n成為第一個留下評論的人。')
+    await vi.waitFor(() => expect(mount).toHaveBeenCalled())
+    expect(mount.mock.calls.every(call => call[3] === 'zh-Hant')).toBe(true)
+  })
+
+  it('writes the SDK language into the first-paint and failure copy before any site config arrives', async () => {
+    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(500, null)), 'article-a', { i18n: 'en' })
+    await client.init().catch(() => undefined)
+
+    await vi.waitFor(() => expect(container.querySelector<HTMLElement>('.ecoku-service-error')?.hidden).toBe(false))
+    expect(container.querySelector('.ecoku-service-error h3')?.textContent).toBe('Comments are temporarily unavailable')
+    expect(container.querySelector('.ecoku-service-error button')?.textContent).toBe('Reload')
+    expect(container.querySelector('.ecoku-section-title')?.textContent).toBe('No comments')
+    expect(container.querySelector('.ecoku-pagination')?.textContent).toContain('Next ›')
+  })
+
+  it('localizes the default blogger badge and the reply action, but keeps a custom badge as written', async () => {
+    const comments = [comment(1, 0, 'note', { username: 'Owner', isBlogger: true })]
+    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(listResponse(comments, {
+      formConfig: { i18n: 'zh-Hant', emailRequired: true, websiteRequired: false, placeholder: zhCN.commentPlaceholder, bloggerBadge: '[博主]' },
+    }))
+    const { client, container } = createClient(fetchMock, 'article-a', { i18n: 'en' })
+    await client.init()
+    expect(container.querySelector('.ecoku-blogger-badge')?.textContent).toBe('[Blogger]')
+    expect(container.querySelector('.ecoku-reply-action')?.textContent).toBe('Reply')
+
+    fetchMock.mockResolvedValue(listResponse(comments, {
+      formConfig: { i18n: 'zh-Hant', emailRequired: true, websiteRequired: false, placeholder: zhCN.commentPlaceholder, bloggerBadge: '[OP]' },
+    }))
+    await client.reload()
+    expect(container.querySelector('.ecoku-blogger-badge')?.textContent).toBe('[OP]')
+  })
+
+  it('uses Traditional Chinese for every reply action', async () => {
+    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse([comment(1, 0, 'note')], {
+      formConfig: { i18n: 'zh-Hant', emailRequired: true, websiteRequired: false, placeholder: zhCN.commentPlaceholder },
+    })))
+    await client.init()
+    expect(container.querySelector('.ecoku-reply-action')?.textContent).toBe('回覆')
+  })
+
   it('renders hostile content only as text and never renders private response fields', async () => {
     const hostile = '<script>window.__ecoku_xss = true</script>\n**not markdown**'
     const comments = [
@@ -787,6 +846,20 @@ describe('approved production comment surface', () => {
     await submitForm(fillIdentityAndContent(container))
     await vi.waitFor(() => expect(container.querySelector('.ecoku-form-error')?.textContent).toBe(expected))
     expect(container.querySelector('.ecoku-form-error img')).toBeNull()
+  })
+
+  it('recognizes the server challenge error in every comment language', async () => {
+    const fetchMock = vi.fn<typeof fetch>((input) => {
+      const url = new URL(String(input))
+      if (url.pathname.endsWith('/api/comment/submit')) return Promise.resolve(jsonResponse(400, null, '请完成验证后再发布。'))
+      return Promise.resolve(listResponse([], {
+        formConfig: { i18n: 'en', emailRequired: true, websiteRequired: false, placeholder: zhCN.commentPlaceholder },
+      }))
+    })
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    await submitForm(fillIdentityAndContent(container))
+    await vi.waitFor(() => expect(container.querySelector('.ecoku-form-error')?.textContent).toBe('Complete the verification before posting.'))
   })
 
   it('shows a network-specific submission error without clearing the draft', async () => {

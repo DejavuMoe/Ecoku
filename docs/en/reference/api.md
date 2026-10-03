@@ -297,6 +297,8 @@ Site fields: `id`, `site_url`, `name`, `allowed_origins`, `i18n`, `default_sort`
 
 `smoji_image_origin` is an optional trusted image origin, for example `https://s3-cdn.zsh.moe`. Empty means the manifest origin. Omitting it on update preserves the existing value; an empty string restores the default. Public `formConfig.smoji.imageOrigin` is returned only when configured. Loading, submission, rendering, and email use the same rule. See [Smoji hosting settings](../integration/smoji#hosting).
 
+`i18n` accepts only `zh-CN`, `zh-Hant` and `en` (plus regional forms such as `zh-TW` and `en-US`); any other value returns `400`. An update that omits the field keeps the stored value.
+
 Creating a site whose ID already exists, or whose `allowed_origins` duplicates `admin.allowed_origins`, returns `409`.
 
 ### Comments

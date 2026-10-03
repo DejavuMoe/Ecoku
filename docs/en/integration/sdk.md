@@ -37,7 +37,7 @@ await comments.init()
 | `pageTitle` | `string` | No | `''` | The post title, shown in notifications, at most 200 characters. |
 | `pageSize` | `number` | No | `10` | Root comments per page, an integer from 1 to 100. |
 | `theme` | `'auto' \| 'light' \| 'dark'` | No | `'auto'` | `auto` reads host color variables, falling back to the system preference. Map variables for manual theme switches, as in the VitePress example below. |
-| `i18n` | `'zh-CN' \| 'zh-Hant' \| 'en'` | No | Site default | Comment language: SDK option → site setting → `zh-CN`. Custom text is preserved. |
+| `i18n` | `'zh-CN' \| 'zh-Hant' \| 'en'` | No | Site default | Comment language: SDK option → site setting → `zh-CN`. The default placeholder, empty-state message and blogger badge follow the language; text the site customized is shown as written. |
 | `cssURL` | `string` | No | `''` | When empty, the default styles are injected. A valid value (a stylesheet URL or `'none'`) stops the injection. See below. |
 
 The constructor does not validate options; invalid options make `init()` throw a `TypeError`.

@@ -24,6 +24,23 @@ func TestNormalizeSmojiImageOrigin(t *testing.T) {
 	}
 }
 
+func TestParseLocaleRejectsUnknownLanguages(t *testing.T) {
+	for raw, want := range map[string]Locale{"": LocaleZH, " zh-CN ": LocaleZH, "zh-Hans": LocaleZH, "zh-TW": LocaleZHant, "zh-Hant": LocaleZHant, "EN-us": LocaleEN} {
+		if got, ok := ParseLocale(raw); !ok || got != want {
+			t.Fatalf("%q: got %q, %v; want %q", raw, got, ok, want)
+		}
+	}
+	for _, raw := range []string{"fr", "ja", "zh_CN", "english"} {
+		if got, ok := ParseLocale(raw); ok || got != LocaleZH {
+			t.Fatalf("unknown locale %q accepted as %q", raw, got)
+		}
+	}
+	t.Setenv(adminLocaleEnv, "ja")
+	if AdminLocaleRecognized() || GetAdminLocale() != LocaleZH {
+		t.Fatal("an unknown ECOKU_ADMIN_LOCALE must fall back to zh-CN and be reported")
+	}
+}
+
 func TestDeploymentTemplatesUseDocumentedDefaults(t *testing.T) {
 	t.Setenv(runtimeEnvironment, containerRuntime)
 	for _, name := range []string{adminUsernameEnv, adminPasswordHashEnv, adminTokenKeyEnv} {

@@ -3,6 +3,7 @@ import {
   DEFAULT_COMMENT_FORM_CONFIG,
   normalizePageKey,
   type CommentFormConfig,
+  type EcokuLocale,
   type ResolvedEcokuConfig,
 } from './config'
 import {
@@ -18,7 +19,7 @@ import {
   saveVisitorIdentity,
   type StoredVisitorIdentity,
 } from './identity-store'
-import { getMessages, type ClientMessages } from './messages'
+import { getMessages, SERVER_CHALLENGE_REQUIRED, type ClientMessages } from './messages'
 import { mountChallenge, type ChallengeWidget } from './captcha'
 import {
   codePointLength,
@@ -58,16 +59,18 @@ type IdentityDraft = StoredVisitorIdentity
 
 export class CommentSurface {
   private config: ResolvedEcokuConfig
-  private messages: ClientMessages = getMessages('zh-CN')
+  // Assigned in the constructor before any copy is written, so an SDK `i18n` override
+  // applies even when the first load fails.
+  private messages: ClientMessages
   private readonly instanceId = ++instanceSequence
   private readonly root = createElement('div', 'ecoku-comments')
   private readonly core = createElement('div', 'ecoku-core')
   private readonly serviceError = createElement('section', 'ecoku-service-error')
-  private readonly retryButton = createElement('button', 'ecoku-secondary-button', this.messages.retry)
-  private readonly count = createElement('h2', 'ecoku-section-title', this.messages.noCommentCount)
+  private readonly retryButton = createElement('button', 'ecoku-secondary-button')
+  private readonly count = createElement('h2', 'ecoku-section-title')
   private readonly sortPicker = createElement('div', 'ecoku-sort-picker')
   private readonly sortTrigger = createElement('button', 'ecoku-sort-trigger')
-  private readonly sortTriggerLabel = createElement('span', '', this.messages.sortOldest)
+  private readonly sortTriggerLabel = createElement('span', '')
   private readonly sortMenu = createElement('div', 'ecoku-sort-menu')
   private readonly sortOptions: HTMLButtonElement[] = []
   private readonly rootForm = createElement('form', 'ecoku-composer')
@@ -78,14 +81,14 @@ export class CommentSurface {
   private readonly rootCaptcha = createElement('div', 'ecoku-turnstile-slot ecoku-captcha-slot')
   private readonly rootError = createElement('p', 'ecoku-form-error')
   private readonly characterCount = createElement('span', 'ecoku-character-count', `0/${DEFAULT_COMMENT_FORM_CONFIG.lengthLimit}`)
-  private readonly rootSubmit = createElement('button', 'ecoku-primary-button', this.messages.submitComment)
+  private readonly rootSubmit = createElement('button', 'ecoku-primary-button')
   private readonly statusLine = createElement('p', 'ecoku-status-line')
   private readonly emptyState = createElement('section', 'ecoku-empty-state')
   private readonly threadList = createElement('div', 'ecoku-thread-list')
   private readonly pagination = createElement('nav', 'ecoku-pagination')
-  private readonly previousPageButton = createElement('button', 'ecoku-pager-button', this.messages.previousPage)
+  private readonly previousPageButton = createElement('button', 'ecoku-pager-button')
   private readonly paginationStatus = createElement('span', 'ecoku-pagination-status', '1/1')
-  private readonly nextPageButton = createElement('button', 'ecoku-pager-button', this.messages.nextPage)
+  private readonly nextPageButton = createElement('button', 'ecoku-pager-button')
   private comments: CommentData[] = []
   private currentPage = 0
   private pageCount = 0
@@ -173,7 +176,13 @@ export class CommentSurface {
 
   private buildSurface(): void {
     this.root.dataset.theme = this.config.theme
-    this.root.setAttribute('lang', this.localeLanguage())
+    this.root.setAttribute('lang', this.locale())
+    this.retryButton.textContent = this.messages.retry
+    this.count.textContent = this.messages.noCommentCount
+    this.sortTriggerLabel.textContent = this.messages.sortOldest
+    this.rootSubmit.textContent = this.messages.submitComment
+    this.previousPageButton.textContent = this.messages.previousPage
+    this.nextPageButton.textContent = this.messages.nextPage
 
     if (!this.config.cssURL) {
       const style = createElement('style')
@@ -223,7 +232,7 @@ export class CommentSurface {
     this.statusLine.tabIndex = -1
 
     this.emptyState.hidden = true
-    this.emptyState.append(createElement('p', '', this.formConfig.emptyMessage))
+    this.emptyState.append(createElement('p', '', this.emptyMessage(this.formConfig.emptyMessage)))
     this.threadList.setAttribute('role', 'list')
     this.threadList.hidden = true
     this.pagination.setAttribute('aria-label', this.messages.paginationLabel)
@@ -406,11 +415,14 @@ export class CommentSurface {
     } else {
       author = createElement('span', 'ecoku-comment-author', comment.username)
     }
-    const badgeText = this.formConfig.bloggerBadge
+    // The default badge follows the comment language; a badge the site chose is shown as written.
+    const badgeText = this.formConfig.bloggerBadge === DEFAULT_COMMENT_FORM_CONFIG.bloggerBadge
+      ? this.messages.bloggerBadge
+      : this.formConfig.bloggerBadge
     if (!comment.isBlogger || !badgeText) return author
     const wrap = createElement('span', 'ecoku-comment-author-wrap')
     const badge = createElement('span', 'ecoku-blogger-badge', badgeText)
-    badge.title = '博主'
+    badge.title = this.messages.blogger
     wrap.append(author, badge)
     return wrap
   }
@@ -454,9 +466,7 @@ export class CommentSurface {
       this.syncSortUI()
     }
     const emptyCopy = this.emptyState.querySelector('p')
-    if (emptyCopy) emptyCopy.textContent = next.emptyMessage === DEFAULT_COMMENT_FORM_CONFIG.emptyMessage
-      ? `${this.messages.emptyTitle}\n${this.messages.emptyBody}`
-      : next.emptyMessage
+    if (emptyCopy) emptyCopy.textContent = this.emptyMessage(next.emptyMessage)
     if (this.activeReply) {
       this.activeReply.email.required = next.emailRequired
       this.activeReply.website.required = next.websiteRequired
@@ -469,16 +479,20 @@ export class CommentSurface {
     if (this.activeReply) void this.syncReplyCaptcha(this.activeReply)
   }
 
-  private localeLanguage(): string {
-    return this.config.i18n === 'en' || this.formConfig.locale === 'en'
-      ? 'en'
-      : this.config.i18n === 'zh-Hant' || this.formConfig.locale === 'zh-Hant'
-        ? 'zh-Hant'
-        : 'zh-CN'
+  // The SDK `i18n` option wins over the site's saved language.
+  private locale(): EcokuLocale {
+    return this.config.i18n ?? this.formConfig.locale
+  }
+
+  // The site defaults are stored in Simplified Chinese; only a custom message is shown as written.
+  private emptyMessage(value: string): string {
+    return value === DEFAULT_COMMENT_FORM_CONFIG.emptyMessage
+      ? `${this.messages.emptyTitle}\n${this.messages.emptyBody}`
+      : value
   }
 
   private applyLocale(): void {
-    this.root.setAttribute('lang', this.localeLanguage())
+    this.root.setAttribute('lang', this.locale())
     this.root.querySelector<HTMLElement>('.ecoku-comment-section')?.setAttribute('aria-label', this.messages.ariaComments)
     this.retryButton.textContent = this.messages.retry
     this.previousPageButton.textContent = this.messages.previousPage
@@ -508,13 +522,13 @@ export class CommentSurface {
     this.rootWidget = null
     this.rootCaptcha.replaceChildren()
     if (this.formConfig.captcha.provider === 'off') return
-    void mountChallenge(this.rootCaptcha, this.formConfig.captcha, this.config.theme, this.localeLanguage() === 'en' ? 'en' : this.localeLanguage() === 'zh-Hant' ? 'zh-Hant' : 'zh-CN').then((widget) => {
+    void mountChallenge(this.rootCaptcha, this.formConfig.captcha, this.config.theme, this.locale()).then((widget) => {
       if (!widget) return
       if (this.destroyed || generation !== this.captchaGeneration) {
         widget.remove()
         return
       }
-    this.rootWidget = widget
+      this.rootWidget = widget
     }).catch(() => undefined)
   }
 
@@ -525,7 +539,7 @@ export class CommentSurface {
     reply.captchaSlot.replaceChildren()
     if (this.formConfig.captcha.provider === 'off') return
     try {
-      const widget = await mountChallenge(reply.captchaSlot, this.formConfig.captcha, this.config.theme, this.localeLanguage() === 'en' ? 'en' : this.localeLanguage() === 'zh-Hant' ? 'zh-Hant' : 'zh-CN')
+      const widget = await mountChallenge(reply.captchaSlot, this.formConfig.captcha, this.config.theme, this.locale())
       if (this.destroyed || this.activeReply !== reply || generation !== reply.captchaGeneration) {
         widget?.remove()
         return
@@ -1423,7 +1437,7 @@ export class CommentSurface {
   private submissionErrorMessage(error: unknown): string {
     if (!(error instanceof EcokuRequestError)) return this.messages.submitNetwork
     if (error.status === 400) {
-      return error.message === this.messages.challengeRequired ? this.messages.challengeRequired : this.messages.submit400
+      return error.message === SERVER_CHALLENGE_REQUIRED ? this.messages.challengeRequired : this.messages.submit400
     }
     if (error.status === 403) return this.messages.submit403
     if (error.status === 413) return this.messages.submit413
