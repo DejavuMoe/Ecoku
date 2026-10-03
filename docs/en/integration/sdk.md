@@ -4,7 +4,7 @@
 
 ## Get the SDK {#install}
 
-[ecoku](https://www.npmjs.com/package/ecoku) is distributed through npm. This guide targets `0.3.1`; install it after publication succeeds, with ESM, CommonJS and TypeScript declarations. It mounts comments in the browser and connects to your Ecoku server; installing the package does not deploy a server.
+[ecoku](https://www.npmjs.com/package/ecoku) version `0.3.1` is available on npm, with ESM, CommonJS and TypeScript declarations. It mounts comments in the browser and connects to your Ecoku server; installing the package does not deploy a server.
 
 ```bash
 pnpm add --save-exact ecoku@0.3.1
