@@ -4,10 +4,10 @@
 
 ## Get the SDK {#install}
 
-[ecoku](https://www.npmjs.com/package/ecoku) version `0.3.1` is available on npm, with ESM, CommonJS and TypeScript declarations. It mounts comments in the browser and connects to your Ecoku server; installing the package does not deploy a server.
+[ecoku](https://www.npmjs.com/package/ecoku) version `0.3.2` is available on npm, with ESM, CommonJS and TypeScript declarations. It mounts comments in the browser and connects to your Ecoku server; installing the package does not deploy a server.
 
 ```bash
-pnpm add --save-exact ecoku@0.3.1
+pnpm add --save-exact ecoku@0.3.2
 ```
 
 Without npm, load the instance UMD file with `<script src="https://ecoku.example.com/client/ecoku.umd.js"></script>` and use the global `Ecoku` constructor. For static article pages prefer the [HTML loader](./html).
