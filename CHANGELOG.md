@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-04
+
 ### 修复
 
 - 普通 CI 不再运行 npm 发布预演，避免已发布同版本导致主线打包任务失败；增加 CI 打包与发布边界检查。
@@ -580,4 +582,5 @@
 [0.2.9]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.9
 [0.3.0]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.3.0
 [0.3.1]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.1
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.3.1...master
+[0.3.2]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.2
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.3.2...master
