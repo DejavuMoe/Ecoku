@@ -150,6 +150,16 @@
             "width": 1440,
             "height": 900
           }
+        },
+        {
+          "path": "index-v16.html",
+          "createdAt": "2026-10-03T00:00:00.000Z",
+          "status": "approved",
+          "subtitle": "Approved: v15 with fewer rules — boxed setting inputs, labels above controls on narrow screens, one input per item for allowed origins, recipients and Telegram targets (Enter adds the next item, pasted lines split, per-item errors with one-click origin fixes), language as radio choices, Smoji image origin, rules only between sections and days",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          }
         }
       ]
     },
@@ -173,6 +183,16 @@
           "viewport": {
             "width": 1200,
             "height": 900
+          }
+        },
+        {
+          "path": "email-notification-v7.html",
+          "createdAt": "2026-10-03T00:00:00.000Z",
+          "status": "approved",
+          "subtitle": "Approved: v6 email with the approved 區 seal in the header, sent as an inline CID PNG (transparent cuts, 84px shown at 28px) instead of a table approximation; Telegram unchanged",
+          "viewport": {
+            "width": 1200,
+            "height": 1100
           }
         }
       ]
@@ -206,5 +226,5 @@
     }
   },
   "createdAt": "2026-08-12T22:31:10.516Z",
-  "updatedAt": "2026-10-02T08:20:34.335Z"
+  "updatedAt": "2026-10-04T00:00:00.000Z"
 }

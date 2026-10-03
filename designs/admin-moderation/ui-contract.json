@@ -7,8 +7,12 @@
   },
   "sourceReferences": [
     {
+      "path": "designs/admin-moderation/index-v16.html",
+      "role": "current approved admin baseline: v15 layout with boxed setting inputs, one input per list item and fewer rules"
+    },
+    {
       "path": "designs/admin-moderation/index-v15.html",
-      "role": "current approved admin layout and interaction baseline"
+      "role": "previous approved admin layout and interaction baseline, superseded by v16"
     },
     {
       "path": "designs/admin-moderation/index-v13.html",
@@ -47,8 +51,20 @@
       "role": "previous approved comment management and notification settings layout, superseded by v13"
     },
     {
+      "path": "designs/admin-moderation/email-notification-v7.html",
+      "role": "current approved email notification baseline: v6 layout with the 區 seal sent as an inline Content-ID PNG"
+    },
+    {
+      "path": "designs/admin-moderation/notifications-v7.js",
+      "role": "reference renderer for the v7 email preview and notifications-v7.test.mjs; server/notifications mirrors its structure"
+    },
+    {
+      "path": "designs/brand/ecoku-mark-email.png",
+      "role": "approved email seal, embedded as server/notifications/ecoku-mark.png"
+    },
+    {
       "path": "designs/admin-moderation/email-notification-v6.html",
-      "role": "current approved email notification baseline: paper-and-ink tokens, system CJK sans stack, table layout, dark mode"
+      "role": "previous approved email notification baseline, superseded by email v7"
     },
     {
       "path": "designs/admin-moderation/telegram-notification-v6.html",
@@ -56,7 +72,7 @@
     },
     {
       "path": "designs/admin-moderation/notifications-v6.js",
-      "role": "reference renderer shared by the v6 previews and notifications-v6.test.mjs; server/notifications mirrors its structure"
+      "role": "reference renderer shared by the v6 previews and notifications-v6.test.mjs; the Telegram renderer in server/notifications mirrors it"
     },
     {
       "path": "designs/admin-moderation/email-blogger-new-comment-v5.html",
@@ -90,7 +106,7 @@
     {
       "id": "notification-templates",
       "prototype": {
-        "entry": "email-notification-v6.html",
+        "entry": "email-notification-v7.html",
         "states": [
           "blogger-new-comment-email",
           "blogger-new-reply-email",
@@ -106,9 +122,10 @@
           "long-content",
           "dark-mode",
           "narrow-viewport",
-          "safe-escaped-content"
+          "safe-escaped-content",
+          "inline-seal-image"
         ],
-        "assetPath": "email-notification-v6.html",
+        "assetPath": "email-notification-v7.html",
         "files": [],
         "stableIds": []
       },
@@ -117,28 +134,31 @@
         "status": "implemented",
         "files": [
           "server/notifications/email_layout.go",
+          "server/notifications/ecoku-mark.png",
           "server/notifications/templates.go",
           "server/notifications/delivery.go",
           "server/notifications/outbox.go"
         ],
         "interfaces": [],
         "tests": [
-          "packages/admin/src/admin.test.ts"
+          "server/notifications/v6_test.go",
+          "server/notifications/notifications_test.go",
+          "designs/admin-moderation/notifications-v7.test.mjs"
         ]
       },
       "status": "implemented",
       "contentProfile": "operational-strict"
     },
     {
-      "id": "admin-v15-workspace",
+      "id": "admin-v16-workspace",
       "contentProfile": "operational-strict",
       "prototype": {
-        "entry": "index-v15.html",
-        "assetPath": "index-v15.html",
+        "entry": "index-v16.html",
+        "assetPath": "index-v16.html",
         "files": [
-          "index-v15.html",
-          "styles-v15.css",
-          "prototype-v15.js"
+          "index-v16.html",
+          "styles-v16.css",
+          "prototype-v16.js"
         ],
         "states": [
           "login-off",
@@ -160,6 +180,11 @@
           "notifications",
           "notifications-off",
           "notifications-errors",
+          "list-item-enter-adds-next",
+          "list-item-paste-splits",
+          "list-item-error-and-fix",
+          "list-item-duplicate-note",
+          "list-limit-reached",
           "security-cap",
           "security-turnstile",
           "security-off",
@@ -190,7 +215,9 @@
           "packages/admin/src/stores/admin.ts",
           "packages/admin/src/components/SitePicker.vue",
           "packages/admin/src/components/SaveBar.vue",
-          "packages/admin/src/components/ChipInput.vue",
+          "packages/admin/src/components/ListInput.vue",
+          "packages/admin/src/listInput.ts",
+          "packages/admin/src/i18n.ts",
           "packages/admin/src/components/AdminIcon.vue",
           "packages/admin/index.html",
           "packages/admin/public/favicon.svg"
@@ -207,7 +234,8 @@
         ],
         "tests": [
           "packages/admin/src/admin.test.ts",
-          "designs/admin-moderation/index-v15.test.mjs"
+          "packages/admin/src/i18n.test.ts",
+          "designs/admin-moderation/index-v16.test.mjs"
         ]
       },
       "status": "implemented"
@@ -273,8 +301,9 @@
     "defaultProfile": "operational-strict",
     "inventory": "content-inventory.json",
     "approvedCopySources": [
-      "index-v15.html",
-      "prototype-v15.js",
+      "index-v16.html",
+      "prototype-v16.js",
+      "email-notification-v7.html",
       "first-login-v1.html"
     ]
   },
