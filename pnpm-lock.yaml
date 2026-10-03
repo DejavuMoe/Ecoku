@@ -11,8 +11,8 @@ importers:
   docs:
     dependencies:
       ecoku:
-        specifier: 0.3.0
-        version: 0.3.0
+        specifier: workspace:0.3.1
+        version: link:../packages/client
     devDependencies:
       mermaid:
         specifier: ^11.17.2
@@ -1240,10 +1240,6 @@ packages:
 
   eastasianwidth@0.2.0:
     resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
-
-  ecoku@0.3.0:
-    resolution: {integrity: sha512-F1G717pBFXoS/QFCx9B6q4pAykEE6jd2HrqfaEe43xrqfdo6W+NCzChWf4T/MHst+c4d7MMiUU/SmqYvOUiaPQ==}
-    engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
 
   editorconfig@1.0.7:
     resolution: {integrity: sha512-e0GOtq/aTQhVdNyDU9e02+wz9oDDM+SIOQxWME2QRjzRX5yyLAuHDE+0aE8vHb9XRC8XD37eO2u57+F09JqFhw==}
@@ -3069,8 +3065,6 @@ snapshots:
       '@types/trusted-types': 2.0.7
 
   eastasianwidth@0.2.0: {}
-
-  ecoku@0.3.0: {}
 
   editorconfig@1.0.7:
     dependencies:

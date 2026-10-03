@@ -4,10 +4,10 @@
 
 ## Get the SDK {#install}
 
-[ecoku](https://www.npmjs.com/package/ecoku) is available on npm as version `0.3.0`, with ESM, CommonJS and TypeScript declarations. It mounts comments in the browser and connects to your Ecoku server; installing the package does not deploy a server.
+[ecoku](https://www.npmjs.com/package/ecoku) is distributed through npm. This guide targets `0.3.1`; install it after publication succeeds, with ESM, CommonJS and TypeScript declarations. It mounts comments in the browser and connects to your Ecoku server; installing the package does not deploy a server.
 
 ```bash
-pnpm add --save-exact ecoku@0.3.0
+pnpm add --save-exact ecoku@0.3.1
 ```
 
 Without npm, load the instance UMD file with `<script src="https://ecoku.example.com/client/ecoku.umd.js"></script>` and use the global `Ecoku` constructor. For static article pages prefer the [HTML loader](./html).
@@ -36,7 +36,8 @@ await comments.init()
 | `pageKey` | `string` | Yes | — | The current post's page key, 1 to 512 characters. The SDK does not infer it from the URL; you must pass it explicitly. |
 | `pageTitle` | `string` | No | `''` | The post title, shown in notifications, at most 200 characters. |
 | `pageSize` | `number` | No | `10` | Root comments per page, an integer from 1 to 100. |
-| `theme` | `'auto' \| 'light' \| 'dark'` | No | `'auto'` | Color scheme. `auto` follows the page's light/dark setting. |
+| `theme` | `'auto' \| 'light' \| 'dark'` | No | `'auto'` | `auto` reads host color variables, falling back to the system preference. Map variables for manual theme switches, as in the VitePress example below. |
+| `i18n` | `'zh-CN' \| 'zh-Hant' \| 'en'` | No | Site default | Comment language: SDK option → site setting → `zh-CN`. Custom text is preserved. |
 | `cssURL` | `string` | No | `''` | When empty, the default styles are injected. A valid value (a stylesheet URL or `'none'`) stops the injection. See below. |
 
 The constructor does not validate options; invalid options make `init()` throw a `TypeError`.
@@ -89,6 +90,8 @@ Returns whether the instance is currently initialized.
 
 In `.vitepress/theme/EcokuComments.vue`, import `useRoute` from VitePress, not `vue-router`. Use the route path as the stable page key and page data for the title. Create the instance on browser mount, update it when navigating and destroy it on unmount.
 
+The VitePress theme switch does not change the system color preference. Map comment colors to VitePress variables as shown below to follow light, dark and manual theme changes without recreating the instance or clearing drafts.
+
 ```vue
 <script setup>
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
@@ -113,7 +116,9 @@ onMounted(() => {
 
 watch(
   () => [route.path, page.value.title],
-  ([path, title]) => { comments?.setPageKey(path, title).catch(console.error) },
+  ([path, title]) => {
+    comments?.setPageKey(path, title).catch(console.error)
+  },
   { flush: 'post' },
 )
 
@@ -126,6 +131,21 @@ onBeforeUnmount(() => {
 <template>
   <div ref="el"></div>
 </template>
+
+<style scoped>
+:deep(.ecoku-comments) {
+  --ecoku-theme: var(--vp-c-bg);
+  --ecoku-entry: var(--vp-c-bg-alt);
+  --ecoku-primary: var(--vp-c-text-1);
+  --ecoku-secondary: var(--vp-c-text-3);
+  --ecoku-content: var(--vp-c-text-2);
+  --ecoku-border: var(--vp-c-border);
+  --ecoku-border-soft: var(--vp-c-divider);
+  --ecoku-code-bg: var(--vp-code-block-bg);
+  --ecoku-surface-muted: var(--vp-c-bg-soft);
+  --ecoku-accent: var(--vp-c-brand-1);
+}
+</style>
 ```
 
 Add the component to the default layout’s `doc-after` slot in `.vitepress/theme/index.ts`, keeping existing theme options and CSS imports. This is a minimal integration: replace the server address and site ID, and register the documentation website origin in the admin console. The home layout does not show this slot.

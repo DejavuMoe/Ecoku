@@ -5,15 +5,20 @@
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-03
+
 ### 变更
 
 - 评论区和管理后台增加 `zh-CN`、`zh-Hant`、`en` 三语配置：后台读取 `ECOKU_ADMIN_LOCALE`，站点保存默认评论区语言，SDK 的 `i18n` 参数可以覆盖站点设置；schema v12 为站点保存语言字段。
-- 配置模板按源码中的实际作用说明参数，取消「旧版兼容」分类，移除被忽略的后台开关；四语部署页与配置参考同步区分默认行为、可选覆盖和固定约束。
+- 配置模板按源码中的实际作用说明参数，取消「旧版兼容」分类，移除被忽略的后台开关；三语部署页与配置参考同步区分默认行为、可选覆盖和固定约束。
 - 文档以 v0.3.0 为公开部署起点，内测版本归档并移除旧镜像操作指引；补充 npm SDK 和 VitePress 接入，修正持久密钥、备份和 Smoji 的说明，统一中文排版与纸墨细滚动条。
 - Woodpecker 仅保留文档部署运行，其余验证与 Forgejo 镜像工作流保留 YAML 并显式禁用；完整验证、镜像、npm SDK 和 Release 统一由 GitHub Actions 执行。Compose、当前部署文档及发布校验改用 GHCR 精确版本，历史发布说明保持原样。
 
 ### 修复
 
+- 后台翻译仅在内容变化时更新文本，避免英语或繁体页面的观察器重复触发。
+- 移除切换文章和评论翻页时的可见成功提示，翻页仍通过页码播报；保留发布成功与加载失败提示。文档 Demo 使用同版本 SDK。
+- 文档站 Demo 评论区配色跟随 VitePress 手动明暗切换，保留正在输入的草稿；三语 SDK 接入示例补充主题变量映射。
 - 修复 npm 发布 tarball 路径缺少 `./` 而被识别为 GitHub 仓库的问题，CI 增加真实 npm 发布 dry-run；支持从已验证的原始 Release 产物手动恢复 npm 发布，无需移动 tag。
 
 ## [0.3.0] - 2026-10-03
@@ -556,4 +561,5 @@
 [0.2.8]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.8
 [0.2.9]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.2.9
 [0.3.0]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.3.0
-[Unreleased]: https://git.via.moe/dejavu/Ecoku/compare/v0.3.0...master
+[0.3.1]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.1
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.3.1...master

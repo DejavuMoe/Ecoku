@@ -125,11 +125,11 @@ export class CommentSurface {
   async mount(): Promise<void> {
     this.config.container.replaceChildren(this.root)
     await this.restoreVisitorIdentity()
-    await this.loadPage(1, false)
+    await this.loadPage(1)
   }
 
   async reload(): Promise<void> {
-    await this.loadPage(Math.max(1, this.currentPage), false)
+    await this.loadPage(Math.max(1, this.currentPage))
   }
 
   async setPageKey(value: string, pageTitle = ''): Promise<void> {
@@ -154,8 +154,7 @@ export class CommentSurface {
     this.rootContent.value = ''
     this.updateRootFormState()
     this.statusLine.textContent = ''
-    await this.loadPage(1, false)
-    if (!this.destroyed) this.announce(this.messages.pageChanged)
+    await this.loadPage(1)
   }
 
   destroy(): void {
@@ -269,7 +268,7 @@ export class CommentSurface {
     })
     this.sortMenu.addEventListener('keydown', (event) => this.handleSortMenuKeydown(event))
     document.addEventListener('pointerdown', this.handleDocumentPointerDown)
-    this.retryButton.addEventListener('click', () => void this.loadPage(Math.max(1, this.currentPage), false))
+    this.retryButton.addEventListener('click', () => void this.loadPage(Math.max(1, this.currentPage)))
     this.previousPageButton.addEventListener('click', () => void this.goToPage(this.currentPage - 1))
     this.nextPageButton.addEventListener('click', () => void this.goToPage(this.currentPage + 1))
   }
@@ -313,7 +312,7 @@ export class CommentSurface {
     if (nextSort === this.sort) return
     this.sort = nextSort
     this.closeReply(false)
-    void this.loadPage(1, false)
+    void this.loadPage(1)
   }
 
   private setSortDisabled(disabled: boolean): void {
@@ -544,7 +543,7 @@ export class CommentSurface {
     for (const option of this.sortOptions) option.setAttribute('aria-selected', String(option.dataset.sort === sort))
   }
 
-  private async loadPage(targetPage: number, announce: boolean): Promise<void> {
+  private async loadPage(targetPage: number): Promise<void> {
     if (this.destroyed || this.listBusy) return
     const controller = this.beginListRequest()
     const version = this.requestVersion
@@ -563,7 +562,6 @@ export class CommentSurface {
       this.applyFormConfig(result.formConfig)
       this.hideServiceError()
       this.renderComments()
-      if (announce) this.announce(this.messages.pageChanged)
     } catch (error) {
       if (isAbortError(error) || !this.isCurrentRequest(version, revision)) return
       this.showListFailure(error, this.comments.length === 0)
@@ -585,7 +583,7 @@ export class CommentSurface {
       || targetPage > this.pageCount
       || targetPage === this.currentPage
     ) return
-    await this.loadPage(targetPage, true)
+    await this.loadPage(targetPage)
   }
 
   private beginListRequest(): AbortController {

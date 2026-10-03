@@ -163,6 +163,17 @@
   border-top: 1px solid var(--line-soft);
 }
 .ecoku-doc-comments .ecoku-comments {
+  /* Follow VitePress tokens, including manual overrides of the system theme. */
+  --ecoku-theme: var(--paper);
+  --ecoku-entry: var(--surface);
+  --ecoku-primary: var(--ink);
+  --ecoku-secondary: var(--muted);
+  --ecoku-content: var(--ink-soft);
+  --ecoku-border: var(--line);
+  --ecoku-border-soft: var(--line-soft);
+  --ecoku-code-bg: var(--code-bg);
+  --ecoku-surface-muted: var(--wash);
+  --ecoku-accent: var(--accent);
   --ecoku-font-family: var(--vp-font-family-base);
 }
 .vp-doc table { display: block; width: max-content; min-width: 100%; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: 14px; }

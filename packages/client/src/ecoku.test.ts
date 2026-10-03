@@ -824,6 +824,8 @@ describe('approved production comment surface', () => {
     expect(container.textContent).not.toContain('first child')
     expect(container.querySelectorAll('.ecoku-comment-row')).toHaveLength(1)
     expect(container.querySelector('.ecoku-pagination-status')?.textContent).toBe('2/2')
+    expect(container.querySelector('.ecoku-pagination-status')?.getAttribute('aria-live')).toBe('polite')
+    expect(container.querySelector('.ecoku-status-line')?.textContent).toBe('')
     expect(previous.disabled).toBe(false)
     expect(next.disabled).toBe(true)
 
@@ -940,6 +942,7 @@ it('updates the article title with the page key and clears an omitted title', as
   const { client, container } = createClient(fetchMock)
   await client.init()
   await client.setPageKey('article-b', '文章 B')
+  expect(container.querySelector('.ecoku-status-line')?.textContent).toBe('')
   await submitForm(fillIdentityAndContent(container))
   await vi.waitFor(() => expect(posts).toHaveLength(1))
   expect(posts[0]).toMatchObject({ mark: 'article-b', pageTitle: '文章 B' })

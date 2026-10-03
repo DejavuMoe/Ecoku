@@ -4,10 +4,10 @@
 
 ## 取得 SDK {#install}
 
-[ecoku](https://www.npmjs.com/package/ecoku) 已發布到 npm，目前版本為 `0.3.0`，提供 ESM、CommonJS 和 TypeScript 型別宣告。SDK 在瀏覽器中掛載評論區，需要連接你部署的 Ecoku 服務；安裝 npm 套件不會替你部署伺服器。
+[ecoku](https://www.npmjs.com/package/ecoku) 透過 npm 分發，本頁對應 `0.3.1`，請在此版本發布成功後安裝，提供 ESM、CommonJS 和 TypeScript 型別宣告。SDK 在瀏覽器中掛載評論區，需要連接你部署的 Ecoku 服務；安裝 npm 套件不會替你部署伺服器。
 
 ```bash
-pnpm add --save-exact ecoku@0.3.0
+pnpm add --save-exact ecoku@0.3.1
 ```
 
 不使用 npm 時，可透過 `<script src="https://ecoku.example.com/client/ecoku.umd.js"></script>` 載入實例提供的 UMD 檔案，再使用全域 `Ecoku` 建構函式。靜態文章頁優先使用 [HTML 載入器](./html)。
@@ -36,7 +36,8 @@ await comments.init()
 | `pageKey` | `string` | 是 | — | 目前文章的頁面 key，1～512 個字元。SDK 不會自動從網址推斷，必須明確傳入。 |
 | `pageTitle` | `string` | 否 | `''` | 文章標題，顯示在通知中，最多 200 個字元。 |
 | `pageSize` | `number` | 否 | `10` | 每頁根評論數，1～100 的整數。 |
-| `theme` | `'auto' \| 'light' \| 'dark'` | 否 | `'auto'` | 配色。`auto` 跟隨頁面的明暗設定。 |
+| `theme` | `'auto' \| 'light' \| 'dark'` | 否 | `'auto'` | 配色。`auto` 優先讀取宿主顏色變數，未提供時跟隨系統偏好；手動主題開關需對應顏色變數，見下方 VitePress 範例。 |
+| `i18n` | `'zh-CN' \| 'zh-Hant' \| 'en'` | 否 | 站點預設值 | 評論區語言。優先順序為 SDK 參數 → 站點設定 → `zh-CN`；自訂文案保持原文。 |
 | `cssURL` | `string` | 否 | `''` | 留空時注入預設樣式。填寫有效值（樣式表網址或 `'none'`）都會停止注入，見下文。 |
 
 建構函式不驗證參數；參數不合法時，`init()` 會擲出 `TypeError`。
@@ -89,6 +90,8 @@ await comments.init()
 
 在 `.vitepress/theme/EcokuComments.vue` 中使用 VitePress 自帶的 `useRoute`，不要從 `vue-router` 匯入。路由路徑作為穩定的頁面 key，頁面資料提供標題。只在瀏覽器掛載時建立實例，切換文章時更新，卸載時銷毀。
 
+VitePress 的手動主題開關不會改變系統配色偏好。以下將評論區顏色對應到 VitePress 變數，淺色、暗色和手動切換都會同步，且不會重建實例或清空草稿。
+
 ```vue
 <script setup>
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
@@ -113,7 +116,9 @@ onMounted(() => {
 
 watch(
   () => [route.path, page.value.title],
-  ([path, title]) => { comments?.setPageKey(path, title).catch(console.error) },
+  ([path, title]) => {
+    comments?.setPageKey(path, title).catch(console.error)
+  },
   { flush: 'post' },
 )
 
@@ -126,6 +131,21 @@ onBeforeUnmount(() => {
 <template>
   <div ref="el"></div>
 </template>
+
+<style scoped>
+:deep(.ecoku-comments) {
+  --ecoku-theme: var(--vp-c-bg);
+  --ecoku-entry: var(--vp-c-bg-alt);
+  --ecoku-primary: var(--vp-c-text-1);
+  --ecoku-secondary: var(--vp-c-text-3);
+  --ecoku-content: var(--vp-c-text-2);
+  --ecoku-border: var(--vp-c-border);
+  --ecoku-border-soft: var(--vp-c-divider);
+  --ecoku-code-bg: var(--vp-code-block-bg);
+  --ecoku-surface-muted: var(--vp-c-bg-soft);
+  --ecoku-accent: var(--vp-c-brand-1);
+}
+</style>
 ```
 
 在既有 `.vitepress/theme/index.ts` 中將元件放入預設版面的 `doc-after` 插槽，保留已有主題設定和 CSS 匯入。以下是最小接入；請修改服務位址和站點 ID，並在後台登記文件網站的來源。首頁使用 home 版面時不會顯示此插槽。

@@ -61,7 +61,7 @@ If someone edited the same site in another browser tab while you were editing it
 
 ### Sticker packs
 
-Enable 「表情包」 (Sticker packs) and enter the Smoji manifest URL. v0.3.0 provides optional 「图片来源」 (Image origin): enter the CDN origin when images are hosted separately, or leave it empty to preserve the manifest-origin rule. Resource hosts serve files directly and can see visitor IP addresses. See [host the Smoji manifest and images](../integration/smoji#hosting) for exact values.
+Enable 「表情包」 (Sticker packs) and enter the Smoji manifest URL. v0.3.1 provides optional 「图片来源」 (Image origin): enter the CDN origin when images are hosted separately, or leave it empty to preserve the manifest-origin rule. Resource hosts serve files directly and can see visitor IP addresses. See [host the Smoji manifest and images](../integration/smoji#hosting) for exact values.
 
 ### Blogger identity {#blogger}
 

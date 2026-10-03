@@ -158,7 +158,7 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&page=1&pageSize=10&sor
 | `bloggerProofEnabled` | 站點是否已設定部落客口令。 |
 | `captcha` | 目前的人機驗證方式：`provider` 為 `off`、`turnstile` 或 `cap`；`sitekey` 為公開的 Site key；使用 Cap 時另有 `instanceUrl`。 |
 | `turnstileSitekey` | 為舊版用戶端保留。僅在 Turnstile 模式下有值。 |
-| `smoji` | `enabled` 表示是否啟用，`manifestUrl` 為清單網址；v0.3.0 提供選填的 `imageOrigin`，未回傳或為空時使用清單來源。 |
+| `smoji` | `enabled` 表示是否啟用，`manifestUrl` 為清單網址；v0.3.1 提供選填的 `imageOrigin`，未回傳或為空時使用清單來源。 |
 
 #### 讀取上限
 
