@@ -4,12 +4,14 @@
   "capture": {
     "method": "rendered-dom",
     "sources": [
-      "index-v15.html",
+      "index-v16.html",
       "packages/admin/src/App.vue",
       "packages/admin/src/components/CommentManagementView.vue",
       "packages/admin/src/components/SiteManagementView.vue",
       "packages/admin/src/components/NotificationSettingsView.vue",
-      "packages/admin/src/components/SecurityView.vue"
+      "packages/admin/src/components/SecurityView.vue",
+      "packages/admin/src/components/ListInput.vue",
+      "packages/admin/src/listInput.ts"
     ],
     "capturedAt": "2026-09-30T16:08:21.865364+00:00",
     "surfaces": [
@@ -35,13 +37,14 @@
       "Prototype-only controls, sanitized comment/site/badge fixture values and variable counts were excluded.",
       "Hidden-state copy is included. Closed shadow roots, external frames, native dialogs and pseudo-elements are not covered.",
       "The inventory deduplicates copy across states; per-state visibility and duplicate channels are not retained.",
-      "Production captures use an isolated fixture API. Live backend, CAPTCHA services, SMTP and Telegram were not exercised."
+      "Production captures use an isolated fixture API. Live backend, CAPTCHA services, SMTP and Telegram were not exercised.",
+      "v16 list copy was added from index-v16.html / prototype-v16.js and the matching production source; it was not part of the 2026-09-30 DOM capture."
     ]
   },
   "briefSources": [],
   "approvedCopySources": [
-    "index-v15.html",
-    "prototype-v15.js"
+    "index-v16.html",
+    "prototype-v16.js"
   ],
   "items": [
     {
@@ -63,7 +66,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -87,7 +90,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -111,7 +114,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -135,7 +138,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -159,7 +162,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -183,7 +186,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -207,7 +210,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -231,7 +234,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -255,7 +258,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -279,7 +282,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -303,7 +306,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -327,7 +330,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -351,7 +354,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -375,7 +378,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -399,7 +402,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -423,7 +426,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -447,7 +450,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -471,7 +474,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -495,7 +498,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -519,7 +522,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -543,7 +546,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -567,7 +570,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -591,7 +594,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -615,7 +618,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -639,7 +642,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -663,7 +666,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -687,7 +690,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -711,7 +714,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -735,7 +738,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -759,7 +762,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -783,7 +786,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -807,7 +810,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -831,7 +834,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -855,7 +858,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -879,7 +882,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -903,7 +906,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -927,7 +930,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -951,7 +954,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -975,7 +978,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -999,7 +1002,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1023,7 +1026,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1047,7 +1050,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1071,7 +1074,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1095,7 +1098,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1119,7 +1122,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1143,7 +1146,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1167,7 +1170,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1191,7 +1194,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1215,7 +1218,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1239,7 +1242,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1263,7 +1266,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1287,7 +1290,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1311,7 +1314,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1335,7 +1338,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1359,7 +1362,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1383,7 +1386,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1407,7 +1410,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1431,7 +1434,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1455,7 +1458,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1479,7 +1482,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1503,7 +1506,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1527,7 +1530,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1551,7 +1554,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1575,7 +1578,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1599,7 +1602,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1623,7 +1626,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1647,7 +1650,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1671,7 +1674,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1695,7 +1698,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1719,7 +1722,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1743,7 +1746,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1767,7 +1770,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1791,7 +1794,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1815,7 +1818,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1839,7 +1842,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1863,7 +1866,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1887,7 +1890,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1911,7 +1914,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1935,7 +1938,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1959,7 +1962,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -1983,7 +1986,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2007,7 +2010,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2031,7 +2034,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2055,7 +2058,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2079,7 +2082,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2103,7 +2106,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2127,7 +2130,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2151,7 +2154,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2175,7 +2178,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2199,7 +2202,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2223,7 +2226,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2247,7 +2250,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2271,7 +2274,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2295,7 +2298,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2319,7 +2322,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2343,7 +2346,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2367,7 +2370,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2391,7 +2394,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2415,7 +2418,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2439,7 +2442,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2463,7 +2466,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2487,7 +2490,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2511,7 +2514,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2535,7 +2538,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2559,7 +2562,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2583,7 +2586,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2607,7 +2610,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2631,7 +2634,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2655,7 +2658,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2679,7 +2682,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2703,7 +2706,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2727,7 +2730,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2751,7 +2754,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2775,7 +2778,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2799,7 +2802,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2823,7 +2826,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2847,7 +2850,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2871,7 +2874,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2895,7 +2898,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2919,7 +2922,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2943,7 +2946,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2967,7 +2970,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -2991,7 +2994,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3015,7 +3018,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3039,7 +3042,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3063,7 +3066,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3087,7 +3090,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3111,7 +3114,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3135,7 +3138,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3159,7 +3162,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3183,7 +3186,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3207,7 +3210,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3231,7 +3234,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3255,7 +3258,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3279,7 +3282,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3303,7 +3306,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3327,7 +3330,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3351,7 +3354,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3375,7 +3378,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3399,7 +3402,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3423,7 +3426,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3447,7 +3450,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3471,7 +3474,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3495,7 +3498,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3519,7 +3522,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3543,7 +3546,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3567,7 +3570,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3591,7 +3594,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3615,7 +3618,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3639,7 +3642,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3663,7 +3666,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3687,7 +3690,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3711,7 +3714,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3735,7 +3738,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3759,7 +3762,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3783,7 +3786,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3807,7 +3810,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3831,7 +3834,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3855,7 +3858,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3879,7 +3882,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3903,7 +3906,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3927,7 +3930,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3951,7 +3954,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3975,7 +3978,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -3999,7 +4002,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4023,7 +4026,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4047,7 +4050,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4071,7 +4074,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4095,7 +4098,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4119,7 +4122,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4143,7 +4146,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4167,7 +4170,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4191,7 +4194,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4215,7 +4218,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4239,7 +4242,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4263,7 +4266,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4287,7 +4290,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4311,7 +4314,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4335,7 +4338,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4359,7 +4362,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4383,7 +4386,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4407,7 +4410,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4431,7 +4434,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4455,7 +4458,7 @@
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js",
+        "source": "index-v15.html / prototype-v15.js (carried into v16)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4577,6 +4580,462 @@
       "evidence": {
         "source": "packages/admin/src/components/CommentManagementView.vue",
         "reference": "Rendered interface with isolated fixture data."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-1b93e0c54996e98c",
+      "text": "添加来源",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-8a93c14f9a728c2a",
+      "text": "添加收件人",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-978ae6fae953b180",
+      "text": "添加接收目标",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-87a354cd7d2f1a4c",
+      "text": "改为",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "user-action",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-4423ec79c7050df3",
+      "text": "已达上限 32 项",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "state",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-9f9c501f922ee3df",
+      "text": "与第 1 项重复，保存时合并",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-ba4fa668fa1cbaab",
+      "text": "至少填写一个允许来源",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-9a919391542dc0c1",
+      "text": "至少填写一个收件人",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-716f20e4615f79f6",
+      "text": "至少填写一个接收目标",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-2f86b6e3bdd96679",
+      "text": "缺少协议",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-94177781ca09460a",
+      "text": "缺少协议，且不能含路径",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-9ddd740945d49c9b",
+      "text": "只填来源，不含路径",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-724ce6c3e98e8190",
+      "text": "需要完整来源，例如 https://blog.example.com",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-f248e8ed36218d08",
+      "text": "邮箱格式无效",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-f93d500ac85fbd1d",
+      "text": "不支持 @用户名，请填写数字 ID",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-6af39c603488c357",
+      "text": "只能填写数字 ID，可带负号",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "validation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-d06c39c8e0dced6b",
+      "text": "放置评论区的网页来源，只含协议、域名和端口，例如 https://blog.example.com。按 Enter 添加下一项，可一次粘贴多行。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-94d3c31c34c8e064",
+      "text": "每项一个邮箱。按 Enter 添加下一项，可一次粘贴多行。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
+      },
+      "flags": []
+    },
+    {
+      "id": "content-756b247e3182162f",
+      "text": "用户、群组或频道的数字 ID，如 123456789 或 -1001234567890。按 Enter 添加下一项。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "index-v16.html (rendered DOM)"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v16.html"
+      ],
+      "purpose": "task-help",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v16.html / prototype-v16.js",
+        "reference": "Approved asset metadata (admin v16, approved 2026-10-04)."
       },
       "flags": []
     }

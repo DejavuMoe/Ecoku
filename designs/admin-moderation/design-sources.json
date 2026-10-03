@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "sources": [
     {
-      "id": "approved-admin-v15",
+      "id": "approved-admin-v16",
       "type": "html",
-      "location": "designs/admin-moderation/index-v15.html",
+      "location": "designs/admin-moderation/index-v16.html",
       "roles": [
         "visual-reference",
         "interaction-reference",
@@ -20,7 +20,7 @@
       "observations": [
         "Margin column and 760px main column.",
         "Comment feed grouped by date with inline deletion confirmation.",
-        "Ruled settings forms, save on change and guarded navigation."
+        "Boxed setting inputs, one input per item for lists, save on change and guarded navigation."
       ],
       "inferences": [],
       "limitations": [
