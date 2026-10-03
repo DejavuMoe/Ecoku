@@ -3,11 +3,11 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "ecoku": "workspace:0.3.1"
+    "ecoku": "0.3.1"
   },
   "scripts": {
-    "dev": "pnpm -C ../packages/client build && vitepress dev",
-    "build": "pnpm -C ../packages/client build && node .vitepress/inline-spacing.test.mjs && vitepress build",
+    "dev": "vitepress dev",
+    "build": "node .vitepress/inline-spacing.test.mjs && vitepress build",
     "preview": "vitepress preview"
   },
   "devDependencies": {

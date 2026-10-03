@@ -4,7 +4,7 @@
 
 ## 获取 SDK {#install}
 
-[ecoku](https://www.npmjs.com/package/ecoku) 通过 npm 分发，本页对应 `0.3.1`，请在该版本发布成功后安装，提供 ESM、CommonJS 和 TypeScript 类型声明。SDK 在浏览器中挂载评论区，需要连接你部署的 Ecoku 服务；安装 npm 包不会替你部署服务端。
+[ecoku](https://www.npmjs.com/package/ecoku) 的 `0.3.1` 版本已发布到 npm，提供 ESM、CommonJS 和 TypeScript 类型声明。SDK 在浏览器中挂载评论区，需要连接你部署的 Ecoku 服务；安装 npm 包不会替你部署服务端。
 
 ```bash
 pnpm add --save-exact ecoku@0.3.1
