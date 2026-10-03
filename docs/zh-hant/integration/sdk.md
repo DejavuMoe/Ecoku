@@ -4,10 +4,10 @@
 
 ## 取得 SDK {#install}
 
-[ecoku](https://www.npmjs.com/package/ecoku) 的 `0.3.1` 版本已發布到 npm，提供 ESM、CommonJS 和 TypeScript 型別宣告。SDK 在瀏覽器中掛載評論區，需要連接你部署的 Ecoku 服務；安裝 npm 套件不會替你部署伺服器。
+[ecoku](https://www.npmjs.com/package/ecoku) 的 `0.3.2` 版本已發布到 npm，提供 ESM、CommonJS 和 TypeScript 型別宣告。SDK 在瀏覽器中掛載評論區，需要連接你部署的 Ecoku 服務；安裝 npm 套件不會替你部署伺服器。
 
 ```bash
-pnpm add --save-exact ecoku@0.3.1
+pnpm add --save-exact ecoku@0.3.2
 ```
 
 不使用 npm 時，可透過 `<script src="https://ecoku.example.com/client/ecoku.umd.js"></script>` 載入實例提供的 UMD 檔案，再使用全域 `Ecoku` 建構函式。靜態文章頁優先使用 [HTML 載入器](./html)。
