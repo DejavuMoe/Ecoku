@@ -41,7 +41,7 @@ A "site" is one website that embeds the comment section. On **Sites** (站点), 
 | Site ID (站点 ID) | The `data-site-id` in the embed code. Starts with a letter or digit and may contain letters, digits, `.`, `_`, and `-`, up to 100 characters. **It cannot be changed after the site is created.** |
 | Site URL (站点 URL) | The canonical address of the website, such as `https://blog.example.com`. Notification emails and the admin console's **View original comment** (查看原评论) build post links from it plus the page path. |
 | Site name (站点名称) | Shown in the admin console and in notification emails, up to 120 characters. If empty, the domain of the site URL is used. |
-| Allowed origins (允许来源) | Origins that may load this site's comment section, one per line, up to 32. See below. |
+| Allowed origins (允许来源) | Origins that may load this site's comment section, one input per origin, up to 32. See below. |
 | Comment order (评论排序) | The default order when a visitor opens the comment section: newest or oldest first. Visitors can switch it temporarily. |
 | Visitor email (访客邮箱) | Whether a visitor's email is required (必填, the default) or optional (选填). |
 | Visitor website (访客网站) | Whether a visitor's website is required (必填) or optional (选填, the default). Nickname is always required. |
@@ -56,6 +56,8 @@ An "origin" is `scheme://domain[:port]`, without a path. The origin of the page 
 - `https://blog.example.com` and `https://www.blog.example.com` are two different origins. If your blog is reachable on both domains, list both.
 - When you preview your blog locally, add addresses such as `http://localhost:1313` too. You can remove them after you go live.
 - You cannot list the admin console's own origin (the address of `instance_public_url`, or of `admin.allowed_origins` if you set it). The two must be kept separate.
+
+Press Enter in an input to add the next one; press Backspace in an empty input to remove it. Pasting several lines, or several origins separated by commas, splits them into separate items. After you leave an item that lacks a scheme or includes a path, a note appears under it with a "Change to …" (改为 …) button that replaces it with the correct origin. Duplicate origins are merged when you save.
 
 If someone edited the same site in another browser tab while you were editing it, saving shows "Site configuration was updated by another session" (站点配置已被其他会话更新). Reload and edit again.
 

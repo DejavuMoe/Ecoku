@@ -1,11 +1,27 @@
 package notifications
 
 import (
+	_ "embed"
 	"html"
 	"strings"
 )
 
-// Email layout follows designs/admin-moderation/notifications-v6.js. Colors
+// emailMarkPNG is the approved seal (designs/brand/ecoku-mark-email.png): vermilion,
+// 84×84, with transparent strokes so the card shows through in light and dark mail.
+// It travels inside the message and the HTML refers to it by Content-ID. Mail
+// clients drop SVG and data: images, and a remote image would tell this instance
+// when and from which IP each recipient opened the mail.
+//
+//go:embed ecoku-mark.png
+var emailMarkPNG []byte
+
+const (
+	emailMarkCID      = "ecoku-mark"
+	emailMarkFilename = "ecoku-mark.png"
+	emailMarkSize     = "28"
+)
+
+// Email layout follows designs/admin-moderation/notifications-v7.js. Colors
 // are the comment area v17 / admin v13 paper-and-ink tokens resolved to hex,
 // because mail clients support neither CSS variables nor color-mix.
 const (
@@ -18,8 +34,6 @@ const (
 	emailLineSoft = "rgba(30,28,25,0.12)"
 	emailWash     = "#efebe3"
 	emailAccent   = "#9a4733"
-	emailSeal     = "#b8472f"
-	emailSealCut  = "#f7f4ee"
 
 	emailFontSans     = "-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei UI','Microsoft YaHei','Noto Sans CJK SC','Source Han Sans SC','Noto Sans SC','Helvetica Neue',Arial,sans-serif"
 	emailFontMono     = "ui-monospace,'SF Mono','Cascadia Mono',Menlo,Consolas,monospace"
@@ -34,8 +48,6 @@ const (
 		".email-rule{border-color:rgba(238,232,221,0.12)!important}" +
 		".email-wash{background-color:#26231f!important}" +
 		".email-frame{border-color:#4b453d!important}" +
-		".email-seal{background-color:#c55a40!important}" +
-		".email-seal-cut{border-color:#1a1816!important}" +
 		".email-button{background-color:#eee8dd!important}" +
 		".email-button-link{color:#1a1816!important}"
 	emailNarrowRules = ".email-pad{padding-right:22px!important;padding-left:22px!important}" +
@@ -111,10 +123,9 @@ func renderEmailDocument(doc emailDocument) string {
 
 	b.WriteString(`<tr><td class="email-pad email-rule" style="padding:20px 32px;border-bottom:1px solid ` + emailLineSoft + `;">`)
 	b.WriteString(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;"><tr>`)
-	b.WriteString(`<td width="36" valign="middle" style="width:36px;"><table class="email-seal" role="presentation" width="26" height="26" cellpadding="0" cellspacing="0" border="0" bgcolor="` + emailSeal + `" style="width:26px;height:26px;border-collapse:separate;border-radius:6px;background-color:` + emailSeal + `;"><tr><td align="center" valign="middle">`)
-	b.WriteString(`<table role="presentation" width="18" height="18" cellpadding="0" cellspacing="0" border="0" style="width:18px;height:18px;border-collapse:collapse;"><tr><td class="email-seal-cut" width="7" height="5" style="width:7px;height:5px;border:2px solid ` + emailSealCut + `;border-radius:1px;"></td><td width="11" style="width:11px;"></td></tr><tr><td colspan="2" height="4" style="height:4px;"></td></tr><tr><td colspan="2"><table role="presentation" width="18" cellpadding="0" cellspacing="0" border="0" style="width:18px;border-collapse:collapse;"><tr><td class="email-seal-cut" width="5" height="5" style="width:5px;height:5px;border:2px solid ` + emailSealCut + `;"></td><td width="2" style="width:2px;"></td><td class="email-seal-cut" width="5" height="5" style="width:5px;height:5px;border:2px solid ` + emailSealCut + `;"></td><td width="2" style="width:2px;"></td><td class="email-seal-cut" width="5" height="5" style="width:5px;height:5px;border:2px solid ` + emailSealCut + `;"></td></tr></table></td></tr></table>`)
-	b.WriteString(`</td></tr></table></td>`)
-	b.WriteString(`<td class="email-copy" valign="middle" style="padding-left:2px;color:` + emailInk + `;font-family:` + emailFontWordmark + `;font-size:18px;font-weight:bold;line-height:24px;letter-spacing:0.005em;">Ecoku</td>`)
+	b.WriteString(`<td width="38" valign="middle" style="width:38px;line-height:0;font-size:0;">`)
+	b.WriteString(`<img src="cid:` + emailMarkCID + `" width="` + emailMarkSize + `" height="` + emailMarkSize + `" alt="" style="display:block;width:` + emailMarkSize + `px;height:` + emailMarkSize + `px;border:0;outline:none;text-decoration:none;"></td>`)
+	b.WriteString(`<td class="email-copy" valign="middle" style="color:` + emailInk + `;font-family:` + emailFontWordmark + `;font-size:18px;font-weight:bold;line-height:24px;letter-spacing:0.005em;">Ecoku</td>`)
 	b.WriteString(`<td class="email-muted" align="right" valign="middle" style="color:` + emailMuted + `;font-size:12px;line-height:18px;word-break:break-word;">` + html.EscapeString(doc.SiteName) + `</td>`)
 	b.WriteString(`</tr></table></td></tr>`)
 

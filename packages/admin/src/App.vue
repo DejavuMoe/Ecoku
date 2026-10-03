@@ -9,7 +9,7 @@ import SiteManagementView from './components/SiteManagementView.vue'
 import FirstLoginSetupView from './components/FirstLoginSetupView.vue'
 import { useAdminStore } from './stores/admin'
 import { adminApi } from './api'
-import type { CaptchaPublicConfig, MainView } from './types'
+import type { CaptchaPublicConfig, LoginConfig, MainView } from './types'
 import { mountChallenge, type ChallengeWidget } from './captcha'
 import { messages } from './messages'
 import { adminLocale, adminText, installAdminTranslations, refreshAdminTranslations, setAdminLocale } from './i18n'
@@ -29,7 +29,6 @@ const views = computed(() => [
 const username = ref('')
 const password = ref('')
 const usernameInput = ref<HTMLInputElement | null>(null)
-const primaryNav = ref<HTMLElement | null>(null)
 const loginSlot = ref<HTMLElement | null>(null)
 const loginCaptcha = ref<CaptchaPublicConfig>({ provider: 'off', sitekey: '', instanceUrl: '' })
 let loginWidget: ChallengeWidget | null = null
@@ -39,6 +38,11 @@ let returnFocus: HTMLElement | null = null
 const visibleToast = ref('')
 let toastTimer: ReturnType<typeof setTimeout> | undefined
 let stopAdminTranslations: (() => void) | undefined
+// The login configuration carries the admin locale, which a restored session needs too.
+let startupLoginConfig: Promise<LoginConfig> | null = null
+// Focus moves to the page heading only after a sign-in the user just submitted; a restored
+// session leaves focus alone, so the browser draws no focus ring on page load.
+let focusAfterSignIn = false
 
 watch(adminLocale, () => queueMicrotask(refreshAdminTranslations))
 
@@ -75,8 +79,10 @@ watch(authenticated, async (value, previous) => {
     loginWidget?.remove()
     loginWidget = null
     loginCaptcha.value = { provider: 'off', sitekey: '', instanceUrl: '' }
-    const nav = primaryNav.value?.offsetParent ? primaryNav.value : document.querySelector('.tabbar')
-    nav?.querySelector<HTMLButtonElement>('[aria-current="page"]')?.focus()
+    if (focusAfterSignIn) {
+      focusAfterSignIn = false
+      document.querySelector<HTMLElement>('#main-content h1, #setup-title')?.focus({ preventScroll: true })
+    }
   } else {
     if (previous) {
       reloadAfterSessionEnd()
@@ -103,6 +109,8 @@ function beforeUnload(event: BeforeUnloadEvent) {
 
 onMounted(async () => {
   stopAdminTranslations = installAdminTranslations(document.body)
+  startupLoginConfig = adminApi.getLoginConfig()
+  startupLoginConfig.then(config => setAdminLocale(config.locale), () => undefined)
   const expired = takeSessionNotice()
   window.addEventListener('beforeunload', beforeUnload)
   document.addEventListener('keydown', saveShortcut)
@@ -128,7 +136,9 @@ async function mountLoginChallenge() {
   loginWidget = null
   loginCaptcha.value = { provider: 'off', sitekey: '', instanceUrl: '' }
   try {
-    const config = await adminApi.getLoginConfig()
+    const pending = startupLoginConfig ?? adminApi.getLoginConfig()
+    startupLoginConfig = null
+    const config = await pending
     setAdminLocale(config.locale)
     loginCaptcha.value = config.captcha
     await nextTick()
@@ -141,6 +151,7 @@ async function mountLoginChallenge() {
 }
 
 async function submitLogin() {
+  focusAfterSignIn = true
   if (loginCaptcha.value.provider !== 'off') {
     let token = ''
     try { token = await loginWidget?.waitForToken() ?? '' } catch { token = '' }
@@ -202,7 +213,7 @@ async function switchView(next: MainView) {
       <div class="masthead-inner layout">
         <div class="in-margin masthead-brand"><button class="brand" type="button" aria-label="Ecoku 评论管理首页" :disabled="navigationBusy" @click="switchView('comments')"><svg class="seal" aria-hidden="true"><use href="#ecoku-seal" /></svg><span class="wordmark" aria-hidden="true">Ecoku</span></button></div>
         <div class="in-main masthead-main">
-          <nav ref="primaryNav" class="nav" aria-label="主导航">
+          <nav class="nav" aria-label="主导航">
             <button v-for="item in views" :key="item.id" class="nav-link" type="button" :aria-current="view === item.id ? 'page' : undefined" :disabled="navigationBusy" @click="switchView(item.id)">{{ item.label }}</button>
           </nav>
           <p v-if="logoutMessage" class="inline-error" role="alert">{{ logoutMessage }}</p>

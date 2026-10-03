@@ -46,11 +46,11 @@ In addition:
 | Username (用户名) | May be empty. If empty, no SMTP authentication is performed. The password is still required; for a server that needs no authentication, enter any value. |
 | Password (密码) | After saving, it is shown only as Set (已设置). Leaving it empty keeps it unchanged. |
 | From address (发件人地址) | The From address of the email. Many providers require it to match the sign-in account. |
-| Recipients (通知收件人) | Email addresses that receive blogger notifications. You can enter several, separated by Enter or commas. |
+| Recipients (通知收件人) | Email addresses that receive blogger notifications, one input per address. Press Enter to add the next one, or paste several lines or a comma-separated list at once. |
 
 **Send test email** (发送测试邮件) sends a test email to the recipients using the values currently in the form (if the password is empty, the saved password is used). You do not need to save first. If it fails, the page gives the reason, such as a connection timeout, failed authentication, or a failed TLS handshake.
 
-Each email contains both a plain-text and an HTML version. The HTML version uses the same paper-and-ink colors as the comment area and the admin console. Text uses the sans-serif Chinese and Latin fonts installed on the reader's device; no web fonts are loaded. Mail clients that support dark mode switch to dark colors automatically. The content depends on the type:
+Each email contains both a plain-text and an HTML version. The HTML version uses the same paper-and-ink colors as the comment area and the admin console. Text uses the sans-serif Chinese and Latin fonts installed on the reader's device; no web fonts are loaded. Mail clients that support dark mode switch to dark colors automatically. The Ecoku seal in the header travels inside the email as an inline image and is not loaded from the network; when a mail client hides images, the header still shows the word "Ecoku". The content depends on the type:
 
 - New comment for the blogger: the post title, the publication time, the commenter and the comment body, and a "查看原文" (View original) link;
 - New reply for the blogger: the post title, the publication time, the comment that was replied to, the replier and the reply body, and a "查看原文" (View original) link;
@@ -72,7 +72,7 @@ Post titles longer than 60 characters are truncated. If the page has no title, n
 1. In Telegram, create a bot with [@BotFather](https://t.me/BotFather) and get its bot token.
 2. Make sure the bot can message you: for a private chat, send the bot a message first; for a group or channel, add the bot to it, and for a channel also make it an admin.
 3. Find the ID of the target: a user ID is a string of digits, such as `123456789`; group and channel IDs usually start with `-100`, such as `-1001234567890`.
-4. Enter the bot token and target IDs (you can enter several) in the admin console, click **Send test message** (发送测试消息) to confirm, then save.
+4. Enter the bot token and target IDs (one input per ID, several allowed; numeric IDs only, not `@username`) in the admin console, click **Send test message** (发送测试消息) to confirm, then save.
 
 Messages contain the site name, the post title, the publication time, the commenter or replier, the original comment that was replied to (shown as a quote, at most 400 characters), and the body (at most 1000 characters), with a "View original" (查看原文) link at the end. Smoji appear as `[表情：标签]` ([Smoji: label]).
 

@@ -1,20 +1,104 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { installAdminTranslations, refreshAdminTranslations, setAdminLocale } from './i18n'
+import { commentCountNoun, installAdminTranslations, refreshAdminTranslations, setAdminLocale, translateAdminText } from './i18n'
 
 afterEach(() => { setAdminLocale('zh-CN'); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
-it('does not rewrite translated text on repeated observer scans', () => {
-  // Drive scans explicitly so a regression cannot starve the test event loop.
+// Drive scans explicitly so a regression cannot starve the test event loop.
+function install(root: HTMLElement) {
   vi.stubGlobal('MutationObserver', class { observe() {} disconnect() {} })
+  return installAdminTranslations(root)
+}
+
+it('does not rewrite translated text on repeated observer scans', () => {
   const root = document.createElement('div')
   root.textContent = '评论'
   const writes = vi.spyOn(root.firstChild!, 'textContent', 'set')
   setAdminLocale('en')
-  const stop = installAdminTranslations(root)
+  const stop = install(root)
   try {
     expect(root.textContent).toBe('Comments')
     refreshAdminTranslations()
     refreshAdminTranslations()
     expect(writes).toHaveBeenCalledTimes(1)
   } finally { stop() }
+})
+
+it('keeps text that Vue rewrites in place, in the default locale', () => {
+  const root = document.createElement('p')
+  root.append('8 ', document.createTextNode('条评论'))
+  const noun = root.lastChild as Text
+  const stop = install(root)
+  try {
+    noun.nodeValue = '条已删除评论'
+    refreshAdminTranslations()
+    expect(root.textContent).toBe('8 条已删除评论')
+  } finally { stop() }
+})
+
+it('translates the new source after an in-place rewrite and after a locale change', () => {
+  const root = document.createElement('p')
+  root.append(document.createTextNode('保存'))
+  const node = root.firstChild as Text
+  setAdminLocale('en')
+  const stop = install(root)
+  try {
+    expect(root.textContent).toBe('Save')
+    node.nodeValue = '保存中…'
+    refreshAdminTranslations()
+    expect(root.textContent).toBe('Saving…')
+    setAdminLocale('zh-Hant')
+    refreshAdminTranslations()
+    expect(root.textContent).toBe('儲存中…')
+  } finally { stop() }
+})
+
+it('never translates visitor content marked translate="no"', () => {
+  const root = document.createElement('div')
+  root.innerHTML = '<span class="quote-text" translate="no">删除</span><span class="quote-ref">回复 <span translate="no">回复 楼上</span></span><button title="删除">删除</button>'
+  setAdminLocale('en')
+  const stop = install(root)
+  try {
+    expect(root.querySelector('.quote-text')?.textContent).toBe('删除')
+    expect(root.querySelector('.quote-ref')?.textContent).toBe('Reply to 回复 楼上')
+    expect(root.querySelector('button')?.textContent).toBe('Delete')
+    expect(root.querySelector('button')?.getAttribute('title')).toBe('Delete')
+  } finally { stop() }
+})
+
+it('translates item list labels, notes and announcements with their numbers', () => {
+  setAdminLocale('en')
+  expect(translateAdminText('允许来源，第 2 项')).toBe('Allowed origins, item 2')
+  expect(translateAdminText('删除通知收件人第 3 项')).toBe('Remove item 3 from Notification recipients')
+  expect(translateAdminText('与第 1 项重复，保存时合并')).toBe('Same as item 1; merged on save')
+  expect(translateAdminText('已添加 3 项；最多 32 项，其余 2 项未添加')).toBe('Added 3; the limit is 32, so 2 were left out')
+  expect(translateAdminText('已添加 1 项')).toBe('Added 1 item')
+  expect(translateAdminText('已改为 https://blog.example.com')).toBe('Changed to https://blog.example.com')
+  setAdminLocale('zh-Hant')
+  expect(translateAdminText('接收目标 ID，第 1 项')).toBe('接收目標 ID，第 1 項')
+  expect(translateAdminText('已达上限 32 项')).toBe('已達上限 32 項')
+  expect(translateAdminText('已删除第 4 项')).toBe('已刪除第 4 項')
+  setAdminLocale('zh-CN')
+  expect(translateAdminText('允许来源，第 2 项')).toBe('允许来源，第 2 项')
+})
+
+it('keeps code samples apart from the translated help around them', () => {
+  const root = document.createElement('p')
+  root.innerHTML = '对应接入代码中的 <code>data-site-id</code>，创建后不能修改。'
+  setAdminLocale('en')
+  const stop = install(root)
+  try {
+    expect(root.textContent).toBe('Matches data-site-id in the embed code; it cannot be changed.')
+  } finally { stop() }
+})
+
+it('marks the document language and chooses the count noun per locale', () => {
+  setAdminLocale('en')
+  expect(document.documentElement.lang).toBe('en')
+  expect(commentCountNoun(1, false)).toBe('comment')
+  expect(commentCountNoun(3, true)).toBe('deleted comments')
+  setAdminLocale('zh-Hant')
+  expect(document.documentElement.lang).toBe('zh-Hant')
+  expect(commentCountNoun(3, false)).toBe('則評論')
+  setAdminLocale(undefined)
+  expect(commentCountNoun(3, true)).toBe('条已删除评论')
 })

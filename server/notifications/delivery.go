@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -135,7 +136,7 @@ func buildSMTPPayload(from, recipient string, message emailMessage) ([]byte, err
 	if err := writeQuotedPart(multipartWriter, "text/plain; charset=UTF-8", message.Text); err != nil {
 		return nil, err
 	}
-	if err := writeQuotedPart(multipartWriter, "text/html; charset=UTF-8", message.HTML); err != nil {
+	if err := writeHTMLPart(multipartWriter, message.HTML); err != nil {
 		return nil, err
 	}
 	if err := multipartWriter.Close(); err != nil {
@@ -174,6 +175,57 @@ func newMessageID(from string) (string, error) {
 		domain = from[at+1:]
 	}
 	return "<" + hex.EncodeToString(random) + "@" + domain + ">", nil
+}
+
+// writeHTMLPart sends HTML that shows the seal together with the image, as one
+// multipart/related part, so mail clients render the seal in place instead of
+// listing it as an attachment. Other HTML goes out as a plain text/html part.
+func writeHTMLPart(writer *multipart.Writer, body string) error {
+	if !strings.Contains(body, "cid:"+emailMarkCID) {
+		return writeQuotedPart(writer, "text/html; charset=UTF-8", body)
+	}
+	var related bytes.Buffer
+	relatedWriter := multipart.NewWriter(&related)
+	if err := writeQuotedPart(relatedWriter, "text/html; charset=UTF-8", body); err != nil {
+		return err
+	}
+	if err := writeInlineMark(relatedWriter); err != nil {
+		return err
+	}
+	if err := relatedWriter.Close(); err != nil {
+		return err
+	}
+	header := make(textproto.MIMEHeader)
+	header.Set("Content-Type", mime.FormatMediaType("multipart/related", map[string]string{"boundary": relatedWriter.Boundary(), "type": "text/html"}))
+	part, err := writer.CreatePart(header)
+	if err != nil {
+		return err
+	}
+	_, err = part.Write(related.Bytes())
+	return err
+}
+
+func writeInlineMark(writer *multipart.Writer) error {
+	header := textproto.MIMEHeader{
+		"Content-Type":              {"image/png"},
+		"Content-Transfer-Encoding": {"base64"},
+		"Content-ID":                {"<" + emailMarkCID + ">"},
+		"Content-Disposition":       {`inline; filename="` + emailMarkFilename + `"`},
+	}
+	part, err := writer.CreatePart(header)
+	if err != nil {
+		return err
+	}
+	// RFC 2045 limits base64 lines to 76 characters.
+	encoded := base64.StdEncoding.EncodeToString(emailMarkPNG)
+	for len(encoded) > 0 {
+		line := encoded[:min(76, len(encoded))]
+		encoded = encoded[len(line):]
+		if _, err := io.WriteString(part, line+"\r\n"); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func writeQuotedPart(writer *multipart.Writer, contentType, body string) error {

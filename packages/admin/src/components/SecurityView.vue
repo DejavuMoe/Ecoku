@@ -95,27 +95,27 @@ async function save() {
 
               <div v-else-if="draft.provider === 'turnstile'" id="panel-turnstile" class="provider-panel">
                 <div class="field">
-                  <label class="rule"><span class="rule-label">Sitekey</span><input id="turnstile-sitekey" class="mono" type="text" maxlength="255" spellcheck="false" v-model="draft.turnstile.sitekey" :aria-invalid="Boolean(errors.turnstileSitekey)"></label>
+                  <label class="setting"><span class="setting-label">Sitekey</span><input id="turnstile-sitekey" class="input mono" type="text" maxlength="255" spellcheck="false" v-model="draft.turnstile.sitekey" :aria-invalid="Boolean(errors.turnstileSitekey)"></label>
                   <p v-if="errors.turnstileSitekey" class="field-error">{{ errors.turnstileSitekey }}</p>
                 </div>
                 <div class="field">
-                  <label class="rule"><span class="rule-label">Secret key</span><input id="turnstile-secret" class="mono" type="password" autocomplete="new-password" v-model="draft.turnstile.secret" :aria-invalid="Boolean(errors.turnstileSecret)" :placeholder="draft.turnstile.secretSet ? '已设置，输入新值以更换' : ''"></label>
+                  <label class="setting"><span class="setting-label">Secret key</span><input id="turnstile-secret" class="input mono" type="password" autocomplete="new-password" v-model="draft.turnstile.secret" :aria-invalid="Boolean(errors.turnstileSecret)" :placeholder="draft.turnstile.secretSet ? '已设置，输入新值以更换' : ''"></label>
                   <p v-if="errors.turnstileSecret" class="field-error">{{ errors.turnstileSecret }}</p>
                 </div>
               </div>
 
               <div v-else id="panel-cap" class="provider-panel">
                 <div class="field">
-                  <label class="rule"><span class="rule-label">实例地址</span><input id="cap-instance-url" class="mono" type="url" inputmode="url" spellcheck="false" placeholder="https://cap.example.com" maxlength="2048" v-model="draft.cap.instanceUrl" :aria-invalid="Boolean(errors.capInstanceUrl)"></label>
+                  <label class="setting"><span class="setting-label">实例地址</span><input id="cap-instance-url" class="input mono" type="url" inputmode="url" spellcheck="false" placeholder="https://cap.example.com" maxlength="2048" v-model="draft.cap.instanceUrl" :aria-invalid="Boolean(errors.capInstanceUrl)"></label>
                   <p class="help">自托管 Cap 的 HTTPS 地址，不带查询参数。</p>
                   <p v-if="errors.capInstanceUrl" class="field-error">{{ errors.capInstanceUrl }}</p>
                 </div>
                 <div class="field">
-                  <label class="rule"><span class="rule-label">Site key</span><input id="cap-sitekey" class="mono" type="text" maxlength="255" spellcheck="false" v-model="draft.cap.sitekey" :aria-invalid="Boolean(errors.capSitekey)"></label>
+                  <label class="setting"><span class="setting-label">Site key</span><input id="cap-sitekey" class="input mono" type="text" maxlength="255" spellcheck="false" v-model="draft.cap.sitekey" :aria-invalid="Boolean(errors.capSitekey)"></label>
                   <p v-if="errors.capSitekey" class="field-error">{{ errors.capSitekey }}</p>
                 </div>
                 <div class="field">
-                  <label class="rule"><span class="rule-label">Secret key</span><input id="cap-secret" class="mono" type="password" autocomplete="new-password" v-model="draft.cap.secret" :aria-invalid="Boolean(errors.capSecret)" :placeholder="draft.cap.secretSet ? '已设置，输入新值以更换' : ''"></label>
+                  <label class="setting"><span class="setting-label">Secret key</span><input id="cap-secret" class="input mono" type="password" autocomplete="new-password" v-model="draft.cap.secret" :aria-invalid="Boolean(errors.capSecret)" :placeholder="draft.cap.secretSet ? '已设置，输入新值以更换' : ''"></label>
                   <p v-if="errors.capSecret" class="field-error">{{ errors.capSecret }}</p>
                 </div>
               </div>

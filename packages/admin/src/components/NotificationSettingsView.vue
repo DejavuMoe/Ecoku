@@ -2,9 +2,10 @@
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import SaveBar from './SaveBar.vue'
-import ChipInput from './ChipInput.vue'
+import ListInput from './ListInput.vue'
 import { useAdminStore } from '../stores/admin'
 import { cloneEmailSettings, cloneTelegramSettings, emptyEmailSettings, emptyTelegramSettings } from '../ui'
+import { invalidItemCount, normalizeItems } from '../listInput'
 import type { EmailNotificationSettings, TelegramNotificationSettings } from '../types'
 
 type EmailDraft = Omit<EmailNotificationSettings, 'port'> & { port: number | null }
@@ -22,23 +23,25 @@ const telegramErrors = reactive<Record<string, string>>({})
 const persistedEmailEnabled = ref(false)
 const emailBaseline = ref('')
 const telegramBaseline = ref('')
-const pendingEmail = ref(false)
-const pendingTelegram = ref(false)
+// Changing a key gives the item list fresh rows whenever saved settings are applied.
 const emailInputKey = ref(0)
 const telegramInputKey = ref(0)
 const persistedTelegramEnabled = ref(false)
+// Each recipient or target that needs fixing counts once in the save bar; its message sits under the item.
+const invalidRecipients = ref(0)
+const invalidTargets = ref(0)
 
 function applyEmail(settings: EmailNotificationSettings) {
   const cloned = cloneEmailSettings(settings)
   Object.assign(email, { ...cloned, port: cloned.port || null })
   persistedEmailEnabled.value = cloned.enabled
-  emailBaseline.value = JSON.stringify(email); pendingEmail.value = false; emailInputKey.value++
+  emailBaseline.value = JSON.stringify(email); emailInputKey.value++
 }
 
 function applyTelegram(settings: TelegramNotificationSettings) {
   Object.assign(telegram, cloneTelegramSettings(settings))
   persistedTelegramEnabled.value = settings.enabled
-  telegramBaseline.value = JSON.stringify(telegram); pendingTelegram.value = false; telegramInputKey.value++
+  telegramBaseline.value = JSON.stringify(telegram); telegramInputKey.value++
 }
 
 watch(notificationSettings, (settings) => {
@@ -47,26 +50,27 @@ watch(notificationSettings, (settings) => {
   applyTelegram(settings.telegram)
 }, { immediate: true })
 
-const emailDirty = computed(() => Boolean(emailBaseline.value) && (pendingEmail.value || JSON.stringify(email) !== emailBaseline.value))
-const telegramDirty = computed(() => Boolean(telegramBaseline.value) && (pendingTelegram.value || JSON.stringify(telegram) !== telegramBaseline.value))
+const emailDirty = computed(() => Boolean(emailBaseline.value) && JSON.stringify(email) !== emailBaseline.value)
+const telegramDirty = computed(() => Boolean(telegramBaseline.value) && JSON.stringify(telegram) !== telegramBaseline.value)
 const dirty = computed(() => emailDirty.value || telegramDirty.value)
-const errorCount = computed(() => Object.keys(emailErrors).length + Object.keys(telegramErrors).length)
+const errorCount = computed(() => Object.keys(emailErrors).length + Object.keys(telegramErrors).length + invalidRecipients.value + invalidTargets.value)
 const emailForm = ref<HTMLFormElement | null>(null)
 const telegramForm = ref<HTMLFormElement | null>(null)
-// The chip fields report their own validity; their errors sit under the help text, outside the ruled row.
-const recipientsInput = ref<InstanceType<typeof ChipInput> | null>(null)
-const targetsInput = ref<InstanceType<typeof ChipInput> | null>(null)
+const recipientsInput = ref<InstanceType<typeof ListInput> | null>(null)
+const targetsInput = ref<InstanceType<typeof ListInput> | null>(null)
 watch(dirty, value => store.setDirty('notifications', value), { immediate: true, flush: 'sync' })
 onBeforeUnmount(() => store.setDirty('notifications', false))
+watch(() => email.recipients.length, (count) => { if (count) delete emailErrors.recipients })
+watch(() => telegram.targets.length, (count) => { if (count) delete telegramErrors.targets })
 async function focusError() {
   await nextTick()
-  const invalid = (Object.keys(emailErrors).length ? emailForm : telegramForm).value?.querySelector<HTMLElement>('[aria-invalid="true"]')
-  const target = invalid?.querySelector<HTMLElement>('input') ?? invalid
-  target?.focus()
+  const emailInvalid = Object.keys(emailErrors).length > 0 || invalidRecipients.value > 0
+  const form = emailInvalid ? emailForm.value : telegramForm.value
+  form?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
 }
 function discard() {
   if (notificationSettings.value) { applyEmail(notificationSettings.value.email); applyTelegram(notificationSettings.value.telegram) }
-  clear(emailErrors); clear(telegramErrors)
+  clear(emailErrors); clear(telegramErrors); invalidRecipients.value = 0; invalidTargets.value = 0
 }
 async function saveChanged() {
   const validEmail = !emailDirty.value || validateEmail()
@@ -84,7 +88,7 @@ function validEmail(value: string): boolean {
 }
 
 function validateEmail(): boolean {
-  clear(emailErrors)
+  clear(emailErrors); invalidRecipients.value = 0
   if (!email.enabled && !email.host && !email.fromAddress && email.recipients.length === 0) return true
   email.host = email.host.trim()
   email.username = email.username.trim()
@@ -93,39 +97,46 @@ function validateEmail(): boolean {
   const port = email.port
   if (port === null || !Number.isInteger(port) || port < 1 || port > 65535) emailErrors.port = '端口无效'
   if (!validEmail(email.fromAddress)) emailErrors.from = '发件人地址格式错误'
-  if (email.recipients.length === 0 || email.recipients.some((value) => !validEmail(value))) emailErrors.recipients = '邮箱格式错误'
+  if (email.recipients.length === 0) emailErrors.recipients = '至少填写一个收件人'
+  recipientsInput.value?.reveal()
+  invalidRecipients.value = invalidItemCount('email', email.recipients)
   if (!email.passwordSet && !email.password.trim()) emailErrors.password = '密码为空'
-  return Object.keys(emailErrors).length === 0
+  return Object.keys(emailErrors).length === 0 && invalidRecipients.value === 0
 }
 
 function validateTelegram(): boolean {
-  clear(telegramErrors)
+  clear(telegramErrors); invalidTargets.value = 0
   if (!telegram.enabled && telegram.targets.length === 0 && !telegram.token) return true
   if (!telegram.tokenSet && !telegram.token.trim()) telegramErrors.token = 'Bot Token 为空'
-  if (telegram.targets.length === 0 || telegram.targets.some((value) => !/^-?\d{1,32}$/.test(value))) telegramErrors.targets = '接收目标 ID 格式错误'
-  return Object.keys(telegramErrors).length === 0
+  if (telegram.targets.length === 0) telegramErrors.targets = '至少填写一个接收目标'
+  targetsInput.value?.reveal()
+  invalidTargets.value = invalidItemCount('telegram', telegram.targets)
+  return Object.keys(telegramErrors).length === 0 && invalidTargets.value === 0
 }
+
+const emailPayload = () => ({ ...email, port: email.port ?? 0, recipients: normalizeItems('email', email.recipients) })
+const telegramPayload = () => ({ ...telegram, targets: normalizeItems('telegram', telegram.targets) })
 
 async function saveEmail() {
   if (!validateEmail()) { await focusError(); return }
-  const saved = await store.saveEmail({ ...email, port: email.port ?? 0, recipients: [...email.recipients] })
+  const saved = await store.saveEmail(emailPayload())
   if (saved) applyEmail(saved)
 }
 
 async function sendTestEmail() {
   if (!validateEmail()) { await focusError(); return }
-  await store.testEmail({ ...email, port: email.port ?? 0, recipients: [...email.recipients] })
+  await store.testEmail(emailPayload())
 }
 
 async function saveTelegram() {
   if (!validateTelegram()) { await focusError(); return }
-  const saved = await store.saveTelegram({ ...telegram, targets: [...telegram.targets] })
+  const saved = await store.saveTelegram(telegramPayload())
   if (saved) applyTelegram(saved)
 }
 
 async function sendTestTelegram() {
   if (!validateTelegram()) { await focusError(); return }
-  await store.testTelegram({ ...telegram, targets: [...telegram.targets] })
+  await store.testTelegram(telegramPayload())
 }
 </script>
 
@@ -145,48 +156,52 @@ async function sendTestTelegram() {
             <div class="in-margin section-margin"><h2 id="email-title">电子邮件</h2><p>有新评论时发给通知收件人；访客留了邮箱时，他的评论被别人回复也会收到邮件。</p></div>
             <div class="in-main section-body">
               <div class="field">
-                <div class="rule rule-choice" role="radiogroup" aria-labelledby="lbl-email-enabled">
-                  <span class="rule-label" id="lbl-email-enabled">邮件通知</span>
+                <div class="setting" role="radiogroup" aria-labelledby="lbl-email-enabled">
+                  <span class="setting-label" id="lbl-email-enabled">邮件通知</span>
                   <span class="options"><label><input type="radio" name="email-enabled" :value="true" v-model="email.enabled"><span>开启</span></label><label><input type="radio" name="email-enabled" :value="false" v-model="email.enabled"><span>关闭</span></label></span>
                 </div>
                 <p v-if="!email.enabled" class="help">未开启，不会发送任何邮件，包括访客回复通知。</p>
               </div>
               <div v-show="email.enabled" class="channel-fields">
                 <div class="field">
-                  <div class="rule rule-host">
-                    <label class="rule-label" for="email-server">SMTP 服务器</label>
-                    <input id="email-server" class="mono" type="text" placeholder="smtp.example.com" maxlength="255" spellcheck="false" v-model="email.host" :aria-invalid="Boolean(emailErrors.host)">
-                    <label class="rule-label rule-label-inline" for="email-port">端口</label>
-                    <input id="email-port" class="mono port" type="number" min="1" max="65535" :placeholder="email.encryption === 'starttls' ? '587' : '465'" inputmode="numeric" v-model.number="email.port" :aria-invalid="Boolean(emailErrors.port)">
+                  <div class="setting">
+                    <label class="setting-label" for="email-server">SMTP 服务器</label>
+                    <span class="host-pair">
+                      <input id="email-server" class="input mono" type="text" placeholder="smtp.example.com" maxlength="255" spellcheck="false" v-model="email.host" :aria-invalid="Boolean(emailErrors.host)">
+                      <span class="port-group"><label class="setting-label" for="email-port">端口</label><input id="email-port" class="input mono port" type="number" min="1" max="65535" :placeholder="email.encryption === 'starttls' ? '587' : '465'" inputmode="numeric" v-model.number="email.port" :aria-invalid="Boolean(emailErrors.port)"></span>
+                    </span>
                   </div>
                   <p v-if="emailErrors.host" class="field-error">{{ emailErrors.host }}</p>
                   <p v-if="emailErrors.port" class="field-error">{{ emailErrors.port }}</p>
                 </div>
                 <div class="field">
-                  <div id="email-encryption" class="rule rule-choice" role="radiogroup" aria-labelledby="lbl-email-encryption">
-                    <span class="rule-label" id="lbl-email-encryption">加密方式</span>
+                  <div id="email-encryption" class="setting" role="radiogroup" aria-labelledby="lbl-email-encryption">
+                    <span class="setting-label" id="lbl-email-encryption">加密方式</span>
                     <span class="options"><label><input type="radio" name="email-encryption" value="tls" v-model="email.encryption"><span>SSL/TLS</span></label><label><input type="radio" name="email-encryption" value="starttls" v-model="email.encryption"><span>STARTTLS</span></label></span>
                   </div>
                 </div>
                 <div class="field">
-                  <label class="rule"><span class="rule-label">用户名</span><input id="email-user" type="text" autocomplete="username" v-model="email.username"></label>
+                  <label class="setting"><span class="setting-label">用户名</span><input id="email-user" class="input" type="text" autocomplete="username" v-model="email.username"></label>
                 </div>
                 <div class="field">
-                  <label class="rule"><span class="rule-label">密码</span><input id="email-password" type="password" autocomplete="new-password" v-model="email.password" :aria-invalid="Boolean(emailErrors.password)" :placeholder="email.passwordSet ? '已设置，输入新值以更换' : ''"></label>
+                  <label class="setting"><span class="setting-label">密码</span><input id="email-password" class="input" type="password" autocomplete="new-password" v-model="email.password" :aria-invalid="Boolean(emailErrors.password)" :placeholder="email.passwordSet ? '已设置，输入新值以更换' : ''"></label>
                   <p v-if="emailErrors.password" class="field-error">{{ emailErrors.password }}</p>
                 </div>
                 <div class="field">
-                  <label class="rule"><span class="rule-label">发件人地址</span><input id="email-sender" type="email" v-model="email.fromAddress" :aria-invalid="Boolean(emailErrors.from)"></label>
+                  <label class="setting"><span class="setting-label">发件人地址</span><input id="email-sender" class="input" type="email" v-model="email.fromAddress" :aria-invalid="Boolean(emailErrors.from)"></label>
                   <p v-if="emailErrors.from" class="field-error">{{ emailErrors.from }}</p>
                 </div>
                 <div class="field">
-                  <div class="rule rule-chips"><label class="rule-label" for="email-recipients-input">通知收件人</label><ChipInput id="email-recipients-input" ref="recipientsInput" :key="emailInputKey" v-model="email.recipients" kind="email" label="通知收件人" :error="emailErrors.recipients" :disabled="notificationBusy || !email.enabled" @draft-change="pendingEmail = $event" /></div>
-                  <p class="help">按 Enter、逗号或换行添加多个邮箱</p>
-                  <p v-if="recipientsInput?.invalid" class="field-error">{{ emailErrors.recipients || '邮箱格式错误' }}</p>
+                  <div class="setting setting-top" role="group" aria-labelledby="lbl-email-recipients">
+                    <span class="setting-label" id="lbl-email-recipients">通知收件人</span>
+                    <ListInput id="email-recipients" ref="recipientsInput" :key="emailInputKey" v-model="email.recipients" kind="email" label="通知收件人" add-label="添加收件人" placeholder="name@example.com" inputmode="email" :required-error="emailErrors.recipients" />
+                  </div>
+                  <p class="help">每项一个邮箱。按 Enter 添加下一项，可一次粘贴多行。</p>
+                  <p v-if="emailErrors.recipients" class="field-error">{{ emailErrors.recipients }}</p>
                 </div>
               </div>
               <div class="section-actions">
-                <button v-if="email.enabled" :disabled="notificationBusy" @click="sendTestEmail" id="email-test" class="quiet-link" type="button">发送测试邮件</button>
+                <button v-if="email.enabled" :disabled="notificationBusy" @click="sendTestEmail" id="email-test" class="button button-small" type="button">发送测试邮件</button>
                 <span class="feedback" :class="{ 'is-success': emailTestState === 'success', 'is-failure': emailTestState === 'failure' }" aria-live="polite">{{ email.enabled ? emailTestMessage : persistedEmailEnabled ? '关闭后需保存才会生效' : '' }}</span>
               </div>
             </div>
@@ -198,26 +213,29 @@ async function sendTestTelegram() {
             <div class="in-margin section-margin"><h2 id="telegram-title">Telegram</h2><p>有新评论时由机器人发到下列用户、群组或频道。</p></div>
             <div class="in-main section-body">
               <div class="field">
-                <div class="rule rule-choice" role="radiogroup" aria-labelledby="lbl-telegram-enabled">
-                  <span class="rule-label" id="lbl-telegram-enabled">Telegram</span>
+                <div class="setting" role="radiogroup" aria-labelledby="lbl-telegram-enabled">
+                  <span class="setting-label" id="lbl-telegram-enabled">Telegram</span>
                   <span class="options"><label><input type="radio" name="telegram-enabled" :value="true" v-model="telegram.enabled"><span>开启</span></label><label><input type="radio" name="telegram-enabled" :value="false" v-model="telegram.enabled"><span>关闭</span></label></span>
                 </div>
                 <p v-if="!telegram.enabled" class="help">未开启。</p>
               </div>
               <div v-show="telegram.enabled" class="channel-fields">
                 <div class="field">
-                  <label class="rule"><span class="rule-label">Bot Token</span><input id="telegram-token" class="mono" type="password" autocomplete="new-password" v-model="telegram.token" :aria-invalid="Boolean(telegramErrors.token)" :placeholder="telegram.tokenSet ? '已设置，输入新值以更换' : ''"></label>
+                  <label class="setting"><span class="setting-label">Bot Token</span><input id="telegram-token" class="input mono" type="password" autocomplete="new-password" v-model="telegram.token" :aria-invalid="Boolean(telegramErrors.token)" :placeholder="telegram.tokenSet ? '已设置，输入新值以更换' : ''"></label>
                   <p class="help">通过 @BotFather 获取。</p>
                   <p v-if="telegramErrors.token" class="field-error">{{ telegramErrors.token }}</p>
                 </div>
                 <div class="field">
-                  <div class="rule rule-chips"><label class="rule-label" for="telegram-targets-input">接收目标 ID</label><ChipInput id="telegram-targets-input" ref="targetsInput" :key="telegramInputKey" v-model="telegram.targets" kind="telegram" label="接收目标 ID" :error="telegramErrors.targets" :disabled="notificationBusy || !telegram.enabled" @draft-change="pendingTelegram = $event" /></div>
-                  <p class="help">按 Enter、逗号或换行添加；支持用户、群组、频道 ID，如 123456789 或 -1001234567890</p>
-                  <p v-if="targetsInput?.invalid" class="field-error">{{ telegramErrors.targets || '接收目标 ID 格式错误' }}</p>
+                  <div class="setting setting-top" role="group" aria-labelledby="lbl-telegram-targets">
+                    <span class="setting-label" id="lbl-telegram-targets">接收目标 ID</span>
+                    <ListInput id="telegram-targets" ref="targetsInput" :key="telegramInputKey" v-model="telegram.targets" kind="telegram" label="接收目标 ID" add-label="添加接收目标" placeholder="-1001234567890" mono inputmode="text" :required-error="telegramErrors.targets" />
+                  </div>
+                  <p class="help">用户、群组或频道的数字 ID，如 123456789 或 -1001234567890。按 Enter 添加下一项。</p>
+                  <p v-if="telegramErrors.targets" class="field-error">{{ telegramErrors.targets }}</p>
                 </div>
               </div>
               <div class="section-actions">
-                <button v-if="telegram.enabled" :disabled="notificationBusy" @click="sendTestTelegram" id="telegram-test" class="quiet-link" type="button">发送测试消息</button>
+                <button v-if="telegram.enabled" :disabled="notificationBusy" @click="sendTestTelegram" id="telegram-test" class="button button-small" type="button">发送测试消息</button>
                 <span class="feedback" :class="{ 'is-success': telegramTestState === 'success', 'is-failure': telegramTestState === 'failure' }" aria-live="polite">{{ telegram.enabled ? telegramTestMessage : persistedTelegramEnabled ? '关闭后需保存才会生效' : '' }}</span>
               </div>
             </div>

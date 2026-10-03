@@ -5,25 +5,32 @@ import { useAdminStore } from '../stores/admin'
 import type { SiteSummary, SiteWrite } from '../types'
 import SitePicker from './SitePicker.vue'
 import SaveBar from './SaveBar.vue'
+import ListInput from './ListInput.vue'
+import AdminIcon from './AdminIcon.vue'
 import { normalizeSmojiImageOrigin } from '../smoji'
+import { MAX_SITE_ORIGINS, invalidItemCount, normalizeItems } from '../listInput'
 
 const store = useAdminStore()
 const { sites, selectedSite, siteBusy, siteMessage, createSiteRequest } = storeToRefs(store)
 const creating = ref(false)
 const baseline = ref('')
-const dirty = computed(() => creating.value || JSON.stringify([draft, originsText.value]) !== baseline.value)
-const originsText = ref('')
+const dirty = computed(() => creating.value || JSON.stringify(draft) !== baseline.value)
 const errors = reactive<Record<string, string>>({})
+// Each allowed origin that needs fixing counts once in the save bar; its message sits under the item.
+const invalidOrigins = ref(0)
+// Changing the key gives the origin list fresh rows whenever a site is loaded or a new one is started.
+const listKey = ref(0)
+const originsInput = ref<InstanceType<typeof ListInput> | null>(null)
 const defaults = (): SiteWrite => ({ id: '', siteUrl: '', name: '', allowedOrigins: [], defaultSort: 'newest', emailRequired: true, websiteRequired: false, placeholder: '写下评论（仅支持纯文本）', commentLimit: 1000, emptyMessage: '还没有评论\n成为第一个留下评论的人。', smojiEnabled: false, smojiManifestUrl: '', smojiImageOrigin: '', i18n: 'zh-CN', bloggerNickname: '', bloggerEmail: '', bloggerBadge: '[博主]', bloggerPassphrase: '', bloggerPassphraseSet: false, revision: 0 })
 const draft = reactive<SiteWrite>(defaults())
-const clearErrors = () => Object.keys(errors).forEach((key) => delete errors[key])
+const clearErrors = () => { Object.keys(errors).forEach((key) => delete errors[key]); invalidOrigins.value = 0 }
 function applySite(site: SiteSummary | null) {
-  if (!site) { if (!siteBusy.value) startCreating(); else baseline.value = JSON.stringify([draft, originsText.value]); return }
+  if (!site) { if (!siteBusy.value) startCreating(); else baseline.value = JSON.stringify(draft); return }
   creating.value = false
   Object.assign(draft, { ...site, allowedOrigins: [...site.allowedOrigins], bloggerPassphrase: '' })
-  originsText.value = site.allowedOrigins.join('\n')
   clearErrors()
-  baseline.value = JSON.stringify([draft, originsText.value])
+  listKey.value++
+  baseline.value = JSON.stringify(draft)
 }
 applySite(selectedSite.value)
 watch(selectedSite, site => { if (!creating.value) applySite(site) })
@@ -33,7 +40,8 @@ watch(siteBusy, busy => {
 watch(createSiteRequest, request => { if (request > 0) { startCreating(); store.consumeCreateSiteRequest() } })
 watch(dirty, value => store.setDirty('sites', value), { immediate: true, flush: 'sync' })
 onBeforeUnmount(() => store.setDirty('sites', false))
-function startCreating() { creating.value = true; Object.assign(draft, defaults()); originsText.value = ''; clearErrors() }
+watch(() => draft.allowedOrigins.length, (count) => { if (count) delete errors.origins })
+function startCreating() { creating.value = true; Object.assign(draft, defaults()); clearErrors(); listKey.value++ }
 function cancelCreating() {
   const site = selectedSite.value ?? sites.value[0]
   if (site) applySite(site)
@@ -45,9 +53,9 @@ function validate() {
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(draft.id)) errors.id = '站点 ID 格式无效'
   try { const url = new URL(draft.siteUrl); if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.href.includes('?') || url.href.includes('#')) throw new Error() } catch { errors.siteUrl = '站点 URL 格式无效' }
   if ([...draft.name].length > 120 || /[\r\n]/.test(draft.name)) errors.name = '站点名称不能超过 120 个字符'
-  const origins = originsText.value.split(/[\r\n,]+/).map((value) => value.trim().replace(/\/$/, '')).filter(Boolean)
-  if (!origins.length || origins.length > 32) errors.origins = '请填写 1 至 32 个允许来源'
-  for (const origin of origins) { try { const url = new URL(origin); if (!['http:', 'https:'].includes(url.protocol) || url.origin !== origin) throw new Error() } catch { errors.origins = '允许来源格式无效' } }
+  if (!draft.allowedOrigins.length) errors.origins = '至少填写一个允许来源'
+  originsInput.value?.reveal()
+  invalidOrigins.value = invalidItemCount('origin', draft.allowedOrigins)
   if (!draft.placeholder || [...draft.placeholder].length > 80 || /[\r\n]/.test(draft.placeholder)) errors.placeholder = '评论占位文案需为 1 至 80 个字符'
   if (!Number.isInteger(draft.commentLimit) || draft.commentLimit < 1 || draft.commentLimit > 10000) errors.commentLimit = '评论长度上限需为 1 至 10000'
   if (!draft.emptyMessage || [...draft.emptyMessage].length > 240) errors.emptyMessage = '无评论文案需为 1 至 240 个字符'
@@ -77,18 +85,17 @@ function validate() {
   if ([...draft.bloggerBadge].length > 16 || /[\r\n]/.test(draft.bloggerBadge)) {
     errors.bloggerBadge = '评论区标志不能超过 16 个字符'
   }
-  draft.allowedOrigins = [...new Set(origins)]
-  return Object.keys(errors).length === 0
+  return Object.keys(errors).length === 0 && invalidOrigins.value === 0
 }
 const siteForm = ref<HTMLFormElement | null>(null)
-const errorCount = computed(() => Object.keys(errors).length)
+const errorCount = computed(() => Object.keys(errors).length + invalidOrigins.value)
 async function submit() {
   if (!validate()) {
     await nextTick()
     siteForm.value?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
     return
   }
-  const saved = await store.saveSite({ ...draft, allowedOrigins: [...draft.allowedOrigins] }, creating.value)
+  const saved = await store.saveSite({ ...draft, allowedOrigins: normalizeItems('origin', draft.allowedOrigins) }, creating.value)
   if (saved) applySite(saved)
 }
 </script>
@@ -100,7 +107,7 @@ async function submit() {
           <div class="in-main head-main">
             <div class="title-row">
               <h1 id="sites-title" class="page-title" tabindex="-1">{{ creating ? '新增站点' : '站点设置' }}</h1>
-              <div class="head-tools"><button v-if="!creating" :disabled="siteBusy" @click="store.requestNavigation(startCreating)" id="new-site-button" class="quiet-link" type="button">新增站点</button></div>
+              <div class="head-tools"><button v-if="!creating" :disabled="siteBusy" @click="store.requestNavigation(startCreating)" id="new-site-button" class="button button-small" type="button"><AdminIcon name="plus" />新增站点</button></div>
             </div>
             <p class="page-lede">每个接入评论区的网站对应一个站点。</p>
           </div>
@@ -112,27 +119,26 @@ async function submit() {
             <div class="in-margin section-margin"><h2 id="sec-basic">基本信息</h2><p>站点 ID 写在接入代码里，站点 URL 用于拼出文章链接。</p></div>
             <div class="in-main section-body">
               <div class="field">
-                <label class="rule"><span class="rule-label">站点 ID</span><input id="site-id" class="mono" maxlength="100" spellcheck="false" autocomplete="off" v-model="draft.id" :aria-invalid="Boolean(errors.id)" :readonly="!creating"></label>
+                <label class="setting"><span class="setting-label">站点 ID</span><input id="site-id" class="input mono" maxlength="100" spellcheck="false" autocomplete="off" v-model="draft.id" :aria-invalid="Boolean(errors.id)" :readonly="!creating"></label>
                 <p class="help" id="site-id-help">对应接入代码中的 <code>data-site-id</code><template v-if="creating">。字母或数字开头，可含 <code>. _ -</code>，最多 100 个字符；创建后不能修改。</template><template v-else>，创建后不能修改。</template></p>
                 <p v-if="errors.id" class="field-error">{{ errors.id }}</p>
               </div>
               <div class="field">
-                <label class="rule"><span class="rule-label">站点 URL</span><input id="site-url" class="mono" type="url" maxlength="2048" spellcheck="false" placeholder="https://blog.example.com" v-model="draft.siteUrl" :aria-invalid="Boolean(errors.siteUrl)"></label>
+                <label class="setting"><span class="setting-label">站点 URL</span><input id="site-url" class="input mono" type="url" maxlength="2048" spellcheck="false" placeholder="https://blog.example.com" v-model="draft.siteUrl" :aria-invalid="Boolean(errors.siteUrl)"></label>
                 <p class="help">「查看原评论」和通知中的文章链接由它加上页面 key 拼成。</p>
                 <p v-if="errors.siteUrl" class="field-error">{{ errors.siteUrl }}</p>
               </div>
               <div class="field">
-                <label class="rule"><span class="rule-label">站点名称</span><input id="site-name" maxlength="240" placeholder="可选" v-model="draft.name" :aria-invalid="Boolean(errors.name)"></label>
+                <label class="setting"><span class="setting-label">站点名称</span><input id="site-name" class="input" maxlength="240" placeholder="可选" v-model="draft.name" :aria-invalid="Boolean(errors.name)"></label>
                 <p class="help">留空时使用站点 URL 的域名。</p>
                 <p v-if="errors.name" class="field-error">{{ errors.name }}</p>
               </div>
               <div class="field">
-                <label class="rule"><span class="rule-label">评论区语言</span><select id="site-i18n" v-model="draft.i18n"><option value="zh-CN">简体中文</option><option value="zh-Hant">繁體中文</option><option value="en">English</option></select></label>
-                <p class="help">访客评论区的默认语言；接入 SDK 时传入 `i18n` 可以覆盖此设置。</p>
-              </div>
-              <div class="field">
-                <label class="rule rule-area"><span class="rule-label">允许来源</span><textarea id="site-origins" class="ruled-paper mono" rows="3" spellcheck="false" v-model="originsText" :aria-invalid="Boolean(errors.origins)"></textarea></label>
-                <p class="help">每行一个完整来源，例如 <code>https://blog.example.com</code>；最多 32 个。</p>
+                <div class="setting setting-top" role="group" aria-labelledby="lbl-site-origins">
+                  <span class="setting-label" id="lbl-site-origins">允许来源</span>
+                  <ListInput id="site-origins" ref="originsInput" :key="listKey" v-model="draft.allowedOrigins" kind="origin" label="允许来源" add-label="添加来源" placeholder="https://blog.example.com" :max="MAX_SITE_ORIGINS" mono inputmode="url" :required-error="errors.origins" />
+                </div>
+                <p class="help">放置评论区的网页来源，只含协议、域名和端口，例如 <code>https://blog.example.com</code>。按 Enter 添加下一项，可一次粘贴多行。</p>
                 <p v-if="errors.origins" class="field-error">{{ errors.origins }}</p>
               </div>
             </div>
@@ -142,36 +148,43 @@ async function submit() {
             <div class="in-margin section-margin"><h2 id="sec-thread">评论区</h2><p>访客在评论区看到的默认行为与文案。</p></div>
             <div class="in-main section-body">
               <div class="field">
-                <div class="rule rule-choice" role="radiogroup" aria-labelledby="lbl-site-sort">
-                  <span class="rule-label" id="lbl-site-sort">评论排序</span>
+                <div class="setting" role="radiogroup" aria-labelledby="lbl-site-i18n">
+                  <span class="setting-label" id="lbl-site-i18n">评论区语言</span>
+                  <span class="options" translate="no"><label><input type="radio" name="site-i18n" value="zh-CN" v-model="draft.i18n"><span class="lang" lang="zh-CN">简体中文</span></label><label><input type="radio" name="site-i18n" value="zh-Hant" v-model="draft.i18n"><span class="lang" lang="zh-Hant">繁體中文</span></label><label><input type="radio" name="site-i18n" value="en" v-model="draft.i18n"><span class="lang" lang="en">English</span></label></span>
+                </div>
+                <p class="help">访客评论区的默认语言；接入 SDK 时传入 <code>i18n</code> 可以覆盖此设置。</p>
+              </div>
+              <div class="field">
+                <div class="setting" role="radiogroup" aria-labelledby="lbl-site-sort">
+                  <span class="setting-label" id="lbl-site-sort">评论排序</span>
                   <span class="options"><label><input type="radio" name="site-sort" value="newest" v-model="draft.defaultSort"><span>最新评论</span></label><label><input type="radio" name="site-sort" value="oldest" v-model="draft.defaultSort"><span>最早评论</span></label></span>
                 </div>
                 <p class="help">访客可以在评论区临时切换。</p>
               </div>
               <div class="field">
-                <div class="rule rule-choice" role="radiogroup" aria-labelledby="lbl-email-required">
-                  <span class="rule-label" id="lbl-email-required">访客邮箱</span>
+                <div class="setting" role="radiogroup" aria-labelledby="lbl-email-required">
+                  <span class="setting-label" id="lbl-email-required">访客邮箱</span>
                   <span class="options"><label><input type="radio" name="site-email-required" :value="true" v-model="draft.emailRequired"><span>必填</span></label><label><input type="radio" name="site-email-required" :value="false" v-model="draft.emailRequired"><span>选填</span></label></span>
                 </div>
               </div>
               <div class="field">
-                <div class="rule rule-choice" role="radiogroup" aria-labelledby="lbl-website-required">
-                  <span class="rule-label" id="lbl-website-required">访客网站</span>
+                <div class="setting" role="radiogroup" aria-labelledby="lbl-website-required">
+                  <span class="setting-label" id="lbl-website-required">访客网站</span>
                   <span class="options"><label><input type="radio" name="site-website-required" :value="true" v-model="draft.websiteRequired"><span>必填</span></label><label><input type="radio" name="site-website-required" :value="false" v-model="draft.websiteRequired"><span>选填</span></label></span>
                 </div>
                 <p class="help">昵称始终必填。</p>
               </div>
               <div class="field">
-                <label class="rule"><span class="rule-label">评论占位文案</span><input id="site-placeholder" maxlength="160" v-model="draft.placeholder" :aria-invalid="Boolean(errors.placeholder)"></label>
+                <label class="setting"><span class="setting-label">评论占位文案</span><input id="site-placeholder" class="input" maxlength="160" v-model="draft.placeholder" :aria-invalid="Boolean(errors.placeholder)"></label>
                 <p v-if="errors.placeholder" class="field-error">{{ errors.placeholder }}</p>
               </div>
               <div class="field">
-                <label class="rule rule-number"><span class="rule-label">评论长度上限</span><input id="site-limit" class="mono" type="number" min="1" max="10000" inputmode="numeric" v-model.number="draft.commentLimit" :aria-invalid="Boolean(errors.commentLimit)"><span class="rule-suffix">字符</span></label>
+                <label class="setting setting-number"><span class="setting-label">评论长度上限</span><span class="control-line"><input id="site-limit" class="input mono" type="number" min="1" max="10000" inputmode="numeric" v-model.number="draft.commentLimit" :aria-invalid="Boolean(errors.commentLimit)"><span class="control-suffix">字符</span></span></label>
                 <p class="help">1–10000。中文、日文、韩文与其他 Unicode 字符均按一个字符计数。</p>
                 <p v-if="errors.commentLimit" class="field-error">{{ errors.commentLimit }}</p>
               </div>
               <div class="field">
-                <label class="rule rule-area"><span class="rule-label">无评论文案</span><textarea id="site-empty" class="ruled-paper" rows="2" maxlength="480" v-model="draft.emptyMessage" :aria-invalid="Boolean(errors.emptyMessage)"></textarea></label>
+                <label class="setting setting-top"><span class="setting-label">无评论文案</span><textarea id="site-empty" class="input" rows="2" maxlength="480" v-model="draft.emptyMessage" :aria-invalid="Boolean(errors.emptyMessage)"></textarea></label>
                 <p class="help">还没有评论时显示，可以换行。</p>
                 <p v-if="errors.emptyMessage" class="field-error">{{ errors.emptyMessage }}</p>
               </div>
@@ -182,19 +195,19 @@ async function submit() {
             <div class="in-margin section-margin"><h2 id="sec-smoji">表情包</h2><p>清单和图片由资源服务器直接提供，可能向该服务器暴露访客 IP 等请求信息。</p></div>
             <div class="in-main section-body">
               <div class="field">
-                <div class="rule rule-choice" role="radiogroup" aria-labelledby="lbl-smoji">
-                  <span class="rule-label" id="lbl-smoji">表情包</span>
+                <div class="setting" role="radiogroup" aria-labelledby="lbl-smoji">
+                  <span class="setting-label" id="lbl-smoji">表情包</span>
                   <span class="options"><label><input type="radio" name="smoji-enabled" :value="true" v-model="draft.smojiEnabled" id="smoji-enabled"><span>启用</span></label><label><input type="radio" name="smoji-enabled" :value="false" v-model="draft.smojiEnabled"><span>关闭</span></label></span>
                 </div>
               </div>
               <div class="field">
-                <label class="rule"><span class="rule-label">Smoji 清单</span><input id="smoji-manifest-url" class="mono" type="url" maxlength="2048" spellcheck="false" placeholder="https://static.example.com/smoji.json" v-model="draft.smojiManifestUrl" :aria-invalid="Boolean(errors.smojiManifestUrl)" :aria-describedby="errors.smojiManifestUrl ? 'smoji-manifest-help smoji-manifest-error' : 'smoji-manifest-help'"></label>
+                <label class="setting"><span class="setting-label">Smoji 清单</span><input id="smoji-manifest-url" class="input mono" type="url" maxlength="2048" spellcheck="false" placeholder="https://static.example.com/smoji.json" v-model="draft.smojiManifestUrl" :aria-invalid="Boolean(errors.smojiManifestUrl)" :aria-describedby="errors.smojiManifestUrl ? 'smoji-manifest-help smoji-manifest-error' : 'smoji-manifest-help'"></label>
                 <p class="help" id="smoji-manifest-help">填写公开的 HTTPS 清单地址。可在 <a href="https://smoji.zsh.moe/" target="_blank" rel="noreferrer">Smoji 工作台</a> 挑选表情，导出后自行托管。</p>
                 <p v-if="errors.smojiManifestUrl" id="smoji-manifest-error" class="field-error">{{ errors.smojiManifestUrl }}</p>
               </div>
               <div class="field">
-                <label class="rule"><span class="rule-label">图片来源</span><input id="smoji-image-origin" class="mono" type="url" maxlength="2048" spellcheck="false" placeholder="留空时与清单同源" v-model="draft.smojiImageOrigin" :aria-invalid="Boolean(errors.smojiImageOrigin)" :aria-describedby="errors.smojiImageOrigin ? 'smoji-image-help smoji-image-error' : 'smoji-image-help'"></label>
-                <p class="help" id="smoji-image-help">选填。图片放在其他 CDN 时，填写其来源，如 https://s3-cdn.zsh.moe，不含路径。仅允许这个来源的图片。</p>
+                <label class="setting"><span class="setting-label">图片来源</span><input id="smoji-image-origin" class="input mono" type="url" maxlength="2048" spellcheck="false" placeholder="留空时与清单同源" v-model="draft.smojiImageOrigin" :aria-invalid="Boolean(errors.smojiImageOrigin)" :aria-describedby="errors.smojiImageOrigin ? 'smoji-image-help smoji-image-error' : 'smoji-image-help'"></label>
+                <p class="help" id="smoji-image-help">选填。图片放在其他 CDN 时，填写其来源，如 https://cdn.example.com，不含路径。仅允许这个来源的图片。</p>
                 <p v-if="errors.smojiImageOrigin" id="smoji-image-error" class="field-error">{{ errors.smojiImageOrigin }}</p>
               </div>
               <p class="help">关闭表情包时保留这些地址；历史表情会按文字显示。</p>
@@ -205,25 +218,25 @@ async function submit() {
             <div class="in-margin section-margin"><h2 id="sec-blogger">博主身份</h2><p>在评论区昵称栏输入口令即可以博主身份发言。昵称与邮箱需同时填写或同时留空。</p></div>
             <div class="in-main section-body">
               <div class="field">
-                <label class="rule"><span class="rule-label">博主昵称</span><input id="blogger-nickname" maxlength="160" v-model="draft.bloggerNickname" :aria-invalid="Boolean(errors.bloggerNickname || errors.bloggerIdentity)"></label>
+                <label class="setting"><span class="setting-label">博主昵称</span><input id="blogger-nickname" class="input" maxlength="160" v-model="draft.bloggerNickname" :aria-invalid="Boolean(errors.bloggerNickname || errors.bloggerIdentity)"></label>
                 <p class="help">公开显示，并链接到站点 URL。</p>
                 <p v-if="errors.bloggerNickname" class="field-error">{{ errors.bloggerNickname }}</p>
               </div>
               <div class="field">
-                <label class="rule"><span class="rule-label">博主邮箱</span><input id="blogger-email" type="email" maxlength="254" v-model="draft.bloggerEmail" :aria-invalid="Boolean(errors.bloggerEmail || errors.bloggerIdentity)"></label>
+                <label class="setting"><span class="setting-label">博主邮箱</span><input id="blogger-email" class="input" type="email" maxlength="254" v-model="draft.bloggerEmail" :aria-invalid="Boolean(errors.bloggerEmail || errors.bloggerIdentity)"></label>
                 <p class="help">仅用于通知去重与历史评论回填，不会公开。</p>
                 <p v-if="errors.bloggerEmail" class="field-error">{{ errors.bloggerEmail }}</p>
                 <p v-if="errors.bloggerIdentity" class="field-error">{{ errors.bloggerIdentity }}</p>
               </div>
               <div class="field">
-                <label class="rule"><span class="rule-label">博主口令</span><input id="blogger-passphrase" type="password" maxlength="80" autocomplete="new-password" v-model="draft.bloggerPassphrase" :aria-invalid="Boolean(errors.bloggerPassphrase)" :placeholder="draft.bloggerPassphraseSet ? '已设置，输入新值以更换' : ''"></label>
+                <label class="setting"><span class="setting-label">博主口令</span><input id="blogger-passphrase" class="input" type="password" maxlength="80" autocomplete="new-password" v-model="draft.bloggerPassphrase" :aria-invalid="Boolean(errors.bloggerPassphrase)" :placeholder="draft.bloggerPassphraseSet ? '已设置，输入新值以更换' : ''"></label>
                 <p class="help">12–80 个字符，UTF-8 编码不超过 72 字节。保存后不再显示，已设置时留空表示不更改。</p>
                 <p v-if="errors.bloggerPassphrase" class="field-error">{{ errors.bloggerPassphrase }}</p>
               </div>
               <div class="field">
-                <label class="rule rule-short"><span class="rule-label">评论区标志</span><input id="blogger-badge" maxlength="32" placeholder="可选" v-model="draft.bloggerBadge" :aria-invalid="Boolean(errors.bloggerBadge)"></label>
+                <label class="setting setting-short"><span class="setting-label">评论区标志</span><input id="blogger-badge" class="input" maxlength="32" placeholder="可选" v-model="draft.bloggerBadge" :aria-invalid="Boolean(errors.bloggerBadge)"></label>
                 <p class="help">显示在博主昵称之后，例如 [博主] 或 [OP]。留空则不显示。</p>
-                <p class="specimen" aria-hidden="true"><span class="specimen-label">评论区显示为</span><strong>{{ draft.bloggerNickname || '博主' }}</strong><span v-if="draft.bloggerBadge" class="specimen-badge">{{ draft.bloggerBadge }}</span></p>
+                <p class="specimen" aria-hidden="true"><span class="specimen-label">评论区显示为</span><strong :translate="draft.bloggerNickname ? 'no' : undefined">{{ draft.bloggerNickname || '博主' }}</strong><span v-if="draft.bloggerBadge" class="specimen-badge" translate="no">{{ draft.bloggerBadge }}</span></p>
                 <p v-if="errors.bloggerBadge" class="field-error">{{ errors.bloggerBadge }}</p>
               </div>
             </div>
