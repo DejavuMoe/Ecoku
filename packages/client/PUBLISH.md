@@ -9,6 +9,8 @@
 3. 并行执行 npm 发布和镜像构建。npm 发布同一次运行保存的 tarball，不在有写权限的发布 job 中重新安装依赖或构建。amd64 / arm64 镜像在原生 runner 构建，以 digest 汇总为精确版本 tag。
 4. npm 与镜像均成功后，使用根更新日志对应章节创建 GitHub Release，附带 `ecoku-<版本>.tgz` 和 `SHA256SUMS`。
 
+普通 `master` / PR CI 只验证 SDK、检查包内容并生成 tarball，不运行 `npm publish --dry-run`。npm 的发布预演也会查询 registry，并拒绝已发布的同版本；它不适合作为主线构建检查。实际发布仅在 tag 流程或显式触发的恢复流程中执行。
+
 发布 `v0.3.1` 时，SDK 版本为 `0.3.1`，镜像为 `ghcr.io/dejavumoe/ecoku:v0.3.1`。正式 npm 版本使用 `latest`，含预发布后缀的 tag 使用 `next` 并创建 GitHub prerelease；镜像只发布精确版本，不创建 `latest`。
 
 SDK 的 `repository.url` 设为 `git+https://github.com/DejavuMoe/Ecoku.git`，`directory` 为 `packages/client`。如果实际 GitHub 仓库名称不同，首次发布前同步修改此字段和 npm Trusted Publisher；流水线会拒绝来源仓库不一致的包。
@@ -43,6 +45,9 @@ SDK 的 `repository.url` 设为 `git+https://github.com/DejavuMoe/Ecoku.git`，`
 ## 缓存与失败恢复
 
 - SDK、管理端、文档和 Go 并行验证。pnpm store 由锁文件确定缓存；Go 缓存依据 `server/go.sum`，包含模块与构建缓存。
+- Node、pnpm 与 `mise.toml` 的精确版本一致；Go 读取 `server/go.mod`。外部 Actions 固定完整提交 SHA，更新时同时检查运行时要求和跨版本行为。
+- 依赖安装使用 `--frozen-lockfile --prefer-offline`，优先复用缓存；Docker 显式指定与缓存挂载一致的 pnpm store 路径。GitHub 文档产物使用较低压缩级别，SDK tarball 不重复压缩。
+- Go 测试、vet 和构建统一使用 `CGO_ENABLED=0`，与生产镜像一致。两个架构仍原生并行构建；manifest 合并只使用 Buildx CLI，不启动额外的 BuildKit 容器。
 - Docker 使用 GHCR 的 `buildcache-amd64` / `buildcache-arm64`，保存中间构建层，可跨 tag 复用；两个架构不会互相覆盖缓存。
 - 验证中的旧分支任务可取消；发布串行且不会主动取消正在发布的任务。不要一次推送多个待发布 tag，等待上一版完成后再推下一版。
 - SDK、文档与 digest 的 Actions artifacts 保留 7 天。超过保留期不能依赖旧产物重跑下游 job，应检查已发布状态后重新安排发布。
@@ -59,8 +64,9 @@ Woodpecker 仅启用 `docs-deploy.yml`，负责现有文档站点的构建与部
 ## 本地检查
 
 ```bash
+node scripts/check-ci.mjs
 node scripts/check-release.mjs --self-test
 node scripts/check-release.mjs
 ```
 
-以上命令从仓库根目录运行，只检查版本契约。完整验证由 `ci.yml` 执行，不代表实际 npm、GHCR 或 GitHub Release 已发布成功。
+以上命令从仓库根目录运行，检查 CI 的打包／发布边界、Actions 固定方式、工具链版本及发布版本契约。完整验证由 `ci.yml` 执行，不代表实际 npm、GHCR 或 GitHub Release 已发布成功。

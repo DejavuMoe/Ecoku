@@ -14,7 +14,7 @@ steps:
     commands:
       - apk add --no-cache git
       - npm install --global pnpm@11.24.0
-      - pnpm install --frozen-lockfile
+      - pnpm install --frozen-lockfile --prefer-offline
       - pnpm docs:build
       - sh scripts/verify-docs-output.sh docs/.vitepress/dist
 
