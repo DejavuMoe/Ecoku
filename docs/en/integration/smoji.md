@@ -1,6 +1,6 @@
 # Smoji sticker packs
 
-::: info Image origin support since v0.3.0
+::: info Image origin support since v0.3.1
 「图片来源」 (Image origin) allows separate hosting of manifests and images. v0.2.9 and earlier require the same origin; upgraded sites keep that rule by default.
 :::
 

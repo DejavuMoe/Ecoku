@@ -4,7 +4,3 @@ packages:
 
 allowBuilds:
   esbuild: true
-
-# The published SDK is this repository's own release artifact.
-minimumReleaseAgeExclude:
-  - ecoku@0.3.0

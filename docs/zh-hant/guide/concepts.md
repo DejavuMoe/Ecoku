@@ -74,7 +74,7 @@ Ecoku 用兩個值確定「一篇文章的評論區」：
 - 不轉譯 Markdown，不會把網址自動變成連結；
 - 保留換行。
 
-唯一的例外是 [Smoji 貼圖](../integration/smoji)：站點啟用貼圖包後，符合格式與站點圖片來源規則的 `![smoji:名稱](圖片網址)` 會顯示為圖片，其餘一律以文字顯示。預設使用清單來源；v0.3.0 支援管理員另行指定圖片來源，見[清單與圖片分別託管](../integration/smoji#hosting)。
+唯一的例外是 [Smoji 貼圖](../integration/smoji)：站點啟用貼圖包後，符合格式與站點圖片來源規則的 `![smoji:名稱](圖片網址)` 會顯示為圖片，其餘一律以文字顯示。預設使用清單來源；v0.3.1 支援管理員另行指定圖片來源，見[清單與圖片分別託管](../integration/smoji#hosting)。
 
 訪客網址只作為暱稱上的連結出現，並帶有 `rel="nofollow ugc noopener noreferrer"`。
 

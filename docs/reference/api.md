@@ -158,7 +158,7 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&page=1&pageSize=10&sor
 | `bloggerProofEnabled` | 站点是否已设置博主口令。 |
 | `captcha` | 当前人机验证方式：`provider` 为 `off`、`turnstile` 或 `cap`；`sitekey` 为公开的 Site key；Cap 时另有 `instanceUrl`。 |
 | `turnstileSitekey` | 为旧客户端保留。仅在 Turnstile 模式下有值。 |
-| `smoji` | `enabled` 表示是否启用，`manifestUrl` 为清单地址；v0.3.0 提供选填的 `imageOrigin`，未返回或为空时使用清单来源。 |
+| `smoji` | `enabled` 表示是否启用，`manifestUrl` 为清单地址；v0.3.1 提供选填的 `imageOrigin`，未返回或为空时使用清单来源。 |
 
 #### 读取上限
 

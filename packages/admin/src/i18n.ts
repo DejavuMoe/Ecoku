@@ -124,7 +124,8 @@ export function installAdminTranslations(root: HTMLElement = document.body): () 
       const original = originals.get(node) ?? node.textContent ?? ''
       originals.set(node, original)
       const translated = translateAdminText(original.trim())
-      if (translated !== original.trim() && original.trim()) node.textContent = original.replace(original.trim(), translated)
+      const rendered = original.replace(original.trim(), translated)
+      if (node.textContent !== rendered) node.textContent = rendered
     }
     root.querySelectorAll<HTMLElement>('[aria-label],[title],[placeholder]').forEach((element) => {
       const attrs = originalAttributes.get(element) ?? new Map<string, string>()

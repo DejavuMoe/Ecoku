@@ -4,10 +4,10 @@
 
 ## 获取 SDK {#install}
 
-[ecoku](https://www.npmjs.com/package/ecoku) 已发布到 npm，当前版本为 `0.3.0`，提供 ESM、CommonJS 和 TypeScript 类型声明。SDK 在浏览器中挂载评论区，需要连接你部署的 Ecoku 服务；安装 npm 包不会替你部署服务端。
+[ecoku](https://www.npmjs.com/package/ecoku) 通过 npm 分发，本页对应 `0.3.1`，请在该版本发布成功后安装，提供 ESM、CommonJS 和 TypeScript 类型声明。SDK 在浏览器中挂载评论区，需要连接你部署的 Ecoku 服务；安装 npm 包不会替你部署服务端。
 
 ```bash
-pnpm add --save-exact ecoku@0.3.0
+pnpm add --save-exact ecoku@0.3.1
 ```
 
 不使用 npm 时，可通过 `<script src="https://ecoku.example.com/client/ecoku.umd.js"></script>` 加载实例提供的 UMD 文件，再使用全局 `Ecoku` 构造函数。静态文章页优先使用 [HTML 加载器](./html)。
@@ -36,7 +36,8 @@ await comments.init()
 | `pageKey` | `string` | 是 | — | 当前文章的页面 key，1～512 个字符。SDK 不会自动从网址推断，必须显式传入。 |
 | `pageTitle` | `string` | 否 | `''` | 文章标题，显示在通知中，最多 200 个字符。 |
 | `pageSize` | `number` | 否 | `10` | 每页根评论数，1～100 的整数。 |
-| `theme` | `'auto' \| 'light' \| 'dark'` | 否 | `'auto'` | 配色。`auto` 跟随页面的明暗设置。 |
+| `theme` | `'auto' \| 'light' \| 'dark'` | 否 | `'auto'` | 配色。`auto` 优先读取宿主颜色变量，未提供时跟随系统偏好；手动主题开关需映射颜色变量，见下方 VitePress 示例。 |
+| `i18n` | `'zh-CN' \| 'zh-Hant' \| 'en'` | 否 | 站点默认值 | 评论区语言。优先级为 SDK 参数 → 站点设置 → `zh-CN`；自定义文案保持原文。 |
 | `cssURL` | `string` | 否 | `''` | 留空时注入默认样式。填写有效值（样式表地址或 `'none'`）都会停止注入，见下文。 |
 
 构造函数不校验参数；参数不合法时，`init()` 抛出 `TypeError`。
@@ -87,7 +88,9 @@ await comments.init()
 
 ## VitePress {#vitepress}
 
-在 `.vitepress/theme/EcokuComments.vue` 中使用 VitePress 自带的 `useRoute`，不要从 `vue-router` 导入。当前文档站已经使用 `ecoku@0.3.0` 接入演示评论区，服务地址为 `https://ecoku-dev.zsh.moe/`，站点 ID 为 `ecoku-docs`；生产接入时替换这两个值，并在 Ecoku 后台将网站来源加入站点允许来源。路由路径作为稳定的页面 key，页面数据提供标题。仅在浏览器挂载时创建实例，切换文章时更新，卸载时销毁。
+在 `.vitepress/theme/EcokuComments.vue` 中使用 VitePress 自带的 `useRoute`，不要从 `vue-router` 导入。当前文档站已经使用 `ecoku@0.3.1` 接入演示评论区，服务地址为 `https://ecoku-dev.zsh.moe/`，站点 ID 为 `ecoku-docs`；生产接入时替换这两个值，并在 Ecoku 后台将网站来源加入站点允许来源。路由路径作为稳定的页面 key，页面数据提供标题。仅在浏览器挂载时创建实例，切换文章时更新，卸载时销毁。
+
+VitePress 的手动主题开关不会改变系统配色偏好。下面将评论区颜色映射到 VitePress 变量，浅色、暗色和手动切换都会同步，且不会重建实例或清空草稿。
 
 ```vue
 <script setup>
@@ -113,7 +116,9 @@ onMounted(() => {
 
 watch(
   () => [route.path, page.value.title],
-  ([path, title]) => { comments?.setPageKey(path, title).catch(console.error) },
+  ([path, title]) => {
+    comments?.setPageKey(path, title).catch(console.error)
+  },
   { flush: 'post' },
 )
 
@@ -126,6 +131,21 @@ onBeforeUnmount(() => {
 <template>
   <div ref="el"></div>
 </template>
+
+<style scoped>
+:deep(.ecoku-comments) {
+  --ecoku-theme: var(--vp-c-bg);
+  --ecoku-entry: var(--vp-c-bg-alt);
+  --ecoku-primary: var(--vp-c-text-1);
+  --ecoku-secondary: var(--vp-c-text-3);
+  --ecoku-content: var(--vp-c-text-2);
+  --ecoku-border: var(--vp-c-border);
+  --ecoku-border-soft: var(--vp-c-divider);
+  --ecoku-code-bg: var(--vp-code-block-bg);
+  --ecoku-surface-muted: var(--vp-c-bg-soft);
+  --ecoku-accent: var(--vp-c-brand-1);
+}
+</style>
 ```
 
 在现有 `.vitepress/theme/index.ts` 中将组件放入默认布局的 `doc-after` 插槽，保留已有主题设置和 CSS 导入。下面展示最小接入；修改为你的服务地址和站点 ID，并在后台登记文档网站的来源。首页使用 home 布局时不会显示这个插槽。

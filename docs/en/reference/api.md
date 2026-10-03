@@ -158,7 +158,7 @@ Other fields:
 | `bloggerProofEnabled` | Whether the site has a blogger passphrase set. |
 | `captcha` | The current CAPTCHA mode: `provider` is `off`, `turnstile`, or `cap`; `sitekey` is the public site key; for Cap there is also `instanceUrl`. |
 | `turnstileSitekey` | Kept for old clients. Has a value only in Turnstile mode. |
-| `smoji` | `enabled` controls stickers and `manifestUrl` is the manifest URL. v0.3.0 provides optional `imageOrigin`; missing or empty means the manifest origin. |
+| `smoji` | `enabled` controls stickers and `manifestUrl` is the manifest URL. v0.3.1 provides optional `imageOrigin`; missing or empty means the manifest origin. |
 
 #### Read limits
 

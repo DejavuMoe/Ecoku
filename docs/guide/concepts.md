@@ -74,7 +74,7 @@ Ecoku 用两个值确定「一篇文章的评论区」：
 - 不渲染 Markdown，不把网址自动变成链接；
 - 换行保留。
 
-唯一的例外是 [Smoji 表情](../integration/smoji)：站点启用表情包后，符合格式与站点图片来源规则的 `![smoji:名称](图片地址)` 会显示为图片，其余一律按文字显示。默认使用清单来源；v0.3.0 支持管理员另行指定图片来源，见[清单与图片分别托管](../integration/smoji#hosting)。
+唯一的例外是 [Smoji 表情](../integration/smoji)：站点启用表情包后，符合格式与站点图片来源规则的 `![smoji:名称](图片地址)` 会显示为图片，其余一律按文字显示。默认使用清单来源；v0.3.1 支持管理员另行指定图片来源，见[清单与图片分别托管](../integration/smoji#hosting)。
 
 访客网址只作为昵称上的链接出现，带有 `rel="nofollow ugc noopener noreferrer"`。
 
