@@ -467,6 +467,14 @@ func TestSiteWriteContractOmitsDerivedDomainAndReviewMode(t *testing.T) {
 	if public.Code != http.StatusOK || !strings.Contains(public.Body.String(), `"i18n":"en"`) {
 		t.Fatalf("public form config lost the site locale: %d %s", public.Code, public.Body.String())
 	}
+	payload["revision"] = 2
+	payload["i18n"] = "fr"
+	unknown := requestJSON(t, env.router, http.MethodPut, "/api/admin/sites/site-c", adminTestOrigin, "Bearer "+env.token, payload)
+	if unknown.Code != http.StatusBadRequest || !strings.Contains(unknown.Body.String(), "评论区语言无效") {
+		t.Fatalf("unknown locale was not rejected: %d %s", unknown.Code, unknown.Body.String())
+	}
+	delete(payload, "i18n")
+	delete(payload, "revision")
 	payload["id"] = "site-http-smoji"
 	payload["smoji_manifest_url"] = "http://static.example/smoji.json"
 	invalid := requestJSON(t, env.router, http.MethodPost, "/api/admin/sites", adminTestOrigin, "Bearer "+env.token, payload)

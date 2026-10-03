@@ -51,6 +51,7 @@ const comments = new Ecoku({
   pageTitle: 'Windows 11 IoT LTSC 养老指南',
   pageSize: 10,
   theme: 'auto', // auto | light | dark
+  // i18n: 'en', // zh-CN | zh-Hant | en; omit to use the site's language
   // cssURL: 'https://ecoku.example.com/client/ecoku.unstyled.css',
 })
 
@@ -64,6 +65,10 @@ inherit from the host page and the `auto` theme inherits its `color-scheme`. Def
 `--ecoku-*` tokens have zero specificity, so a host rule on `.ecoku-comments` overrides
 them. Pass `cssURL` to skip injection and use a host stylesheet instead (`none` skips
 without loading a file).
+
+The interface language comes from the `i18n` option, then the site's saved language,
+then `zh-CN`. Default placeholder, empty-state and blogger-badge text follow that
+language; text the site customized is shown as written.
 
 The server-authoritative site registry controls whether email and website are
 required and supplies the comment textarea placeholder. The SDK reads this

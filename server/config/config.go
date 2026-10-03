@@ -161,19 +161,34 @@ const (
 	LocaleEN    Locale = "en"
 )
 
-func NormalizeLocale(value string) Locale {
+// ParseLocale accepts the three interface languages and common regional aliases.
+// An empty value is the default Simplified Chinese; anything else is reported as unknown.
+func ParseLocale(value string) (Locale, bool) {
 	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "", "zh-cn", "zh", "zh-hans", "zh-sg":
+		return LocaleZH, true
 	case "en", "en-us", "en-gb":
-		return LocaleEN
+		return LocaleEN, true
 	case "zh-hant", "zh-tw", "zh-hk":
-		return LocaleZHant
+		return LocaleZHant, true
 	default:
-		return LocaleZH
+		return LocaleZH, false
 	}
+}
+
+func NormalizeLocale(value string) Locale {
+	locale, _ := ParseLocale(value)
+	return locale
 }
 
 func GetAdminLocale() Locale {
 	return NormalizeLocale(os.Getenv(adminLocaleEnv))
+}
+
+// AdminLocaleRecognized reports whether ECOKU_ADMIN_LOCALE is unset or names a supported language.
+func AdminLocaleRecognized() bool {
+	_, ok := ParseLocale(os.Getenv(adminLocaleEnv))
+	return ok
 }
 
 type SmojiPublicConfig struct {

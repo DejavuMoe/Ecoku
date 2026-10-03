@@ -65,6 +65,9 @@ func main() {
 	if err := config.ValidateAdmin(); err != nil {
 		log.Fatalf("管理后台配置无效: %v", err)
 	}
+	if !config.AdminLocaleRecognized() {
+		log.Printf("ECOKU_ADMIN_LOCALE 只支持 zh-CN、zh-Hant 或 en，管理后台改用 zh-CN")
+	}
 	if err := notifications.ValidateStoredSecrets(); err != nil {
 		log.Fatalf("通知凭据校验失败: %v", err)
 	}

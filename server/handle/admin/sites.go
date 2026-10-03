@@ -283,6 +283,11 @@ func validateSiteWrite(c *gin.Context, request SiteWriteRequest, creating bool, 
 		utils.SendError(c, http.StatusBadRequest, "评论区标志无效")
 		return model.SiteWrite{}, false
 	}
+	locale, localeOK := siteWriteLocale(request.Locale, existing)
+	if !localeOK {
+		utils.SendError(c, http.StatusBadRequest, "评论区语言无效；只支持 zh-CN、zh-Hant 或 en")
+		return model.SiteWrite{}, false
+	}
 	passphrase := strings.TrimSpace(request.BloggerPassphrase)
 	existingHash := ""
 	if existing != nil {
@@ -295,7 +300,7 @@ func validateSiteWrite(c *gin.Context, request SiteWriteRequest, creating bool, 
 		CommentLimit: commentLimit, EmptyMessage: emptyMessage,
 		SmojiEnabled: request.SmojiEnabled, SmojiManifestURL: smojiManifestURL,
 		SmojiImageOrigin: smojiImageOrigin,
-		Locale:           siteWriteLocale(request.Locale, existing),
+		Locale:           locale,
 		BloggerNickname:  bloggerNickname, BloggerEmail: bloggerEmail,
 		BloggerBadge:   bloggerBadge,
 		AllowedOrigins: origins, Revision: request.Revision,
@@ -326,14 +331,17 @@ func validateSiteWrite(c *gin.Context, request SiteWriteRequest, creating bool, 
 	return write, true
 }
 
-func siteWriteLocale(value *string, existing *model.Site) string {
+// siteWriteLocale keeps the stored language when the request omits the field, so older
+// clients cannot reset it; an unknown language is rejected instead of being replaced.
+func siteWriteLocale(value *string, existing *model.Site) (string, bool) {
 	if value != nil {
-		return string(config.NormalizeLocale(*value))
+		locale, ok := config.ParseLocale(*value)
+		return string(locale), ok
 	}
 	if existing != nil {
-		return string(config.NormalizeLocale(existing.Locale))
+		return string(config.NormalizeLocale(existing.Locale)), true
 	}
-	return string(config.LocaleZH)
+	return string(config.LocaleZH), true
 }
 
 func siteDTO(site model.Site) SiteDTO {

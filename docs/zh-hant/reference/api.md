@@ -297,6 +297,8 @@ Origin: https://blog.example.com
 
 `smoji_image_origin`是選填的受信任圖片來源，例如 `https://s3-cdn.zsh.moe`。留空使用清單來源；更新請求省略此欄位時保留原值，傳空字串恢復預設。公開的 `formConfig.smoji.imageOrigin` 僅在已設定時回傳。載入、提交、顯示和郵件通知使用同一規則，見 [Smoji 託管設定](../integration/smoji#hosting)。
 
+`i18n` 只接受 `zh-CN`、`zh-Hant`、`en`（及 `zh-TW`、`en-US` 等地區寫法），其他值回傳 `400`。更新請求省略該欄位時保留原值。
+
 新增站點時 ID 已存在，或 `allowed_origins` 與 `admin.allowed_origins` 重複，都會回傳 `409`。
 
 ### 評論
