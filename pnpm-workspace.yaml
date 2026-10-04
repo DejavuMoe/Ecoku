@@ -5,6 +5,11 @@ packages:
 allowBuilds:
   esbuild: true
 
+# VitePress 1.6.4 still pins Vite 5; use the patched Vite 6 release until
+# VitePress updates its dependency (GHSA-fx2h-pf6j-xcff).
+overrides:
+  'vitepress@1.6.4>vite': 6.4.3
+
 # This repository's published SDK is used by the documentation demo.
 minimumReleaseAgeExclude:
   - ecoku@0.3.3
