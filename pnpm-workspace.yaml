@@ -7,4 +7,4 @@ allowBuilds:
 
 # This repository's published SDK is used by the documentation demo.
 minimumReleaseAgeExclude:
-  - ecoku@0.3.2
+  - ecoku@0.3.3
