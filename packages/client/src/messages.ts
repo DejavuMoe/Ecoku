@@ -8,7 +8,7 @@ export interface ClientMessages {
   deletedAuthor: string; deletedBody: string; collapse: string; expand: string; collapsed: (count: number) => string; commentCount: (count: number) => string
   noCommentCount: string; submitted: string; replySubmitted: string; loaded: string; nicknameRequired: string; nicknameTooLong: string
   emailRequiredInvalid: string; emailInvalid: string; websiteRequiredInvalid: string; websiteInvalid: string; contentRequired: string; contentTooLong: (limit: number) => string
-  submit400: string; submit403: string; submit413: string; submit429: string; submit500: string; submitNetwork: string; challengeRequired: string; list403: string; list429: string; listFailure: string
+  submit400: string; submit403: string; submit413: string; submit422: string; submit429: string; submit500: string; submitNetwork: string; challengeRequired: string; list403: string; list429: string; listFailure: string
   ariaComments: string; ariaSort: string; commentContent: string; blogger: string; bloggerBadge: string; sticker: string; stickerPack: string
   loadingStickers: string; stickerLoadFailed: string; preview: string; commentPreview: string; noPreview: string; parentComment: string
 }
@@ -25,7 +25,7 @@ export const zhCN: ClientMessages = {
   deletedAuthor: '已删除', deletedBody: '[该评论已删除]', collapse: '折叠这条讨论', expand: '展开这条讨论', collapsed: count => `已折叠 ${count} 条回复`, commentCount: count => `${count} 条评论`,
   noCommentCount: '暂无评论', submitted: '评论已发布。', replySubmitted: '回复已发布。', loaded: '评论已加载。', nicknameRequired: '请输入昵称。', nicknameTooLong: '昵称不能超过 80 个字符。',
   emailRequiredInvalid: '请输入有效邮箱。', emailInvalid: '邮箱格式不正确。', websiteRequiredInvalid: '请输入以 http:// 或 https:// 开头的网址。', websiteInvalid: '网址需要以 http:// 或 https:// 开头。', contentRequired: '评论内容不能为空。', contentTooLong: limit => `评论内容不能超过 ${limit} 个字符。`,
-  submit400: '提交内容不符合要求，请检查后重试。', submit403: '当前页面来源没有评论提交权限。', submit413: '提交内容超过服务器允许的大小。', submit429: '提交过于频繁，请稍后再试。', submit500: '评论服务暂时无法保存内容，请稍后再试。', submitNetwork: '网络连接失败，评论尚未提交。', challengeRequired: '请完成验证后再发布。', list403: '当前页面来源没有读取评论的权限。', list429: '请求过于频繁，请稍后重试。', listFailure: '无法加载评论，请稍后重试。',
+  submit400: '提交内容不符合要求，请检查后重试。', submit403: '当前页面来源没有评论提交权限。', submit413: '提交内容超过服务器允许的大小。', submit422: '回复层级已达上限，请回复较上层的评论。', submit429: '提交过于频繁，请稍后再试。', submit500: '评论服务暂时无法保存内容，请稍后再试。', submitNetwork: '网络连接失败，评论尚未提交。', challengeRequired: '请完成验证后再发布。', list403: '当前页面来源没有读取评论的权限。', list429: '请求过于频繁，请稍后重试。', listFailure: '无法加载评论，请稍后重试。',
   ariaComments: '评论区', ariaSort: '评论排序', commentContent: '评论内容', blogger: '博主', bloggerBadge: '[博主]', sticker: '表情', stickerPack: '表情包',
   loadingStickers: '正在加载表情…', stickerLoadFailed: '表情加载失败，请重试。', preview: '预览', commentPreview: '评论预览', noPreview: '暂无可预览内容。', parentComment: '上级评论',
 }
@@ -37,7 +37,7 @@ const zhHant: ClientMessages = {
   deletedAuthor: '已刪除', deletedBody: '[此評論已刪除]', collapse: '摺疊這段討論', expand: '展開這段討論', collapsed: count => `已摺疊 ${count} 則回覆`, commentCount: count => `${count} 則評論`,
   noCommentCount: '暫無評論', submitted: '評論已發布。', replySubmitted: '回覆已發布。', loaded: '評論已載入。', nicknameRequired: '請輸入暱稱。', nicknameTooLong: '暱稱不能超過 80 個字元。',
   emailRequiredInvalid: '請輸入有效信箱。', emailInvalid: '信箱格式不正確。', websiteRequiredInvalid: '請輸入以 http:// 或 https:// 開頭的網址。', websiteInvalid: '網址必須以 http:// 或 https:// 開頭。', contentRequired: '評論內容不能為空。', contentTooLong: limit => `評論內容不能超過 ${limit} 個字元。`,
-  submit400: '提交內容不符合要求，請檢查後重試。', submit403: '目前頁面來源沒有評論提交權限。', submit413: '提交內容超過伺服器允許的大小。', submit429: '提交過於頻繁，請稍後再試。', submit500: '評論服務暫時無法保存內容，請稍後再試。', submitNetwork: '網路連線失敗，評論尚未提交。', challengeRequired: '請完成驗證後再發布。', list403: '目前頁面來源沒有讀取評論的權限。', list429: '請求過於頻繁，請稍後重試。', listFailure: '無法載入評論，請稍後重試。',
+  submit400: '提交內容不符合要求，請檢查後重試。', submit403: '目前頁面來源沒有評論提交權限。', submit413: '提交內容超過伺服器允許的大小。', submit422: '回覆層級已達上限，請回覆較上層的評論。', submit429: '提交過於頻繁，請稍後再試。', submit500: '評論服務暫時無法保存內容，請稍後再試。', submitNetwork: '網路連線失敗，評論尚未提交。', challengeRequired: '請完成驗證後再發布。', list403: '目前頁面來源沒有讀取評論的權限。', list429: '請求過於頻繁，請稍後重試。', listFailure: '無法載入評論，請稍後重試。',
   ariaComments: '評論區', ariaSort: '評論排序', commentContent: '評論內容', blogger: '博主', bloggerBadge: '[博主]', sticker: '貼圖', stickerPack: '貼圖包',
   loadingStickers: '正在載入貼圖…', stickerLoadFailed: '貼圖載入失敗，請重試。', preview: '預覽', commentPreview: '評論預覽', noPreview: '暫無可預覽內容。', parentComment: '上級評論',
 }
@@ -49,7 +49,7 @@ const en: ClientMessages = {
   deletedAuthor: 'Deleted', deletedBody: '[Comment deleted]', collapse: 'Collapse this discussion', expand: 'Expand this discussion', collapsed: count => `${count} repl${count === 1 ? 'y' : 'ies'} collapsed`, commentCount: count => `${count} comment${count === 1 ? '' : 's'}`,
   noCommentCount: 'No comments', submitted: 'Comment posted.', replySubmitted: 'Reply posted.', loaded: 'Comments loaded.', nicknameRequired: 'Enter your name.', nicknameTooLong: 'Name must be 80 characters or fewer.',
   emailRequiredInvalid: 'Enter a valid email address.', emailInvalid: 'The email address is invalid.', websiteRequiredInvalid: 'Enter a URL beginning with http:// or https://.', websiteInvalid: 'The URL must begin with http:// or https://.', contentRequired: 'Comment content cannot be empty.', contentTooLong: limit => `Comment content must be ${limit} characters or fewer.`,
-  submit400: 'The submission is invalid. Check it and try again.', submit403: 'This page origin cannot submit comments.', submit413: 'The submission is too large for the server.', submit429: 'You are posting too quickly. Try again later.', submit500: 'The comment service could not save this yet.', submitNetwork: 'The network request failed; your comment was not posted.', challengeRequired: 'Complete the verification before posting.', list403: 'This page origin cannot read comments.', list429: 'Too many requests. Try again later.', listFailure: 'Comments could not be loaded. Try again later.',
+  submit400: 'The submission is invalid. Check it and try again.', submit403: 'This page origin cannot submit comments.', submit413: 'The submission is too large for the server.', submit422: 'Replies cannot nest any deeper here. Reply to a comment higher up.', submit429: 'You are posting too quickly. Try again later.', submit500: 'The comment service could not save this yet.', submitNetwork: 'The network request failed; your comment was not posted.', challengeRequired: 'Complete the verification before posting.', list403: 'This page origin cannot read comments.', list429: 'Too many requests. Try again later.', listFailure: 'Comments could not be loaded. Try again later.',
   ariaComments: 'Comments', ariaSort: 'Comment sort', commentContent: 'Comment content', blogger: 'Blogger', bloggerBadge: '[Blogger]', sticker: 'Sticker', stickerPack: 'Sticker pack',
   loadingStickers: 'Loading stickers…', stickerLoadFailed: 'Stickers could not be loaded. Try again.', preview: 'Preview', commentPreview: 'Comment preview', noPreview: 'Nothing to preview.', parentComment: 'Parent comment',
 }

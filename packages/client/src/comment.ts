@@ -35,6 +35,8 @@ import {
 import { loadSmojiManifest, renderSmojiContent, smojiMarker, type SmojiManifest } from './smoji'
 
 const MAX_NICKNAME_LENGTH = 80
+// Roots are depth zero; the server refuses replies to comments at this depth.
+const MAX_REPLY_PARENT_DEPTH = 16
 const COMPOSER_ROWS = 7
 let instanceSequence = 0
 
@@ -761,7 +763,7 @@ export class CommentSurface {
 
     let replySlot: HTMLElement | null = null
     let replyButton: HTMLButtonElement | null = null
-    if (!comment.deleted) {
+    if (!comment.deleted && depth < MAX_REPLY_PARENT_DEPTH) {
       const trigger = createElement('button', 'ecoku-text-action ecoku-reply-action', this.messages.reply)
       replyButton = trigger
       trigger.type = 'button'
@@ -1441,6 +1443,7 @@ export class CommentSurface {
     }
     if (error.status === 403) return this.messages.submit403
     if (error.status === 413) return this.messages.submit413
+    if (error.status === 422) return this.messages.submit422
     if (error.status === 429) return this.messages.submit429
     if (error.status >= 500) return this.messages.submit500
     return error.status === 0 ? this.messages.submitNetwork : this.messages.submit400

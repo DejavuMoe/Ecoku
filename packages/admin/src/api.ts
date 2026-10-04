@@ -57,7 +57,10 @@ export function cancelAdminRequests() {
 function mapSession(raw: Record<string, unknown>): AdminSession {
   const expiresAt = text(raw.expires_at)
   if (!expiresAt || !Number.isFinite(Date.parse(expiresAt))) throw new ApiError(500, 'invalid-session')
-  return { expiresAt, expiresIn: number(raw.expires_in), requiresPasswordChange: raw.requires_password_change === true }
+  const session: AdminSession = { expiresAt, expiresIn: number(raw.expires_in), requiresPasswordChange: raw.requires_password_change === true }
+  const username = text(raw.username).trim()
+  if (username) session.username = username
+  return session
 }
 
 async function request<T>(path: string, init: RequestInit = {}, allowEmpty = false): Promise<T> {

@@ -44,6 +44,8 @@ export const useAdminStore = defineStore('admin', () => {
   const loginBusy = ref(false)
   const loginMessage = ref('')
   const passwordSetupRequired = ref(false)
+  // The account name to keep in the setup form; a reset account may no longer be called admin.
+  const setupUsername = ref('')
   const passwordSetupBusy = ref(false)
   const passwordSetupMessage = ref('')
   const view = ref<MainView>('comments')
@@ -99,7 +101,7 @@ export const useAdminStore = defineStore('admin', () => {
     queueBusy.value = false; queueQuiet.value = false; detailBusy.value = false
     cancelAdminRequests()
     authenticated.value = false; expiresAt.value = ''; sites.value = []; selectedSiteId.value = ''
-    passwordSetupRequired.value = false; passwordSetupMessage.value = ''
+    passwordSetupRequired.value = false; setupUsername.value = ''; passwordSetupMessage.value = ''
     comments.value = []; selectedComment.value = null; counts.value = emptyCounts()
     notificationSettings.value = null; captchaSettings.value = null
     view.value = 'comments'; dirtyView.value = null; discardRequested.value = false; pendingNavigation = null; loginMessage.value = reason
@@ -125,6 +127,7 @@ export const useAdminStore = defineStore('admin', () => {
     try {
       const session = await adminApi.login(username, password, captchaToken)
       authenticated.value = true; expiresAt.value = session.expiresAt; passwordSetupRequired.value = session.requiresPasswordChange; armExpiry(session.expiresAt)
+      setupUsername.value = session.requiresPasswordChange ? session.username ?? username.trim() : ''
       if (!passwordSetupRequired.value) await loadSites(true)
       return authenticated.value
     } catch (error) { clearSession(failureMessage(error, true)); return false }
@@ -135,6 +138,7 @@ export const useAdminStore = defineStore('admin', () => {
     try {
       const session = await adminApi.getSession()
       authenticated.value = true; expiresAt.value = session.expiresAt; passwordSetupRequired.value = session.requiresPasswordChange; armExpiry(session.expiresAt)
+      setupUsername.value = session.requiresPasswordChange ? session.username ?? '' : ''
       sessionReady.value = true
       if (authenticated.value && !passwordSetupRequired.value) await loadSites(true)
     } catch (error) {
@@ -146,7 +150,7 @@ export const useAdminStore = defineStore('admin', () => {
     passwordSetupBusy.value = true; passwordSetupMessage.value = ''
     try {
       const session = await adminApi.initialSetup(username, password)
-      passwordSetupRequired.value = false; expiresAt.value = session.expiresAt; armExpiry(session.expiresAt)
+      passwordSetupRequired.value = false; setupUsername.value = ''; expiresAt.value = session.expiresAt; armExpiry(session.expiresAt)
       view.value = 'sites'; createSiteRequest.value += 1
       await loadSites(true)
       return true
@@ -313,7 +317,7 @@ export const useAdminStore = defineStore('admin', () => {
     } catch (error) { fail(error, 'security'); return null }
     finally { captchaBusy.value = false }
   }
-  return { sessionReady, logoutBusy, logoutMessage, expiresAt, loginBusy, loginMessage, passwordSetupRequired, passwordSetupBusy, passwordSetupMessage, authenticated, view, dirtyView, discardRequested, sites, selectedSiteId, selectedSite, createSiteRequest, siteBusy, siteMessage,
+  return { sessionReady, logoutBusy, logoutMessage, expiresAt, loginBusy, loginMessage, passwordSetupRequired, setupUsername, passwordSetupBusy, passwordSetupMessage, authenticated, view, dirtyView, discardRequested, sites, selectedSiteId, selectedSite, createSiteRequest, siteBusy, siteMessage,
     status, sort, page, pageSize, pageCount, total, counts, comments, selectedComment, queueBusy, queueQuiet, detailBusy, actionBusy, queueMessage, actionMessage, toastMessage, toastSerial,
     notificationSettings, notificationBusy, notificationMessage, emailTestState, emailTestMessage, telegramTestState, telegramTestMessage,
     captchaSettings, captchaBusy, captchaMessage,

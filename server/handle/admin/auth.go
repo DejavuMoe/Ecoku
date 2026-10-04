@@ -34,6 +34,9 @@ type loginResponse struct {
 	ExpiresAt              string `json:"expires_at"`
 	ExpiresIn              int64  `json:"expires_in"`
 	RequiresPasswordChange bool   `json:"requires_password_change,omitempty"`
+	// Username is only returned to a setup-only session so the setup form can
+	// keep the account name after admin reset-password.
+	Username string `json:"username,omitempty"`
 }
 
 type initialSetupRequest struct {
@@ -95,11 +98,15 @@ func Login(c *gin.Context) {
 		return
 	}
 	setSessionCookie(c, token, expiresAt, int(time.Until(expiresAt).Seconds()))
-	utils.SendResponse(c, http.StatusOK, "管理员登录成功", loginResponse{
+	response := loginResponse{
 		ExpiresAt:              expiresAt.UTC().Format(time.RFC3339Nano),
 		ExpiresIn:              int64(credentials.TokenTTL.Seconds()),
 		RequiresPasswordChange: credentials.MustChangePassword,
-	})
+	}
+	if credentials.MustChangePassword {
+		response.Username = credentials.Username
+	}
+	utils.SendResponse(c, http.StatusOK, "管理员登录成功", response)
 }
 
 func loginUnauthorized(c *gin.Context) {
@@ -112,11 +119,17 @@ func Session(c *gin.Context) {
 		utils.SendError(c, http.StatusUnauthorized, "管理员认证失败")
 		return
 	}
-	utils.SendResponse(c, http.StatusOK, "管理员会话有效", loginResponse{
+	response := loginResponse{
 		ExpiresAt:              claims.ExpiresAt.UTC().Format(time.RFC3339Nano),
 		ExpiresIn:              int64(time.Until(claims.ExpiresAt).Seconds()),
 		RequiresPasswordChange: claims.SetupOnly,
-	})
+	}
+	if claims.SetupOnly {
+		if credentials, ok := config.GetAdminCredentials(); ok {
+			response.Username = credentials.Username
+		}
+	}
+	utils.SendResponse(c, http.StatusOK, "管理员会话有效", response)
 }
 
 func InitialSetup(c *gin.Context) {

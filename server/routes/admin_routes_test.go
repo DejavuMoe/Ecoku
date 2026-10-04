@@ -107,17 +107,21 @@ func TestInitialSetupSessionIsRestrictedAndRotated(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Now().UTC()
-	if err := model.CreateAdminAccount(model.AdminAccount{ID: 1, Username: "admin", PasswordHash: string(hash), MustChangePassword: true, Revision: 1, CreatedAt: now, UpdatedAt: now}); err != nil {
+	// A renamed account after admin reset-password must keep its name in the setup form.
+	if err := model.CreateAdminAccount(model.AdminAccount{ID: 1, Username: "keeper", PasswordHash: string(hash), MustChangePassword: true, Revision: 1, CreatedAt: now, UpdatedAt: now}); err != nil {
 		t.Fatal(err)
 	}
 	config.GlobalConfig.Paths.SQLitePath = filepath.Join(t.TempDir(), "runtime", "ecoku.sqlite3")
-	config.SetAdminCredentials(&config.AdminCredentials{Username: "admin", PasswordHash: string(hash), TokenKey: strings.Repeat("t", 32), TokenTTL: 8 * time.Hour, MustChangePassword: true})
+	config.SetAdminCredentials(&config.AdminCredentials{Username: "keeper", PasswordHash: string(hash), TokenKey: strings.Repeat("t", 32), TokenTTL: 8 * time.Hour, MustChangePassword: true})
 	setupToken, _, err := utils.GenerateAdminSetupToken()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if response := requestJSON(t, env.router, http.MethodGet, "/api/admin/sites", adminTestOrigin, "Bearer "+setupToken, nil); response.Code != http.StatusForbidden {
 		t.Fatalf("setup session accessed management API: %d", response.Code)
+	}
+	if session := requestJSON(t, env.router, http.MethodGet, "/api/admin/session", "", "Bearer "+setupToken, nil); session.Code != http.StatusOK || !strings.Contains(session.Body.String(), `"username":"keeper"`) {
+		t.Fatalf("setup session did not return the current username: %d %s", session.Code, session.Body.String())
 	}
 	setup := requestJSON(t, env.router, http.MethodPost, "/api/admin/initial-setup", adminTestOrigin, "Bearer "+setupToken, map[string]any{"username": "owner", "password": "new-password-for-admin"})
 	if setup.Code != http.StatusOK {
@@ -127,8 +131,11 @@ func TestInitialSetupSessionIsRestrictedAndRotated(t *testing.T) {
 		t.Fatal("temporary setup session remained valid")
 	}
 	cookies := setup.Result().Cookies()
-	if len(cookies) != 1 || requestJSON(t, env.router, http.MethodGet, "/api/admin/session", "", "Bearer "+cookies[0].Value, nil).Code != http.StatusOK {
+	if len(cookies) != 1 {
 		t.Fatal("normal session was not issued after initial setup")
+	}
+	if session := requestJSON(t, env.router, http.MethodGet, "/api/admin/session", "", "Bearer "+cookies[0].Value, nil); session.Code != http.StatusOK || strings.Contains(session.Body.String(), `"username"`) {
+		t.Fatalf("normal session after initial setup=%d %s", session.Code, session.Body.String())
 	}
 }
 

@@ -387,6 +387,18 @@ describe('approved production comment surface', () => {
     expect(parent.parentElement?.querySelector<HTMLElement>('.ecoku-children')?.hidden).toBe(true)
   })
 
+  it('offers no reply on comments at the deepest level the server accepts', async () => {
+    // Seventeen levels: the root is depth zero and comment 17 sits at depth 16.
+    const comments = Array.from({ length: 17 }, (_, index) => comment(index + 1, index, `level ${index}`))
+    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse(comments)))
+    await client.init()
+
+    const replyOn = (id: number) => container.querySelector(`[data-comment-id="${id}"] > .ecoku-comment-row .ecoku-reply-action`)
+    expect(replyOn(16)).not.toBeNull()
+    expect(replyOn(17)).toBeNull()
+    expect(container.querySelector('[data-comment-id="17"]')?.getAttribute('aria-level')).toBe('17')
+  })
+
   it('shows a blogger badge after matching nicknames and hides it when the mark is empty', async () => {
     const comments = [
       comment(1, 0, 'blogger note', { username: 'Dejavu Moe', url: 'https://blog.example.test/', isBlogger: true }),
@@ -831,6 +843,7 @@ describe('approved production comment surface', () => {
     [400, zhCN.submit400],
     [403, zhCN.submit403],
     [413, zhCN.submit413],
+    [422, zhCN.submit422],
     [429, zhCN.submit429],
     [500, zhCN.submit500],
   ])('maps HTTP %i to a safe localized submission error', async (status, expected) => {

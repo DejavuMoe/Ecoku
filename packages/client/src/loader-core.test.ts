@@ -128,6 +128,51 @@ describe('Ecoku hosted loader', () => {
     expect(link?.href).toBe('https://cdn.example/ecoku.unstyled.css')
     expect(link?.rel).toBe('stylesheet')
   })
+
+  it('passes data-i18n to the SDK and reports failures in that language', async () => {
+    document.body.innerHTML = `
+      <section data-ecoku-comments data-server-url="https://ecoku.example"
+        data-site-id="blog" data-page-key="/posts/english/" data-i18n="en">
+        <div data-ecoku-loader hidden><span data-ecoku-status></span>
+          <button data-ecoku-retry type="button" hidden></button></div>
+        <div data-ecoku-mount></div>
+      </section>`
+    const init = vi.fn().mockRejectedValue(new Error('offline'))
+    const Constructor = vi.fn(function (this: { init: typeof init; destroy: () => void }) {
+      this.init = init
+      this.destroy = () => {}
+    })
+    ;(window as Window & { Ecoku?: unknown }).Ecoku = Constructor
+
+    setupEcokuLoader(document, window, 'https://ecoku.example/client/ecoku-loader.js')
+    await vi.waitFor(() => expect(document.querySelector('[data-ecoku-status]')?.textContent)
+      .toBe('The comment service could not start. Try again later.'))
+    expect(Constructor).toHaveBeenCalledWith(expect.objectContaining({ i18n: 'en' }))
+  })
+
+  it('falls back to the page language and ignores an unsupported data-i18n', async () => {
+    document.documentElement.lang = 'zh-TW'
+    try {
+      document.body.innerHTML = `
+        <section data-ecoku-comments data-server-url="https://ecoku.example"
+          data-site-id="blog" data-page-key="/posts/hant/" data-i18n="fr">
+          <div data-ecoku-loader hidden><span data-ecoku-status></span>
+            <button data-ecoku-retry type="button" hidden></button></div>
+          <div data-ecoku-mount></div>
+        </section>`
+      const init = vi.fn().mockRejectedValue(new Error('offline'))
+      const Constructor = vi.fn(function (this: { init: typeof init; destroy: () => void }) {
+        this.init = init
+        this.destroy = () => {}
+      })
+      ;(window as Window & { Ecoku?: unknown }).Ecoku = Constructor
+
+      setupEcokuLoader(document, window, 'https://ecoku.example/client/ecoku-loader.js')
+      await vi.waitFor(() => expect(document.querySelector('[data-ecoku-status]')?.textContent)
+        .toBe('評論服務初始化失敗，請稍後重試。'))
+      expect(Constructor).toHaveBeenCalledWith(expect.not.objectContaining({ i18n: expect.anything() }))
+    } finally { document.documentElement.lang = '' }
+  })
 })
 
 describe('loader retry races', () => {

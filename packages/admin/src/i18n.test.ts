@@ -81,6 +81,15 @@ it('translates item list labels, notes and announcements with their numbers', ()
   expect(translateAdminText('允许来源，第 2 项')).toBe('允许来源，第 2 项')
 })
 
+it('names the account being set up in the first-login copy', () => {
+  setAdminLocale('en')
+  expect(translateAdminText('更换临时密码后，即可进入管理后台。用户名可以保留为 owner。')).toBe('Replace the temporary password to enter the admin console. You may keep the username owner.')
+  expect(translateAdminText('请输入用户名，或保留 admin。')).toBe('Enter a username, or keep admin.')
+  setAdminLocale('zh-Hant')
+  expect(translateAdminText('更换临时密码后，即可进入管理后台。用户名可以保留为 admin。')).toBe('更換臨時密碼後，即可進入管理後台。使用者名稱可以保留為 admin。')
+  expect(translateAdminText('请输入用户名，或保留 owner。')).toBe('請輸入使用者名稱，或保留 owner。')
+})
+
 it('keeps code samples apart from the translated help around them', () => {
   const root = document.createElement('p')
   root.innerHTML = '对应接入代码中的 <code>data-site-id</code>，创建后不能修改。'
