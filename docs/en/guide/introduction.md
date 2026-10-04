@@ -1,34 +1,34 @@
 # Introduction
 
-Ecoku is a self-hosted comment system for static blogs and personal websites. You run an Ecoku instance with Docker on your own server, add a snippet of HTML to your post template, and your pages have a comment section.
+Ecoku is a self-hosted comment system engineered for static blogs and personal websites. Deploying a single Docker container and embedding a snippet of HTML into your page template brings live comments to your site.
 
-It is deliberately simple:
+The design philosophy emphasizes restraint and simplicity:
 
-- **Comments are plain text only.** HTML and Markdown are not parsed, and there is no rich-text editor.
-- **Comments go live on submit.** There is no moderation queue. An admin deletes inappropriate comments after the fact.
-- **Visitors do not register.** They enter a nickname, an email address (which a site can make optional), and an optional website, and then they can post.
-- **One instance serves multiple websites.** Each website is registered as a site in the admin console, with its own comments and settings.
-- **SQLite stores application data; keys are stored separately.** The core service needs no external database or Redis. Back up the entire `data/` directory, Compose and instance configuration together.
+- **Plain text conversations**: HTML and Markdown are not parsed, and there is no rich-text editor.
+- **Live on submit**: No moderation queue; inappropriate comments are pruned by administrators after posting.
+- **No visitor accounts**: Visitors only need a nickname; email (optional by site setting) and website are optional.
+- **Unified multi-site hosting**: A single instance supports multiple sites with strictly isolated comments, allowlists, and settings.
+- **Embedded storage with separate secrets**: Application data resides in SQLite, while cryptographic secrets persist independently. No external database or Redis is required—a cold backup of a single directory restores the full state.
 
 ## Who it is for
 
-- People who build static sites with Hugo, Hexo, Astro, VitePress, Jekyll, or similar tools and need a comment section.
-- People who want to keep comment data on their own server instead of depending on a third-party comment service.
-- People who run several websites and want to manage all their comments from one service.
+- Static site creators using Hugo, Hexo, Astro, VitePress, Jekyll, or similar generators who need a streamlined comment section.
+- Site owners who want full sovereignty over their comment data rather than relying on third-party commercial services.
+- Operators managing multiple websites through a single consolidated backend.
 
-## What it does not provide
+## Boundaries and non-goals
 
-The following features are outside the scope of Ecoku:
+The following features fall outside Ecoku's scope:
 
-- Rich text, Markdown, and image uploads ([Smoji stickers](../integration/smoji) are the only form of image);
-- Visitor accounts, third-party login, and avatars;
-- Likes, dislikes, and emoji reactions;
-- A comment moderation queue;
-- MySQL, PostgreSQL, or any other database.
+- Rich text, Markdown rendering, and user image uploads ([Smoji stickers](../integration/smoji) are the sole form of image display);
+- Visitor accounts, third-party social logins, and external avatars;
+- Likes, downvotes, and emoji reaction counters;
+- Pre-publication moderation queues;
+- MySQL, PostgreSQL, or other external databases.
 
-If you need any of these, Ecoku may not be the right fit.
+If these features are essential to your workflow, Ecoku may not be the right fit.
 
-## Components {#components}
+## System architecture {#components}
 
 ```mermaid
 flowchart LR
@@ -50,22 +50,21 @@ flowchart LR
     Server -.-> Mail["SMTP / Telegram"]
 ```
 
-The container runs a single Go program, `ecoku-server`, which handles:
+The container runs a single Go binary, `ecoku-server`, which concurrently manages:
 
-- The comment API `/api/comment/*` and the admin API `/api/admin/*`;
-- The admin console page `/admin/`;
-- The script and styles you embed in your blog, under `/client/`;
-- Sending email and Telegram notifications in the background.
+- Comment endpoints `/api/comment/*` and admin endpoints `/api/admin/*`;
+- The `/admin/` management interface;
+- Embeddable scripts and styles under `/client/`;
+- Background asynchronous email and Telegram notification dispatching.
 
-The container runs as a non-root user and listens only on `127.0.0.1:12123` on the host. A reverse proxy on the same machine provides HTTPS.
+The container runs as an unprivileged user and listens strictly on host loopback `127.0.0.1:12123`. A co-located reverse proxy terminates HTTPS.
 
 ## Getting started
 
-1. [Docker deployment](../self-hosting/docker): prepare directories and instance configuration; startup creates the administrator and keys.
-2. [Reverse proxy](../self-hosting/reverse-proxy): set up an HTTPS domain for Ecoku.
-3. [Admin console](../self-hosting/admin): sign in, register your website, and set up the blogger identity if you want one.
-4. [Embed the comment section](../integration/html): add the embed code to your post template.
+1. [Docker deployment](../self-hosting/docker): Prepare run directories and configuration; startup automatically creates administrator credentials and persistent keys.
+2. [Reverse proxy](../self-hosting/reverse-proxy): Configure a reverse proxy and bind an HTTPS domain.
+3. [Admin console](../self-hosting/admin): Sign in, register your site, and configure blogger credentials and form rules.
+4. [Embed the comment section](../integration/html): Place the embed snippet into your blog template.
 
-After that, you can set up [notifications](../self-hosting/notifications) and [CAPTCHA](../self-hosting/captcha), or [migrate](../self-hosting/twikoo) existing comments from Twikoo.
-
-Before you start, read [How it works](./concepts) to learn how Ecoku handles page keys, deletion, and privacy.
+Subsequently, you can configure [notifications](../self-hosting/notifications) and [CAPTCHA](../self-hosting/captcha), or [migrate](../self-hosting/twikoo) existing comments from Twikoo.
+Before deploying, review [How it works](./concepts) to understand page keys, deletion semantics, and privacy boundaries.

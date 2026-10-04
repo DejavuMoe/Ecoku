@@ -21,7 +21,7 @@
 ## 管理員
 
 - 一個實例註冊多個站點，各自設定允許來源、預設排序、必填欄位、字數上限、提示文字。[管理後台](../self-hosting/admin#sites)
-- 依「已发布 / 已删除」瀏覽評論，一鍵跳到原文位置。
+- 依「已發布 / 已刪除」瀏覽評論，一鍵跳到原文位置。
 - 墓碑刪除保留討論結構；沒有回覆的墓碑可以徹底刪除。[刪除](./concepts#deletion)
 - 在關閉、Cloudflare Turnstile、自託管 Cap 三種人機驗證之間切換，同時保護評論與後台登入。[人機驗證](../self-hosting/captcha)
 - 從 Twikoo 匯入歷史評論。[從 Twikoo 遷移](../self-hosting/twikoo)
