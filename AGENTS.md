@@ -79,6 +79,15 @@
   停服冷备份 → 改精确镜像 tag → `sudo docker compose pull && sudo docker compose up -d` →
   健康检查与回滚。未经授权不在生产执行。
 
+### Release flow
+
+Run these steps in order. Stop and report at any failure. Never move, recreate or force-push a published tag.
+
+1. **Master first.** Commit the release prep: the five synced items, the three-locale upgrade page, `upgrade.md`, and the latest marker in `shared.ts`. The docs demo stays on the previous published SDK, because the new npm version does not exist yet. Run `node scripts/check-release.mjs v<VERSION>`, push `master`, and wait for its CI to pass.
+2. **Then the tag.** Once master CI is green and the user approves the release, create the annotated tag `v<VERSION>` (message `Ecoku v<VERSION>`) on that commit. Push it and wait for the Release workflow to pass: check, verify, npm, both images, manifest and release.
+3. **Then the SDK pins.** Confirm npm `latest`, the GHCR amd64/arm64 manifest and the GitHub Release. In one commit, move the VitePress docs site to the published SDK: `docs/package.json`, `minimumReleaseAgeExclude` in `pnpm-workspace.yaml`, the lockfile integrity taken from `npm view`, the demo and install lines in the three-locale `sdk.md`, and a `CHANGELOG.md` `[Unreleased]` entry. Check it with `pnpm install --frozen-lockfile --lockfile-only`, push `master`, and wait for CI.
+4. **Remind the user.** Tell the user to move each deployed instance to the new exact image tag, including the server behind the docs demo. Do not change any deployed instance yourself.
+
 ## UI
 
 - 评论区、管理后台等应用界面：先改已批准原型 → 用户明确批准 → 再改生产代码。不要自行提升未批准的原型版本。
