@@ -21,7 +21,7 @@ sudo docker compose run --rm --no-deps ecoku admin reset-password
 sudo docker compose up -d
 ```
 
-The command prints the temporary password, revokes all administrator sessions, and requires the next sign-in to set the username and permanent password.
+The command prints `管理员临时密码：…` and revokes every administrator session. The username stays the same; after signing in with it and the temporary password, the setup page fills in the current username, which you can keep or change, and you set a permanent password.
 
 ## captcha status
 

@@ -26,7 +26,7 @@
 >
   <div class="ecoku-loader" data-ecoku-loader hidden>
     <p class="ecoku-loader-status" data-ecoku-status></p>
-    <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新加载评论</button>
+    <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新載入評論</button>
   </div>
   <div id="ecoku-mount" data-ecoku-mount></div>
 </section>
@@ -46,6 +46,7 @@
 | `data-page-size` | 否 | 每頁顯示幾則根評論，1～100，預設 10。填寫無效值時以 10 處理。 |
 | `data-theme` | 否 | `auto`（預設）、`light` 或 `dark`。`auto` 跟隨頁面的明暗設定。 |
 | `data-css-url` | 否 | 取代預設樣式，見[自訂樣式](./custom-css)。 |
+| `data-i18n` | 否 | 評論區語言：`zh-CN`、`zh-Hant` 或 `en`，覆寫後台站點設定的「评论区语言」。未填寫或填寫其他值時使用站點設定。 |
 
 ## 選擇頁面 key
 
@@ -67,7 +68,8 @@
 
 1. 頁面解析完成後，載入器讀取外層元素上的屬性。缺少 `data-server-url`、`data-site-id`、`data-page-key`，或缺少四個 `data-ecoku-*` 子元素中的任何一個時，它會**靜默略過**，頁面上不會出現任何內容。
 2. 載入器從自己所在的目錄載入 `ecoku.umd.js`，並初始化評論區。載入期間不會顯示「正在載入」之類的文字。
-3. 腳本載入或初始化任一階段超過 12 秒、或者失敗時，會顯示錯誤訊息和「重新加载评论」按鈕，訪客可以點擊重試。
+3. `ecoku.umd.js` 載入失敗、初始化失敗（例如屬性值無效），或整個過程超過 12 秒時，會顯示錯誤訊息和「重新載入評論」按鈕，訪客可以點擊重試。錯誤訊息的語言取 `data-i18n`；未填寫時依頁面的 `<html lang>` 選擇繁體中文（`zh-Hant`、`zh-TW`、`zh-HK`、`zh-MO`）或英語（`en`、`en-*`），其他情況為簡體中文。
+4. 評論區掛載後，評論介面本身出錯（例如來源未登記、觸發限流或網路中斷）時，由評論區顯示「评论暂时不可用」和「重新加载」按鈕。
 
 一個頁面上可以有多個外層元素，每個都會獨立初始化。
 

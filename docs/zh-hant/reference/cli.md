@@ -21,7 +21,7 @@ sudo docker compose run --rm --no-deps ecoku admin reset-password
 sudo docker compose up -d
 ```
 
-命令會列印臨時密碼、撤銷所有管理員工作階段，並要求下次登入後重新設定使用者名稱和正式密碼。
+命令輸出 `管理员临时密码：…`，並撤銷所有管理員工作階段。使用者名稱維持不變；用它和臨時密碼登入後，設定頁會預先填入目前的使用者名稱，可以保留或修改，再設定正式密碼。
 
 ## captcha status
 

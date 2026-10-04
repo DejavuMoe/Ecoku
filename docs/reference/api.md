@@ -106,6 +106,7 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&page=1&pageSize=10&sor
     "pageCount": 1,
     "timeZone": "Asia/Shanghai",
     "formConfig": {
+      "i18n": "zh-CN",
       "emailRequired": true,
       "websiteRequired": false,
       "placeholder": "写下评论（仅支持纯文本）",
@@ -129,7 +130,7 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&page=1&pageSize=10&sor
 | `id` | 评论 ID。页面上对应锚点 `#ecoku-comment-{id}`。 |
 | `site_id`、`mark` | 站点 ID 与页面 key。 |
 | `parent` | 父评论 ID，根评论为 `0`。 |
-| `username` | 昵称。已删除的评论固定为「已删除」。 |
+| `username` | 昵称。已删除的评论固定为「已删除」；昵称为空的导入评论显示为「匿名用户」。 |
 | `url` | 访客网址，没有时省略该字段。 |
 | `content` | 纯文本正文。已删除的评论固定为「[该评论已删除]」。 |
 | `isBlogger` | 是否博主评论。 |
@@ -143,13 +144,13 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&page=1&pageSize=10&sor
 | `commentTotal` | 从根评论可达的全部评论数（含回复与墓碑）。 |
 | `pageCount` | 总页数。 |
 | `timeZone` | 服务端的显示时区（IANA 名称）。 |
-| `i18n` | 站点评论区默认语言：`zh-CN`、`zh-Hant` 或 `en`。SDK 接入配置中的 `i18n` 可以覆盖它。 |
 | `formConfig` | 该站点的评论表单设置，见下表。 |
 
 `formConfig` 字段：
 
 | 字段 | 说明 |
 | --- | --- |
+| `i18n` | 站点评论区默认语言：`zh-CN`、`zh-Hant` 或 `en`。SDK 接入配置中的 `i18n` 可以覆盖它。 |
 | `emailRequired`、`websiteRequired` | 邮箱、网址是否必填。 |
 | `placeholder`、`emptyMessage` | 评论框提示文字、无评论时的文字。 |
 | `defaultSort` | 默认排序。 |
@@ -158,7 +159,7 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&page=1&pageSize=10&sor
 | `bloggerProofEnabled` | 站点是否已设置博主口令。 |
 | `captcha` | 当前人机验证方式：`provider` 为 `off`、`turnstile` 或 `cap`；`sitekey` 为公开的 Site key；Cap 时另有 `instanceUrl`。 |
 | `turnstileSitekey` | 为旧客户端保留。仅在 Turnstile 模式下有值。 |
-| `smoji` | `enabled` 表示是否启用，`manifestUrl` 为清单地址；v0.3.1 提供选填的 `imageOrigin`，未返回或为空时使用清单来源。 |
+| `smoji` | `enabled` 表示是否启用，`manifestUrl` 为清单地址；`imageOrigin` 仅在站点配置了图片来源时返回，未返回时使用清单来源。 |
 
 #### 读取上限
 
@@ -272,15 +273,16 @@ Origin: https://blog.example.com
 - **会话 Cookie**：`POST /api/admin/login` 成功后，服务端设置名为 `ecoku_admin_session` 的 Cookie（HttpOnly、SameSite=Strict、Path=`/api/admin`，生产环境带 Secure），有效期 8 小时。登录响应中不包含 token。
 - 登录请求，以及用 Cookie 认证的非 GET 请求，必须带有 `admin.allowed_origins` 中的 `Origin`。
 - 用 `Authorization: Bearer <凭据>` 认证的请求可以不带 `Origin`；如果带了，仍须在 `admin.allowed_origins` 中，否则返回 `403`。Bearer 凭据必须是当前有效、未注销的会话；v0.2.4 之前签发的旧 token 不再有效。
+- **站点管理凭据**：站点在 `app/config.yaml` 中配置了 `management_key_env` 时，服务端自动化可以用 `Authorization: EcokuSite <凭据>` 对该站点的评论执行墓碑删除（`DELETE /api/admin/sites/:siteId/comments/:commentId`）。凭据无效返回 `401`；指向其他站点返回 `403`「无权管理该站点」；访问其他管理接口（包括彻底删除和读取接口）返回 `403`「站点管理凭据不能访问此接口」。
 - 登录要求 HTTPS，只有回环地址可以用 HTTP。
 
 ### 登录与会话
 
 | 方法与路径 | 说明 |
 | --- | --- |
-| `GET /api/admin/login-config` | 无需登录。返回登录页需要的人机验证配置（`captcha`、`turnstileSitekey`）。 |
-| `POST /api/admin/login` | 请求体 `{"username", "password", "captchaToken"}`。成功返回 `{"expires_at", "expires_in"}` 并设置 Cookie；首次临时密码登录时额外返回 `requires_password_change: true`。受 `rate_limit.admin_login` 限流。 |
-| `GET /api/admin/session` | 返回当前会话的 `expires_at`、剩余秒数 `expires_in` 和是否需要首次改密的 `requires_password_change`，不延长会话。 |
+| `GET /api/admin/login-config` | 无需登录。返回登录页需要的人机验证配置（`captcha`、`turnstileSitekey`）和后台语言 `locale`（取自 `ECOKU_ADMIN_LOCALE`）。 |
+| `POST /api/admin/login` | 请求体 `{"username", "password", "captchaToken"}`。成功返回 `{"expires_at", "expires_in"}` 并设置 Cookie；用临时密码登录时额外返回 `requires_password_change: true` 和当前用户名 `username`。受 `rate_limit.admin_login` 限流。 |
+| `GET /api/admin/session` | 返回当前会话的 `expires_at`、剩余秒数 `expires_in` 和是否需要首次改密的 `requires_password_change`，需要改密时另含 `username`；不延长会话。 |
 | `POST /api/admin/initial-setup` | 只接受首次临时密码会话。请求体为 `{"username", "password"}`，成功后撤销临时会话并设置普通管理员会话。 |
 | `POST /api/admin/logout` | 注销当前会话并清除 Cookie。返回 `503` 时表示注销没有成功。 |
 
@@ -295,7 +297,7 @@ Origin: https://blog.example.com
 
 站点字段：`id`、`site_url`、`name`、`allowed_origins`、`i18n`、`default_sort`、`email_required`、`website_required`、`placeholder`、`comment_limit`、`empty_message`、`smoji_enabled`、`smoji_manifest_url`、`smoji_image_origin`、`blogger_nickname`、`blogger_email`、`blogger_badge`、`blogger_passphrase`（只写）、`revision`。响应中用 `blogger_passphrase_set` 表示是否已设置口令，另含只读的 `created_at`、`updated_at`。站点列表在 `data.data` 数组中，单个站点以及创建、更新的结果在 `data.site` 中。
 
-`smoji_image_origin`为选填的受信任图片来源，例如 `https://s3-cdn.zsh.moe`。留空使用清单来源；更新请求省略该字段时保留原值，传空字符串恢复默认。公开 `formConfig.smoji.imageOrigin` 仅在已配置时返回。加载、提交、显示和邮件通知使用同一规则，见 [Smoji 托管设置](../integration/smoji#hosting)。
+`smoji_image_origin` 为选填的受信任图片来源，例如 `https://s3-cdn.zsh.moe`。留空使用清单来源；更新请求省略该字段时保留原值，传空字符串恢复默认。公开 `formConfig.smoji.imageOrigin` 仅在已配置时返回。加载、提交、显示和邮件通知使用同一规则，见 [Smoji 托管设置](../integration/smoji#hosting)。
 
 `i18n` 只接受 `zh-CN`、`zh-Hant`、`en`（及 `zh-TW`、`en-US` 等地区写法），其他值返回 `400`。更新请求省略该字段时保留原值。
 

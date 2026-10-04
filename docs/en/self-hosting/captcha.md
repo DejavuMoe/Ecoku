@@ -22,7 +22,7 @@ This setting applies to the whole instance. All sites and admin sign-in use the 
 
 1. On the Turnstile page of the Cloudflare dashboard, create a new widget.
 2. Add all of your blog domains (such as `blog.example.com`) to the Hostname list, plus the Ecoku domain (such as `ecoku.example.com`, needed for the admin sign-in page).
-3. Choose the widget mode you prefer. Ecoku renders the widget so that it appears only when interaction is needed, at no more than 300px wide.
+3. Choose the widget mode you prefer. Ecoku renders the widget so that it appears only when interaction is needed; in the comment section it is no more than 300px wide.
 4. Copy the Sitekey and Secret key. On the **Security** (安全) page of the admin console, select Cloudflare Turnstile, enter them, and save.
 
 Official documentation: [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/)
@@ -31,7 +31,7 @@ Official documentation: [Cloudflare Turnstile](https://developers.cloudflare.com
 
 [Cap](https://trycap.dev/) ([GitHub](https://github.com/tiagozip/cap)) is an open-source verification service that you can deploy on your own server. Ecoku loads the verification widget and WebAssembly files from your Cap instance, and verifies tokens against it.
 
-The Cap instance URL must be a **publicly reachable HTTPS URL**. Addresses such as `localhost` or private-network IPs are rejected when you save.
+The Cap instance URL must be a **publicly reachable HTTPS URL**. Addresses such as `localhost` or private-network IPs are rejected when you save. A domain that resolves to a private address can be saved, but Ecoku refuses to connect to it during verification, so verification always fails.
 
 ### Deploy Cap
 
@@ -171,7 +171,7 @@ cap.example.com {
 1. Open `https://cap.example.com` and sign in to the Cap admin panel with the `ADMIN_KEY` from `.env`.
 2. Create a new key, add your blog domains and the Ecoku domain to its list of allowed hosts, and note the Site key and Secret key.
 3. On the **Security** (安全) page of the Ecoku admin console, select Cap and fill in:
-   - **Instance URL** (实例地址): `https://cap.example.com`, with no trailing `/`;
+   - **Instance URL** (实例地址): `https://cap.example.com`; a trailing `/` is removed automatically;
    - **Site key** and **Secret key**.
 4. After saving, open a post and the admin sign-in page, and confirm that the verification widget completes normally.
 

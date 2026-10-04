@@ -9,7 +9,7 @@ Ecoku uses two values to identify "the comment section of one post":
 - **Site ID** (`siteId`): set when you register a site in the admin console. One instance can have multiple sites, and their comments, allowed origins, and settings are completely separate.
 - **Page key** (`pageKey`): provided by the embed code. It is usually the post's path on the site, such as `/posts/hello-world/`.
 
-Within one site, pages with the same page key share one comment section. A page key must be a relative path on the site, at most 512 characters long. It cannot be a full URL, and it cannot contain a `?` query string or a `#` fragment. A key that breaks these rules still displays the comment section, but posting comments is rejected.
+Within one site, pages with the same page key share one comment section. A page key must be a relative path on the site, at most 512 characters long. It cannot be a full URL, and it cannot contain a `?` query string or a `#` fragment. A key with `?`, `#` or a full URL still displays the comment section, but posting comments is rejected; a key longer than 512 characters keeps the comment section from initializing.
 
 ::: warning Do not change a page key once it is in use
 Comments are stored by page key. If you later change your blog's permalink format, the page keys of old posts change with it, and their existing comments no longer appear (the data is still in the database). Pick a value that will not change as the page key.
@@ -19,7 +19,7 @@ Comments are stored by page key. If you later change your blog's permalink forma
 
 Comments form a tree: a root comment can have replies, and replies can have replies of their own.
 
-- **Depth**: a root comment is at depth 0, and new replies can go down to depth 16. A reply to a comment at depth 16 is rejected, with a message asking the visitor to reply to a comment higher up.
+- **Depth**: a root comment is at depth 0, and new replies can go down to depth 16, so comments at depth 16 have no 「回复」 (Reply) button. To continue the discussion, reply to a comment higher up.
 - **Indentation**: indentation grows with depth up to depth 3. Deeper replies line up with depth 3. From depth 3 on, the nickname line shows a clickable `@replied-to-name` that points to the comment being replied to. This keeps deep discussions from being squeezed into a narrow strip on phones.
 - **Collapsing**: a comment with replies has a `[-]` next to it. Click it to collapse the whole branch, which then shows "N replies collapsed" (已折叠 N 条回复).
 
@@ -31,7 +31,7 @@ To keep a single huge discussion from overwhelming the service, one list request
 
 The admin console offers two kinds of delete. Neither can be undone.
 
-**Tombstone delete**: clears the comment's nickname, email address, website, and body, but keeps its position and time in the discussion. On public pages it shows as "Deleted" (已删除) and "[This comment has been deleted]" ([该评论已删除]). Its replies stay as they are, and nobody can reply to it anymore. Deleting one comment this way does not strip the rest of the thread of its context.
+**Tombstone delete**: clears the comment's nickname, email address, website, and body, but keeps its position and time in the discussion. On public pages it shows as 「已删除」 and 「[该评论已删除]」 (in English: "Deleted" and "[Comment deleted]"). Its replies stay as they are, and nobody can reply to it anymore. Deleting one comment this way does not strip the rest of the thread of its context.
 
 **Permanent delete**: removes a tombstone from the database. Only a tombstone with **no replies at all** can be permanently deleted.
 
@@ -59,7 +59,7 @@ After a successful post, the browser remembers this identity for 7 days so the v
 The blogger does not need a separate account. After you set the blogger nickname, email address, and passphrase for a site in the admin console, the blogger posts by entering the passphrase in the **nickname field** of the comment section and leaving the email and website fields empty. When the server recognizes the passphrase, it:
 
 - Replaces the comment's nickname with the blogger nickname, the website with the site URL, and the email address with the blogger email;
-- Marks the comment as a blogger comment, and the page shows a badge after the nickname (`[博主]` by default);
+- Marks the comment as a blogger comment, and the page shows a badge after the nickname (`[博主]` by default, `[Blogger]` when the comment language is English);
 - The browser clears the nickname field and does not save the passphrase as the identity.
 
 The blogger mark is written when the comment is saved and is never recalculated. Changing the blogger nickname or the passphrase does not change the mark on existing comments.
@@ -74,7 +74,7 @@ Comment bodies and nicknames are always displayed as plain text:
 - Markdown is not rendered, and URLs are not turned into links automatically;
 - Line breaks are preserved.
 
-The only exception is [Smoji stickers](../integration/smoji). When enabled, `![smoji:name](image-url)` renders as an image if its format and origin satisfy the site’s image-origin rule; other content stays text. The manifest origin is the default. v0.3.1 lets administrators specify an image origin separately; see [hosting the manifest and images separately](../integration/smoji#hosting).
+The only exception is [Smoji stickers](../integration/smoji). When enabled, `![smoji:name](image-url)` renders as an image if its format and origin satisfy the site’s image-origin rule; other content stays text. The manifest origin is the default, and administrators can specify a separate image origin; see [hosting the manifest and images separately](../integration/smoji#hosting).
 
 A visitor's website appears only as a link on their nickname, with `rel="nofollow ugc noopener noreferrer"`.
 
@@ -99,4 +99,4 @@ Submitting, reading, deleting, and admin sign-in are all rate limited per IP. Th
 
 ## Time and time zone
 
-Comment times use `YYYY-MM-DD HH:mm`. Set `TZ` in the Compose `environment`; when absent, Ecoku falls back to `Asia/Shanghai`. Hover over a time to see its time zone and offset.
+Comment times use `YYYY-MM-DD HH:mm`. The time zone comes from `TZ` in the Compose `environment`, which the deployment template sets to `Asia/Shanghai`; see [Time zone and admin language](../self-hosting/docker#timezone). Hover over a time to see its time zone and offset.

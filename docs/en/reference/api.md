@@ -106,6 +106,7 @@ Returns the root comments on the current page, **together with all of their repl
     "pageCount": 1,
     "timeZone": "Asia/Shanghai",
     "formConfig": {
+      "i18n": "zh-CN",
       "emailRequired": true,
       "websiteRequired": false,
       "placeholder": "写下评论（仅支持纯文本）",
@@ -129,7 +130,7 @@ Comment fields:
 | `id` | Comment ID. It corresponds to the anchor `#ecoku-comment-{id}` on the page. |
 | `site_id`, `mark` | Site ID and page key. |
 | `parent` | Parent comment ID; `0` for a root comment. |
-| `username` | Nickname. Always "已删除" ("Deleted") for deleted comments. |
+| `username` | Nickname. Always "已删除" ("Deleted") for deleted comments; imported comments with an empty nickname show "匿名用户" ("Anonymous"). |
 | `url` | Visitor website. The field is omitted when there is none. |
 | `content` | Plain-text body. Always "[该评论已删除]" ("[This comment has been deleted]") for deleted comments. |
 | `isBlogger` | Whether it is a blogger comment. |
@@ -143,13 +144,13 @@ Other fields:
 | `commentTotal` | Number of all comments reachable from root comments (including replies and tombstones). |
 | `pageCount` | Total number of pages. |
 | `timeZone` | The server's display time zone (IANA name). |
-| `i18n` | The site's default comment language: `zh-CN`, `zh-Hant`, or `en`. The SDK `i18n` option overrides it. |
 | `formConfig` | The site's comment form settings. See the table below. |
 
 `formConfig` fields:
 
 | Field | Description |
 | --- | --- |
+| `i18n` | The site's default comment language: `zh-CN`, `zh-Hant` or `en`. The SDK `i18n` option overrides it. |
 | `emailRequired`, `websiteRequired` | Whether email and website are required. |
 | `placeholder`, `emptyMessage` | Hint text in the comment box, and the text shown when there are no comments. |
 | `defaultSort` | Default sort order. |
@@ -158,7 +159,7 @@ Other fields:
 | `bloggerProofEnabled` | Whether the site has a blogger passphrase set. |
 | `captcha` | The current CAPTCHA mode: `provider` is `off`, `turnstile`, or `cap`; `sitekey` is the public site key; for Cap there is also `instanceUrl`. |
 | `turnstileSitekey` | Kept for old clients. Has a value only in Turnstile mode. |
-| `smoji` | `enabled` controls stickers and `manifestUrl` is the manifest URL. v0.3.1 provides optional `imageOrigin`; missing or empty means the manifest origin. |
+| `smoji` | `enabled` controls stickers and `manifestUrl` is the manifest URL. `imageOrigin` is returned only when the site has an image origin configured; without it, the manifest origin applies. |
 
 #### Read limits
 
@@ -272,15 +273,16 @@ Admin endpoints live under `/api/admin/`. When `admin.allowed_origins` below is 
 - **Session cookie**: after a successful `POST /api/admin/login`, the server sets a cookie named `ecoku_admin_session` (HttpOnly, SameSite=Strict, Path=`/api/admin`, with Secure in production), valid for 8 hours. The sign-in response does not contain a token.
 - The sign-in request, and every non-GET request authenticated by cookie, must carry an `Origin` from `admin.allowed_origins`.
 - Requests authenticated with `Authorization: Bearer <credential>` may omit `Origin`; if they carry one, it must still be in `admin.allowed_origins`, otherwise the response is `403`. The Bearer credential must be a currently valid session that has not been signed out. Old tokens issued before v0.2.4 are no longer valid.
+- **Site management credential**: when a site sets `management_key_env` in `app/config.yaml`, server-side automation can use `Authorization: EcokuSite <credential>` to tombstone that site's comments (`DELETE /api/admin/sites/:siteId/comments/:commentId`). An invalid credential returns `401`; another site returns `403` 「无权管理该站点」 (no permission to manage this site); any other admin endpoint, including permanent deletion and the read endpoints, returns `403` 「站点管理凭据不能访问此接口」 (site management credentials cannot access this endpoint).
 - Sign-in requires HTTPS. Only loopback addresses may use HTTP.
 
 ### Sign-in and sessions
 
 | Method and path | Description |
 | --- | --- |
-| `GET /api/admin/login-config` | No sign-in needed. Returns the CAPTCHA settings the sign-in page needs (`captcha`, `turnstileSitekey`). |
-| `POST /api/admin/login` | Request body `{"username", "password", "captchaToken"}`. On success, returns `{"expires_at", "expires_in"}` and sets the cookie; a temporary first-login session also returns `requires_password_change: true`. Rate limited by `rate_limit.admin_login`. |
-| `GET /api/admin/session` | Returns `expires_at`, remaining `expires_in`, and `requires_password_change`. It does not extend the session. |
+| `GET /api/admin/login-config` | No sign-in needed. Returns the CAPTCHA settings the sign-in page needs (`captcha`, `turnstileSitekey`) and the admin language `locale` (from `ECOKU_ADMIN_LOCALE`). |
+| `POST /api/admin/login` | Request body `{"username", "password", "captchaToken"}`. On success, returns `{"expires_at", "expires_in"}` and sets the cookie; signing in with a temporary password also returns `requires_password_change: true` and the current `username`. Rate limited by `rate_limit.admin_login`. |
+| `GET /api/admin/session` | Returns `expires_at`, remaining `expires_in`, and `requires_password_change`, plus `username` while the password still has to be changed. It does not extend the session. |
 | `POST /api/admin/initial-setup` | Accepts only a temporary first-login session. The body is `{"username", "password"}`; success revokes the temporary session and sets a normal administrator session. |
 | `POST /api/admin/logout` | Revokes the current session and clears the cookie. A `503` means sign-out did not succeed. |
 

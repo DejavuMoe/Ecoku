@@ -113,7 +113,7 @@ admin:
 #     name: "我的博客"
 #     # 必填至少一个不重复的来源，不含路径、查询或片段；与管理端来源分开。
 #     allowed_origins: ["https://blog.example.com"]
-#     # Comment-area language. Options: zh-CN (default), zh-Hant, en. The SDK i18n option can override this.
+#     # 评论区语言，默认 zh-CN；可选 zh-CN、zh-Hant、en。加载器的 data-i18n 或 SDK 的 i18n 参数可以覆盖。
 #     i18n: "zh-CN"
 #     # 可选：站点管理凭据的环境变量名。默认空，不启用该凭据。
 #     # 仅可通过 EcokuSite 凭据对本站评论执行墓碑删除，不能读取管理数据。

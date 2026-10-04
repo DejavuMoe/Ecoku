@@ -54,7 +54,7 @@ Once the container status is `healthy` and the log shows no errors, open a blog 
 
 First check whether the old and new versions have the same schema (see the table below):
 
-- **Same schema**: stop the service, change the image in `compose.yaml` back to the old version, then pull and start. You do not need to touch the database, and comments posted after the upgrade are kept. If you relied on defaults for omitted fields in the new version, first restore the complete config required by the old version. If the new version required a new config key that the old version does not recognize, remove it first. Otherwise the old version refuses to start because of the unknown field.
+- **Same schema**: stop the service, change the image in `compose.yaml` back to the old version, then pull and start. You do not need to touch the database, and comments posted after the upgrade are kept. If you omitted fields during the upgrade because the new version has defaults for them, add back the configuration the old version requires. If you added a key for the new version that the old version does not recognize, remove it first; otherwise the old version refuses to start because of the unknown field.
 - **Different schema**: changing the image version back is not enough, because the old version cannot open the migrated database. You need to [restore](./backup#restore) from the cold backup taken before the upgrade. Comments and settings changes made after the backup are lost.
 
 ## Version list {#versions}
@@ -104,16 +104,16 @@ Keep the old `compose.yaml`, `app/config.yaml`, and `ecoku.env`, make a [cold ba
 
 1. import `ECOKU_ADMIN_USERNAME`, `ECOKU_ADMIN_PASSWORD_HASH`, and `ECOKU_ADMIN_TOKEN_KEY` into the persistent administrator account and session key;
 2. copy `ECOKU_NOTIFICATION_ENCRYPTION_KEY` into `data/ecoku-secrets.json` and keep decrypting existing stored credentials with it;
-3. retain compatibility for the old port, file log, static directory, SQLite path, YAML `sites`, and `management_key_env` settings;
-4. avoid generating a temporary password or forcing an existing administrator to change the password.
+3. keep the compatible behaviour of the old `site.port`, `site.log_path`, static directories, SQLite path, YAML `sites` and `management_key_env`;
+4. not generate a temporary password or force the existing administrator to change the password.
 
 After the new version is confirmed healthy, migrate to the smaller configuration:
 
 1. Confirm that the admin login, site count, historical comments, and notification settings work.
-2. Confirm that `data/ecoku-secrets.json` exists and that the log contains no credential decryption error.
+2. Confirm that `data/ecoku-secrets.json` exists and that the log does not report `通知凭据校验失败`.
 3. Stop the service and back up all of `data/`, `app/config.yaml`, `compose.yaml`, and the old `ecoku.env`.
-4. Stop the service and remove the administrator variables and `ECOKU_NOTIFICATION_ENCRYPTION_KEY` from `ecoku.env`. Move `TZ` to the Compose `environment` section if needed; keeping it in `ecoku.env` requires keeping `env_file`.
-5. Remove `env_file` only if it is no longer needed. Keep it if it still supplies `TZ` or a site management key.
+4. With the service stopped, remove the administrator variables and `ECOKU_NOTIFICATION_ENCRYPTION_KEY` from `ecoku.env`. If you still need `TZ`, move it to the Compose `environment` section; if you keep `env_file`, you may also leave only `TZ` there.
+5. Remove `env_file` from Compose only when the environment file is no longer needed. Keep `env_file` if it still supplies `TZ` or a site management key.
 6. Keep `notifications.instance_public_url`, any `site.trusted_proxies`, `admin.allowed_origins`, and `rate_limit` settings you use. Remove legacy fields only after confirming that you no longer need the old database path, file logs, or `EcokuSite` automation.
 7. Recreate the container and check the admin console, comments, and notifications again.
 

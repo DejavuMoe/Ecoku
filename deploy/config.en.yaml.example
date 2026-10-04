@@ -113,7 +113,7 @@ admin:
 #     name: "我的博客"
 #     # At least one unique origin is required, without path/query/fragment and distinct from admin origins.
 #     allowed_origins: ["https://blog.example.com"]
-#     # Comment-area language. Options: zh-CN (default), zh-Hant, en. The SDK i18n option can override this.
+#     # Comment language. Default zh-CN; values zh-CN, zh-Hant, en. The loader's data-i18n attribute or the SDK i18n option overrides it.
 #     i18n: "zh-CN"
 #     # Optional variable name for a site management credential. Default empty disables this credential.
 #     # EcokuSite credentials can only tombstone comments on this site, not read admin data.

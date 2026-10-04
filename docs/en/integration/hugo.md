@@ -85,4 +85,4 @@ To further match corner radius, font size, or accent color, create a CSS file un
 
 See [Custom styles](./custom-css#variables) for all available variables.
 
-The `assets/css/extended/ecoku.css` in the example directory only styles the loading failure message and the retry button. Copy it if you need it.
+The `assets/css/extended/ecoku.css` in the example directory only styles the wrapper, the loading failure message and the retry button; it does not affect the comment section itself. Copy it if you need it.

@@ -2,7 +2,7 @@
 
 本页适用于 v0.3.2 及后续公开版本，镜像使用 GHCR。已有实例请先阅读 [升级说明](./upgrade)。
 
-本页从一台空的 Linux 主机开始，用 Docker Compose 跑起 Ecoku。新部署只需要三个部分：`compose.yaml`、`app/config.yaml` 和 `data/`。管理员密码、会话签名密钥和通知加密主密钥都在首次启动时自动生成，不需要手工写进配置文件。
+本页从一台空的 Linux 主机开始，用 Docker Compose 部署 Ecoku。新部署只需要三样东西：`compose.yaml`、`app/config.yaml` 和 `data/`。管理员临时密码、会话签名密钥和通知加密主密钥都在首次启动时自动生成，不需要写进配置文件。
 
 ## 开始之前
 
@@ -28,7 +28,7 @@
     └── ecoku-secrets.json
 ```
 
-`data/` 中的文件由 Ecoku 自动创建。数据库和持久密钥必须一起备份。
+`data/` 中的文件由 Ecoku 自动创建。数据库和持久密钥必须一起备份，见 [备份与恢复](./backup)。
 
 ## 1. 准备目录
 
@@ -82,7 +82,7 @@ services:
 
 ## 3. 创建 app/config.yaml {#config}
 
-以下模板集中列出当前源码仍支持的配置、默认值、可选值与示例。先将 `instance_public_url` 替换为 Ecoku 自己的 HTTPS 地址；其他未注释的值保持默认。注释中的赋值是可选覆盖项，仅在需要时取消注释，并按说明同步挂载或端口。
+下面的模板列出全部配置项及其默认值、可选值和示例。把 `instance_public_url` 改成 Ecoku 自己的 HTTPS 地址，其他未注释的值保持默认即可。注释中的赋值是可选覆盖项，需要时再取消注释，并按注释同步挂载或端口。
 
 <div class="config-template">
 
@@ -114,7 +114,7 @@ sudo docker compose logs --tail=100 ecoku
 3. 生成一次性随机临时密码并打印到日志；
 4. 在 `data/ecoku-secrets.json` 保存会话签名密钥和通知加密主密钥。
 
-临时密码只在首次创建账户时生成。重启不会生成新密码，也不会再次覆盖持久密钥。临时密码会出现在 Docker 日志中，能读取 Docker 日志的操作者也能看到它；登录后改密即可使它失效。
+日志中对应的一行是 `Ecoku 首次启动管理员账户：admin；临时密码：…；请登录后台后立即修改密码`。临时密码只在首次创建账户时生成，重启不会生成新密码，也不会覆盖持久密钥。能读取 Docker 日志的人都能看到临时密码，首次登录改密后它即失效。
 
 确认健康接口：
 
@@ -126,28 +126,33 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 打开后台前，请先按[为 Ecoku 域名配置 HTTPS 反向代理](./reverse-proxy)完成 Caddy 或 Nginx 配置，并确认公网健康接口可以访问。容器默认只监听宿主机回环端口，不能直接从外网打开。
 
-打开 `https://ecoku.example.com/admin/`，用户名填写 `admin`，密码填写首次启动日志中的临时密码。登录后必须完成首次设置：
+打开 `https://ecoku.example.com/admin/`，用户名填写 `admin`，密码填写首次启动日志中的临时密码。登录后会进入「设置你的密码」页面，必须先完成设置：
 
 - 用户名可以保留 `admin`，也可以改成自己的用户名；
 - 新密码至少 12 个字符，最多 72 个 UTF-8 字节；
 - 新密码不能继续使用临时密码；
 - 完成前不能进入站点、评论、通知或安全页面。
 
-保存成功后，Ecoku 会撤销临时会话并进入「站点」页面，直接打开「新增站点」。
+保存后，Ecoku 会撤销临时会话，并直接打开「站点」页面的「新增站点」表单。
 
-忘记临时密码时，先停服，再运行本机重置命令：
+忘记临时密码或正式密码时，先停服，再在主机上运行重置命令：
 
 ```bash
-sudo docker compose down
+sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku admin reset-password
 sudo docker compose up -d
 ```
 
-命令会打印新的临时密码；已有管理员会话全部失效。
+命令输出 `管理员临时密码：…`，并使已有管理员会话全部失效。用户名保持当前值；用它和新的临时密码登录后，同样需要重新设置密码。
 
-## 时区 {#timezone}
+## 时区与后台语言 {#timezone}
 
-上面的 Compose 已设置 `TZ: Asia/Shanghai` 和 `ECOKU_ADMIN_LOCALE: zh-CN`。前者控制评论与通知时区，后者控制管理后台语言，可改为 `zh-Hant` 或 `en`。修改后执行 `sudo docker compose up -d` 重建容器。站点评论区语言在后台站点的「评论区语言」中设置，SDK 的 `i18n` 参数可以覆盖站点默认值。无需另建 `ecoku.env`。
+上面的 Compose 已设置 `TZ: Asia/Shanghai` 和 `ECOKU_ADMIN_LOCALE: zh-CN`：
+
+- `TZ` 决定评论区和通知中的时间显示，填写 IANA 时区名，例如 `Asia/Shanghai`、`Europe/Berlin`。
+- `ECOKU_ADMIN_LOCALE` 决定管理后台语言，可选 `zh-CN`、`zh-Hant` 或 `en`。无法识别的值会在启动日志中提示，并改用 `zh-CN`。
+
+修改后执行 `sudo docker compose up -d` 重建容器，不需要另建 `ecoku.env`。评论区语言不在这里设置：它取自后台站点设置的「评论区语言」，接入代码中加载器的 `data-i18n` 或 SDK 的 `i18n` 参数可以覆盖。
 
 旧实例可以继续使用原来的 `ecoku.env`。如需删除旧管理员凭据和密钥变量，请按[导入持久状态、停服备份并移除旧变量](./upgrade#legacy-config)操作。如果时区仍写在旧环境文件里，先把 `TZ` 移到 Compose，再删除该文件。
 

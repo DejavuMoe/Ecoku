@@ -14,7 +14,7 @@
     id="ecoku-comments"
     class="ecoku-shell"
     data-ecoku-comments
-    aria-label="评论区"
+    aria-label="評論區"
     data-server-url="{{ $ecoku.server_url }}"
     data-site-id="{{ $ecoku.site_id }}"
     data-page-key="{{ .RelPermalink }}"
@@ -25,19 +25,19 @@
 >
     <div class="ecoku-loader" data-ecoku-loader hidden>
         <p class="ecoku-loader-status" data-ecoku-status></p>
-        <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新加载评论</button>
+        <button class="ecoku-loader-retry" data-ecoku-retry type="button" hidden>重新載入評論</button>
     </div>
     <div id="ecoku-mount" data-ecoku-mount></div>
 </section>
 <script src="{{ $js }}" defer></script>
 {{- else -}}
-<section class="ecoku-shell" aria-label="评论区">
-    <p class="ecoku-loader-status" role="status">评论服务尚未配置。</p>
+<section class="ecoku-shell" aria-label="評論區">
+    <p class="ecoku-loader-status" role="status">評論服務尚未設定。</p>
 </section>
 {{- end -}}
 ```
 
-範本以 `.RelPermalink` 作為頁面 key（例如 `/posts/my-first-post/`），以 `.Title` 作為文章標題。沒有填寫 `server_url` 或 `site_id` 時，會顯示「评论服务尚未配置。」，方便發現設定遺漏。
+範本以 `.RelPermalink` 作為頁面 key（例如 `/posts/my-first-post/`），以 `.Title` 作為文章標題。沒有填寫 `server_url` 或 `site_id` 時，會顯示「評論服務尚未設定。」，方便發現設定遺漏。
 
 ## 2. 新增網站設定
 
@@ -60,7 +60,7 @@ params:
 
 ```yaml
 ---
-title: "关于本站"
+title: "關於本站"
 comments: false
 ---
 ```
@@ -85,4 +85,4 @@ comments: false
 
 所有可用的變數見[自訂樣式](./custom-css#variables)。
 
-範例目錄中的 `assets/css/extended/ecoku.css` 只為載入失敗的提示和重試按鈕設定樣式，可以視需要複製。
+範例目錄中的 `assets/css/extended/ecoku.css` 只為外層元素、載入失敗的提示和重試按鈕設定樣式，不影響評論區本身，可以視需要複製。

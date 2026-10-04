@@ -106,6 +106,7 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&page=1&pageSize=10&sor
     "pageCount": 1,
     "timeZone": "Asia/Shanghai",
     "formConfig": {
+      "i18n": "zh-CN",
       "emailRequired": true,
       "websiteRequired": false,
       "placeholder": "写下评论（仅支持纯文本）",
@@ -129,7 +130,7 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&page=1&pageSize=10&sor
 | `id` | 評論 ID。對應頁面上的錨點 `#ecoku-comment-{id}`。 |
 | `site_id`、`mark` | 站點 ID 與頁面 key。 |
 | `parent` | 父評論 ID，根評論為 `0`。 |
-| `username` | 暱稱。已刪除的評論固定為「已删除」。 |
+| `username` | 暱稱。已刪除的評論固定為「已删除」；暱稱為空的匯入評論顯示為「匿名用户」。 |
 | `url` | 訪客網址，沒有時省略該欄位。 |
 | `content` | 純文字內文。已刪除的評論固定為「[该评论已删除]」。 |
 | `isBlogger` | 是否為部落客評論。 |
@@ -143,13 +144,13 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&page=1&pageSize=10&sor
 | `commentTotal` | 從根評論可到達的全部評論數（含回覆與墓碑）。 |
 | `pageCount` | 總頁數。 |
 | `timeZone` | 伺服器端的顯示時區（IANA 名稱）。 |
-| `i18n` | 站點評論區預設語言：`zh-CN`、`zh-Hant` 或 `en`。SDK 接入設定中的 `i18n` 可以覆寫它。 |
 | `formConfig` | 該站點的評論表單設定，見下表。 |
 
 `formConfig` 欄位：
 
 | 欄位 | 說明 |
 | --- | --- |
+| `i18n` | 站點評論區預設語言：`zh-CN`、`zh-Hant` 或 `en`。SDK 接入設定中的 `i18n` 可以覆寫它。 |
 | `emailRequired`、`websiteRequired` | 信箱、網址是否必填。 |
 | `placeholder`、`emptyMessage` | 評論框提示文字、沒有評論時顯示的文字。 |
 | `defaultSort` | 預設排序。 |
@@ -158,7 +159,7 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&page=1&pageSize=10&sor
 | `bloggerProofEnabled` | 站點是否已設定部落客口令。 |
 | `captcha` | 目前的人機驗證方式：`provider` 為 `off`、`turnstile` 或 `cap`；`sitekey` 為公開的 Site key；使用 Cap 時另有 `instanceUrl`。 |
 | `turnstileSitekey` | 為舊版用戶端保留。僅在 Turnstile 模式下有值。 |
-| `smoji` | `enabled` 表示是否啟用，`manifestUrl` 為清單網址；v0.3.1 提供選填的 `imageOrigin`，未回傳或為空時使用清單來源。 |
+| `smoji` | `enabled` 表示是否啟用，`manifestUrl` 為清單網址；`imageOrigin` 僅在站點設定了圖片來源時回傳，未回傳時使用清單來源。 |
 
 #### 讀取上限
 
@@ -271,16 +272,17 @@ Origin: https://blog.example.com
 
 - **工作階段 Cookie**：`POST /api/admin/login` 成功後，伺服器端會設定名為 `ecoku_admin_session` 的 Cookie（HttpOnly、SameSite=Strict、Path=`/api/admin`，正式環境帶 Secure），有效期 8 小時。登入回應中不包含 token。
 - 登入請求，以及以 Cookie 驗證的非 GET 請求，必須帶有 `admin.allowed_origins` 中的 `Origin`。
-- 以 `Authorization: Bearer <凭据>`驗證的請求可以不帶 `Origin`；如果帶了，仍須在 `admin.allowed_origins` 中，否則回傳 `403`。Bearer 憑據必須是目前有效、未登出的工作階段；v0.2.4 之前簽發的舊 token 不再有效。
+- 以 `Authorization: Bearer <憑據>` 驗證的請求可以不帶 `Origin`；如果帶了，仍須在 `admin.allowed_origins` 中，否則回傳 `403`。Bearer 憑據必須是目前有效、未登出的工作階段；v0.2.4 之前簽發的舊 token 不再有效。
+- **站點管理憑據**：站點在 `app/config.yaml` 中設定了 `management_key_env` 時，伺服器端自動化可以用 `Authorization: EcokuSite <憑據>` 對該站點的評論執行墓碑刪除（`DELETE /api/admin/sites/:siteId/comments/:commentId`）。憑據無效回傳 `401`；指向其他站點回傳 `403`「无权管理该站点」；存取其他管理介面（包括徹底刪除和讀取介面）回傳 `403`「站点管理凭据不能访问此接口」。
 - 登入要求 HTTPS，只有迴路位址可以用 HTTP。
 
 ### 登入與工作階段
 
 | 方法與路徑 | 說明 |
 | --- | --- |
-| `GET /api/admin/login-config` | 不需登入。回傳登入頁需要的人機驗證設定（`captcha`、`turnstileSitekey`）。 |
-| `POST /api/admin/login` | 請求本文為 `{"username", "password", "captchaToken"}`。成功時回傳 `{"expires_at", "expires_in"}` 並設定 Cookie；首次臨時密碼登入時另外回傳 `requires_password_change: true`。受 `rate_limit.admin_login` 速率限制。 |
-| `GET /api/admin/session` | 回傳目前工作階段的 `expires_at`、剩餘秒數 `expires_in` 和 `requires_password_change`，不延長工作階段。 |
+| `GET /api/admin/login-config` | 不需登入。回傳登入頁需要的人機驗證設定（`captcha`、`turnstileSitekey`）和後台語言 `locale`（取自 `ECOKU_ADMIN_LOCALE`）。 |
+| `POST /api/admin/login` | 請求本文為 `{"username", "password", "captchaToken"}`。成功時回傳 `{"expires_at", "expires_in"}` 並設定 Cookie；以臨時密碼登入時另外回傳 `requires_password_change: true` 和目前的使用者名稱 `username`。受 `rate_limit.admin_login` 速率限制。 |
+| `GET /api/admin/session` | 回傳目前工作階段的 `expires_at`、剩餘秒數 `expires_in` 和是否需要首次改密的 `requires_password_change`，需要改密時另含 `username`；不延長工作階段。 |
 | `POST /api/admin/initial-setup` | 只接受首次臨時密碼工作階段。請求本文為 `{"username", "password"}`；成功後撤銷臨時工作階段並設定普通管理員工作階段。 |
 | `POST /api/admin/logout` | 登出目前的工作階段並清除 Cookie。回傳 `503` 時表示登出沒有成功。 |
 
@@ -295,7 +297,7 @@ Origin: https://blog.example.com
 
 站點欄位：`id`、`site_url`、`name`、`allowed_origins`、`i18n`、`default_sort`、`email_required`、`website_required`、`placeholder`、`comment_limit`、`empty_message`、`smoji_enabled`、`smoji_manifest_url`、`smoji_image_origin`、`blogger_nickname`、`blogger_email`、`blogger_badge`、`blogger_passphrase`（唯寫）、`revision`。回應中以 `blogger_passphrase_set` 表示是否已設定口令，另含唯讀的 `created_at`、`updated_at`。站點清單在 `data.data` 陣列中，單一站點以及建立、更新的結果在 `data.site` 中。
 
-`smoji_image_origin`是選填的受信任圖片來源，例如 `https://s3-cdn.zsh.moe`。留空使用清單來源；更新請求省略此欄位時保留原值，傳空字串恢復預設。公開的 `formConfig.smoji.imageOrigin` 僅在已設定時回傳。載入、提交、顯示和郵件通知使用同一規則，見 [Smoji 託管設定](../integration/smoji#hosting)。
+`smoji_image_origin` 是選填的受信任圖片來源，例如 `https://s3-cdn.zsh.moe`。留空使用清單來源；更新請求省略此欄位時保留原值，傳空字串恢復預設。公開的 `formConfig.smoji.imageOrigin` 僅在已設定時回傳。載入、提交、顯示和郵件通知使用同一規則，見 [Smoji 託管設定](../integration/smoji#hosting)。
 
 `i18n` 只接受 `zh-CN`、`zh-Hant`、`en`（及 `zh-TW`、`en-US` 等地區寫法），其他值回傳 `400`。更新請求省略該欄位時保留原值。
 
