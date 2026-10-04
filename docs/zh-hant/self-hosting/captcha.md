@@ -22,7 +22,7 @@ Ecoku 可以要求訪客在發布評論前、管理員在登入前先通過一�
 
 1. 在 Cloudflare 主控台的 Turnstile 頁面新增一個元件（widget）。
 2. 在 Hostname 清單中加入所有部落格網域（例如 `blog.example.com`），以及 Ecoku 的網域（例如 `ecoku.example.com`，後台登入頁需要）。
-3. 元件模式依需要選擇。Ecoku 以「僅在需要互動時顯示」的方式呈現元件，寬度不超過 300px。
+3. 元件模式依需要選擇。Ecoku 以「僅在需要互動時顯示」的方式呈現元件；評論區中的元件寬度不超過 300px。
 4. 複製 Sitekey 和 Secret key，在後台「安全」頁選擇 Cloudflare Turnstile，填入並儲存。
 
 官方文件：[Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/)
@@ -31,7 +31,7 @@ Ecoku 可以要求訪客在發布評論前、管理員在登入前先通過一�
 
 [Cap](https://trycap.dev/)（[GitHub](https://github.com/tiagozip/cap)）是一套開源的驗證服務，可以部署在自己的伺服器上。Ecoku 從你的 Cap 實例載入驗證元件和 WebAssembly 檔案，再向它核驗 token。
 
-Cap 實例位址必須是**可從公開網路存取的 HTTPS 位址**。`localhost`、內部網路 IP 等位址會被拒絕儲存。
+Cap 實例位址必須是**可從公開網路存取的 HTTPS 位址**。`localhost`、內部網路 IP 等位址會被拒絕儲存；網域解析到內部網路位址時雖然能儲存，但核驗時 Ecoku 不會連線，驗證會一直失敗。
 
 ### 部署 Cap
 
@@ -171,7 +171,7 @@ cap.example.com {
 1. 開啟 `https://cap.example.com`，用 `.env` 中的 `ADMIN_KEY` 登入 Cap 管理面板。
 2. 新增一個 key，把部落格網域和 Ecoku 網域加入允許的主機清單，記下 Site key 和 Secret key。
 3. 在 Ecoku 後台「安全」頁選擇 Cap，填寫：
-   - **实例地址**：`https://cap.example.com`，結尾不加 `/`；
+   - **实例地址**：`https://cap.example.com`，結尾的 `/` 會自動去掉；
    - **Site key** 和 **Secret key**。
 4. 儲存後，開啟一篇文章和後台登入頁，確認驗證元件能正常完成驗證。
 

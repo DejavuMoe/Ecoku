@@ -54,7 +54,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 先看新舊兩個版本的 schema 是否相同（見下表）：
 
-- **schema 相同**：停止服務，把 `compose.yaml` 中的映像檔改回舊版本號，拉取並啟動。資料庫不用動，升級後產生的新評論也會保留。如果使用了新版本對省略欄位的預設值，先還原舊版所需的完整設定；如果新版本要求加入過新的設定項目，而舊版本不認得它，要先刪掉，否則舊版本會因未知欄位拒絕啟動。
+- **schema 相同**：停止服務，把 `compose.yaml` 中的映像檔改回舊版本號，拉取並啟動。資料庫不用動，升級後產生的新評論也會保留。如果升級時依新版本的預設值省略了某些欄位，先補回舊版本要求的設定；如果為新版本加入過舊版本不認得的設定項目，先刪掉，否則舊版本會因未知欄位拒絕啟動。
 - **schema 不同**：只改回映像檔版本號是不夠的，舊版本無法開啟已遷移的資料庫。需要用升級前的冷備份[還原](./backup#restore)。備份之後產生的評論和設定修改會遺失。
 
 ## 版本清單 {#versions}
@@ -91,28 +91,33 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 | [v0.1.3](./upgrades/v0.1.3) | 2026-08-15 | v4 → v5 | 部落客改用口令驗證；通知依收件者拆分。 |
 | [v0.1.2](./upgrades/v0.1.2) | 2026-08-15 | v4 | 評論中繼資訊排版調整。 |
 | [v0.1.1](./upgrades/v0.1.1) | 2026-08-15 | v4 | 摺疊按鈕改為固定寬度，切換時不再跳動。 |
-| [v0.1.0](./upgrades/v0.1.0) | 2026-08-15 | v4 | 第一個正式版本。 |
+| [v0.1.0](./upgrades/v0.1.0) | 2026-08-15 | v4 | 第一個帶穩定標籤的內測版本。 |
 | [更早的候選版本](./upgrades/earlier) | 2026-08-14 | v1 ～ v4 | `v0.1.0-rc.*` 系列。 |
 :::
 
 <details id="legacy-config" class="details custom-block">
 <summary>內測實例的舊設定遷移</summary>
 
-v0.2.9 在 schema v9 上新增 v10 管理員帳戶表。既有站點、評論、通知、驗證設定和舊管理員憑據都會保留，既有實例升級前不必修改設定。
+v0.2.9 在 schema v9 上新增 v10 管理員帳戶表。既有站點、評論、通知、驗證碼設定和舊管理員憑據都會保留；舊實例不需要在升級前修改設定。
 
-保留原本的 `compose.yaml`、`app/config.yaml` 和 `ecoku.env`，按[升級步驟](#steps)停服備份後啟動新映像檔。首次啟動會導入舊管理員憑據、把通知加密主金鑰寫入 `data/ecoku-secrets.json`，保留舊連接埠、檔案日誌、靜態目錄、SQLite 路徑、YAML `sites` 和 `management_key_env` 的相容行為，不會產生臨時密碼，也不會強迫舊管理員改密碼。
+升級時保留原本的 `compose.yaml`、`app/config.yaml` 和 `ecoku.env`，依 [升級步驟](#steps) 停服備份後啟動新映像檔。新版本第一次啟動會：
 
-確認新版本正常後，再遷移為簡化設定：
+1. 把舊的 `ECOKU_ADMIN_USERNAME`、`ECOKU_ADMIN_PASSWORD_HASH` 和 `ECOKU_ADMIN_TOKEN_KEY` 導入管理員帳戶和持久工作階段金鑰；
+2. 把 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 寫入 `data/ecoku-secrets.json`，並用它繼續解密資料庫中已有的憑據；
+3. 保留舊的 `site.port`、`site.log_path`、靜態目錄、SQLite 路徑、YAML `sites` 和 `management_key_env` 相容行為；
+4. 不產生臨時密碼，也不強迫舊管理員改密碼。
 
-1. 確認可以登入後台，站點數量、歷史評論和通知設定正確；
-2. 確認 `data/ecoku-secrets.json` 已建立，日誌沒有解密憑據錯誤；
-3. 停服並備份整個 `data/`、`app/config.yaml`、`compose.yaml` 和舊的 `ecoku.env`；
-4. 停服後從 `ecoku.env` 刪除管理員變數和 `ECOKU_NOTIFICATION_ENCRYPTION_KEY`。需要 `TZ` 時移到 Compose 的 `environment`；若留在 `ecoku.env`，則須保留 `env_file`；
-5. 不再需要環境檔案時才從 Compose 刪除 `env_file`；如果仍透過它注入 `TZ` 或站點管理金鑰，則保留；
+確認新版本正常運作後，再遷移為簡化設定：
+
+1. 確認可以登入後台，站點數量、歷史評論正確，通知設定可以開啟；
+2. 確認 `data/ecoku-secrets.json` 已建立，並且日誌中沒有 `通知凭据校验失败`；
+3. 停服並依 [備份](./backup#cold-backup) 保存整個 `data/`、`app/config.yaml`、`compose.yaml` 和舊的 `ecoku.env`；
+4. 停服後從 `ecoku.env` 刪除管理員變數和 `ECOKU_NOTIFICATION_ENCRYPTION_KEY`。如果仍需要 `TZ`，把它移到 Compose 的 `environment`；保留 `env_file` 時也可以只留下 `TZ`；
+5. 不再需要該環境檔案時才刪除 Compose 的 `env_file`。如果仍透過它注入 `TZ` 或站點管理金鑰，就保留 `env_file`；
 6. 保留 `notifications.instance_public_url`、實際使用的 `site.trusted_proxies`、`admin.allowed_origins` 和 `rate_limit`。確認不再需要舊資料庫路徑、檔案日誌或 `EcokuSite` 自動化後，才刪除舊欄位；
 7. 重建容器，再次檢查後台、評論和通知。
 
-舊的通知加密主金鑰與 `data/ecoku-secrets.json` 不一致時，服務會拒絕啟動，以免已有憑據無法解密。舊資料庫路徑仍然有效，不要直接刪除 `database.sqlite.path` 後掛載空的 `/data`。
+舊的 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 與 `data/ecoku-secrets.json` 不一致時，服務會拒絕啟動，以免覆蓋後無法解密已有憑據。舊資料庫路徑仍然有效，不要直接刪除 `database.sqlite.path` 後掛載空的 `/data`。
 
 內測版本不再提供正式環境回滾映像檔。歷史 schema 的還原需要當時的完整冷備份；此處僅保留設定遷移記錄。
 

@@ -85,4 +85,4 @@ comments: false
 
 所有可用变量见[自定义样式](./custom-css#variables)。
 
-示例目录中的 `assets/css/extended/ecoku.css` 只为加载失败提示和重试按钮设置样式，可以按需复制。
+示例目录中的 `assets/css/extended/ecoku.css` 只为外壳、加载失败提示和重试按钮设置样式，不影响评论区本身，可以按需复制。

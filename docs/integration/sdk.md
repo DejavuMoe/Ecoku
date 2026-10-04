@@ -31,8 +31,8 @@ await comments.init()
 | 配置项 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | :---: | --- | --- |
 | `container` | `string \| HTMLElement` | 是 | — | 挂载位置，CSS 选择器或 DOM 元素。容器原有内容会被替换。 |
-| `serverURL` | `string` | 是 | — | Ecoku 的地址，`http://` 或 `https://` 开头，不能带查询参数或 `#`。 |
-| `siteId` | `string` | 是 | — | 后台注册的站点 ID。 |
+| `serverURL` | `string` | 是 | — | Ecoku 的地址，`http://` 或 `https://` 开头，可以带路径，不能带用户名密码、查询参数或 `#`。 |
+| `siteId` | `string` | 是 | — | 后台创建的站点 ID。 |
 | `pageKey` | `string` | 是 | — | 当前文章的页面 key，1～512 个字符。SDK 不会自动从网址推断，必须显式传入。 |
 | `pageTitle` | `string` | 否 | `''` | 文章标题，显示在通知中，最多 200 个字符。 |
 | `pageSize` | `number` | 否 | `10` | 每页根评论数，1～100 的整数。 |
@@ -42,10 +42,9 @@ await comments.init()
 
 构造函数不校验参数；参数不合法时，`init()` 抛出 `TypeError`。
 
-旧配置项 `apiBaseUrl` 是 `serverURL` 的别名，仍可使用，但已弃用。
-
-
-构造配置中的 `pageTitle` 会按 JavaScript 字符串的前 200 个 UTF-16 代码单元截断；`setPageKey()` 的标题不截断，服务端按 Unicode 字符校验 200 字符上限。`cssURL` 只接受 HTTP(S) 绝对地址、以 `/` 开头的路径、`none` 或兼容值 `-`，不是任意字符串。
+- 构造配置中的 `pageTitle` 会截取前 200 个 UTF-16 代码单元；`setPageKey()` 传入的标题不截断，由服务端按 200 个 Unicode 字符校验。
+- `cssURL` 只接受 HTTP(S) 绝对地址、以 `/` 开头的路径、`none` 或兼容值 `-`。
+- 旧配置项 `apiBaseUrl` 是 `serverURL` 的别名，仍可使用，但已弃用。两者同时填写且指向不同地址时，`init()` 抛出 `TypeError`。
 
 ### 样式 {#styles}
 
@@ -62,12 +61,13 @@ await comments.init()
 挂载评论区，恢复浏览器保存的访客身份，加载第一页评论。返回 Promise。
 
 - 传入 `options` 时替换构造时的配置。
-- 已经初始化过的实例再次调用不会重复挂载。
+- 已经初始化的实例再次调用会直接返回，不会重复挂载，传入的 `options` 也不生效。
 - 同一个容器同时只能被一个实例使用，否则抛错。先对旧实例调用 `destroy()`。
+- 挂载失败时实例会自动销毁，可以修正问题后再次调用 `init()`。
 
 ### `setPageKey(pageKey, pageTitle?)`
 
-切换到另一篇文章的评论区，适合在单页应用的路由变化后调用。
+切换到另一篇文章的评论区，适合在单页应用的路由变化后调用。必须在 `init()` 之后调用，否则抛错。
 
 - 页面 key 与当前相同时，只重新加载评论。
 - 不同时，取消进行中的请求，关闭打开的回复框，清空评论框，加载新页面的第一页。
@@ -76,7 +76,7 @@ await comments.init()
 
 ### `reload()`
 
-重新加载当前页的评论，排序不变。
+重新加载当前页的评论，排序不变。必须在 `init()` 之后调用，否则抛错。
 
 ### `destroy()`
 
@@ -88,7 +88,9 @@ await comments.init()
 
 ## VitePress {#vitepress}
 
-在 `.vitepress/theme/EcokuComments.vue` 中使用 VitePress 自带的 `useRoute`，不要从 `vue-router` 导入。当前文档站已经使用 `ecoku@0.3.2` 接入演示评论区，服务地址为 `https://ecoku-dev.zsh.moe/`，站点 ID 为 `ecoku-docs`；生产接入时替换这两个值，并在 Ecoku 后台将网站来源加入站点允许来源。路由路径作为稳定的页面 key，页面数据提供标题。仅在浏览器挂载时创建实例，切换文章时更新，卸载时销毁。
+本文档站页面底部的评论区就是用 SDK 接入的：使用 `ecoku@0.3.2`，服务地址为 `https://ecoku-dev.zsh.moe/`，站点 ID 为 `ecoku-docs`。接入自己的网站时替换这两个值，并在 Ecoku 后台把网站来源加入该站点的允许来源。
+
+在 `.vitepress/theme/EcokuComments.vue` 中使用 VitePress 自带的 `useRoute`，不要从 `vue-router` 导入。路由路径作为稳定的页面 key，页面数据提供标题。仅在浏览器挂载时创建实例，切换文章时更新，卸载时销毁。
 
 VitePress 的手动主题开关不会改变系统配色偏好。下面将评论区颜色映射到 VitePress 变量，浅色、暗色和手动切换都会同步，且不会重建实例或清空草稿。
 
@@ -148,7 +150,7 @@ onBeforeUnmount(() => {
 </style>
 ```
 
-在现有 `.vitepress/theme/index.ts` 中将组件放入默认布局的 `doc-after` 插槽，保留已有主题设置和 CSS 导入。下面展示最小接入；修改为你的服务地址和站点 ID，并在后台登记文档网站的来源。首页使用 home 布局时不会显示这个插槽。
+在现有 `.vitepress/theme/index.ts` 中将组件放入默认布局的 `doc-after` 插槽，保留已有主题设置和 CSS 导入。下面是最小写法。首页使用 home 布局时不会显示这个插槽。
 
 ```ts
 import { h } from 'vue'

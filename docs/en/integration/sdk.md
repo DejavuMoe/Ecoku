@@ -31,8 +31,8 @@ await comments.init()
 | Option | Type | Required | Default | Description |
 | --- | --- | :---: | --- | --- |
 | `container` | `string \| HTMLElement` | Yes | — | Where to mount: a CSS selector or a DOM element. The container's existing content is replaced. |
-| `serverURL` | `string` | Yes | — | The Ecoku address, starting with `http://` or `https://`, without a query string or `#`. |
-| `siteId` | `string` | Yes | — | The site ID registered in the admin console. |
+| `serverURL` | `string` | Yes | — | The Ecoku address, starting with `http://` or `https://`. It may include a path, but not a username and password, a query string or `#`. |
+| `siteId` | `string` | Yes | — | The site ID created in the admin console. |
 | `pageKey` | `string` | Yes | — | The current post's page key, 1 to 512 characters. The SDK does not infer it from the URL; you must pass it explicitly. |
 | `pageTitle` | `string` | No | `''` | The post title, shown in notifications, at most 200 characters. |
 | `pageSize` | `number` | No | `10` | Root comments per page, an integer from 1 to 100. |
@@ -42,10 +42,9 @@ await comments.init()
 
 The constructor does not validate options; invalid options make `init()` throw a `TypeError`.
 
-The old option `apiBaseUrl` is an alias of `serverURL`. It still works but is deprecated.
-
-
-The constructor configuration truncates `pageTitle` to the first 200 JavaScript UTF-16 code units. `setPageKey()` does not truncate its title; the server checks a 200 Unicode-character limit. `cssURL` accepts an absolute HTTP(S) URL, a path starting with `/`, `none` or the legacy `-`, not an arbitrary string.
+- `pageTitle` in the constructor options is cut to its first 200 UTF-16 code units. A title passed to `setPageKey()` is not truncated; the server checks it against a limit of 200 Unicode characters.
+- `cssURL` accepts only an absolute HTTP(S) URL, a path starting with `/`, `none` or the legacy value `-`.
+- The old option `apiBaseUrl` is an alias of `serverURL`. It still works but is deprecated. If both are set and point to different addresses, `init()` throws a `TypeError`.
 
 ### Styles {#styles}
 
@@ -62,12 +61,13 @@ You can use the instance's `/client/ecoku.css` (the same as the default styles) 
 Mounts the comment section, restores the visitor identity saved in the browser, and loads the first page of comments. Returns a Promise.
 
 - If you pass `options`, they replace the options given to the constructor.
-- Calling it again on an instance that is already initialized does not mount it twice.
+- On an instance that is already initialized, calling it again returns immediately: nothing is mounted twice, and any `options` you pass are ignored.
 - A container can be used by only one instance at a time; otherwise it throws. Call `destroy()` on the old instance first.
+- If mounting fails, the instance destroys itself, so you can fix the problem and call `init()` again.
 
 ### `setPageKey(pageKey, pageTitle?)`
 
-Switches to another post's comment section. Call it after a route change in a single-page app.
+Switches to another post's comment section. Call it after a route change in a single-page app. It must be called after `init()`; otherwise it throws.
 
 - If the page key is the same as the current one, only the comments are reloaded.
 - If it differs, in-flight requests are canceled, open reply boxes are closed, the comment box is cleared, and the first page of the new page is loaded.
@@ -76,7 +76,7 @@ Switches to another post's comment section. Call it after a route change in a si
 
 ### `reload()`
 
-Reloads the comments on the current page, keeping the sort order.
+Reloads the comments on the current page, keeping the sort order. It must be called after `init()`; otherwise it throws.
 
 ### `destroy()`
 
@@ -87,6 +87,8 @@ Unmounts the comment section: cancels all requests, removes the verification wid
 Returns whether the instance is currently initialized.
 
 ## VitePress {#vitepress}
+
+The comments at the bottom of this documentation site are embedded with the SDK: they use `ecoku@0.3.2`, the server address `https://ecoku-dev.zsh.moe/` and the site ID `ecoku-docs`. For your own website, replace those two values and add the website's origin to the site's allowed origins in the Ecoku admin console.
 
 In `.vitepress/theme/EcokuComments.vue`, import `useRoute` from VitePress, not `vue-router`. Use the route path as the stable page key and page data for the title. Create the instance on browser mount, update it when navigating and destroy it on unmount.
 
@@ -148,7 +150,7 @@ onBeforeUnmount(() => {
 </style>
 ```
 
-Add the component to the default layout’s `doc-after` slot in `.vitepress/theme/index.ts`, keeping existing theme options and CSS imports. This is a minimal integration: replace the server address and site ID, and register the documentation website origin in the admin console. The home layout does not show this slot.
+Add the component to the default layout's `doc-after` slot in your existing `.vitepress/theme/index.ts`, keeping your theme options and CSS imports. The minimal version is below. Pages using the home layout do not show this slot.
 
 ```ts
 import { h } from 'vue'

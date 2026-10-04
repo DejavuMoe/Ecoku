@@ -31,8 +31,8 @@ await comments.init()
 | 設定項目 | 型別 | 必填 | 預設值 | 說明 |
 | --- | --- | :---: | --- | --- |
 | `container` | `string \| HTMLElement` | 是 | — | 掛載位置，為 CSS 選擇器或 DOM 元素。容器原有的內容會被取代。 |
-| `serverURL` | `string` | 是 | — | Ecoku 的網址，以 `http://` 或 `https://` 開頭，不能帶查詢參數或 `#`。 |
-| `siteId` | `string` | 是 | — | 後台註冊的站點 ID。 |
+| `serverURL` | `string` | 是 | — | Ecoku 的網址，以 `http://` 或 `https://` 開頭，可以帶路徑，不能帶使用者名稱密碼、查詢參數或 `#`。 |
+| `siteId` | `string` | 是 | — | 後台建立的站點 ID。 |
 | `pageKey` | `string` | 是 | — | 目前文章的頁面 key，1～512 個字元。SDK 不會自動從網址推斷，必須明確傳入。 |
 | `pageTitle` | `string` | 否 | `''` | 文章標題，顯示在通知中，最多 200 個字元。 |
 | `pageSize` | `number` | 否 | `10` | 每頁根評論數，1～100 的整數。 |
@@ -42,10 +42,9 @@ await comments.init()
 
 建構函式不驗證參數；參數不合法時，`init()` 會擲出 `TypeError`。
 
-舊的設定項目 `apiBaseUrl` 是 `serverURL` 的別名，仍可使用，但已棄用。
-
-
-建構設定中的 `pageTitle` 會依 JavaScript 字串的前 200 個 UTF-16 碼元截斷；`setPageKey()` 的標題不截斷，伺服器依 Unicode 字元驗證 200 字元上限。`cssURL` 只接受 HTTP(S) 絕對位址、以 `/` 開頭的路徑、`none` 或相容值 `-`，不是任意字串。
+- 建構設定中的 `pageTitle` 會截取前 200 個 UTF-16 碼元；`setPageKey()` 傳入的標題不截斷，由伺服器依 200 個 Unicode 字元驗證。
+- `cssURL` 只接受 HTTP(S) 絕對位址、以 `/` 開頭的路徑、`none` 或相容值 `-`。
+- 舊的設定項目 `apiBaseUrl` 是 `serverURL` 的別名，仍可使用，但已棄用。兩者同時填寫且指向不同位址時，`init()` 會擲出 `TypeError`。
 
 ### 樣式 {#styles}
 
@@ -62,12 +61,13 @@ await comments.init()
 掛載評論區，恢復瀏覽器保存的訪客身分，並載入第一頁評論。回傳 Promise。
 
 - 傳入 `options` 時會取代建構時的設定。
-- 已經初始化過的實例再次呼叫不會重複掛載。
+- 已經初始化的實例再次呼叫會直接返回，不會重複掛載，傳入的 `options` 也不會生效。
 - 同一個容器同時只能由一個實例使用，否則會擲出錯誤。請先對舊實例呼叫 `destroy()`。
+- 掛載失敗時實例會自動銷毀，修正問題後可以再次呼叫 `init()`。
 
 ### `setPageKey(pageKey, pageTitle?)`
 
-切換到另一篇文章的評論區，適合在單頁應用程式的路由變化後呼叫。
+切換到另一篇文章的評論區，適合在單頁應用程式的路由變化後呼叫。必須在 `init()` 之後呼叫，否則會擲出錯誤。
 
 - 頁面 key 與目前相同時，只重新載入評論。
 - 不同時，會取消進行中的請求、關閉已開啟的回覆框、清空評論框，並載入新頁面的第一頁。
@@ -76,7 +76,7 @@ await comments.init()
 
 ### `reload()`
 
-重新載入目前頁面的評論，排序不變。
+重新載入目前頁面的評論，排序不變。必須在 `init()` 之後呼叫，否則會擲出錯誤。
 
 ### `destroy()`
 
@@ -87,6 +87,8 @@ await comments.init()
 回傳實例目前是否已初始化。
 
 ## VitePress {#vitepress}
+
+本文件網站頁面底部的評論區就是用 SDK 接入的：使用 `ecoku@0.3.2`，服務位址為 `https://ecoku-dev.zsh.moe/`，站點 ID 為 `ecoku-docs`。接入自己的網站時替換這兩個值，並在 Ecoku 後台把網站來源加入該站點的允許來源。
 
 在 `.vitepress/theme/EcokuComments.vue` 中使用 VitePress 自帶的 `useRoute`，不要從 `vue-router` 匯入。路由路徑作為穩定的頁面 key，頁面資料提供標題。只在瀏覽器掛載時建立實例，切換文章時更新，卸載時銷毀。
 
@@ -148,7 +150,7 @@ onBeforeUnmount(() => {
 </style>
 ```
 
-在既有 `.vitepress/theme/index.ts` 中將元件放入預設版面的 `doc-after` 插槽，保留已有主題設定和 CSS 匯入。以下是最小接入；請修改服務位址和站點 ID，並在後台登記文件網站的來源。首頁使用 home 版面時不會顯示此插槽。
+在既有 `.vitepress/theme/index.ts` 中將元件放入預設版面的 `doc-after` 插槽，保留已有主題設定和 CSS 匯入。以下是最小寫法。首頁使用 home 版面時不會顯示此插槽。
 
 ```ts
 import { h } from 'vue'

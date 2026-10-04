@@ -46,6 +46,7 @@ Keep all four elements with `data-ecoku-*` inside the wrapper: `data-ecoku-mount
 | `data-page-size` | No | How many root comments to show per page, 1 to 100, default 10. Invalid values are treated as 10. |
 | `data-theme` | No | `auto` (default), `light`, or `dark`. `auto` follows the page's light/dark setting. |
 | `data-css-url` | No | Replaces the default styles. See [Custom styles](./custom-css). |
+| `data-i18n` | No | The comment language: `zh-CN`, `zh-Hant`, or `en`. Overrides 「评论区语言」 (Comment language) in the admin site settings. If it is missing or has any other value, the site setting is used. |
 
 ## Choose a page key
 
@@ -67,7 +68,8 @@ These are for reference only. Look at the generated HTML in your browser and con
 
 1. After the page is parsed, the loader reads the attributes on the wrapper. If `data-server-url`, `data-site-id`, or `data-page-key` is missing, or any of the four `data-ecoku-*` child elements is missing, it **skips silently**, and nothing appears on the page.
 2. The loader loads `ecoku.umd.js` from its own directory and initializes the comment section. No "Loading" text is shown while it loads.
-3. If either stage, loading or initializing the script, takes longer than 12 seconds or fails, an error message and the **Reload comments** button are shown, and the visitor can click to retry.
+3. If `ecoku.umd.js` fails to load, initialization fails (for example because of an invalid attribute value), or the whole process takes longer than 12 seconds, an error message and the **Reload comments** button are shown, and the visitor can click to retry. The error message follows `data-i18n`. Without it, the page's `<html lang>` selects Traditional Chinese (`zh-Hant`, `zh-TW`, `zh-HK`, `zh-MO`) or English (`en`, `en-*`); anything else gives Simplified Chinese.
+4. Once the comment section is mounted, errors from the comment API itself (for example an unregistered origin, rate limiting or a network outage) are shown by the comment section as 「评论暂时不可用」 (Comments are temporarily unavailable) with a 「重新加载」 (Reload) button.
 
 A page can have more than one wrapper. Each one is initialized independently.
 

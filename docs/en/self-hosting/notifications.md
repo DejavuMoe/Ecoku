@@ -11,7 +11,7 @@ After changing a channel, click 「保存」 (save) in the bottom save bar. Emai
 
 ## Before you enable notifications
 
-- `notifications.instance_public_url` is set in `app/config.yaml`. Otherwise no channel can be enabled.
+- `notifications.instance_public_url` is set in `app/config.yaml`. Otherwise no channel can be enabled and no test can be sent.
 - A new instance creates the notification encryption master key in `data/ecoku-secrets.json`. During migration, an old instance may still read `ECOKU_NOTIFICATION_ENCRYPTION_KEY` from `ecoku.env`; remove it only after a stopped backup confirms the migration.
 - The server can reach an external SMTP port (usually 465 or 587) or `api.telegram.org`. Some cloud providers block outbound SMTP ports by default.
 
@@ -44,7 +44,7 @@ In addition:
 | Port (端口) | Use what your mail provider requires, usually 465 (SSL/TLS) or 587 (STARTTLS). |
 | Encryption (加密方式) | `SSL/TLS`: encrypted from the moment the connection opens. `STARTTLS`: opens a plain connection and then upgrades it. Unencrypted SMTP is not supported. |
 | Username (用户名) | May be empty. If empty, no SMTP authentication is performed. The password is still required; for a server that needs no authentication, enter any value. |
-| Password (密码) | After saving, it is shown only as Set (已设置). Leaving it empty keeps it unchanged. |
+| Password (密码) | After saving, the field shows 「已设置，输入新值以更换」 (Already set; enter a new value to replace it). Leaving it empty keeps it unchanged. |
 | From address (发件人地址) | The From address of the email. Many providers require it to match the sign-in account. |
 | Recipients (通知收件人) | Email addresses that receive blogger notifications, one input per address. Press Enter to add the next one, or paste several lines or a comma-separated list at once. |
 
@@ -58,7 +58,7 @@ Each email contains both a plain-text and an HTML version. The HTML version uses
 
 Times are shown in the container's `TZ`, the same as in the comment area, with the UTC offset, such as `2026/09/29 10:18 (UTC+8)`. Comments by the blogger show the site's blogger badge after the nickname.
 
-Smoji render as images only when enabled and the image satisfies the site’s image-origin rule. This defaults to the manifest origin; v0.3.1 supports [a separate image origin](../integration/smoji#hosting). Images load directly from their host, as in the comment area. If the mail client blocks external images, `[表情：标签]` ([Smoji: label]) is shown instead. Other cases and plain-text messages also use `[表情：标签]`.
+Smoji render as images only when enabled and the image satisfies the site’s image-origin rule. This defaults to the manifest origin; you can also set [a separate image origin](../integration/smoji#hosting). Images load directly from their host, as in the comment area. If the mail client blocks external images, `[表情：标签]` ([Smoji: label]) is shown instead. Other cases and plain-text messages also use `[表情：标签]`.
 
 Subject lines (sent in Chinese):
 
@@ -83,7 +83,7 @@ Notifications are not sent synchronously when a comment is submitted. The commen
 - A mail server that is temporarily unreachable does not stop visitors from commenting.
 - Each recipient has its own record and is retried separately. A failure for one address does not affect other addresses.
 - After a failure, retries happen at intervals of 2, 4, 8, 16, 32, 64, and 128 minutes, for 8 attempts in total, and then Ecoku gives up.
-- Failures that a retry cannot fix are given up immediately: the mailbox does not exist or the server rejects the message (SMTP 55x), or Telegram cannot find the chat or the bot was removed or blocked (HTTP 400/403). When Telegram asks to slow down (HTTP 429), the retry waits for the time it gives.
+- Failures that a retry cannot fix are given up immediately: the mailbox does not exist or the server rejects the message (SMTP 55x), or Telegram cannot find the chat or the bot was removed or blocked (HTTP 400/403). When Telegram asks to slow down (HTTP 429), the retry waits for the longer of the time it gives and the normal retry interval, and the attempt still counts toward the 8.
 - Records that were sent, canceled, or given up are kept for 30 days and then removed automatically.
 - Recipients are fixed when a notification is queued. If you later disable a channel or change recipients, notifications already in the queue are still delivered as they were.
 - If the process crashes right after a message has been sent but before the result is recorded, it may be sent again after restart. In rare cases you may receive a duplicate notification.
@@ -105,6 +105,6 @@ A sent Telegram message cannot be rewritten if the notification was sent more th
 
 **Enabling a channel fails to save with "请求参数不符合要求，请检查后重试。" (the request parameters are invalid; check and try again)**: if the form is filled in correctly, the instance public URL is most likely not set. Set `notifications.instance_public_url` in `app/config.yaml` and recreate the container.
 
-**Saving shows "服务端暂时无法完成操作，数据没有被修改。" (the server cannot complete the operation right now; no data was changed)**: check that `data/ecoku-secrets.json` exists and is readable by the container. During migration, restore the original `ECOKU_NOTIFICATION_ENCRYPTION_KEY` from backup and remove it only after the persistent key has been verified.
+**The container does not start and the log shows `通知凭据校验失败` or `持久密钥文件权限过宽；请设为 600`**: the notification encryption key is read at startup, so saving settings on a running instance never fails because of it. Check that `data/ecoku-secrets.json` comes from the same backup as the database, is owned by the container user and has mode `600`. Do not delete it to make Ecoku generate a new one; see [restore](./backup#restore). If an older instance still injects `ECOKU_NOTIFICATION_ENCRYPTION_KEY`, its value must match the key in the persistent file.
 
 **The test email times out**: usually the server's outbound SMTP port is blocked. First confirm connectivity on the server with `nc -vz smtp.example.com 465`, then check that the port matches the encryption mode (465 goes with SSL/TLS, 587 with STARTTLS).

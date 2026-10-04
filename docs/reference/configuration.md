@@ -33,7 +33,12 @@ sudo docker compose logs --tail=100 ecoku
 
 ## 环境变量 {#env}
 
-新部署不需要 `ecoku.env`。Compose 中的 `TZ: Asia/Shanghai` 决定评论与通知的显示时区，`ECOKU_ADMIN_LOCALE: zh-CN` 决定管理后台语言；可选值为 `zh-CN`、`zh-Hant`、`en`，其他值会在启动日志中提示并改用 `zh-CN`。站点评论区语言在后台站点的 `i18n` 字段中设置，SDK 的 `i18n` 参数可以覆盖它。这些是 Compose 环境变量，不是 YAML 配置字段。
+新部署不需要 `ecoku.env`。下面两项写在 Compose 的 `environment` 中，不是 YAML 配置字段：
+
+- `TZ`：评论区与通知的显示时区，填写 IANA 时区名，例如 `Asia/Shanghai`。
+- `ECOKU_ADMIN_LOCALE`：管理后台语言，可选 `zh-CN`、`zh-Hant`、`en`，不区分大小写，也接受 `zh-TW`、`en-US` 等常见写法。无法识别的值会在启动日志中提示，并改用 `zh-CN`。
+
+站点评论区语言不受这两项影响：它在后台站点设置的「评论区语言」中选择（YAML 站点种子中对应 `i18n`），加载器的 `data-i18n` 或 SDK 的 `i18n` 参数可以覆盖。
 
 模板中的 `*_env` 是程序读取的环境变量名称，不是秘密值；需要自行注入时，在 Compose 的 `environment` 或 `env_file` 中提供对应变量。默认自动创建管理员和持久密钥，无需注入这些凭据。镜像已设置 `GIN_MODE=release` 和 `ECOKU_RUNTIME=container`，不要覆盖。
 

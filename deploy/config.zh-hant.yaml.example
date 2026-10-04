@@ -102,7 +102,7 @@ admin:
 
 # 可選：YAML 站點種子。預設 []，新部署直接在後台建立站點。
 # 僅建立全新資料庫時匯入；修改這裡不會更新已有資料庫的站點。
-# 如需此相容格式，取消下方整個 sites 區段的註解。
+# 如需預置初始站點，取消下方整個 sites 區段的註解。
 # sites:
 #   # 必填 ID：字母或數字開頭，可含字母、數字、點、底線、連字號，最多 100 字元。
 #   - id: "blog"
@@ -113,7 +113,7 @@ admin:
 #     name: "我的博客"
 #     # 至少一個不重複來源，不含路徑、查詢或片段，且與管理來源分開。
 #     allowed_origins: ["https://blog.example.com"]
-#     # Comment-area language. Options: zh-CN (default), zh-Hant, en. The SDK i18n option can override this.
+#     # 評論區語言，預設 zh-CN；可選 zh-CN、zh-Hant、en。載入器的 data-i18n 或 SDK 的 i18n 參數可以覆寫。
 #     i18n: "zh-CN"
 #     # 可選：站點管理憑據的環境變數名稱。預設空，不啟用此憑據。
 #     # 僅可透過 EcokuSite 憑據對本站評論執行墓碑刪除，不能讀取管理資料。

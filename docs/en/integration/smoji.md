@@ -1,7 +1,7 @@
 # Smoji sticker packs
 
-::: info Image origin support since v0.3.1
-「图片来源」 (Image origin) allows separate hosting of manifests and images. v0.2.9 and earlier require the same origin; upgraded sites keep that rule by default.
+::: info Image origin support since v0.3.0
+「图片来源」 (Image origin) lets the manifest and the images be hosted separately. v0.2.9 and earlier internal test releases required the same origin; sites upgraded from them keep the field empty and continue to use the same-origin rule.
 :::
 
 [Smoji](https://github.com/DejavuMoe/Smoji) provides a sticker gallery and manifest export tools. In the [Smoji workbench](https://smoji.zsh.moe/), you can copy individual stickers or select categories and custom groups to export a manifest for the comment picker's contents.
@@ -12,14 +12,14 @@ Ecoku saves stickers as plain-text markers and renders them as images when displ
 
 To use Smoji's existing gallery, you do not need to download or host the assets yourself:
 
-1. Edit the site under 「站点」 (Sites) in the admin console and select 「启用」 (Enable) under 「表情包」 (Sticker packs).
+1. Edit the site under 「站点」 (Sites) in the admin console and set 「表情包」 (Stickers) to 「启用」 (On).
 2. Enter the public manifest URL in 「Smoji 清单」 (Smoji manifest) and save:
 
    ```text
    https://s3-cdn.zsh.moe/smoji/smoji.json
    ```
 
-3. Open the comment page and click 「表情」 (Stickers) to pick an image. You can also open an individual sticker's details in the [Smoji workbench](https://smoji.zsh.moe/), copy its **Markdown** format, and paste it into the comment box:
+3. Open the comment page and click 「表情」 (Sticker) to pick an image. You can also open an individual sticker's details in the [Smoji workbench](https://smoji.zsh.moe/), copy its **Markdown** format, and paste it into the comment box:
 
    ```text
    ![smoji:挠脸](https://s3-cdn.zsh.moe/smoji/aodamiao/iclpknnbbcne.webp)
@@ -29,7 +29,7 @@ To use Smoji's existing gallery, you do not need to download or host the assets 
 
 Choose the Markdown format containing `![smoji:…](…)`. A bare image URL, HTML, or BBCode will not become an Ecoku sticker; ordinary Markdown images are not supported either.
 
-Copied images must also satisfy the site's origin restriction. Validation checks the image origin and marker format; it does not require the image to appear in the picker manifest. After disabling 「表情包」, existing markers display as literal text, and submissions containing new sticker markers are rejected.
+Copied images must also satisfy the site's origin restriction. Validation checks the image origin and marker format; it does not require the image to appear in the picker manifest. After turning 「表情包」 off, existing markers display as literal text, and submissions containing new sticker markers are rejected.
 
 ## Select stickers and export a manifest {#custom-manifest}
 
@@ -72,11 +72,11 @@ Keep these `src` values: they point to the images' actual locations and take pre
 
 ## Host the manifest and images {#hosting}
 
-The manifest and images can be hosted separately. Publish the JSON above unchanged at `https://example.com/smoji.json`, then configure 「表情包」 (Sticker packs) under 「站点」 (Sites):
+The manifest and images can be hosted separately. Publish the JSON above unchanged at `https://example.com/smoji.json`, then configure 「表情包」 (Stickers) under 「站点」 (Sites):
 
 | Field | Value |
 | --- | --- |
-| 表情包 (Sticker packs) | 启用 (Enable) |
+| 表情包 (Stickers) | 启用 (On) |
 | Smoji 清单 (Smoji manifest) | `https://example.com/smoji.json` |
 | 图片来源 (Image origin) | `https://s3-cdn.zsh.moe` |
 

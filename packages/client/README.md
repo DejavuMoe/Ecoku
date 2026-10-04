@@ -27,7 +27,7 @@ const Ecoku = require('ecoku')
 ```
 
 ```html
-<script src="https://ecoku.example/client/ecoku.umd.js"></script>
+<script src="https://ecoku.example.com/client/ecoku.umd.js"></script>
 <script>
   const comments = new Ecoku({ /* explicit configuration */ })
 </script>
@@ -76,12 +76,12 @@ safe form configuration from the public comment-list response; it never accepts
 management credentials in browser options. Nickname and comment content remain
 required for every site.
 
-For a single-page application:
+For a single-page application, call `setPageKey()` after a route change; it loads the first page of the new article itself. `reload()` refreshes the current page, and `destroy()` unmounts the surface:
 
 ```ts
 await comments.setPageKey('guides/another-article', 'Another article')
-await comments.reload()
-comments.destroy()
+await comments.reload()   // refresh the current page when needed
+comments.destroy()        // when the host component unmounts
 ```
 
 `apiBaseUrl` remains a deprecated alias for `serverURL`. The former
