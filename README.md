@@ -8,7 +8,7 @@
 - 一个实例可以服务多个网站；
 - 可选邮件 / Telegram 通知，以及 Cloudflare Turnstile 或自托管 Cap 人机验证。
 
-当前版本：`v0.3.2`，镜像 `ghcr.io/dejavumoe/ecoku:v0.3.2`。
+当前版本：`v0.3.3`，镜像 `ghcr.io/dejavumoe/ecoku:v0.3.3`。
 
 文档：[部署与接入](https://ecoku.zsh.moe) · SDK：[npm ecoku](https://www.npmjs.com/package/ecoku)
 

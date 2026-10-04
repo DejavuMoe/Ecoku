@@ -2,9 +2,9 @@
 
 Public releases start at v0.3.0. For a new instance use [Docker deployment](./docker); this page covers upgrades.
 
-The current release is **v0.3.2** (released 2026-10-04, schema v12).
+The current release is **v0.3.3** (released 2026-10-04, schema v12).
 
-New images are published to GHCR. Deployments using Forgejo images should change `image` to `ghcr.io/dejavumoe/ecoku:v0.3.2` or the exact target tag for future upgrades, keeping existing data and configuration mounts. No new versions will be published to the Forgejo registry. Switching registries at the same version does not require reinitializing the instance.
+New images are published to GHCR. Deployments using Forgejo images should change `image` to `ghcr.io/dejavumoe/ecoku:v0.3.3` or the exact target tag for future upgrades, keeping existing data and configuration mounts. No new versions will be published to the Forgejo registry. Switching registries at the same version does not require reinitializing the instance.
 
 ## What happens during an upgrade
 
@@ -26,7 +26,7 @@ That makes a backup taken before the upgrade the only way to roll back to an old
 **3. Change the image version.** Edit `~/Ecoku/compose.yaml` and change `image` to the target version, for example:
 
 ```yaml
-    image: "ghcr.io/dejavumoe/ecoku:v0.3.2"
+    image: "ghcr.io/dejavumoe/ecoku:v0.3.3"
 ```
 
 Use an exact version number, not `latest`. If the upgrade notes ask you to change `app/config.yaml` or `ecoku.env`, change them at the same time.
@@ -61,6 +61,7 @@ First check whether the old and new versions have the same schema (see the table
 
 | Version | Release date | Schema | Highlights |
 | --- | --- | --- | --- |
+| [v0.3.3](./upgrades/v0.3.3) | 2026-10-04 | v12 | The admin username is kept after a password reset, a reply depth limit in the comment area, and the loader `data-i18n` attribute with localized failure messages. |
 | [v0.3.2](./upgrades/v0.3.2) | 2026-10-04 | v12 | Boxed admin settings with item lists, the email header seal and SDK locale precedence fixes. |
 | [v0.3.1](./upgrades/v0.3.1) | 2026-10-03 | v11 → v12 | Three-language interfaces, per-site locale and documentation theme synchronization. |
 | [v0.3.0](./upgrades/v0.3.0) | 2026-10-03 | v10 → v11 | Separate Smoji image origin, npm SDK and GHCR releases, configuration templates and documentation theme. |

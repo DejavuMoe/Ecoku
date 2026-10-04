@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-10-04
+
 ### 变更
 
 - HTML 加载器支持 `data-i18n`（`zh-CN`、`zh-Hant`、`en`），作用与 SDK 的 `i18n` 参数相同，可以覆盖站点设置的评论区语言；无效值忽略。加载器自己的失败提示也随之切换语言，未设置时按页面 `<html lang>` 选择，其他情况为简体中文。
@@ -13,6 +15,7 @@
 - 修正文档与实现不符之处：Smoji 图片来源自 v0.3.0 起提供；HTML 加载器只在脚本加载、初始化失败或超时时显示自己的重试按钮，评论接口出错由评论区提示；超长页面 key 会使评论区无法初始化；密钥文件问题只在启动时报错；Telegram 限速时取较长的等待时间。英文页引用的后台与评论区标签改为界面上的实际英文文案。
 - 配置模板中站点 `i18n` 的说明改为各语言版本的译文；HTML 接入示例说明改用实际属性名，并补充 Cap instrumentation 需要的 `'unsafe-eval'`。
 - 后台文档补充站点的「评论区语言」字段；API 参考补充 `EcokuSite` 站点管理凭据只能墓碑删除本站评论的规则。
+- 开发环境的 `mise.lock` 补充 Windows 平台的 Go、Node.js 与 pnpm 下载地址和校验值。
 
 ### 修复
 
@@ -597,4 +600,5 @@
 [0.3.0]: https://git.via.moe/dejavu/Ecoku/src/tag/v0.3.0
 [0.3.1]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.1
 [0.3.2]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.2
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.3.2...master
+[0.3.3]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.3
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.3.3...master
