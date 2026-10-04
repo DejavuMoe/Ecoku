@@ -20,21 +20,21 @@ hero:
 
 features:
   - title: 提交即公开
-    details: 没有审核队列。回复在被回复的评论下方展开，删除时保留墓碑，讨论上下文不会断。
+    details: 无审核队列。回复就地展开，删除保留墓碑，讨论上下文始终连贯。
     link: /guide/concepts#threads
   - title: 不记录访客 IP
-    details: 评论会保存昵称、正文及填写的邮箱、网址；公开接口不返回邮箱，不保存 IP 和 User-Agent。浏览器可加密记住身份 7 天。
+    details: 仅保存昵称、正文及选填的邮箱与网址；公开接口不返回邮箱，不记录访客 IP 与 User-Agent。浏览器本地加密记住身份 7 天。
     link: /guide/concepts#data
-  - title: 一个容器，便于自托管
-    details: Go 程序提供接口、后台和嵌入脚本；SQLite 保存业务数据，密钥独立持久化。备份整个数据目录和配置。
+  - title: 单容器独立运行
+    details: Go 单二进制整合接口、管理后台与嵌入脚本；SQLite 存储业务数据，密钥独立持久化。冷备单个数据目录即可恢复。
     link: /guide/introduction#components
-  - title: 多站点
-    details: 一个实例服务多个网站，每个站点有独立的来源白名单、评论设置和博主身份。
+  - title: 多站点支持
+    details: 单实例服务多个网站，各站点独立配置来源白名单、表单字段、限制规则与博主身份。
     link: /self-hosting/admin#sites
   - title: 通知与人机验证
-    details: 新评论通过邮件或 Telegram 通知博主；可选 Cloudflare Turnstile 或自托管 Cap 防刷。
+    details: 新评论即时通过邮件或 Telegram 通知博主；支持 Cloudflare Turnstile 与自托管 Cap 防刷。
     link: /self-hosting/notifications
   - title: 一段 HTML 即可接入
-    details: 适用于 Hugo、Hexo、Astro 等任何静态网站，也支持 Vue、React 单页应用；样式可用 CSS 变量调整。
+    details: 适用于 Hugo、Hexo、Astro 等静态站点与 Vue、React 单页应用；支持通过 CSS 变量自由调整样式。
     link: /integration/html
 ---

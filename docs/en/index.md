@@ -20,21 +20,21 @@ hero:
 
 features:
   - title: Live on submit
-    details: No moderation queue. Replies open under the comment they answer, and deletes leave a tombstone, so the discussion keeps its context.
+    details: No moderation queue. Replies open inline, deletions leave a tombstone, and discussion context remains intact.
     link: /en/guide/concepts#threads
   - title: No visitor IP storage
-    details: Comments store names, text and supplied email or website details. Public APIs omit email; IP and User-Agent are not stored. Browsers can remember identity encrypted for 7 days.
+    details: Stores only nickname, body, and optional email or website. Public APIs omit email; visitor IP and User-Agent are never logged. Browsers remember identity encrypted locally for 7 days.
     link: /en/guide/concepts#data
-  - title: One container, self-hosted
-    details: One Go program serves the API, admin console and embed assets. SQLite stores application data; keys persist separately. Back up the data directory and configuration.
+  - title: Self-contained container
+    details: A single Go binary serves APIs, admin console, and embed assets. SQLite holds data while secrets persist independently. Back up just one directory to restore.
     link: /en/guide/introduction#components
-  - title: Multiple sites
-    details: One instance serves several websites. Each site has its own allowed origins, comment settings, and blogger identity.
+  - title: Multi-site support
+    details: One instance serves multiple sites, each with isolated origin allowlists, form fields, constraints, and blogger identities.
     link: /en/self-hosting/admin#sites
-  - title: Notifications and CAPTCHA
-    details: The blogger gets new comments by email or Telegram. Cloudflare Turnstile or self-hosted Cap can optionally block spam.
+  - title: Notifications & verification
+    details: Immediate notifications via email or Telegram; optional Cloudflare Turnstile or self-hosted Cap anti-spam protection.
     link: /en/self-hosting/notifications
-  - title: Embed with a snippet of HTML
-    details: Works with Hugo, Hexo, Astro, and any other static site, as well as Vue and React single-page apps. Adjust the look with CSS variables.
+  - title: Simple HTML embed
+    details: Works with Hugo, Hexo, Astro, and single-page apps like Vue or React; fully themeable with CSS variables.
     link: /en/integration/html
 ---
