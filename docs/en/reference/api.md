@@ -37,7 +37,7 @@ Time fields are RFC 3339 strings in UTC, such as `2026-08-20T12:00:00Z`.
 | `422` | The comment list exceeds the read limits, or the reply is more than 16 levels deep. |
 | `429` | Rate limited. The `Retry-After` response header gives the number of seconds to wait. |
 | `502` | Sending a test notification failed. |
-| `503` | The service is busy, a read timed out, the CAPTCHA service is unavailable, the admin session store is unavailable, or the credential encryption master key is not configured. |
+| `503` | The service is busy, request processing timed out, the CAPTCHA service is unavailable, the admin session store is unavailable, or the credential encryption master key is not configured. |
 
 ### Cross-origin requests and origins
 
@@ -209,7 +209,7 @@ Results are sorted by ID in ascending order. `afterId` must be used together wit
 
 When `hasMore` is `true`, use `nextAfterId` as the `afterId` of the next request. The 1 MiB response limit applies here too. If you exceed it, retry with a smaller `pageSize`.
 
-### Submit a comment
+### Submit a comment {#submit-comment}
 
 ```http
 POST /api/comment/submit
@@ -249,6 +249,10 @@ On success, it returns `201`:
 { "code": 201, "message": "评论提交成功", "data": { "id": 102, "isBlogger": false } }
 ```
 
+Origin checks, site and verification settings reads, CAPTCHA verification, and comment writes share an 8-second processing budget and honor request cancellation. The official SDK has a 10-second timeout per request. The comment and its notification events are saved in the same transaction.
+
+If the connection is interrupted, the request times out, or no valid success response arrives, the comment may already have been saved. The official SDK preserves the draft, reports that the outcome is unconfirmed, and does not resend automatically. This endpoint does not guarantee idempotent retries; check the comments before retrying to avoid duplicate posts.
+
 To post as the blogger, put the blogger passphrase in `username` and leave `email` and `url` empty. When the passphrase matches, the server saves the comment with the site's blogger nickname, blogger email, and site URL, and `isBlogger` is `true`.
 
 Errors related to submission:
@@ -262,7 +266,7 @@ Errors related to submission:
 | `413` | The request body exceeds 80 KiB. |
 | `422` | The reply is more than 16 levels deep. |
 | `429` | Exceeds `rate_limit.comment_submit` (by default 5 per IP every 60 seconds). |
-| `503` | The CAPTCHA service is unavailable. |
+| `503` | The CAPTCHA service is unavailable, or request processing timed out or was canceled. |
 
 ## Admin endpoints
 

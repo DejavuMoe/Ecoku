@@ -47,7 +47,7 @@ Visitors do not need to register to comment. They fill in three fields:
 
 The identity a visitor enters in the root comment box is reused automatically for replies. When a visitor clicks "Reply" (回复) under a comment directly, any missing identity fields are filled in inside that reply box, without jumping back to the top of the page.
 
-After a successful post, the browser remembers this identity for 7 days so the visitor does not have to enter it again:
+After a successful post, the browser attempts to remember this identity for 7 days so the visitor does not have to enter it again. Reading the identity does not block comment loading, and saving it does not delay the success message:
 
 - It is stored in the browser's IndexedDB, encrypted with a non-extractable AES-GCM key. It is not written to cookies, localStorage, or the URL.
 - It is stored separately per Ecoku server address and site ID, and is not shared between sites.

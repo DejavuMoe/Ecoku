@@ -56,6 +56,15 @@ func TestDisabledCaptchaPublishesNoChallenge(t *testing.T) {
 	}
 }
 
+func TestVerifyHonorsCancellationWhileReadingSettings(t *testing.T) {
+	setupCaptchaTest(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := Verify(ctx, Tokens{}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled verification error=%v", err)
+	}
+}
+
 func TestSettingsEncryptBothSecretsAndRetainInactiveProvider(t *testing.T) {
 	setupCaptchaTest(t)
 	saved, err := Save(Settings{

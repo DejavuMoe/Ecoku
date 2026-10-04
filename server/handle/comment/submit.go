@@ -1,6 +1,7 @@
 package comment
 
 import (
+	"context"
 	"ecoku-server/captcha"
 	"ecoku-server/model"
 	"ecoku-server/notifications"
@@ -10,10 +11,22 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+const publicSubmitTimeout = 8 * time.Second
+
+// PublicSubmitBudget runs before CORS so origin checks, CAPTCHA verification
+// and the write transaction share a deadline, with headroom for the SDK's 10s timeout.
+func PublicSubmitBudget(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), publicSubmitTimeout)
+	defer cancel()
+	c.Request = c.Request.WithContext(ctx)
+	c.Next()
+}
 
 type SubmitCommentRequest struct {
 	SiteID         string      `json:"siteId"`
@@ -73,15 +86,11 @@ func SubmitComment(c *gin.Context) {
 		return
 	}
 
-	siteID, ok := requireRegisteredSite(c, req.SiteID, true)
+	site, ok := requireRegisteredSite(c, req.SiteID, true)
 	if !ok {
 		return
 	}
-	site, err := model.GetSite(siteID)
-	if err != nil {
-		utils.SendError(c, http.StatusInternalServerError, "读取评论表单配置失败")
-		return
-	}
+	siteID := site.ID
 	mark := strings.TrimSpace(req.Mark)
 	pageTitle := strings.TrimSpace(req.PageTitle)
 	content := strings.TrimSpace(req.Content)
@@ -177,7 +186,7 @@ func SubmitComment(c *gin.Context) {
 		comment.URL = &websiteValue
 	}
 
-	if err := model.DB.Transaction(func(tx *gorm.DB) error {
+	if err := model.DB.WithContext(c.Request.Context()).Transaction(func(tx *gorm.DB) error {
 		if parentID != nil {
 			var parent model.Comment
 			err := tx.Where("id = ?", *parentID).First(&parent).Error
@@ -215,6 +224,8 @@ func SubmitComment(c *gin.Context) {
 		return notifications.EnqueueNewComment(tx, comment)
 	}); err != nil {
 		switch {
+		case c.Request.Context().Err() != nil:
+			utils.SendError(c, http.StatusServiceUnavailable, "评论提交超时，请先确认是否已发布")
 		case errors.Is(err, errParentNotFound):
 			utils.SendError(c, http.StatusNotFound, "父评论不存在")
 		case errors.Is(err, errParentConflict):
