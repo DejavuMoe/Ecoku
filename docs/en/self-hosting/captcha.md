@@ -14,6 +14,7 @@ This setting applies to the whole instance. All sites and admin sign-in use the 
 
 - When the browser submits a comment or signs in, it attaches a one-time token. The server verifies it with Turnstile or Cap before processing the request any further. Verification happens before the blogger passphrase is checked, so nobody can probe the passphrase without passing verification.
 - If verification fails, the token is missing, or the verification service times out or is unavailable, the request is rejected. It is never let through automatically, and Ecoku does not fall back to the other mode.
+- For comment submissions, verification shares a processing deadline with origin checks, settings reads, and comment writes. Slow verification uses up that budget; see [Submit a comment](../reference/api#submit-comment) for timeout and retry behavior.
 - When verifying, the server sends only the token and the secret key. It does not include the visitor's IP address.
 - Secret keys are encrypted with the notification master key in `data/ecoku-secrets.json` before storage in the database. The master key is generated on first startup. The admin console only shows 「已设置，输入新值以更换」 (set; enter a new value to replace it). Back up the database and key file together.
 - When you switch modes or turn verification off, the settings already entered for the other mode are kept, so you do not have to enter them again when you switch back.

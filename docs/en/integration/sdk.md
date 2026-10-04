@@ -58,7 +58,7 @@ You can use the instance's `/client/ecoku.css` (the same as the default styles) 
 
 ### `init(options?)`
 
-Mounts the comment section, restores the visitor identity saved in the browser, and loads the first page of comments. Returns a Promise.
+Mounts the comment section, restores the saved visitor identity and loads the first page of comments concurrently. The returned Promise waits for comment loading to finish, without waiting for optional identity restoration; a late identity result does not overwrite edited inputs.
 
 - If you pass `options`, they replace the options given to the constructor.
 - On an instance that is already initialized, calling it again returns immediately: nothing is mounted twice, and any `options` you pass are ignored.

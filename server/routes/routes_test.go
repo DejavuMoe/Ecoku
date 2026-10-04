@@ -73,6 +73,58 @@ func TestPublicListAdmissionPrecedesCORSDatabaseWork(t *testing.T) {
 	}
 }
 
+func TestPublicSubmitDeadlineIncludesCORSDatabaseWork(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	configureRoutesTest(t)
+	router, err := NewRouter()
+	if err != nil {
+		t.Fatal(err)
+	}
+	budgetObserved := false
+	if err := model.DB.Callback().Query().Before("gorm:query").Register("test:submit-budget", func(tx *gorm.DB) {
+		if tx.Statement.Table == "site_origins" {
+			deadline, ok := tx.Statement.Context.Deadline()
+			budgetObserved = ok && time.Until(deadline) > 0 && time.Until(deadline) < 10*time.Second
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	defer model.DB.Callback().Query().Remove("test:submit-budget")
+	req := httptest.NewRequest(http.MethodOptions, "/api/comment/submit", nil)
+	req.Header.Set("Origin", "https://a.example")
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, req)
+	if recorder.Code != http.StatusNoContent || !budgetObserved {
+		t.Fatalf("preflight status=%d budget=%v", recorder.Code, budgetObserved)
+	}
+	sqlDB, err := model.DB.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	connection, err := sqlDB.Conn(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer connection.Close()
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	req = httptest.NewRequest(http.MethodPost, "/api/comment/submit", strings.NewReader(`{}`)).WithContext(ctx)
+	req.Header.Set("Origin", "https://a.example")
+	recorder = httptest.NewRecorder()
+	done := make(chan struct{})
+	go func() { router.ServeHTTP(recorder, req); close(done) }()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		_ = connection.Close()
+		<-done
+		t.Fatal("submission CORS ignored cancellation while waiting for SQLite")
+	}
+	if recorder.Code != http.StatusServiceUnavailable {
+		t.Fatalf("canceled CORS status=%d", recorder.Code)
+	}
+}
+
 func TestClientStaticAssetsAreServedWithCrossOriginSafeHeaders(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	configureRoutesTest(t)

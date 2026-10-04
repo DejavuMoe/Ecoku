@@ -74,15 +74,11 @@ func PublicListBudget(c *gin.Context) {
 // parentId requests use single-level cursor pagination without tree expansion.
 func GetComments(c *gin.Context) {
 	ctx := c.Request.Context()
-	siteID, ok := requireRegisteredSite(c, c.Query("siteId"), false)
+	site, ok := requireRegisteredSite(c, c.Query("siteId"), false)
 	if !ok {
 		return
 	}
-	site, err := model.GetSiteWithContext(ctx, siteID)
-	if err != nil {
-		sendPublicListError(c, err)
-		return
-	}
+	siteID := site.ID
 	captchaConfig, err := captcha.PublicConfigWithContext(ctx)
 	if err != nil {
 		sendPublicListError(c, err)

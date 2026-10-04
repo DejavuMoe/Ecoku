@@ -60,6 +60,9 @@ importers:
 
   packages/client:
     devDependencies:
+      '@playwright/test':
+        specifier: 1.63.0
+        version: 1.63.0
       '@types/node':
         specifier: ^25.9.5
         version: 25.9.5
@@ -379,6 +382,11 @@ packages:
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
+
+  '@playwright/test@1.63.0':
+    resolution: {integrity: sha512-oxMK4vllB9RK5NQ2l1pq1IfOf2AvnEuj/vYGDj0H2nMtmtZpKtCwt/l00GEO6xjGfpBNAvjovvYdCm50dRQkpQ==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   '@rolldown/binding-android-arm64@1.2.4':
     resolution: {integrity: sha512-jHC2cnyKz5xU2fhECtFl8OZ83cYNt13GZQD+0uMJ/X3o+ijmd56okHhTUwxVSHPx1IRVIJEZ1/1pPzeLCU6XKA==}
@@ -1588,6 +1596,16 @@ packages:
       typescript:
         optional: true
 
+  playwright-core@1.63.0:
+    resolution: {integrity: sha512-rYCsBF/M5HjUch52bbtVONEFjv6Xu8sm8h72dNlR5bzIE1fvC/bxgspzkjSfU+MweEMmPM8KJebG6nnyxo5mCg==}
+    engines: {node: '>=20'}
+    hasBin: true
+
+  playwright@1.63.0:
+    resolution: {integrity: sha512-+7ziBLidS4NaNCdt57SUDT+wYmmd5fmiQejUic/kb+YsYSCPyOOE9sebzMjNmQrsnNpDJqd4WHvV/8lfKfUDUg==}
+    engines: {node: '>=20'}
+    hasBin: true
+
   points-on-curve@0.2.0:
     resolution: {integrity: sha512-0mYKnYYe9ZcqMCWhUjItv/oHjvgEsfKvnUTg8sAtnHr3GVy7rGkXCb6d5cSyqrWqL4k81b9CPg3urd+T7aop3A==}
 
@@ -2234,6 +2252,10 @@ snapshots:
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
+
+  '@playwright/test@1.63.0':
+    dependencies:
+      playwright: 1.63.0
 
   '@rolldown/binding-android-arm64@1.2.4':
     optional: true
@@ -3422,6 +3444,12 @@ snapshots:
       vue: 3.5.41(typescript@6.0.3)
     optionalDependencies:
       typescript: 6.0.3
+
+  playwright-core@1.63.0: {}
+
+  playwright@1.63.0:
+    dependencies:
+      playwright-core: 1.63.0
 
   points-on-curve@0.2.0: {}
 

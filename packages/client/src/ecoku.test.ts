@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('./identity-store', () => ({
-  VISITOR_IDENTITY_TTL_MS: 7 * 24 * 60 * 60 * 1000,
   loadVisitorIdentity: vi.fn(),
   saveVisitorIdentity: vi.fn(),
 }))
@@ -12,13 +11,20 @@ import { resolveConfig } from './config'
 import {
   loadVisitorIdentity,
   saveVisitorIdentity,
-  VISITOR_IDENTITY_TTL_MS,
+  type StoredVisitorIdentity,
 } from './identity-store'
 import { zhCN } from './messages'
 
 type RawComment = Record<string, unknown>
 
 const activeClients: Ecoku[] = []
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason: unknown) => void
+  const promise = new Promise<T>((onResolve, onReject) => { resolve = onResolve; reject = onReject })
+  return { promise, resolve, reject }
+}
 
 function comment(id: number, parent: number, content: string, extra: RawComment = {}): RawComment {
   return {
@@ -113,11 +119,12 @@ function setValue(control: HTMLInputElement | HTMLTextAreaElement, value: string
 }
 
 function fillIdentityAndContent(container: HTMLElement, content = 'Root submission'): HTMLFormElement {
-  setValue(container.querySelector<HTMLInputElement>('input[type="text"]')!, 'Guest')
-  setValue(container.querySelector<HTMLInputElement>('input[type="email"]')!, 'guest@example.com')
-  setValue(container.querySelector<HTMLInputElement>('input[type="url"]')!, 'https://guest.example/profile')
-  setValue(container.querySelector<HTMLTextAreaElement>('.ecoku-composer .ecoku-textarea')!, content)
-  return container.querySelector<HTMLFormElement>('.ecoku-composer')!
+  const form = container instanceof HTMLFormElement ? container : container.querySelector<HTMLFormElement>('.ecoku-composer')!
+  setValue(form.querySelector<HTMLInputElement>('input[type="text"]')!, 'Guest')
+  setValue(form.querySelector<HTMLInputElement>('input[type="email"]')!, 'guest@example.com')
+  setValue(form.querySelector<HTMLInputElement>('input[type="url"]')!, 'https://guest.example/profile')
+  setValue(form.querySelector<HTMLTextAreaElement>('.ecoku-textarea')!, content)
+  return form
 }
 
 async function submitForm(form: HTMLFormElement): Promise<void> {
@@ -133,6 +140,7 @@ beforeEach(() => {
 
 afterEach(() => {
   for (const client of activeClients.splice(0)) client.destroy()
+  vi.useRealTimers()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
@@ -434,6 +442,8 @@ describe('approved production comment surface', () => {
   })
 
   it('lets a blogger submit only a passphrase and does not store it as visitor identity', async () => {
+    const restore = deferred<StoredVisitorIdentity | null>()
+    vi.mocked(loadVisitorIdentity).mockReturnValue(restore.promise)
     const posts: Record<string, unknown>[] = []
     const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
       const url = new URL(String(input))
@@ -453,7 +463,8 @@ describe('approved production comment surface', () => {
     const { client, container } = createClient(fetchMock)
     await client.init()
     const form = container.querySelector<HTMLFormElement>('.ecoku-composer')!
-    setValue(container.querySelector<HTMLInputElement>('input[type="text"]')!, 'correct-horse-battery')
+    // Programmatic prefill emits no edit event: success itself must invalidate restoration.
+    container.querySelector<HTMLInputElement>('input[type="text"]')!.value = 'correct-horse-battery'
     setValue(container.querySelector<HTMLTextAreaElement>('.ecoku-composer .ecoku-textarea')!, 'Blogger note')
     await submitForm(form)
     await vi.waitFor(() => expect(posts).toHaveLength(1))
@@ -466,7 +477,13 @@ describe('approved production comment surface', () => {
     expect(saveVisitorIdentity).not.toHaveBeenCalled()
     await vi.waitFor(() => {
       expect(container.querySelector<HTMLInputElement>('input[type="text"]')?.value).toBe('')
+      expect(container.querySelector<HTMLTextAreaElement>('.ecoku-composer textarea')?.disabled).toBe(false)
     })
+    restore.resolve({ username: 'Old Guest', email: 'old@example.com', url: '' })
+    await restore.promise
+    expect(container.querySelector<HTMLInputElement>('input[type="text"]')?.value).toBe('')
+    expect(container.querySelector<HTMLInputElement>('input[type="email"]')?.value).toBe('')
+    expect(saveVisitorIdentity).not.toHaveBeenCalled()
   })
 
   it('keeps the reply identity grid visible when only a passphrase-like nickname is filled', async () => {
@@ -728,6 +745,8 @@ describe('approved production comment surface', () => {
   })
 
   it('submits an inline reply with the identity entered beside that reply and remembers it after success', async () => {
+    const persistence = deferred<boolean>()
+    vi.mocked(saveVisitorIdentity).mockReturnValue(persistence.promise)
     const posts: Record<string, unknown>[] = []
     const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
       const url = new URL(String(input))
@@ -766,6 +785,13 @@ describe('approved production comment surface', () => {
         { username: 'Reply Guest', email: 'reply@example.com', url: 'https://reply.example/profile' },
       )
     })
+    await vi.waitFor(() => expect(container.querySelector('.ecoku-status-line')?.textContent).toBe(zhCN.replySubmitted))
+    expect(container.querySelector('.ecoku-reply-composer')).toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    persistence.reject(new Error('storage unavailable'))
+    await persistence.promise.catch(() => {})
+    expect(container.querySelector('.ecoku-status-line')?.textContent).toBe(zhCN.replySubmitted)
+    expect(container.querySelector('.ecoku-form-error')?.textContent).toBe('')
   })
 
   it('reuses a valid stored identity in the inline reply composer without displaying private fields', async () => {
@@ -817,6 +843,8 @@ describe('approved production comment surface', () => {
   })
 
   it('announces submission success before a slow refresh and keeps duplicate protection active', async () => {
+    const persistence = deferred<boolean>()
+    vi.mocked(saveVisitorIdentity).mockReturnValue(persistence.promise)
     let listCalls = 0
     let resolveRefresh: ((response: Response) => void) | undefined
     const fetchMock = vi.fn<typeof fetch>((input) => {
@@ -832,11 +860,61 @@ describe('approved production comment surface', () => {
     await submitForm(form)
     await vi.waitFor(() => expect(resolveRefresh).toBeTypeOf('function'))
     expect(container.querySelector('.ecoku-status-line')?.textContent).toBe(zhCN.submitted)
+    expect(container.querySelector<HTMLTextAreaElement>('.ecoku-composer textarea')?.value).toBe('')
     form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }))
     const postCalls = fetchMock.mock.calls.filter(([input]) => new URL(String(input)).pathname.endsWith('/api/comment/submit'))
     expect(postCalls).toHaveLength(1)
     resolveRefresh?.(listResponse([]))
     await vi.waitFor(() => expect(container.querySelector('.ecoku-primary-button')?.textContent).toBe(zhCN.submitComment))
+    persistence.resolve(false)
+    await persistence.promise
+    expect(container.querySelector('.ecoku-status-line')?.textContent).toBe(zhCN.submitted)
+    expect(container.querySelector('.ecoku-form-error')?.textContent).toBe('')
+  })
+
+  it('queues newer identity saves without delaying submission success or stopping after a failed save', async () => {
+    const firstSave = deferred<boolean>()
+    vi.mocked(saveVisitorIdentity).mockReturnValueOnce(firstSave.promise)
+    const posts: Record<string, unknown>[] = []
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      if (String(input).includes('/api/comment/submit')) {
+        posts.push(JSON.parse(String(init?.body)))
+        return jsonResponse(201, { id: posts.length })
+      }
+      return listResponse([])
+    })
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    const form = fillIdentityAndContent(container, 'First submission')
+    const content = form.querySelector<HTMLTextAreaElement>('textarea')!
+    await submitForm(form)
+    await vi.waitFor(() => {
+      expect(saveVisitorIdentity).toHaveBeenCalledTimes(1)
+      expect(content.disabled).toBe(false)
+      expect(container.querySelector('.ecoku-status-line')?.textContent).toBe(zhCN.submitted)
+    })
+    const newerIdentity = { username: 'New Guest', email: 'new@example.com', url: 'https://new.example/' }
+    setValue(form.querySelector<HTMLInputElement>('input[type="text"]')!, newerIdentity.username)
+    setValue(form.querySelector<HTMLInputElement>('input[type="email"]')!, newerIdentity.email)
+    setValue(form.querySelector<HTMLInputElement>('input[type="url"]')!, newerIdentity.url)
+    setValue(content, 'Second submission')
+    await submitForm(form)
+    await vi.waitFor(() => {
+      expect(posts).toHaveLength(2)
+      expect(content.value).toBe('')
+      expect(content.disabled).toBe(false)
+      expect(container.querySelector('.ecoku-status-line')?.textContent).toBe(zhCN.submitted)
+    })
+    expect(saveVisitorIdentity).toHaveBeenCalledTimes(1)
+    expect(saveVisitorIdentity).toHaveBeenLastCalledWith(
+      'https://comments.example/base/', 'site-a',
+      { username: 'Guest', email: 'guest@example.com', url: 'https://guest.example/profile' },
+    )
+    setValue(form.querySelector<HTMLInputElement>('input[type="text"]')!, 'Unsubmitted edit')
+    firstSave.reject(new Error('first save failed'))
+    await vi.waitFor(() => expect(saveVisitorIdentity).toHaveBeenCalledTimes(2))
+    expect(saveVisitorIdentity).toHaveBeenLastCalledWith('https://comments.example/base/', 'site-a', newerIdentity)
+    expect(form.querySelector('.ecoku-form-error')?.textContent).toBe('')
   })
 
   it.each([
@@ -875,17 +953,75 @@ describe('approved production comment surface', () => {
     await vi.waitFor(() => expect(container.querySelector('.ecoku-form-error')?.textContent).toBe('Complete the verification before posting.'))
   })
 
-  it('shows a network-specific submission error without clearing the draft', async () => {
-    const fetchMock = vi.fn<typeof fetch>((input) => {
-      const url = new URL(String(input))
-      if (url.pathname.endsWith('/api/comment/submit')) return Promise.reject(new TypeError('offline'))
-      return Promise.resolve(listResponse([]))
+  describe.each(['root', 'reply'] as const)('unconfirmed %s submissions', (composer) => {
+    it.each<{
+      name: string
+      respond: (init?: RequestInit) => Promise<Response>
+      message: 'submitNetwork' | 'submit500'
+    }>([
+      { name: 'transport failure', respond: () => Promise.reject(new TypeError('offline')), message: 'submitNetwork' },
+      { name: 'unexpected error', respond: () => Promise.reject(new Error('unknown')), message: 'submitNetwork' },
+      { name: 'unexpected transport abort', respond: () => Promise.reject(new DOMException('Aborted', 'AbortError')), message: 'submitNetwork' },
+      {
+        name: 'timeout after sending the request',
+        respond: (init) => new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new DOMException('Timed out', 'AbortError')), { once: true })
+        }),
+        message: 'submitNetwork',
+      },
+      { name: 'malformed HTTP 200 JSON', respond: () => Promise.resolve(new Response('{', { status: 200 })), message: 'submitNetwork' },
+      { name: 'malformed HTTP 201 envelope', respond: () => Promise.resolve(new Response('null', { status: 201 })), message: 'submitNetwork' },
+      { name: 'failure envelope with HTTP 200', respond: () => Promise.resolve(new Response('{"code":500,"data":null}', { status: 200 })), message: 'submitNetwork' },
+      { name: 'invalid success ID', respond: () => Promise.resolve(jsonResponse(201, { id: 0 })), message: 'submitNetwork' },
+      { name: 'HTTP 500', respond: () => Promise.resolve(jsonResponse(500, null)), message: 'submit500' },
+      { name: 'HTTP 503', respond: () => Promise.resolve(jsonResponse(503, null)), message: 'submit500' },
+    ])('preserves the draft without retrying after $name', async ({ respond, message }) => {
+      let postCalls = 0
+      const fetchMock = vi.fn<typeof fetch>((input, init) => {
+        if (new URL(String(input)).pathname.endsWith('/api/comment/submit')) {
+          postCalls += 1
+          return respond(init)
+        }
+        return Promise.resolve(listResponse([comment(1, 0, 'existing root')]))
+      })
+      const { client, container } = createClient(fetchMock)
+      await client.init()
+      if (composer === 'reply') container.querySelector<HTMLButtonElement>('.ecoku-reply-action')!.click()
+      const form = container.querySelector<HTMLFormElement>(composer === 'reply' ? '.ecoku-reply-composer' : '.ecoku-composer')!
+      fillIdentityAndContent(form, 'Keep this draft')
+      const statusBefore = container.querySelector('.ecoku-status-line')?.textContent
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      await submitForm(form)
+      await vi.advanceTimersByTimeAsync(20_000)
+      expect(form.querySelector('.ecoku-form-error')?.textContent).toBe(zhCN[message])
+      expect(form.querySelector<HTMLTextAreaElement>('textarea')?.value).toBe('Keep this draft')
+      expect(form.querySelector<HTMLTextAreaElement>('textarea')?.disabled).toBe(false)
+      expect(container.querySelector('.ecoku-status-line')?.textContent).toBe(statusBefore)
+      expect(saveVisitorIdentity).not.toHaveBeenCalled()
+      expect(postCalls).toBe(1)
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  it.each(['page', 'destroy'])('ignores a submission abort after a %s change', async (change) => {
+    const post = deferred<Response>()
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      if (String(input).includes('/api/comment/submit')) return post.promise
+      return listResponse([])
     })
     const { client, container } = createClient(fetchMock)
     await client.init()
-    await submitForm(fillIdentityAndContent(container, 'Keep this draft'))
-    await vi.waitFor(() => expect(container.querySelector('.ecoku-form-error')?.textContent).toBe(zhCN.submitNetwork))
-    expect(container.querySelector<HTMLTextAreaElement>('.ecoku-composer textarea')?.value).toBe('Keep this draft')
+    const form = fillIdentityAndContent(container, 'Old page draft')
+    const content = form.querySelector<HTMLTextAreaElement>('textarea')!
+    await submitForm(form)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    if (change === 'page') await client.setPageKey('article-b')
+    else client.destroy()
+    post.reject(new DOMException('Navigation aborted the request', 'AbortError'))
+    await vi.waitFor(() => expect(content.disabled).toBe(false))
+    expect(form.querySelector('.ecoku-form-error')?.textContent).toBe('')
+    expect(container.querySelector('.ecoku-status-line')?.textContent ?? '').toBe('')
+    expect(saveVisitorIdentity).not.toHaveBeenCalled()
   })
 
   it('paginates by complete root threads without retaining the previous page', async () => {
@@ -995,7 +1131,7 @@ describe('approved production comment surface', () => {
     expect(JSON.stringify(posts[0])).not.toContain('secret')
   })
 
-  it('stores visitor identity through the seven-day encrypted store without cookies, localStorage, or URL writes', async () => {
+  it('delegates visitor identity persistence without cookies, localStorage, or URL writes', async () => {
     const storageWrite = vi.spyOn(Storage.prototype, 'setItem')
     const initialURL = window.location.href
     const fetchMock = vi.fn<typeof fetch>((input) => {
@@ -1007,12 +1143,131 @@ describe('approved production comment surface', () => {
     await client.init()
     await submitForm(fillIdentityAndContent(container, 'Remember this identity'))
     await vi.waitFor(() => expect(saveVisitorIdentity).toHaveBeenCalledTimes(1))
-    expect(VISITOR_IDENTITY_TTL_MS).toBe(7 * 24 * 60 * 60 * 1000)
     expect(storageWrite).not.toHaveBeenCalled()
     expect(document.cookie).toBe('')
     expect(window.location.href).toBe(initialURL)
     client.destroy()
     expect(container.textContent).toBe('')
+  })
+})
+
+describe('optional identity restoration', () => {
+  const storedIdentity = { username: 'Returning Guest', email: 'returning@example.com', url: 'https://returning.example/' }
+
+  it('loads and reloads comments while storage is pending, then fills an untouched root and open reply', async () => {
+    const restore = deferred<StoredVisitorIdentity | null>()
+    vi.mocked(loadVisitorIdentity).mockReturnValue(restore.promise)
+    const fetchMock = vi.fn<typeof fetch>(async () => listResponse([comment(1, 0, 'existing root')]))
+    const { client, container } = createClient(fetchMock)
+    const initial = client.init()
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    await initial
+    expect(container.textContent).toContain('existing root')
+    await client.reload()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    container.querySelector<HTMLButtonElement>('.ecoku-reply-action')!.click()
+    const reply = container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!
+    setValue(reply.querySelector<HTMLTextAreaElement>('textarea')!, 'Reply draft')
+    restore.resolve(storedIdentity)
+    await restore.promise
+    for (const form of container.querySelectorAll<HTMLFormElement>('.ecoku-composer')) {
+      expect(form.querySelector<HTMLInputElement>('input[type="text"]')?.value).toBe(storedIdentity.username)
+      expect(form.querySelector<HTMLInputElement>('input[type="email"]')?.value).toBe(storedIdentity.email)
+      expect(form.querySelector<HTMLInputElement>('input[type="url"]')?.value).toBe(storedIdentity.url)
+    }
+    expect(reply.querySelector<HTMLTextAreaElement>('textarea')?.value).toBe('Reply draft')
+    expect(reply.querySelector<HTMLButtonElement>('.ecoku-primary-button')?.disabled).toBe(false)
+    expect(reply.querySelector<HTMLElement>('.ecoku-reply-identity-grid')?.hidden).toBe(true)
+    expect(loadVisitorIdentity).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    ['root', 'input'], ['root', 'change'], ['reply', 'input'], ['reply', 'change'],
+  ])('does not restore over %s identity edited then cleared with %s events', async (composer, event) => {
+    const restore = deferred<StoredVisitorIdentity | null>()
+    vi.mocked(loadVisitorIdentity).mockReturnValue(restore.promise)
+    const { client, container } = createClient(vi.fn(async () => listResponse([comment(1, 0, 'root')])))
+    await client.init()
+    if (composer === 'reply') container.querySelector<HTMLButtonElement>('.ecoku-reply-action')!.click()
+    const form = container.querySelector<HTMLFormElement>(composer === 'reply' ? '.ecoku-reply-composer' : '.ecoku-composer')!
+    const nickname = form.querySelector<HTMLInputElement>('input[type="text"]')!
+    for (const value of ['Edited Guest', '']) {
+      nickname.value = value
+      nickname.dispatchEvent(new Event(event, { bubbles: true }))
+    }
+    if (composer === 'root') await client.reload()
+    restore.resolve(storedIdentity)
+    await restore.promise
+    expect(nickname.value).toBe('')
+    for (const input of container.querySelectorAll<HTMLInputElement>('.ecoku-input')) expect(input.value).toBe('')
+  })
+
+  it.each(['page', 'site', 'server', 'destroy'])('ignores a late identity after a %s change', async (change) => {
+    const restore = deferred<StoredVisitorIdentity | null>()
+    vi.mocked(loadVisitorIdentity).mockReturnValueOnce(restore.promise)
+    const { client, container } = createClient(vi.fn(async () => listResponse([])))
+    await client.init()
+    const oldNickname = container.querySelector<HTMLInputElement>('input[type="text"]')!
+    if (change === 'page') await client.setPageKey('article-b')
+    else {
+      client.destroy()
+      if (change !== 'destroy') {
+        vi.mocked(loadVisitorIdentity).mockResolvedValue({ username: 'New Scope', email: '', url: '' })
+        const serverURL = change === 'server' ? 'https://other.example/' : 'https://comments.example/base/'
+        const siteId = change === 'site' ? 'site-b' : 'site-a'
+        await client.init({ container, serverURL, siteId, pageKey: 'article-a' })
+        expect(loadVisitorIdentity).toHaveBeenLastCalledWith(serverURL, siteId)
+        expect(container.querySelector<HTMLInputElement>('input[type="text"]')?.value).toBe('New Scope')
+      }
+    }
+    restore.resolve(storedIdentity)
+    await restore.promise
+    expect(oldNickname.value).toBe('')
+    if (change === 'site' || change === 'server') {
+      expect(container.querySelector<HTMLInputElement>('input[type="text"]')?.value).toBe('New Scope')
+    }
+    if (change === 'destroy') expect(container.childElementCount).toBe(0)
+  })
+
+  it('preserves a prefilled reply even when no edit event was dispatched', async () => {
+    const restore = deferred<StoredVisitorIdentity | null>()
+    vi.mocked(loadVisitorIdentity).mockReturnValue(restore.promise)
+    const { client, container } = createClient(vi.fn(async () => listResponse([comment(1, 0, 'root')])))
+    await client.init()
+    container.querySelector<HTMLButtonElement>('.ecoku-reply-action')!.click()
+    const nickname = container.querySelector<HTMLInputElement>('.ecoku-reply-composer input[type="text"]')!
+    nickname.value = 'Prefilled Guest'
+    restore.resolve(storedIdentity)
+    await restore.promise
+    expect(nickname.value).toBe('Prefilled Guest')
+    expect(container.querySelector<HTMLInputElement>('.ecoku-composer input[type="email"]')?.value).toBe('')
+  })
+
+  it('ignores rejected storage reads without rejecting initialization', async () => {
+    vi.mocked(loadVisitorIdentity).mockRejectedValue(new Error('storage unavailable'))
+    const { client, container } = createClient(vi.fn(async () => listResponse([comment(1, 0, 'loaded')])))
+    await client.init()
+    expect(container.textContent).toContain('loaded')
+    expect(container.querySelector<HTMLInputElement>('input[type="text"]')?.value).toBe('')
+  })
+
+  it.each([true, false])('does not persist blogger or possible-passphrase submissions (isBlogger=%s)', async (isBlogger) => {
+    const fetchMock = vi.fn<typeof fetch>(async (input) => {
+      if (String(input).includes('/api/comment/submit')) return jsonResponse(201, { id: 12, isBlogger })
+      return listResponse([], {
+        formConfig: { emailRequired: false, websiteRequired: false, placeholder: '', bloggerProofEnabled: true },
+      })
+    })
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    const form = fillIdentityAndContent(container)
+    if (!isBlogger) {
+      setValue(form.querySelector<HTMLInputElement>('input[type="email"]')!, '')
+      setValue(form.querySelector<HTMLInputElement>('input[type="url"]')!, '')
+    }
+    await submitForm(form)
+    await vi.waitFor(() => expect(container.querySelector('.ecoku-status-line')?.textContent).toBe(zhCN.submitted))
+    expect(saveVisitorIdentity).not.toHaveBeenCalled()
   })
 })
 

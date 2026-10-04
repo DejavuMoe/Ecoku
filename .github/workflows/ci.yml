@@ -35,7 +35,18 @@ jobs:
           node-version: 24.19.0
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+      # Audit the whole lockfile, including build/docs and optional dependencies.
+      # High/critical findings block release; lower severities remain non-blocking.
+      - name: Audit JavaScript dependencies
+        if: matrix.target == 'client'
+        run: pnpm audit --audit-level=high
       - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Install SDK test browser
+        if: matrix.target == 'client'
+        run: pnpm -C packages/client exec playwright install --with-deps chromium
+      - name: Verify SDK browser behavior
+        if: matrix.target == 'client'
+        run: pnpm -C packages/client run test:browser
       - name: Verify SDK release metadata
         if: matrix.target == 'client'
         run: |
@@ -96,6 +107,9 @@ jobs:
         with:
           go-version-file: server/go.mod
           cache-dependency-path: server/go.sum
+      # Keep text output: JSON/SARIF modes do not fail on vulnerability findings.
+      - name: Check Go vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
       - run: go test -count=1 ./...
       - run: go vet ./...
       - run: go build -trimpath -ldflags="-s -w" -o /tmp/ecoku-server .

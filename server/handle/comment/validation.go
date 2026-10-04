@@ -24,52 +24,52 @@ const (
 	maxPageSize       = 100
 )
 
-func requireRegisteredSite(c *gin.Context, rawSiteID string, requireOrigin bool) (string, bool) {
+func requireRegisteredSite(c *gin.Context, rawSiteID string, requireOrigin bool) (model.Site, bool) {
 	siteID := strings.TrimSpace(rawSiteID)
 	if siteID == "" || textLength(siteID) > maxSiteIDLength {
 		utils.SendError(c, http.StatusBadRequest, "siteId 参数无效")
-		return "", false
+		return model.Site{}, false
 	}
-	_, err := model.GetSiteWithContext(c.Request.Context(), siteID)
+	site, err := model.GetSiteWithContext(c.Request.Context(), siteID)
 	if err == model.ErrSiteNotFound {
 		utils.SendError(c, http.StatusNotFound, "站点不存在")
-		return "", false
+		return model.Site{}, false
 	}
 	if err != nil {
 		if c.Request.Context().Err() != nil {
-			utils.SendError(c, http.StatusServiceUnavailable, "评论读取超时，请稍后重试")
-			return "", false
+			utils.SendError(c, http.StatusServiceUnavailable, "评论请求超时，请稍后重试")
+			return model.Site{}, false
 		}
 		utils.SendError(c, http.StatusInternalServerError, "读取站点配置失败")
-		return "", false
+		return model.Site{}, false
 	}
 	origin := strings.TrimSpace(c.GetHeader("Origin"))
 	if requireOrigin && origin == "" {
 		utils.SendError(c, http.StatusForbidden, "评论提交必须来自已注册来源")
-		return "", false
+		return model.Site{}, false
 	}
 	normalizedOrigin := ""
 	if origin != "" {
 		normalizedOrigin, err = config.NormalizeOrigin(origin)
 		if err != nil {
 			utils.SendError(c, http.StatusForbidden, "来源不属于当前站点")
-			return "", false
+			return model.Site{}, false
 		}
 	}
 	allowed, err := model.IsSiteOriginAllowedWithContext(c.Request.Context(), siteID, normalizedOrigin)
 	if err != nil {
 		if c.Request.Context().Err() != nil {
-			utils.SendError(c, http.StatusServiceUnavailable, "评论读取超时，请稍后重试")
-			return "", false
+			utils.SendError(c, http.StatusServiceUnavailable, "评论请求超时，请稍后重试")
+			return model.Site{}, false
 		}
 		utils.SendError(c, http.StatusInternalServerError, "验证站点来源失败")
-		return "", false
+		return model.Site{}, false
 	}
 	if !allowed {
 		utils.SendError(c, http.StatusForbidden, "来源不属于当前站点")
-		return "", false
+		return model.Site{}, false
 	}
-	return siteID, true
+	return site, true
 }
 
 func validPageKey(value string) bool {

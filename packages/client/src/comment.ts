@@ -107,6 +107,8 @@ export class CommentSurface {
   private captchaGeneration = 0
   private requestVersion = 0
   private pageRevision = 0
+  private identityRevision = 0
+  private identitySaveTail = Promise.resolve()
   private listBusy = false
   private submissionBusy = false
   private destroyed = false
@@ -129,7 +131,7 @@ export class CommentSurface {
 
   async mount(): Promise<void> {
     this.config.container.replaceChildren(this.root)
-    await this.restoreVisitorIdentity()
+    void this.restoreVisitorIdentity().catch(() => {})
     await this.loadPage(1)
   }
 
@@ -395,6 +397,9 @@ export class CommentSurface {
     input.type = type
     input.setAttribute('autocomplete', autocomplete)
     input.maxLength = maxLength
+    for (const event of ['input', 'change']) {
+      input.addEventListener(event, () => { this.identityRevision += 1 })
+    }
   }
 
   private field(labelText: string, input: HTMLInputElement): HTMLLabelElement {
@@ -1156,13 +1161,19 @@ export class CommentSurface {
       }
       const submitted = await submitComment(this.config, draft, this.submitController.signal)
       if (this.destroyed || revision !== this.pageRevision || pageKey !== this.config.pageKey) return
+      this.identityRevision += 1
       if (submitted.data.isBlogger || this.looksLikeBloggerProofAttempt(identity)) {
         if (submitted.data.isBlogger) {
           this.nickname.value = ''
           this.updateRootFormState()
         }
       } else {
-        await saveVisitorIdentity(this.config.serverURL, this.config.siteId, identity)
+        const { serverURL, siteId } = this.config
+        const savedIdentity = { ...identity }
+        // Serialize optional saves so an older submission cannot persist last.
+        this.identitySaveTail = this.identitySaveTail.then(async () => {
+          await saveVisitorIdentity(serverURL, siteId, savedIdentity)
+        }).catch(() => {})
       }
       if (reply) this.closeReply(false)
       else {
@@ -1180,7 +1191,7 @@ export class CommentSurface {
         }
       }
     } catch (error) {
-      if (isAbortError(error) || this.destroyed || revision !== this.pageRevision) return
+      if (this.destroyed || revision !== this.pageRevision) return
       this.showInlineError(errorElement, contentElement, this.submissionErrorMessage(error))
     } finally {
       if (challengeAttempted) widget?.reset()
@@ -1266,10 +1277,21 @@ export class CommentSurface {
   }
 
   private async restoreVisitorIdentity(): Promise<void> {
+    const revision = this.pageRevision
+    const identityRevision = this.identityRevision
     const identity = await loadVisitorIdentity(this.config.serverURL, this.config.siteId)
-    if (!identity || this.destroyed) return
+    // A late restore must not undo edits (even edits cleared back to empty),
+    // a successful submission, or navigation while optional storage was pending.
+    if (!identity || this.destroyed || this.submissionBusy
+      || revision !== this.pageRevision || identityRevision !== this.identityRevision
+      || [...this.root.querySelectorAll<HTMLInputElement>('.ecoku-input')].some((input) => input.value)) return
     this.setIdentityControls(this.nickname, this.email, this.website, identity)
     this.updateRootFormState()
+    if (this.activeReply) {
+      this.setIdentityControls(this.activeReply.nickname, this.activeReply.email, this.activeReply.website, identity)
+      this.updateReplyIdentityMode(this.activeReply)
+      this.updateReplyFormState(this.activeReply)
+    }
   }
 
   private identityFromControls(
@@ -1437,7 +1459,7 @@ export class CommentSurface {
   }
 
   private submissionErrorMessage(error: unknown): string {
-    if (!(error instanceof EcokuRequestError)) return this.messages.submitNetwork
+    if (!(error instanceof EcokuRequestError) || error.kind !== 'http') return this.messages.submitNetwork
     if (error.status === 400) {
       return error.message === SERVER_CHALLENGE_REQUIRED ? this.messages.challengeRequired : this.messages.submit400
     }
@@ -1446,7 +1468,7 @@ export class CommentSurface {
     if (error.status === 422) return this.messages.submit422
     if (error.status === 429) return this.messages.submit429
     if (error.status >= 500) return this.messages.submit500
-    return error.status === 0 ? this.messages.submitNetwork : this.messages.submit400
+    return error.status >= 400 && error.status < 500 ? this.messages.submit400 : this.messages.submitNetwork
   }
 
   private announce(message: string): void {

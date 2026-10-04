@@ -62,7 +62,7 @@ func ConfigureCapSiteverify(client *http.Client) func() {
 }
 
 func Verify(ctx context.Context, tokens Tokens) error {
-	row, err := loadSetting()
+	row, err := loadSettingWithContext(ctx)
 	if err != nil {
 		return err
 	}

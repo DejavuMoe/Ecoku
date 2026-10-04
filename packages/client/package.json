@@ -45,6 +45,7 @@
     "build:types": "tsc --project tsconfig.build.json",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:browser": "playwright test",
     "type-check": "tsc --noEmit",
     "clean": "rimraf dist",
     "validate": "node scripts/pre-publish.cjs",
@@ -55,6 +56,7 @@
     "publish:dry": "npm publish --dry-run"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@types/node": "^25.9.5",
     "happy-dom": "^20.11.2",
     "rimraf": "^6.1.3",

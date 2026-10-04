@@ -52,7 +52,7 @@ func (site Site) MatchesBloggerPassphrase(candidate string) bool {
 		return false
 	}
 	candidate = strings.TrimSpace(candidate)
-	if len(candidate) > 72 {
+	if ValidateBloggerPassphrase(candidate) != nil {
 		return false
 	}
 	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(candidate))
