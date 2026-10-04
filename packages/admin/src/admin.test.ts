@@ -7,6 +7,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App.vue'
 import CommentManagementView from './components/CommentManagementView.vue'
+import FirstLoginSetupView from './components/FirstLoginSetupView.vue'
 import ListInput from './components/ListInput.vue'
 import NotificationSettingsView from './components/NotificationSettingsView.vue'
 import SecurityView from './components/SecurityView.vue'
@@ -860,6 +861,27 @@ describe('persistent administrator session', () => {
     expect(store.passwordSetupRequired).toBe(false)
     expect(store.view).toBe('sites')
     expect(store.createSiteRequest).toBe(1)
+  })
+
+  it('keeps a renamed account name in the setup form after a password reset', async () => {
+    const store = useAdminStore()
+    const expiresAt = new Date(Date.now() + 3600000).toISOString()
+    vi.spyOn(adminApi, 'getSession').mockResolvedValue({ expiresAt, expiresIn: 3600, requiresPasswordChange: true, username: 'owner' })
+    const initialSetup = vi.spyOn(adminApi, 'initialSetup').mockResolvedValue({ expiresAt, expiresIn: 3600, requiresPasswordChange: false })
+    vi.spyOn(adminApi, 'listSites').mockResolvedValue([])
+    await store.restoreSession()
+    expect(store.setupUsername).toBe('owner')
+    const view = mount(FirstLoginSetupView, { global: { plugins: [pinia] } })
+    expect((view.get('input[autocomplete="username"]').element as HTMLInputElement).value).toBe('owner')
+    expect(view.get('.first-login-intro').text()).toBe('更换临时密码后，即可进入管理后台。用户名可以保留为 owner。')
+    const [, password, confirm] = view.findAll('input:not([type="checkbox"])')
+    await password!.setValue('new-password-for-owner')
+    await confirm!.setValue('new-password-for-owner')
+    await view.get('form').trigger('submit')
+    await flushPromises()
+    expect(initialSetup).toHaveBeenCalledWith('owner', 'new-password-for-owner')
+    expect(store.setupUsername).toBe('')
+    view.unmount()
   })
 
   it('restores the server expiry without storing a credential and keeps a failed logout active', async () => {

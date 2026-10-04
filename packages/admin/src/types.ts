@@ -62,6 +62,8 @@ export interface AdminSession {
   expiresAt: string
   expiresIn: number
   requiresPasswordChange: boolean
+  // Only returned while the temporary password still has to be replaced.
+  username?: string
 }
 
 export interface CommentMutation { comment: CommentReview; unchanged: boolean }

@@ -1,3 +1,5 @@
+import type { EcokuLocale } from './config'
+
 interface EcokuInstance {
   init(): Promise<void>
   destroy(): void
@@ -13,6 +15,7 @@ interface EcokuConstructor {
     pageSize?: number
     theme?: 'auto' | 'light' | 'dark'
     cssURL?: string
+    i18n?: EcokuLocale
   }): EcokuInstance
 }
 
@@ -20,9 +23,36 @@ interface EcokuWindow extends Window {
   Ecoku?: EcokuConstructor
 }
 
-const FAILURE_MESSAGE = '评论服务初始化失败，请稍后重试。'
-const SCRIPT_FAILURE_MESSAGE = '评论脚本加载失败，请检查网络后重试。'
-const TIMEOUT_MESSAGE = '评论服务响应超时，请稍后重试。'
+type LoaderFailure = 'init' | 'script' | 'timeout'
+
+// The loader reports failures before the SDK and its catalogs exist, so it carries its own copy.
+const FAILURE_MESSAGES: Record<EcokuLocale, Record<LoaderFailure, string>> = {
+  'zh-CN': {
+    init: '评论服务初始化失败，请稍后重试。',
+    script: '评论脚本加载失败，请检查网络后重试。',
+    timeout: '评论服务响应超时，请稍后重试。',
+  },
+  'zh-Hant': {
+    init: '評論服務初始化失敗，請稍後重試。',
+    script: '評論腳本載入失敗，請檢查網路後重試。',
+    timeout: '評論服務回應逾時，請稍後重試。',
+  },
+  en: {
+    init: 'The comment service could not start. Try again later.',
+    script: 'The comment script could not be loaded. Check your connection and try again.',
+    timeout: 'The comment service did not respond in time. Try again later.',
+  },
+}
+
+class LoaderFailureError extends Error {
+  readonly failure: LoaderFailure
+
+  constructor(failure: LoaderFailure) {
+    super(`Ecoku loader: ${failure}`)
+    this.failure = failure
+  }
+}
+
 let sdkPromise: Promise<EcokuConstructor> | null = null
 
 export function resolveEcokuSDKURL(loaderURL: string, serverURL: string): string {
@@ -42,22 +72,22 @@ function loadSDK(documentRef: Document, windowRef: EcokuWindow, sdkURL: string):
       script.removeEventListener('load', onLoad)
       script.removeEventListener('error', onError)
     }
-    const fail = (message: string) => {
+    const fail = (failure: LoaderFailure) => {
       cleanup()
       script.remove()
       sdkPromise = null
-      reject(new Error(message))
+      reject(new LoaderFailureError(failure))
     }
     const onLoad = () => {
       if (typeof windowRef.Ecoku !== 'function') {
-        fail(SCRIPT_FAILURE_MESSAGE)
+        fail('script')
         return
       }
       cleanup()
       resolve(windowRef.Ecoku)
     }
-    const onError = () => fail(SCRIPT_FAILURE_MESSAGE)
-    const timeout = windowRef.setTimeout(() => fail(TIMEOUT_MESSAGE), 12000)
+    const onError = () => fail('script')
+    const timeout = windowRef.setTimeout(() => fail('timeout'), 12000)
     script.addEventListener('load', onLoad, { once: true })
     script.addEventListener('error', onError, { once: true })
     if (!existing) {
@@ -77,6 +107,19 @@ function parsePageSize(value: string | undefined): number {
 
 function parseTheme(value: string | undefined): 'auto' | 'light' | 'dark' {
   return value === 'light' || value === 'dark' ? value : 'auto'
+}
+
+function parseLocale(value: string | undefined): EcokuLocale | undefined {
+  const locale = value?.trim()
+  return locale === 'zh-CN' || locale === 'zh-Hant' || locale === 'en' ? locale : undefined
+}
+
+// Without data-i18n, failure messages follow the host page language when it is one Ecoku supports.
+function pageLocale(documentRef: Document): EcokuLocale {
+  const tag = documentRef.documentElement.lang.trim().toLowerCase()
+  if (tag === 'en' || tag.startsWith('en-')) return 'en'
+  if (/^zh-(hant|tw|hk|mo)(-|$)/.test(tag)) return 'zh-Hant'
+  return 'zh-CN'
 }
 
 function parseCssURL(value: string | undefined): string | undefined {
@@ -113,6 +156,8 @@ export function setupEcokuLoader(
     const siteId = shell.dataset.siteId?.trim() || ''
     const pageKey = shell.dataset.pageKey?.trim() || ''
     if (!mount || !loader || !status || !retry || !serverURL || !siteId || !pageKey) continue
+    const i18n = parseLocale(shell.dataset.i18n)
+    const failureMessages = FAILURE_MESSAGES[i18n ?? pageLocale(documentRef)]
 
     let loading = false
     let initialized = false
@@ -120,12 +165,12 @@ export function setupEcokuLoader(
     let attempt = 0
     let comments: EcokuInstance | null = null
 
-    const showFailure = (message: string) => {
+    const showFailure = (failure: LoaderFailure) => {
       windowRef.clearTimeout(timeoutID)
       loading = false
       shell.setAttribute('aria-busy', 'false')
       loader.hidden = false
-      status.textContent = message
+      status.textContent = failureMessages[failure]
       retry.hidden = false
     }
 
@@ -156,12 +201,13 @@ export function setupEcokuLoader(
           pageSize: parsePageSize(shell.dataset.pageSize),
           theme: parseTheme(shell.dataset.theme),
           cssURL,
+          ...(i18n ? { i18n } : {}),
         })
         timeoutID = windowRef.setTimeout(() => {
           ++attempt
           comments?.destroy()
           comments = null
-          showFailure(TIMEOUT_MESSAGE)
+          showFailure('timeout')
         }, 12000)
         await comments.init()
         if (generation !== attempt) return
@@ -174,9 +220,7 @@ export function setupEcokuLoader(
         if (generation !== attempt) return
         comments?.destroy()
         comments = null
-        showFailure(error instanceof Error && error.message === SCRIPT_FAILURE_MESSAGE
-          ? SCRIPT_FAILURE_MESSAGE
-          : error instanceof Error && error.message === TIMEOUT_MESSAGE ? TIMEOUT_MESSAGE : FAILURE_MESSAGE)
+        showFailure(error instanceof LoaderFailureError ? error.failure : 'init')
       }
     }
 
