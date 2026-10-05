@@ -4,10 +4,10 @@
 
 ## 取得 SDK {#install}
 
-[ecoku](https://www.npmjs.com/package/ecoku) 的 `0.3.4` 版本已發布到 npm，提供 ESM、CommonJS 和 TypeScript 型別宣告。SDK 在瀏覽器中掛載評論區，需要連接你部署的 Ecoku 服務；安裝 npm 套件不會替你部署伺服器。
+[ecoku](https://www.npmjs.com/package/ecoku) 的 `0.3.5` 版本已發布到 npm，提供 ESM、CommonJS 和 TypeScript 型別宣告。SDK 在瀏覽器中掛載評論區，需要連接你部署的 Ecoku 服務；安裝 npm 套件不會替你部署伺服器。
 
 ```bash
-pnpm add --save-exact ecoku@0.3.4
+pnpm add --save-exact ecoku@0.3.5
 ```
 
 不使用 npm 時，可透過 `<script src="https://ecoku.example.com/client/ecoku.umd.js"></script>` 載入實例提供的 UMD 檔案，再使用全域 `Ecoku` 建構函式。靜態文章頁優先使用 [HTML 載入器](./html)。
@@ -88,7 +88,7 @@ await comments.init()
 
 ## VitePress {#vitepress}
 
-本文件網站頁面底部的評論區就是用 SDK 接入的：使用 `ecoku@0.3.4`，服務位址為 `https://ecoku-dev.zsh.moe/`，站點 ID 為 `ecoku-docs`。接入自己的網站時替換這兩個值，並在 Ecoku 後台把網站來源加入該站點的允許來源。
+本文件網站頁面底部的評論區就是用 SDK 接入的：使用 `ecoku@0.3.5`，服務位址為 `https://ecoku-dev.zsh.moe/`，站點 ID 為 `ecoku-docs`。接入自己的網站時替換這兩個值，並在 Ecoku 後台把網站來源加入該站點的允許來源。
 
 在 `.vitepress/theme/EcokuComments.vue` 中使用 VitePress 自帶的 `useRoute`，不要從 `vue-router` 匯入。路由路徑作為穩定的頁面 key，頁面資料提供標題。只在瀏覽器掛載時建立實例，切換文章時更新，卸載時銷毀。
 

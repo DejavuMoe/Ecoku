@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "ecoku": "0.3.4"
+    "ecoku": "0.3.5"
   },
   "scripts": {
     "dev": "vitepress dev",
