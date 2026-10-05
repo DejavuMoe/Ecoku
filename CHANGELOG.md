@@ -5,9 +5,15 @@
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-10-05
+
 ### 变更
 
 - 文档 Demo 与三语 SDK 安装说明改用 npm 发布包 `ecoku@0.3.4`。
+
+### 修复
+
+- 管理后台切换「评论」「站点」「通知」「安全」时预留滚动条位置，修复长短页面切换和数据加载导致的整页横向抖动。
 
 ## [0.3.4] - 2026-10-05
 
@@ -622,4 +628,5 @@
 [0.3.2]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.2
 [0.3.3]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.3
 [0.3.4]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.4
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.3.4...master
+[0.3.5]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.5
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.3.5...master

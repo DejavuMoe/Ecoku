@@ -28,7 +28,7 @@ const copy: SidebarCopy & NavCopy = {
   api: 'REST API',
   internalVersions: 'Internal test archive (do not use)',
   earlierVersions: 'Earlier release candidates',
-  versionCurrent: 'v0.3.4',
+  versionCurrent: 'v0.3.5',
   versionLatest: ' (latest)',
 }
 

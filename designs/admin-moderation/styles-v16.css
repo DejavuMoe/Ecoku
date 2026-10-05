@@ -83,7 +83,7 @@ html[data-theme="dark"] {
 
 /* ---------- base ---------- */
 *, *::before, *::after { box-sizing: border-box; }
-html { min-width: 320px; background: var(--paper); -webkit-text-size-adjust: 100%; }
+html { min-width: 320px; background: var(--paper); -webkit-text-size-adjust: 100%; scrollbar-gutter: stable; }
 body { margin: 0; color: var(--ink); background: var(--paper); font-family: var(--sans); font-size: 14px; line-height: 1.6; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 button, input, select, textarea { margin: 0; color: inherit; font: inherit; letter-spacing: inherit; }
 button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
