@@ -5,10 +5,13 @@
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-10-05
+
 ### 变更
 
 - 文档 Demo 与三语 SDK 安装说明改用 npm 发布包 `ecoku@0.3.3`。
 - CI 增加固定版本 `govulncheck` 与全工作区锁文件依赖审计；高危及严重 JavaScript 依赖漏洞、可达的 Go 漏洞及扫描失败会阻止通过。SDK 增加真实浏览器的加密身份存储边界检查。
+- 根 README 默认使用英文，并提供简体中文与繁体中文版本。
 
 ### 修复
 
@@ -614,4 +617,5 @@
 [0.3.1]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.1
 [0.3.2]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.2
 [0.3.3]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.3
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.3.3...master
+[0.3.4]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.4
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.3.4...master
