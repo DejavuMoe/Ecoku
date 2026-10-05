@@ -4,10 +4,10 @@
 
 ## Get the SDK {#install}
 
-[ecoku](https://www.npmjs.com/package/ecoku) version `0.3.3` is available on npm, with ESM, CommonJS and TypeScript declarations. It mounts comments in the browser and connects to your Ecoku server; installing the package does not deploy a server.
+[ecoku](https://www.npmjs.com/package/ecoku) version `0.3.4` is available on npm, with ESM, CommonJS and TypeScript declarations. It mounts comments in the browser and connects to your Ecoku server; installing the package does not deploy a server.
 
 ```bash
-pnpm add --save-exact ecoku@0.3.3
+pnpm add --save-exact ecoku@0.3.4
 ```
 
 Without npm, load the instance UMD file with `<script src="https://ecoku.example.com/client/ecoku.umd.js"></script>` and use the global `Ecoku` constructor. For static article pages prefer the [HTML loader](./html).
@@ -88,7 +88,7 @@ Returns whether the instance is currently initialized.
 
 ## VitePress {#vitepress}
 
-The comments at the bottom of this documentation site are embedded with the SDK: they use `ecoku@0.3.3`, the server address `https://ecoku-dev.zsh.moe/` and the site ID `ecoku-docs`. For your own website, replace those two values and add the website's origin to the site's allowed origins in the Ecoku admin console.
+The comments at the bottom of this documentation site are embedded with the SDK: they use `ecoku@0.3.4`, the server address `https://ecoku-dev.zsh.moe/` and the site ID `ecoku-docs`. For your own website, replace those two values and add the website's origin to the site's allowed origins in the Ecoku admin console.
 
 In `.vitepress/theme/EcokuComments.vue`, import `useRoute` from VitePress, not `vue-router`. Use the route path as the stable page key and page data for the title. Create the instance on browser mount, update it when navigating and destroy it on unmount.
 
