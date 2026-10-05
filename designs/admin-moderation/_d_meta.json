@@ -155,7 +155,7 @@
           "path": "index-v16.html",
           "createdAt": "2026-10-03T00:00:00.000Z",
           "status": "approved",
-          "subtitle": "Approved: v15 with fewer rules — boxed setting inputs, labels above controls on narrow screens, one input per item for allowed origins, recipients and Telegram targets (Enter adds the next item, pasted lines split, per-item errors with one-click origin fixes), language as radio choices, Smoji image origin, rules only between sections and days",
+          "subtitle": "Approved: v15 with fewer rules — boxed setting inputs, labels above controls on narrow screens, one input per item for allowed origins, recipients and Telegram targets (Enter adds the next item, pasted lines split, per-item errors with one-click origin fixes), language as radio choices, Smoji image origin, rules only between sections and days, stable viewport scrollbar gutter on navigation",
           "viewport": {
             "width": 1440,
             "height": 900
