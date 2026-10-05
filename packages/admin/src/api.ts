@@ -67,9 +67,11 @@ async function request<T>(path: string, init: RequestInit = {}, allowEmpty = fal
   const headers = new Headers(init.headers)
   headers.set('Accept', 'application/json')
   if (init.body !== undefined) headers.set('Content-Type', 'application/json')
+  // Public bootstrap configuration must survive an unauthenticated session check.
+  const sessionBound = path !== '/api/admin/login-config'
   const generation = sessionGeneration
   const controller = new AbortController()
-  activeRequests.add(controller)
+  if (sessionBound) activeRequests.add(controller)
   const abort = () => controller.abort(init.signal?.reason)
   if (init.signal?.aborted) abort()
   else init.signal?.addEventListener('abort', abort, { once: true })
@@ -83,7 +85,7 @@ async function request<T>(path: string, init: RequestInit = {}, allowEmpty = fal
       if (controller.signal.aborted) throw error
       throw new ApiError(response.ok ? 500 : response.status, 'invalid-response')
     }
-    if (generation !== sessionGeneration) throw new DOMException('Session ended', 'AbortError')
+    if (sessionBound && generation !== sessionGeneration) throw new DOMException('Session ended', 'AbortError')
     if (!response.ok) throw new ApiError(response.status, envelope.message || 'request-failed', responseErrorCode(envelope.data))
     if (envelope.data === undefined && !allowEmpty) throw new ApiError(500, 'missing-response-data')
     return envelope.data as T
@@ -212,10 +214,13 @@ function mapEmail(value: unknown): EmailNotificationSettings {
 
 function mapCaptchaPublic(value: unknown, legacyTurnstileSitekey = ''): CaptchaPublicConfig {
   const raw = value && typeof value === 'object' ? value as Record<string, unknown> : {}
-  const provider = raw.provider === 'turnstile' || raw.provider === 'cap' ? raw.provider : 'off'
-  const sitekey = text(raw.sitekey) || (provider === 'off' ? legacyTurnstileSitekey : '')
-  if (provider === 'off' && legacyTurnstileSitekey) return { provider: 'turnstile', sitekey: legacyTurnstileSitekey, instanceUrl: '' }
-  return { provider, sitekey, instanceUrl: text(raw.instanceUrl) }
+  if (value === undefined && legacyTurnstileSitekey) return { provider: 'turnstile', sitekey: legacyTurnstileSitekey, instanceUrl: '' }
+  const provider = raw.provider
+  const sitekey = text(raw.sitekey)
+  const instanceUrl = text(raw.instanceUrl)
+  if (provider !== 'off' && provider !== 'turnstile' && provider !== 'cap') throw new ApiError(500, 'invalid-login-config')
+  if (provider !== 'off' && (!sitekey || (provider === 'cap' && !instanceUrl))) throw new ApiError(500, 'invalid-login-config')
+  return { provider, sitekey, instanceUrl }
 }
 
 function mapCaptcha(value: unknown): CaptchaSettings {

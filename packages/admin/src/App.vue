@@ -31,6 +31,8 @@ const password = ref('')
 const usernameInput = ref<HTMLInputElement | null>(null)
 const loginSlot = ref<HTMLElement | null>(null)
 const loginCaptcha = ref<CaptchaPublicConfig>({ provider: 'off', sitekey: '', instanceUrl: '' })
+const loginLoadState = ref<'loading' | 'ready' | 'error'>('loading')
+const loginController = new AbortController()
 let loginWidget: ChallengeWidget | null = null
 const discardDialog = ref<HTMLDialogElement | null>(null)
 const navigationBusy = computed(() => Boolean(dirtyView.value) && (store.siteBusy || store.notificationBusy || store.captchaBusy))
@@ -109,13 +111,13 @@ function beforeUnload(event: BeforeUnloadEvent) {
 
 onMounted(async () => {
   stopAdminTranslations = installAdminTranslations(document.body)
-  startupLoginConfig = adminApi.getLoginConfig()
-  startupLoginConfig.then(config => setAdminLocale(config.locale), () => undefined)
+  startupLoginConfig = adminApi.getLoginConfig(loginController.signal)
+  startupLoginConfig.then(config => { if (!loginController.signal.aborted) setAdminLocale(config.locale) }, () => undefined)
   const expired = takeSessionNotice()
   window.addEventListener('beforeunload', beforeUnload)
   document.addEventListener('keydown', saveShortcut)
   await store.restoreSession()
-  if (!authenticated.value) {
+  if (!authenticated.value && !loginController.signal.aborted) {
     if (expired && !loginMessage.value) loginMessage.value = messages.sessionExpired
     await nextTick()
     usernameInput.value?.focus()
@@ -123,6 +125,7 @@ onMounted(async () => {
   }
 })
 onBeforeUnmount(() => {
+  loginController.abort()
   window.removeEventListener('beforeunload', beforeUnload)
   document.removeEventListener('keydown', saveShortcut)
   if (toastTimer !== undefined) clearTimeout(toastTimer)
@@ -132,25 +135,39 @@ onBeforeUnmount(() => {
 })
 
 async function mountLoginChallenge() {
+  loginLoadState.value = 'loading'
+  if (loginMessage.value === messages.loginChallengeUnavailable) loginMessage.value = ''
   loginWidget?.remove()
   loginWidget = null
   loginCaptcha.value = { provider: 'off', sitekey: '', instanceUrl: '' }
   try {
-    const pending = startupLoginConfig ?? adminApi.getLoginConfig()
+    const pending = startupLoginConfig ?? adminApi.getLoginConfig(loginController.signal)
     startupLoginConfig = null
     const config = await pending
+    if (loginController.signal.aborted) return
     setAdminLocale(config.locale)
     loginCaptcha.value = config.captcha
     await nextTick()
-    if (loginCaptcha.value.provider !== 'off' && loginSlot.value) {
-      loginWidget = await mountChallenge(loginSlot.value, loginCaptcha.value)
+    if (loginCaptcha.value.provider !== 'off') {
+      if (!loginSlot.value) throw new Error('Login challenge container missing')
+      const widget = await mountChallenge(loginSlot.value, loginCaptcha.value)
+      if (loginController.signal.aborted) { widget?.remove(); return }
+      if (!widget) throw new Error('Login challenge unavailable')
+      loginWidget = widget
     }
+    loginLoadState.value = 'ready'
   } catch {
     loginWidget = null
+    if (loginController.signal.aborted) return
+    loginLoadState.value = 'error'
+    loginMessage.value = messages.loginChallengeUnavailable
   }
 }
 
 async function submitLogin() {
+  if (loginLoadState.value === 'loading' || loginBusy.value) return
+  if (loginLoadState.value === 'error') { await mountLoginChallenge(); return }
+  if (!username.value.trim() || !password.value) return
   focusAfterSignIn = true
   if (loginCaptcha.value.provider !== 'off') {
     let token = ''
@@ -201,7 +218,7 @@ async function switchView(next: MainView) {
         <label class="rule"><span class="rule-label">{{ adminText('username') }}</span><input id="login-username" ref="usernameInput" v-model="username" name="username" type="text" autocomplete="username" maxlength="80" required></label>
         <label class="rule"><span class="rule-label">{{ adminText('password') }}</span><input id="login-password" v-model="password" name="password" type="password" autocomplete="current-password" required></label>
         <div v-if="loginCaptcha.provider !== 'off'" ref="loginSlot" class="captcha-slot"></div>
-        <button class="button button-primary button-block" type="submit" :disabled="loginBusy || !username.trim() || !password">{{ loginBusy ? adminText('loggingIn') : adminText('login') }}</button>
+        <button class="button button-primary button-block" type="submit" :disabled="loginBusy || loginLoadState === 'loading' || (loginLoadState === 'ready' && (!username.trim() || !password))">{{ loginLoadState === 'loading' ? adminText('loading') : loginLoadState === 'error' ? adminText('retry') : loginBusy ? adminText('loggingIn') : adminText('login') }}</button>
       </form>
     </section>
   </main>

@@ -14,6 +14,7 @@ import SecurityView from './components/SecurityView.vue'
 import SiteManagementView from './components/SiteManagementView.vue'
 import SmojiContent from './components/SmojiContent.vue'
 import { adminApi, ApiError } from './api'
+import * as captcha from './captcha'
 import { messages } from './messages'
 import { useAdminStore } from './stores/admin'
 import { formatDate } from './ui'
@@ -808,12 +809,12 @@ describe('approved production surface', () => {
 })
 
 describe('request cancellation isolation', () => {
-  it('preserves caller abort instead of wrapping a network failure', async () => {
+  it.each(['listSites', 'getLoginConfig'] as const)('preserves caller abort for %s', async (method) => {
     vi.stubGlobal('fetch', vi.fn((_url: unknown, init: RequestInit) => new Promise((_resolve, reject) => {
       init.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true })
     })))
     const controller = new AbortController()
-    const result = adminApi.listSites(controller.signal)
+    const result = adminApi[method](controller.signal)
     controller.abort()
     await expect(result).rejects.toMatchObject({ name: 'AbortError' })
   })
@@ -834,18 +835,119 @@ describe('request cancellation isolation', () => {
   })
 })
 
-it('times out while reading an admin response body', async () => {
+it.each(['listSites', 'getLoginConfig'] as const)('times out while reading the %s response body', async (method) => {
   vi.useFakeTimers()
   try {
     vi.stubGlobal('fetch', vi.fn(async (_url: unknown, init: RequestInit) => ({
       ok: true, status: 200,
       json: () => new Promise((_resolve, reject) => init.signal?.addEventListener('abort', () => reject(init.signal?.reason), { once: true })),
     })))
-    const result = adminApi.listSites()
+    const result = adminApi[method]()
     const assertion = expect(result).rejects.toMatchObject({ status: 0, errorCode: 'timeout' })
     await vi.advanceTimersByTimeAsync(30000)
     await assertion
   } finally { vi.useRealTimers() }
+})
+
+describe('login verification startup', () => {
+  const capConfig = { provider: 'cap', sitekey: 'cap-public', instanceUrl: 'https://cap.example.test' }
+  const widget = () => ({ waitForToken: vi.fn().mockResolvedValue('verified-token'), reset: vi.fn(), remove: vi.fn() })
+
+  it.each(['session-first', 'config-first'])('keeps verification usable with %s responses', async (order) => {
+    let finishConfig!: (value: Response) => void
+    let finishSession!: (value: Response) => void
+    let configSignal: AbortSignal | undefined
+    vi.stubGlobal('fetch', vi.fn((url: string, init: RequestInit) => {
+      if (url === '/api/admin/session') return new Promise<Response>(resolve => { finishSession = resolve })
+      if (url === '/api/admin/login-config') return new Promise<Response>((resolve, reject) => {
+        finishConfig = resolve
+        configSignal = init.signal!
+        configSignal.addEventListener('abort', () => reject(configSignal!.reason), { once: true })
+      })
+      throw new Error(`Unexpected request: ${url}`)
+    }))
+    let finishWidget!: (value: captcha.ChallengeWidget) => void
+    const mountChallenge = vi.spyOn(captcha, 'mountChallenge').mockImplementation(() => new Promise(resolve => { finishWidget = resolve }))
+    const login = vi.spyOn(useAdminStore(), 'login').mockResolvedValue(false)
+    const wrapper = mount(App, { global: { plugins: [pinia] } })
+    try {
+      if (order === 'config-first') {
+        finishConfig(response(200, { captcha: capConfig, locale: 'zh-CN' }))
+        await flushPromises()
+      }
+      finishSession(response(401, undefined))
+      await flushPromises()
+      await wrapper.get('#login-username').setValue('admin')
+      await wrapper.get('#login-password').setValue('example-password')
+      expect(configSignal?.aborted).toBe(false)
+      expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
+      await wrapper.get('form').trigger('submit')
+      expect(login).not.toHaveBeenCalled()
+      if (order === 'session-first') {
+        finishConfig(response(200, { captcha: capConfig, locale: 'zh-CN' }))
+        await flushPromises()
+      }
+      expect(mountChallenge).toHaveBeenCalledTimes(1)
+      expect(wrapper.find('.captcha-slot').exists()).toBe(true)
+      // A successful config response is insufficient while the widget is still loading.
+      expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
+      await wrapper.get('form').trigger('submit')
+      expect(login).not.toHaveBeenCalled()
+      const challenge = widget()
+      finishWidget(challenge)
+      await flushPromises()
+      expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeUndefined()
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+      expect(login).toHaveBeenCalledExactlyOnceWith('admin', 'example-password', 'verified-token')
+    } finally { wrapper.unmount() }
+  })
+
+  it.each(['config', 'widget'])('retries a failed %s load without submitting credentials', async (failure) => {
+    let configRequests = 0
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url === '/api/admin/session') return response(401, undefined)
+      if (url === '/api/admin/login-config') {
+        if (++configRequests === 1 && failure === 'config') return response(503, undefined)
+        return response(200, { captcha: failure === 'config' ? { provider: 'off' } : capConfig, locale: 'zh-CN' })
+      }
+      throw new Error(`Unexpected request: ${url}`)
+    }))
+    const mountChallenge = vi.spyOn(captcha, 'mountChallenge').mockResolvedValue(widget())
+    if (failure === 'widget') mountChallenge.mockRejectedValueOnce(new Error('Script failed'))
+    const login = vi.spyOn(useAdminStore(), 'login').mockResolvedValue(false)
+    const wrapper = mount(App, { global: { plugins: [pinia] } })
+    try {
+      await flushPromises()
+      expect(wrapper.get('[role="alert"]').text()).toBe(messages.loginChallengeUnavailable)
+      const button = wrapper.get('button[type="submit"]')
+      expect(button.text()).toBe('重试')
+      expect(button.attributes('disabled')).toBeUndefined()
+      await wrapper.get('#login-username').setValue('admin')
+      await wrapper.get('#login-password').setValue('example-password')
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+      expect(configRequests).toBe(2)
+      expect(login).not.toHaveBeenCalled()
+      expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+      expect(button.text()).toBe('登录')
+      expect((wrapper.get('#login-password').element as HTMLInputElement).value).toBe('example-password')
+      await wrapper.get('form').trigger('submit')
+      await flushPromises()
+      expect(login).toHaveBeenCalledTimes(1)
+      if (failure === 'config') {
+        expect(mountChallenge).not.toHaveBeenCalled()
+        expect(login).toHaveBeenCalledWith('admin', 'example-password')
+      } else {
+        expect(login).toHaveBeenCalledWith('admin', 'example-password', 'verified-token')
+      }
+    } finally { wrapper.unmount() }
+  })
+
+  it.each([undefined, null, {}, { provider: 'unknown' }, { provider: 'turnstile' }, { provider: 'cap', sitekey: 'key' }])('rejects incomplete verification configuration: %j', async (config) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { captcha: config })))
+    await expect(adminApi.getLoginConfig()).rejects.toMatchObject({ status: 500, message: 'invalid-login-config' })
+  })
 })
 
 describe('persistent administrator session', () => {
@@ -917,12 +1019,14 @@ describe('persistent administrator session', () => {
       expect(store.loginMessage).toBe(messages.sessionExpired)
     } finally { vi.useRealTimers() }
     let release: ((value: Response) => void) | undefined
+    let privateSignal: AbortSignal | undefined
     vi.restoreAllMocks()
-    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(() => new Promise((resolve) => { release = resolve })))
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation((_url, init) => new Promise((resolve) => { release = resolve; privateSignal = init?.signal ?? undefined })))
     const store = useAdminStore(); store.authenticated = true
     const pending = store.loadSites()
     vi.spyOn(adminApi, 'logout').mockResolvedValue(undefined)
     await store.logout()
+    expect(privateSignal?.aborted).toBe(true)
     release?.(response(200, { data: [{ id: 'private-site' }] }))
     await pending
     expect(store.sites).toEqual([])

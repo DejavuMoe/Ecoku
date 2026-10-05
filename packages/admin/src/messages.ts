@@ -22,5 +22,6 @@ export const messages = {
   captchaSaved: '验证设置已保存。',
   loginChallengeFailed: '验证失败，请重试。',
   loginChallengeRequired: '请完成验证后再登录。',
+  loginChallengeUnavailable: '登录验证未能加载，请重试。',
   noSites: '当前实例还没有站点。',
 } as const
