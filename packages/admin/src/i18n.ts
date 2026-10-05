@@ -6,18 +6,21 @@ let refreshTranslations: () => void = () => {}
 
 const catalog = {
   'zh-CN': {
+    loading: '加载中…', retry: '重试',
     comments: '评论', sites: '站点', notifications: '通知', security: '安全',
     skip: '跳到主要内容', loginTitle: '管理员登录', username: '用户名', password: '密码', login: '登录', loggingIn: '登录中…',
     logout: '退出登录', discardTitle: '放弃未保存的修改？', discardCopy: '离开后，本页的修改不会保存。', continue: '继续编辑', discard: '放弃修改',
     locale: '后台语言', simple: '简体中文', traditional: '繁體中文', english: 'English',
   },
   'zh-Hant': {
+    loading: '載入中…', retry: '重試',
     comments: '評論', sites: '站點', notifications: '通知', security: '安全',
     skip: '跳到主要內容', loginTitle: '管理員登入', username: '使用者名稱', password: '密碼', login: '登入', loggingIn: '登入中…',
     logout: '登出', discardTitle: '放棄尚未儲存的修改？', discardCopy: '離開後，本頁的修改不會儲存。', continue: '繼續編輯', discard: '放棄修改',
     locale: '後台語言', simple: '简体中文', traditional: '繁體中文', english: 'English',
   },
   en: {
+    loading: 'Loading…', retry: 'Retry',
     comments: 'Comments', sites: 'Sites', notifications: 'Notifications', security: 'Security',
     skip: 'Skip to main content', loginTitle: 'Admin sign in', username: 'Username', password: 'Password', login: 'Sign in', loggingIn: 'Signing in…',
     logout: 'Sign out', discardTitle: 'Discard unsaved changes?', discardCopy: 'Leaving this page will discard its changes.', continue: 'Keep editing', discard: 'Discard changes',
@@ -33,6 +36,7 @@ export function setAdminLocale(value: EcokuLocale | undefined): void {
 export function adminText(key: AdminKey): string { return catalog[adminLocale.value][key] }
 
 const translations: Record<AdminKey, Record<EcokuLocale, string>> = {
+  loading: { 'zh-CN': '加载中…', 'zh-Hant': '載入中…', en: 'Loading…' }, retry: { 'zh-CN': '重试', 'zh-Hant': '重試', en: 'Retry' },
   comments: { 'zh-CN': '评论', 'zh-Hant': '評論', en: 'Comments' }, sites: { 'zh-CN': '站点', 'zh-Hant': '站點', en: 'Sites' }, notifications: { 'zh-CN': '通知', 'zh-Hant': '通知', en: 'Notifications' }, security: { 'zh-CN': '安全', 'zh-Hant': '安全', en: 'Security' },
   skip: { 'zh-CN': '跳到主要内容', 'zh-Hant': '跳到主要內容', en: 'Skip to main content' }, loginTitle: { 'zh-CN': '管理员登录', 'zh-Hant': '管理員登入', en: 'Admin sign in' }, username: { 'zh-CN': '用户名', 'zh-Hant': '使用者名稱', en: 'Username' }, password: { 'zh-CN': '密码', 'zh-Hant': '密碼', en: 'Password' }, login: { 'zh-CN': '登录', 'zh-Hant': '登入', en: 'Sign in' }, loggingIn: { 'zh-CN': '登录中…', 'zh-Hant': '登入中…', en: 'Signing in…' }, logout: { 'zh-CN': '退出登录', 'zh-Hant': '登出', en: 'Sign out' }, discardTitle: { 'zh-CN': '放弃未保存的修改？', 'zh-Hant': '放棄尚未儲存的修改？', en: 'Discard unsaved changes?' }, discardCopy: { 'zh-CN': '离开后，本页的修改不会保存。', 'zh-Hant': '離開後，本頁的修改不會儲存。', en: 'Leaving this page will discard its changes.' }, continue: { 'zh-CN': '继续编辑', 'zh-Hant': '繼續編輯', en: 'Keep editing' }, discard: { 'zh-CN': '放弃修改', 'zh-Hant': '放棄修改', en: 'Discard changes' }, locale: { 'zh-CN': '后台语言', 'zh-Hant': '後台語言', en: 'Admin language' }, simple: { 'zh-CN': '简体中文', 'zh-Hant': '简体中文', en: '简体中文' }, traditional: { 'zh-CN': '繁體中文', 'zh-Hant': '繁體中文', en: '繁體中文' }, english: { 'zh-CN': 'English', 'zh-Hant': 'English', en: 'English' },
 }
@@ -44,6 +48,7 @@ const textCatalog: Record<EcokuLocale, Record<string, string>> = {
 }
 
 for (const [source, values] of Object.entries({
+  '登录验证未能加载，请重试。': ['登入驗證未能載入，請重試。', 'Sign-in verification could not be loaded. Try again.'],
   '关闭': ['關閉', 'Off'], '开启': ['開啟', 'On'], '必填': ['必填', 'Required'], '选填': ['選填', 'Optional'], '保存': ['儲存', 'Save'], '重试': ['重試', 'Retry'], '取消': ['取消', 'Cancel'], '新增站点': ['新增站點', 'New site'], '站点设置': ['站點設定', 'Site settings'], '基本信息': ['基本資訊', 'Basic information'], '评论区': ['評論區', 'Comment area'], '评论排序': ['評論排序', 'Comment order'], '最新评论': ['最新評論', 'Newest'], '最早评论': ['最早評論', 'Oldest'], '站点 ID': ['站點 ID', 'Site ID'], '站点 URL': ['站點 URL', 'Site URL'], '站点名称': ['站點名稱', 'Site name'], '允许来源': ['允許來源', 'Allowed origins'], '评论长度上限': ['評論長度上限', 'Comment limit'], '评论占位文案': ['評論佔位文案', 'Comment placeholder'], '无评论文案': ['無評論文案', 'Empty-state message'], '评论已发布。': ['評論已發布。', 'Comment posted.'], '回复已发布。': ['回覆已發布。', 'Reply posted.'], '有未保存的修改': ['有尚未儲存的修改', 'Unsaved changes'], '站点已创建。': ['站點已建立。', 'Site created.'], '站点设置已保存。': ['站點設定已儲存。', 'Site settings saved.'], '请求参数不符合要求，请检查后重试。': ['請求參數不符合要求，請檢查後重試。', 'The request is invalid. Check it and try again.'], '操作过于频繁，请稍后重试。': ['操作過於頻繁，請稍後重試。', 'Too many requests. Try again later.'], '服务端暂时无法完成操作，数据没有被修改。': ['伺服器暫時無法完成操作，資料未被修改。', 'The server could not complete the operation; no data was changed.'], '管理会话已过期，请重新登录。': ['管理工作階段已過期，請重新登入。', 'Your admin session expired. Sign in again.'], '用户名或密码错误。': ['使用者名稱或密碼錯誤。', 'Incorrect username or password.'], '当前实例还没有站点。': ['目前實例還沒有站點。', 'This instance has no sites yet.'], '新密码至少 12 个字符，且不能超过 72 个 UTF-8 字节。': ['新密碼至少 12 個字元，且不能超過 72 個 UTF-8 位元組。', 'The new password must be at least 12 characters and no more than 72 UTF-8 bytes.'], '两次输入的密码不一致。': ['兩次輸入的密碼不一致。', 'The passwords do not match.'], '保存并进入后台': ['儲存並進入後台', 'Save and open admin'], '设置你的密码': ['設定你的密碼', 'Set your password'], '用户名': ['使用者名稱', 'Username'], '新密码': ['新密碼', 'New password'], '确认密码': ['確認密碼', 'Confirm password'], '显示密码': ['顯示密碼', 'Show password'], '至少 12 个字符，最多 72 个 UTF-8 字节；可粘贴密码管理器生成的密码。': ['至少 12 個字元，最多 72 個 UTF-8 位元組；可貼上密碼管理器產生的密碼。', 'Use at least 12 characters and at most 72 UTF-8 bytes; password-manager values are supported.'], '完成设置前，暂不能管理站点或评论。': ['完成設定前，暫時不能管理站點或評論。', 'Sites and comments remain unavailable until setup is complete.'], '评论列表没有加载出来': ['評論列表無法載入', 'Comments could not be loaded'], '当前没有站点': ['目前沒有站點', 'No sites are configured'], '评论暂时不可用': ['評論暫時無法使用', 'Comments are temporarily unavailable'], '已发布': ['已發布', 'Published'], '已删除': ['已刪除', 'Deleted'], '墓碑删除': ['墓碑刪除', 'Tombstone delete'], '彻底删除': ['徹底刪除', 'Delete permanently'], '查看原评论': ['查看原評論', 'View original comment'], '上一页': ['上一頁', 'Previous'], '下一页': ['下一頁', 'Next'], '电子邮件': ['電子郵件', 'Email'], '邮件通知': ['郵件通知', 'Email notifications'], 'Telegram 通知': ['Telegram 通知', 'Telegram notifications'], '发送测试邮件': ['發送測試郵件', 'Send test email'], '发送测试消息': ['發送測試訊息', 'Send test message'], '人机验证': ['人機驗證', 'CAPTCHA'], '验证设置': ['驗證設定', 'Verification settings'], '验证设置已保存。': ['驗證設定已儲存。', 'Verification settings saved.'], '通知收件人': ['通知收件人', 'Notification recipients'], '接收目标 ID': ['接收目標 ID', 'Target IDs'], '实例设置': ['實例設定', 'Instance settings'], '保存栏': ['儲存列', 'Save bar'],
 } as const)) {
   textCatalog['zh-Hant'][source] = values[0]

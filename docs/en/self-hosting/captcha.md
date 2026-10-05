@@ -12,6 +12,7 @@ This setting applies to the whole instance. All sites and admin sign-in use the 
 
 ## How verification works
 
+- While the admin sign-in page loads the verification settings and widget, the sign-in button shows “Loading…” and is temporarily disabled. If loading fails, the page shows “Sign-in verification could not be loaded. Try again.” Click “Retry” to reload without losing the username and password you entered. Once loading succeeds, click “Sign in”; retrying does not submit your credentials.
 - When the browser submits a comment or signs in, it attaches a one-time token. The server verifies it with Turnstile or Cap before processing the request any further. Verification happens before the blogger passphrase is checked, so nobody can probe the passphrase without passing verification.
 - If verification fails, the token is missing, or the verification service times out or is unavailable, the request is rejected. It is never let through automatically, and Ecoku does not fall back to the other mode.
 - For comment submissions, verification shares a processing deadline with origin checks, settings reads, and comment writes. Slow verification uses up that budget; see [Submit a comment](../reference/api#submit-comment) for timeout and retry behavior.
