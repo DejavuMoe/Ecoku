@@ -12,4 +12,4 @@ overrides:
 
 # This repository's published SDK is used by the documentation demo.
 minimumReleaseAgeExclude:
-  - ecoku@0.3.3
+  - ecoku@0.3.4
