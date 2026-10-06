@@ -5,6 +5,12 @@
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-10-06
+
+### 变更
+
+- 承接 v0.3.6 的列表性能优化、通知删除协调、安全加固和 CI/CD 调整；v0.3.6 未完成镜像发布，容器实例从 v0.3.5 直接升级至本版。
+
 ### 修复
 
 - 镜像运行检查显式关闭单文件测试日志的压缩，修复 Docker 日志驱动拒绝启动验证容器的问题。
@@ -653,4 +659,5 @@
 [0.3.4]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.4
 [0.3.5]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.5
 [0.3.6]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.6
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.3.6...master
+[0.3.7]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.7
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.3.7...master
