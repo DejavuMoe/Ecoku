@@ -1,6 +1,6 @@
 # Docker 部署
 
-本頁適用於 v0.3.5 及後續公開版本，映像檔使用 GHCR。既有實例請先閱讀 [升級說明](./upgrade)。
+本頁適用於 v0.3.6 及後續公開版本，映像檔使用 GHCR。既有實例請先閱讀 [升級說明](./upgrade)。
 
 本頁從一台空的 Linux 主機開始，用 Docker Compose 部署 Ecoku。新部署只需要三樣東西：`compose.yaml`、`app/config.yaml` 和 `data/`。管理員臨時密碼、工作階段簽章金鑰和通知加密主金鑰都在首次啟動時自動產生，不需要寫進設定檔。
 
@@ -46,7 +46,7 @@ sudo chmod 750 data
 ```yaml
 services:
   ecoku:
-    image: "ghcr.io/dejavumoe/ecoku:v0.3.5"
+    image: "ghcr.io/dejavumoe/ecoku:v0.3.6"
     init: true
     restart: unless-stopped
     container_name: ecoku
