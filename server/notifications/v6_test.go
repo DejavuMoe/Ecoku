@@ -85,7 +85,7 @@ func TestEmailV6RendersSmojiTimeZoneAndDesignTokens(t *testing.T) {
 		Content:   "好 ![smoji:挥手](https://static.example/cats/wave.webp) ![smoji:外站](https://other.example/x.webp)",
 		CreatedAt: time.Date(2026, 9, 29, 2, 3, 0, 0, time.UTC),
 	}
-	message, err := renderBloggerEmail(reply, site)
+	message, err := renderBloggerEmail(context.Background(), reply, site)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestEmailV6RendersSmojiTimeZoneAndDesignTokens(t *testing.T) {
 	if !strings.Contains(message.Text, "站长 [博主] 的评论：\n第一行\n第二行") || !strings.Contains(message.Text, "访客 的回复：\n好 [表情：挥手] [表情：外站]") {
 		t.Fatalf("text=%q", message.Text)
 	}
-	telegram, err := renderTelegram(reply, site)
+	telegram, err := renderTelegram(context.Background(), reply, site)
 	if err != nil || strings.Contains(telegram, "![smoji:") || !strings.Contains(telegram, "发布时间：2026/09/29 10:03 (UTC+8)") || !strings.Contains(telegram, "[表情：挥手]") {
 		t.Fatalf("telegram=%q err=%v", telegram, err)
 	}
@@ -494,9 +494,7 @@ func TestStartWorkerExhaustsRecoveredRowsWithoutAttemptsLeft(t *testing.T) {
   VALUES (?, ?, 'owner@example.test', 'processing', ?, ?, ?, NULL, ?, ?, NULL)`, EventBloggerEmail, comment.ID, maxDeliveryAttempts, now, now, now, now).Error; err != nil {
 		t.Fatal(err)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	worker, err := StartWorker(ctx)
+	worker, err := StartWorker(stopAfterRecovery(t, database))
 	if err != nil {
 		t.Fatal(err)
 	}

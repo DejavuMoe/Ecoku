@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"ecoku-server/model"
 	"ecoku-server/notifications"
 	"ecoku-server/utils"
@@ -30,7 +31,7 @@ func DeleteComment(c *gin.Context) {
 		return
 	}
 
-	comment, unchanged, err := tombstoneComment(siteID, commentID, time.Now().UTC())
+	comment, unchanged, err := tombstoneComment(c.Request.Context(), siteID, commentID, time.Now().UTC())
 	switch {
 	case errors.Is(err, errCommentNotFound):
 		utils.SendError(c, http.StatusNotFound, "评论不存在")
@@ -48,52 +49,54 @@ func DeleteComment(c *gin.Context) {
 	}
 }
 
-func tombstoneComment(siteID string, commentID uint, deletedAt time.Time) (model.Comment, bool, error) {
+func tombstoneComment(ctx context.Context, siteID string, commentID uint, deletedAt time.Time) (model.Comment, bool, error) {
 	var updated model.Comment
 	changed := false
-	err := model.DB.Transaction(func(transaction *gorm.DB) error {
-		var current model.Comment
-		err := transaction.Where("id = ? AND site_id = ?", commentID, siteID).First(&current).Error
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return errCommentNotFound
-		}
-		if err != nil {
-			return err
-		}
-		if current.DeletedAt != nil {
-			updated = current
-			return nil
-		}
+	err := notifications.WithCommentLifecycle(ctx, func() error {
+		return model.DB.WithContext(ctx).Transaction(func(transaction *gorm.DB) error {
+			var current model.Comment
+			err := transaction.Where("id = ? AND site_id = ?", commentID, siteID).First(&current).Error
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errCommentNotFound
+			}
+			if err != nil {
+				return err
+			}
+			if current.DeletedAt != nil {
+				updated = current
+				return nil
+			}
 
-		result := transaction.Model(&model.Comment{}).
-			Where("id = ? AND site_id = ? AND deleted_at IS NULL", commentID, siteID).
-			Updates(map[string]any{
-				"username":   "",
-				"email":      nil,
-				"url":        nil,
-				"content":    "",
-				"is_blogger": false,
-				"deleted_at": deletedAt,
-				"updated_at": deletedAt,
-			})
-		if result.Error != nil {
-			return result.Error
-		}
-		if result.RowsAffected != 1 {
-			return errCommentDeleteStateChanged
-		}
-		if err := notifications.CancelForDeletedComment(transaction, commentID); err != nil {
-			return err
-		}
-		if err := transaction.Where("id = ? AND site_id = ?", commentID, siteID).First(&updated).Error; err != nil {
-			return err
-		}
-		changed = true
-		return nil
+			result := transaction.Model(&model.Comment{}).
+				Where("id = ? AND site_id = ? AND deleted_at IS NULL", commentID, siteID).
+				Updates(map[string]any{
+					"username":   "",
+					"email":      nil,
+					"url":        nil,
+					"content":    "",
+					"is_blogger": false,
+					"deleted_at": deletedAt,
+					"updated_at": deletedAt,
+				})
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected != 1 {
+				return errCommentDeleteStateChanged
+			}
+			if err := notifications.CancelForDeletedComment(transaction, commentID); err != nil {
+				return err
+			}
+			if err := transaction.Where("id = ? AND site_id = ?", commentID, siteID).First(&updated).Error; err != nil {
+				return err
+			}
+			changed = true
+			return nil
+		})
 	})
 	if errors.Is(err, errCommentDeleteStateChanged) {
 		var current model.Comment
-		reloadError := model.DB.Where("id = ? AND site_id = ?", commentID, siteID).First(&current).Error
+		reloadError := model.DB.WithContext(ctx).Where("id = ? AND site_id = ?", commentID, siteID).First(&current).Error
 		if errors.Is(reloadError, gorm.ErrRecordNotFound) {
 			return model.Comment{}, false, errCommentNotFound
 		}
@@ -123,7 +126,7 @@ func PermanentlyDeleteComment(c *gin.Context) {
 	if !ok {
 		return
 	}
-	err := model.DB.Transaction(func(tx *gorm.DB) error {
+	err := model.DB.WithContext(c.Request.Context()).Transaction(func(tx *gorm.DB) error {
 		var current model.Comment
 		err := tx.Where("id = ? AND site_id = ?", commentID, siteID).First(&current).Error
 		if errors.Is(err, gorm.ErrRecordNotFound) {

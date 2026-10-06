@@ -13,6 +13,14 @@ if [ ! -d "$site_dir" ] || [ -L "$site_dir" ]; then
   exit 66
 fi
 
+# Do not copy or publish nested links, devices, sockets or FIFOs.
+# find does not follow symlinks, including links to other directories.
+invalid_entry="$(find "$site_dir" ! -type d ! -type f -print -quit)"
+if [ -n "$invalid_entry" ]; then
+  echo "documentation output contains a non-regular entry: $invalid_entry" >&2
+  exit 65
+fi
+
 for required_file in \
   index.html \
   404.html \

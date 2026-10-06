@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"ecoku-server/config"
 	"ecoku-server/model"
 	"ecoku-server/utils"
@@ -46,7 +47,7 @@ func AdminAuthentication() gin.HandlerFunc {
 			return
 		}
 		if strings.EqualFold(scheme, "EcokuSite") {
-			siteID, authenticated := authenticateManagementKey(credential)
+			siteID, authenticated := authenticateManagementKey(c.Request.Context(), credential)
 			if !authenticated {
 				unauthorizedAdmin(c)
 				return
@@ -86,7 +87,7 @@ func RequireAdminSiteAccess() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		exists, err := model.SiteExists(siteID)
+		exists, err := model.SiteExists(c.Request.Context(), siteID)
 		if err != nil {
 			utils.SendError(c, http.StatusInternalServerError, "读取站点配置失败")
 			c.Abort()
@@ -137,7 +138,7 @@ func RequireCompletedAdmin() gin.HandlerFunc {
 	}
 }
 
-func authenticateManagementKey(candidate string) (string, bool) {
+func authenticateManagementKey(ctx context.Context, candidate string) (string, bool) {
 	if candidate == "" || len(candidate) > maximumAuthorizationSize {
 		return "", false
 	}
@@ -148,7 +149,7 @@ func authenticateManagementKey(candidate string) (string, bool) {
 		if !available || !utils.ConstantTimeStringEqual(candidate, key) {
 			continue
 		}
-		exists, err := model.SiteExists(site.ID)
+		exists, err := model.SiteExists(ctx, site.ID)
 		if err == nil && exists {
 			matchedSiteID = site.ID
 			matchCount++

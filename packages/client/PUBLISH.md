@@ -6,7 +6,7 @@
 
 1. 校验 tag、`VERSION`、根与 `packages/client/package.json` 的版本、Compose 镜像和根 `CHANGELOG.md` 的发布章节。
 2. 复用 `ci.yml`，验证该 tag 的 SDK、管理端、Go 服务和文档。SDK 完成 ESM、CommonJS、UMD、类型声明检查后打成 tarball。
-3. 并行执行 npm 发布和镜像构建。npm 发布同一次运行保存的 tarball，不在有写权限的发布 job 中重新安装依赖或构建。amd64 / arm64 镜像在原生 runner 构建，以 digest 汇总为精确版本 tag。
+3. 并行执行 npm 发布和镜像构建。npm 发布同一次运行保存的 tarball，不在有写权限的发布 job 中重新安装依赖或构建。amd64 / arm64 镜像在原生 runner 构建并按 digest 推送；分别拉取同一 digest 完成运行时检查、SBOM 与漏洞扫描后，才导出 digest 并汇总为精确版本 tag。
 4. npm 与镜像均成功后，使用根更新日志对应章节创建 GitHub Release，附带 `ecoku-<版本>.tgz` 和 `SHA256SUMS`。
 
 普通 `master` / PR CI 只验证 SDK、检查包内容并生成 tarball，不运行 `npm publish --dry-run`。npm 的发布预演也会查询 registry，并拒绝已发布的同版本；它不适合作为主线构建检查。实际发布仅在 tag 流程或显式触发的恢复流程中执行。
@@ -42,6 +42,16 @@ SDK 的 `repository.url` 设为 `git+https://github.com/DejavuMoe/Ecoku.git`，`
 
 若包尚未创建、还不能配置 Trusted Publisher，首次发布可以在仓库 Actions Secrets 添加临时 `NPM_TOKEN`：使用对目标包具有写入权限、允许 CI 发布的 granular token，按 npm 的 2FA 设置启用 Bypass 2FA。确认账户有权使用 `ecoku` 包名；registry 返回 404 不保证包名一定可注册。首次成功后配置 Trusted Publisher，再删除 Actions Secret 并撤销临时 token。不要把 token 写进仓库。
 
+## 基础镜像更新与发布门禁
+
+更新 `Dockerfile` 中 Node、Go 或 Alpine 基础镜像时，同时更新精确版本 tag 与多架构 index 的 `sha256` digest，并核对该 index 包含 `linux/amd64`、`linux/arm64`；不要用单一架构的 manifest digest 替代。Dockerfile frontend 也保持 digest 固定。基础镜像固定不等于最终镜像已经通过检查，每次升级仍须通过发布流程中的双架构门禁。
+
+每个架构针对已拉取的最终镜像 digest 运行 `scripts/verify-image.sh`，检查非 root 用户、只读根文件系统、临时数据目录、静态资源、健康检查和 SIGTERM 退出，再运行 `scripts/scan-image.sh`。扫描固定使用 Trivy `0.75.0`，下载对应架构的工具包并在解压执行前校验 SHA-256；升级扫描器时同时更新版本、两个架构的校验和及 `scripts/check-ci.mjs` 中的契约校验。
+
+扫描输出 CycloneDX SBOM 与 JSON 漏洞报告，对 `HIGH,CRITICAL` 使用 `--exit-code 1 --ignorefile /dev/null`。运行时检查失败、下载或校验失败、扫描不可用、命中上述漏洞级别，均阻止该架构导出 digest，进而阻止多架构 tag 与 GitHub Release。失败时仍尝试保存已经生成的 `image-checks-amd64` / `image-checks-arm64` 产物，含镜像 digest、架构和扫描器版本；提前失败可能没有完整报告。npm 发布独立并行，镜像门禁失败不会撤回已发布的 npm 包。
+
+漏洞库下载到本次任务的临时缓存后，使用 [Trivy 版本命令](https://trivy.dev/docs/latest/references/configuration/cli/trivy_version/) 输出 `scanner-version.json`，记录扫描器和漏洞库的版本、更新时间；后续扫描使用同一缓存并跳过再次更新，便于复核扫描依据。漏洞库下载失败同样阻止通过。
+
 ## 缓存与失败恢复
 
 - SDK、管理端、文档和 Go 并行验证。pnpm store 由锁文件确定缓存；Go 缓存依据 `server/go.sum`，包含模块与构建缓存。
@@ -50,10 +60,10 @@ SDK 的 `repository.url` 设为 `git+https://github.com/DejavuMoe/Ecoku.git`，`
 - Go 测试、vet 和构建统一使用 `CGO_ENABLED=0`，与生产镜像一致。两个架构仍原生并行构建；manifest 合并只使用 Buildx CLI，不启动额外的 BuildKit 容器。
 - Docker 使用 GHCR 的 `buildcache-amd64` / `buildcache-arm64`，保存中间构建层，可跨 tag 复用；两个架构不会互相覆盖缓存。
 - 验证中的旧分支任务可取消；发布串行且不会主动取消正在发布的任务。不要一次推送多个待发布 tag，等待上一版完成后再推下一版。
-- SDK、文档与 digest 的 Actions artifacts 保留 7 天。超过保留期不能依赖旧产物重跑下游 job，应检查已发布状态后重新安排发布。
+- SDK、文档与 digest 的 Actions artifacts 保留 7 天，镜像 SBOM 与扫描结果保留 30 天。超过保留期不能依赖旧产物重跑下游 job，应检查已发布状态后重新安排发布。
 - npm 版本不可覆盖。GitHub Release 使用创建操作，已存在时不会覆盖正文或附件。仅失败 job 重跑是首选恢复方式；发布成功的 tag 不移动、不重用。
 
-若 tag 中的发布命令本身有误，重跑旧 job 不会读取主线修复。可手动运行 `recover-npm.yml`，填写原 tag 和原 Release run ID；该流程要求同一 tag 提交的全部验证与镜像 manifest 已成功，只发布原流水线保存的 SDK 包，不重建产物、不移动 tag、不覆盖镜像。使用 OIDC 时须单独授权该工作流；首次发布可使用现有临时 `NPM_TOKEN`。恢复 npm 后，再使用原 tag 的更新日志和 SDK 产物创建 GitHub Release。
+若 tag 中的发布命令本身有误，重跑旧 job 不会读取主线修复。可从 `master` 手动运行 `recover-npm.yml`，填写原 tag 和原 Release run ID；工作流先解析 tag 指向的不可变提交，并核对原 Release run 的仓库、工作流、触发方式、tag、提交以及全部验证和镜像 manifest 的成功状态，再检出该提交执行版本检查。它只发布原流水线保存的 SDK 包，不重建产物、不移动 tag、不覆盖镜像。使用 OIDC 时须单独授权该工作流；首次发布可使用现有临时 `NPM_TOKEN`。恢复 npm 后，再使用原 tag 的更新日志和 SDK 产物创建 GitHub Release。
 
 ## 与 Woodpecker 的分工
 

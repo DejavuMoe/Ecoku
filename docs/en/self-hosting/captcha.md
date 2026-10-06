@@ -37,7 +37,7 @@ The Cap instance URL must be a **publicly reachable HTTPS URL**. Addresses such 
 
 ### Deploy Cap
 
-The example below runs Cap and the Valkey server it depends on with Docker Compose in `~/capjs`. Cap listens only on `127.0.0.1:3000` on the local machine, and a reverse proxy provides HTTPS.
+The example below runs Cap and the Valkey server it depends on with Docker Compose in `~/capjs`. Cap's host port binds only to `127.0.0.1:3000`, and a reverse proxy provides HTTPS. This restricts direct access to the host port; it does not make the admin panel private through the reverse proxy.
 
 ```bash
 mkdir -p ~/capjs/data && cd ~/capjs
@@ -167,6 +167,8 @@ cap.example.com {
     reverse_proxy 127.0.0.1:3000
 }
 ```
+
+The Caddy example above proxies the entire Cap service, including its admin page. Before exposing it publicly, use the routes of your deployed Cap version to apply separate access controls to the admin pages and admin API, such as administrator source restrictions or additional authentication, while retaining Cap's own `ADMIN_KEY` sign-in protection. Visitors need access to the widget, WebAssembly, and browser challenge endpoints; the Ecoku server needs access to the token verification endpoint. Do not block all endpoints on the domain or require interactive sign-in for all of them, as this would break verification for both comments and admin sign-in.
 
 ### Enable Cap in Ecoku
 

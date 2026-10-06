@@ -1,7 +1,9 @@
 package instancekeys
 
 import (
+	"bytes"
 	"encoding/base64"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,6 +29,50 @@ func TestInitializeGeneratesAndReusesKeys(t *testing.T) {
 	}
 	if info, err := os.Stat(path); err != nil || info.Mode().Perm()&0o077 != 0 {
 		t.Fatalf("unsafe key file mode: %v %v", info, err)
+	}
+	rotated, err := Initialize(path, strings.Repeat("r", 32), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	reloaded, err := Initialize(path, "", "")
+	if err != nil || rotated.AdminTokenKey != strings.Repeat("r", 32) || reloaded.AdminTokenKey != rotated.AdminTokenKey || !bytes.Equal(reloaded.NotificationEncryption, first.NotificationEncryption) {
+		t.Fatalf("rotation did not persist or changed the notification key: %v", err)
+	}
+}
+
+func TestAdminKeyRotationPreservesFileOnRenameFailure(t *testing.T) {
+	ResetForTests()
+	path := filepath.Join(t.TempDir(), "ecoku-secrets.json")
+	first, err := Initialize(path, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	previous := renameFile
+	t.Cleanup(func() { renameFile = previous })
+	calls := 0
+	failure := errors.New("fixture rename failure")
+	renameFile = func(_, _ string) error {
+		calls++
+		return failure
+	}
+	if _, err := Initialize(path, strings.Repeat("r", 32), ""); !errors.Is(err, failure) {
+		t.Fatalf("rotation error=%v", err)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(before, after) || calls != 1 {
+		t.Fatalf("failed rename lost/replaced the original or retried: calls=%d err=%v", calls, err)
+	}
+	current, err := Current()
+	if err != nil || current.AdminTokenKey != first.AdminTokenKey || !bytes.Equal(current.NotificationEncryption, first.NotificationEncryption) {
+		t.Fatalf("failed rotation changed active keys: %v", err)
+	}
+	entries, err := os.ReadDir(filepath.Dir(path))
+	if err != nil || len(entries) != 1 || entries[0].Name() != filepath.Base(path) {
+		t.Fatalf("temporary file not cleaned up: %v", err)
 	}
 }
 

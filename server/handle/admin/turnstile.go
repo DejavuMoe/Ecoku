@@ -12,7 +12,7 @@ import (
 )
 
 func GetLoginConfig(c *gin.Context) {
-	public, err := captcha.PublicConfig()
+	public, err := captcha.PublicConfigWithContext(c.Request.Context())
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "读取登录验证配置失败")
 		return

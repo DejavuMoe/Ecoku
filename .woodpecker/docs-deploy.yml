@@ -10,16 +10,18 @@ when:
 
 steps:
   - name: build-docs
-    image: node:24.19.0-alpine3.24
+    image: node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43
+    environment:
+      pnpm_config_verify_deps_before_run: "false"
     commands:
       - apk add --no-cache git
       - npm install --global pnpm@11.24.0
-      - pnpm install --frozen-lockfile --prefer-offline
+      - pnpm --filter ./docs... --fail-if-no-match install --frozen-lockfile --prefer-offline
       - pnpm docs:build
       - sh scripts/verify-docs-output.sh docs/.vitepress/dist
 
   - name: publish-docs
-    image: alpine:3.24.1
+    image: alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b
     volumes:
       - /var/www/ecoku.zsh.moe:/deploy
     commands:

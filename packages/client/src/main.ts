@@ -5,7 +5,8 @@ const app = document.querySelector<HTMLElement>('#app')
 if (!app) throw new Error('Missing #app container')
 
 const parameters = new URLSearchParams(window.location.search)
-const serverURL = parameters.get('serverURL') || 'http://127.0.0.1:12123/'
+// The demo trusts its local API, never a server selected by a shared URL.
+const serverURL = 'http://127.0.0.1:12123/'
 const siteId = parameters.get('siteId') || 'p3-auto'
 const pageKey = parameters.get('pageKey') || 'browser-demo'
 const requestedTheme = parameters.get('theme')

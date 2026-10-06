@@ -19,10 +19,20 @@ jobs:
     name: ${{ matrix.target }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    # Installation is explicit below; nested pnpm scripts must not reinstall all packages.
+    env:
+      pnpm_config_verify_deps_before_run: 'false'
     strategy:
       fail-fast: false
       matrix:
         target: [client, admin, docs]
+        include:
+          - target: client
+            filter: ./packages/client...
+          - target: admin
+            filter: ./packages/admin...
+          - target: docs
+            filter: ./docs...
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -40,7 +50,10 @@ jobs:
       - name: Audit JavaScript dependencies
         if: matrix.target == 'client'
         run: pnpm audit --audit-level=high
-      - run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Install target dependencies
+        env:
+          FILTER: ${{ matrix.filter }}
+        run: pnpm --filter "$FILTER" --fail-if-no-match install --frozen-lockfile --prefer-offline
       - name: Install SDK test browser
         if: matrix.target == 'client'
         run: pnpm -C packages/client exec playwright install --with-deps chromium

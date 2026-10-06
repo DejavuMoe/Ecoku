@@ -142,7 +142,8 @@ func GetComments(c *gin.Context) {
 			comments, hasMore, err = loadPublicChildren(db, siteID, key, parentID, afterID, pageSize)
 			return err
 		}
-		commentTotal, total, err = countPublicComments(db, siteID, key)
+		var children map[uint][]uint
+		commentTotal, total, children, err = countPublicComments(db, siteID, key)
 		if err != nil {
 			return err
 		}
@@ -155,7 +156,7 @@ func GetComments(c *gin.Context) {
 			Order(sortOrder).Limit(pageSize).Offset((page - 1) * pageSize).Find(&roots).Error; err != nil {
 			return err
 		}
-		comments, err = loadPublicDescendants(db, siteID, key, roots)
+		comments, err = loadPublicDescendants(db, siteID, key, roots, children)
 		return err
 	})
 	if err != nil {
@@ -276,7 +277,7 @@ func parseChildCursor(c *gin.Context) (uint64, uint64, bool, error) {
 
 // Read only bounded IDs/edges, never a recursive SQL queue or an unbounded
 // COUNT. Iterative reachability preserves exact totals, including tombstones.
-func countPublicComments(db *gorm.DB, siteID, key string) (int64, int64, error) {
+func countPublicComments(db *gorm.DB, siteID, key string) (int64, int64, map[uint][]uint, error) {
 	var nodes []struct {
 		ID       uint
 		ParentID *uint
@@ -284,10 +285,10 @@ func countPublicComments(db *gorm.DB, siteID, key string) (int64, int64, error) 
 	if err := db.Model(&model.Comment{}).Select("id, parent_id").
 		Where("site_id = ? AND mark = ?", siteID, key).
 		Limit(maxPublicCountNodes + 1).Find(&nodes).Error; err != nil {
-		return 0, 0, err
+		return 0, 0, nil, err
 	}
 	if len(nodes) > maxPublicCountNodes {
-		return 0, 0, errPublicListBudget
+		return 0, 0, nil, errPublicListBudget
 	}
 	children := make(map[uint][]uint)
 	var queue []uint
@@ -302,7 +303,7 @@ func countPublicComments(db *gorm.DB, siteID, key string) (int64, int64, error) 
 	seen := make(map[uint]bool, len(nodes))
 	for i := 0; i < len(queue); i++ {
 		if err := db.Statement.Context.Err(); err != nil {
-			return 0, 0, err
+			return 0, 0, nil, err
 		}
 		id := queue[i]
 		if seen[id] {
@@ -311,7 +312,7 @@ func countPublicComments(db *gorm.DB, siteID, key string) (int64, int64, error) 
 		seen[id] = true
 		queue = append(queue, children[id]...)
 	}
-	return int64(len(seen)), roots, nil
+	return int64(len(seen)), roots, children, nil
 }
 
 func loadPublicChildren(db *gorm.DB, siteID, key string, parentID, afterID uint64, pageSize int) ([]model.Comment, bool, error) {
@@ -336,7 +337,7 @@ func loadPublicChildren(db *gorm.DB, siteID, key string, parentID, afterID uint6
 	return children, hasMore, nil
 }
 
-func loadPublicDescendants(db *gorm.DB, siteID, key string, roots []model.Comment) ([]model.Comment, error) {
+func loadPublicDescendants(db *gorm.DB, siteID, key string, roots []model.Comment, childrenByParent map[uint][]uint) ([]model.Comment, error) {
 	if len(roots) > maxPublicListNodes {
 		return nil, errPublicListBudget
 	}
@@ -353,6 +354,13 @@ func loadPublicDescendants(db *gorm.DB, siteID, key string, roots []model.Commen
 		// query could sort an arbitrarily broad level before applying LIMIT.
 		sort.Slice(frontier, func(i, j int) bool { return frontier[i] < frontier[j] })
 		for _, parentID := range frontier {
+			if err := db.Statement.Context.Err(); err != nil {
+				return nil, err
+			}
+			// The count graph comes from the same snapshot, so leaves need no query.
+			if len(childrenByParent[parentID]) == 0 {
+				continue
+			}
 			remaining := maxPublicListNodes - len(result)
 			if depth == maxPublicListDepth {
 				remaining = 0

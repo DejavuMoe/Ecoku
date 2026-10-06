@@ -6,6 +6,7 @@ import (
 	"ecoku-server/internal/testsite"
 	"ecoku-server/model"
 	"encoding/base64"
+	"errors"
 	"slices"
 	"strings"
 	"testing"
@@ -203,7 +204,7 @@ func TestNotificationTemplatesUseSiteNameArticleTitleAndEscapeText(t *testing.T)
 	if err := model.DB.Create(&root).Error; err != nil {
 		t.Fatal(err)
 	}
-	blogger, err := renderBloggerEmail(root, site)
+	blogger, err := renderBloggerEmail(context.Background(), root, site)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +215,7 @@ func TestNotificationTemplatesUseSiteNameArticleTitleAndEscapeText(t *testing.T)
 		t.Fatalf("footer missing: %s", blogger.HTML)
 	}
 	reply := model.Comment{ID: 2, SiteID: "site-a", Mark: "/post", PageTitle: "文章标题", ParentID: &root.ID, Username: "回复者", Content: "回复"}
-	message, err := renderBloggerEmail(reply, site)
+	message, err := renderBloggerEmail(context.Background(), reply, site)
 	if err != nil || message.Subject != "您在 Dejavu's Blog 上有新回复：文章标题" || !strings.Contains(message.HTML, "文章标题") {
 		t.Fatalf("reply=%#v err=%v", message, err)
 	}
@@ -226,11 +227,11 @@ func TestNotificationTemplatesUseSiteNameArticleTitleAndEscapeText(t *testing.T)
 		t.Fatalf("missing comment anchors blogger=%s visitor=%s", blogger.HTML, visitor.HTML)
 	}
 	emptyTitle := model.Comment{ID: 3, SiteID: "site-a", Mark: "/untitled", Username: "访客", Content: "无标题"}
-	untitled, err := renderBloggerEmail(emptyTitle, site)
+	untitled, err := renderBloggerEmail(context.Background(), emptyTitle, site)
 	if err != nil || !strings.Contains(untitled.HTML, "这篇文章") || untitled.Subject != "您在 Dejavu's Blog 上有新评论" {
 		t.Fatalf("empty title=%#v err=%v", untitled, err)
 	}
-	telegram, err := renderTelegram(reply, site)
+	telegram, err := renderTelegram(context.Background(), reply, site)
 	if err != nil || strings.Contains(telegram, "审核") || !strings.Contains(telegram, "您在 Dejavu&#39;s Blog 上有新回复") {
 		t.Fatalf("telegram=%q err=%v", telegram, err)
 	}
@@ -281,7 +282,10 @@ func TestStartWorkerRecoversAllProcessingRows(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	worker, err := StartWorker(ctx)
+	if worker, err := StartWorker(ctx); worker != nil || !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled startup: worker=%v err=%v", worker, err)
+	}
+	worker, err := StartWorker(stopAfterRecovery(t, database))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -293,6 +297,24 @@ func TestStartWorkerRecoversAllProcessingRows(t *testing.T) {
 	if status != "failed" || code != "worker_recovered" {
 		t.Fatalf("status=%q code=%q", status, code)
 	}
+}
+
+// Stop after the recovery SQL succeeds but before the delivery goroutine starts.
+// A context cancelled before StartWorker must now abort the recovery itself.
+func stopAfterRecovery(t *testing.T, database *gorm.DB) context.Context {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	const callback = "test:stop-after-recovery"
+	if err := database.Callback().Raw().After("gorm:raw").Register(callback, func(tx *gorm.DB) {
+		if strings.Contains(tx.Statement.SQL.String(), "worker_recovered") {
+			cancel()
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { database.Callback().Raw().Remove(callback) })
+	return ctx
 }
 
 func TestSMTPPayloadUsesRandomBoundaryAndQuotedPrintable(t *testing.T) {

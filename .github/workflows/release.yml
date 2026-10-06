@@ -83,6 +83,22 @@ jobs:
           cache-to: type=registry,ref=${{ needs.check.outputs.image }}:buildcache-${{ matrix.arch }},mode=max
           provenance: mode=max
           pull: true
+      - name: Verify final image runtime and vulnerabilities
+        env:
+          IMAGE: ${{ needs.check.outputs.image }}@${{ steps.build.outputs.digest }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          docker pull "$IMAGE"
+          sh scripts/verify-image.sh "$IMAGE"
+          bash scripts/scan-image.sh "$IMAGE" "$ARCH" "$RUNNER_TEMP/image-checks"
+      - name: Save image SBOM and scan results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: image-checks-${{ matrix.arch }}
+          path: ${{ runner.temp }}/image-checks
+          if-no-files-found: warn
+          retention-days: 30
       - name: Export image digest
         env:
           DIGEST: ${{ steps.build.outputs.digest }}

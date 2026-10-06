@@ -69,15 +69,16 @@ type SiteWrite struct {
 	Revision              uint
 }
 
-func ListSites() ([]Site, error) {
+func ListSites(ctx context.Context) ([]Site, error) {
 	if DB == nil {
 		return nil, fmt.Errorf("database unavailable")
 	}
 	var sites []Site
-	if err := DB.Order("id ASC").Find(&sites).Error; err != nil {
+	database := DB.WithContext(ctx)
+	if err := database.Order("id ASC").Find(&sites).Error; err != nil {
 		return nil, err
 	}
-	if err := attachSiteOrigins(DB, sites); err != nil {
+	if err := attachSiteOrigins(database, sites); err != nil {
 		return nil, err
 	}
 	return sites, nil
@@ -110,23 +111,24 @@ func getSite(database *gorm.DB, siteID string) (Site, error) {
 	return site, nil
 }
 
-func SiteExists(siteID string) (bool, error) {
+func SiteExists(ctx context.Context, siteID string) (bool, error) {
 	if DB == nil {
 		return false, fmt.Errorf("database unavailable")
 	}
 	var count int64
-	if err := DB.Table("sites").Where("id = ?", strings.TrimSpace(siteID)).Count(&count).Error; err != nil {
+	if err := DB.WithContext(ctx).Table("sites").Where("id = ?", strings.TrimSpace(siteID)).Count(&count).Error; err != nil {
 		return false, err
 	}
 	return count == 1, nil
 }
 
-func CreateSite(input SiteWrite, now time.Time) (Site, error) {
+func CreateSite(ctx context.Context, input SiteWrite, now time.Time) (Site, error) {
 	if DB == nil {
 		return Site{}, fmt.Errorf("database unavailable")
 	}
 	var created Site
-	err := DB.Transaction(func(tx *gorm.DB) error {
+	database := DB.WithContext(ctx)
+	err := database.Transaction(func(tx *gorm.DB) error {
 		created = Site{
 			ID: input.ID, SiteURL: input.SiteURL, Domain: input.Domain,
 			Name: input.Name, DefaultSort: input.DefaultSort,
@@ -148,14 +150,15 @@ func CreateSite(input SiteWrite, now time.Time) (Site, error) {
 	if err != nil {
 		return Site{}, err
 	}
-	return getSite(DB, created.ID)
+	return getSite(database, created.ID)
 }
 
-func UpdateSite(siteID string, input SiteWrite, now time.Time) (Site, error) {
+func UpdateSite(ctx context.Context, siteID string, input SiteWrite, now time.Time) (Site, error) {
 	if DB == nil {
 		return Site{}, fmt.Errorf("database unavailable")
 	}
-	err := DB.Transaction(func(tx *gorm.DB) error {
+	database := DB.WithContext(ctx)
+	err := database.Transaction(func(tx *gorm.DB) error {
 		updates := map[string]any{
 			"site_url": input.SiteURL, "domain": input.Domain,
 			"name":               input.Name,
@@ -202,7 +205,7 @@ func UpdateSite(siteID string, input SiteWrite, now time.Time) (Site, error) {
 	if err != nil {
 		return Site{}, err
 	}
-	return getSite(DB, siteID)
+	return getSite(database, siteID)
 }
 
 // SmojiOrigin is shared by comment validation and notification rendering.

@@ -92,14 +92,17 @@ Logs record only the notification ID, error type, and attempt count. They do not
 
 ## After a comment is deleted {#after-deletion}
 
-After you delete a comment in the admin console:
+Deleting a comment to a tombstone in the admin console is coordinated with the final notification send: the comment and its parent are checked again before sending, so no delivery starts from a pre-deletion snapshot after deletion completes. If a delivery has already started, deletion waits for it to finish, at most until that delivery's 20-second deadline. This is not an overall deadline for the deletion request, including time spent queuing. Canceling the request can stop the wait.
+
+After deletion completes:
 
 - Notifications that have not been sent yet are not sent, including the blogger's email and Telegram messages.
 - Replies to this comment no longer send email to its author, and the author's address is removed from the queue.
-- Telegram messages that were already sent are rewritten to "这条评论已被删除，通知内容已移除。" (This comment was deleted and the notification content has been removed.). Only the site name and post title remain.
+- The background queue rewrites this comment's sent Telegram messages to "这条评论已被删除，通知内容已移除。" (This comment was deleted and the notification content has been removed.). Only the site name and post title remain.
+- Sent Telegram messages for live direct replies on the same site and page are refreshed to remove the parent quote while keeping each reply's own content. If a reply is later deleted too, its message is queued again for replacement with the deletion notice. Messages for other sites are unaffected.
 - Emails that were already sent cannot be recalled.
 
-A sent Telegram message cannot be rewritten if the notification was sent more than 30 days ago and its record has been removed, if the tombstone was permanently deleted before the retraction finished, or if the process crashed after the message was sent but before the result was recorded.
+A sent Telegram message cannot be rewritten if its notification record has been removed under the 30-day retention policy, if the relevant tombstone was permanently deleted before processing finished, or if the process crashed after sending but before recording the result and message ID. Completing deletion does not mean Telegram edits have completed; edits remain subject to the notification retry limit. A crash after sending but before recording the result can also cause duplicate delivery after restart.
 
 ## Troubleshooting {#troubleshooting}
 
