@@ -18,7 +18,7 @@ chmod 0644 "$scratch/config.yaml"
 container="$(docker create --pull=never --network=none --read-only \
   --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=64 \
   --cpus=1 --memory=384m --memory-swap=384m --ulimit fsize=67108864:67108864 \
-  --log-driver=local --log-opt max-size=1m --log-opt max-file=1 \
+  --log-driver=local --log-opt max-size=1m --log-opt max-file=1 --log-opt compress=false \
   --tmpfs /data:rw,noexec,nosuid,nodev,size=64m,uid=10001,gid=10001,mode=0750 \
   --tmpfs /tmp:rw,noexec,nosuid,nodev,size=16m \
   --mount "type=bind,src=$scratch/config.yaml,dst=/app/config.yaml,readonly" "$image")"
