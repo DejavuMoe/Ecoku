@@ -37,7 +37,7 @@ Cap 實例位址必須是**可從公開網路存取的 HTTPS 位址**。`localho
 
 ### 部署 Cap
 
-下面的範例在 `~/capjs` 中用 Docker Compose 執行 Cap 和它所依賴的 Valkey。Cap 只監聽本機 `127.0.0.1:3000`，再由反向代理提供 HTTPS。
+下面的範例在 `~/capjs` 中用 Docker Compose 執行 Cap 和它所依賴的 Valkey。Cap 的主機連接埠僅繫結至 `127.0.0.1:3000`，再由反向代理提供 HTTPS；這只限制直接存取主機連接埠，不會讓經過反向代理的管理面板自動變為私有。
 
 ```bash
 mkdir -p ~/capjs/data && cd ~/capjs
@@ -167,6 +167,8 @@ cap.example.com {
     reverse_proxy 127.0.0.1:3000
 }
 ```
+
+上面的 Caddy 範例代理整個 Cap 服務，也會公開管理頁。對外使用前，依所部署 Cap 版本的路由為管理頁與管理 API 單獨設定存取控制，例如管理員來源限制或額外驗證，並保留 Cap 自身的 `ADMIN_KEY` 登入保護。驗證元件、WebAssembly 與瀏覽器挑戰端點需要允許訪客存取，token 核驗端點需要允許 Ecoku 伺服器存取；不要將整個網域的端點一併封鎖或套上互動式登入，否則評論與後台登入驗證都會失敗。
 
 ### 在 Ecoku 中啟用 Cap
 

@@ -377,7 +377,7 @@ func TestCommentManagementIsPublishedDeletedOnlyAndSiteIsolated(t *testing.T) {
 	if unauthenticated.Code != http.StatusUnauthorized {
 		t.Fatalf("unauthenticated=%d", unauthenticated.Code)
 	}
-	// Site management keys were removed; the scheme is no longer accepted.
+	// This fixture has no configured site management key, so EcokuSite is unauthorized.
 	for _, method := range []string{http.MethodGet, http.MethodDelete} {
 		path := fmt.Sprintf("/api/admin/sites/site-a/comments/%d", a.ID)
 		if got := requestJSON(t, env.router, method, path, "", "EcokuSite "+strings.Repeat("a", 32), nil).Code; got != http.StatusUnauthorized {
@@ -446,7 +446,7 @@ func TestSiteWriteContractOmitsDerivedDomainAndReviewMode(t *testing.T) {
 	payload := map[string]any{
 		"id": "site-c", "site_url": "https://c.example/path", "name": "站点 C",
 		"allowed_origins": []string{"https://c.example"}, "default_sort": "oldest",
-		"i18n": "en",
+		"i18n":           "en",
 		"email_required": false, "website_required": true, "placeholder": "说点什么",
 		"comment_limit": 2048, "empty_message": "暂时没有评论",
 		"smoji_enabled": true, "smoji_manifest_url": "https://static.example/smoji.json",

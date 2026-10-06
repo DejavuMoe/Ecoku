@@ -23,6 +23,8 @@ const (
 	maximumBcryptPasswordBytes      = 72
 )
 
+var compareLoginPassword = bcrypt.CompareHashAndPassword
+
 type loginRequest struct {
 	Username       string `json:"username"`
 	Password       string `json:"password"`
@@ -79,11 +81,14 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	if request.Password == "" || len(request.Password) > maximumBcryptPasswordBytes || c.Request.Context().Err() != nil {
+		loginUnauthorized(c)
+		return
+	}
 	username := strings.TrimSpace(request.Username)
 	usernameMatches := username != "" && len([]rune(username)) <= maximumAdminLoginUsernameLength && utils.ConstantTimeStringEqual(username, credentials.Username)
-	passwordCandidateValid := request.Password != "" && len([]byte(request.Password)) <= maximumBcryptPasswordBytes
-	passwordMatches := bcrypt.CompareHashAndPassword([]byte(credentials.PasswordHash), []byte(request.Password)) == nil
-	if !usernameMatches || !passwordCandidateValid || !passwordMatches {
+	passwordMatches := compareLoginPassword([]byte(credentials.PasswordHash), []byte(request.Password)) == nil
+	if !usernameMatches || !passwordMatches {
 		loginUnauthorized(c)
 		return
 	}

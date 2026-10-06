@@ -78,7 +78,7 @@ func TestTelegramTruncatesTextBeforeEscaping(t *testing.T) {
 		t.Fatal(err)
 	}
 	comment := model.Comment{ID: 42, ParentID: &parent.ID, SiteID: "site-a", Mark: "/", Username: strings.Repeat("😀", 80), PageTitle: strings.Repeat("😀", 200), Content: strings.Repeat("😀", 2000)}
-	message, err := renderTelegram(comment, model.Site{SiteURL: "https://site.example/" + strings.Repeat("a", 3000), Name: strings.Repeat("😀", 120)})
+	message, err := renderTelegram(context.Background(), comment, model.Site{SiteURL: "https://site.example/" + strings.Repeat("a", 3000), Name: strings.Repeat("😀", 120)})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -28,7 +28,9 @@ pnpm docs:dev
 
 Run the commands you need in separate terminals.
 
-Access the API locally at `http://127.0.0.1:12123`; the default port is `12123`. The database is `server/data/ecoku.bin`, with `ecoku-secrets.json` in the same directory. Source runs do not serve browser assets by default; use the Vite development servers for the client and admin console. The Docker image serves built assets.
+Source runs bind only to `127.0.0.1` by default. Access the API at `http://127.0.0.1:12123`; the default port is `12123`. The database is `server/data/ecoku.bin`, with `ecoku-secrets.json` in the same directory. Source runs do not serve browser assets by default; use the Vite development servers for the client and admin console. The Docker image serves built assets. Container mode (`ECOKU_RUNTIME=container`) continues to listen on all interfaces inside the container; Compose port mappings still control host exposure.
+
+The client development demo uses the fixed local API URL `http://127.0.0.1:12123/`. URL query parameters cannot select or override the server address.
 
 GitHub Actions runs the full gate. Locally, run only checks directly relevant to the change and not already covered by CI.
 

@@ -24,45 +24,61 @@ concurrency:
 
 jobs:
   npm:
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
       TAG: ${{ inputs.tag }}
       SOURCE_RUN: ${{ inputs.run_id }}
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ inputs.tag }}
-          persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24.19.0
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
       - name: Verify original release provenance
+        id: provenance
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          [[ "$SOURCE_RUN" =~ ^[0-9]+$ ]]
-          node scripts/check-release.mjs "$TAG"
+          [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z]+([.-][0-9A-Za-z]+)*)?$ ]]
+          [[ "$SOURCE_RUN" =~ ^[1-9][0-9]*$ ]]
+          gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$TAG" > "$RUNNER_TEMP/source-ref.json"
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" > "$RUNNER_TEMP/source-run.json"
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN/jobs?per_page=100" > "$RUNNER_TEMP/source-jobs.json"
           node --input-type=module <<'JS'
           import assert from 'node:assert/strict'
-          import { readFileSync } from 'node:fs'
+          import { appendFileSync, readFileSync } from 'node:fs'
           import { execFileSync } from 'node:child_process'
           const read = name => JSON.parse(readFileSync(`${process.env.RUNNER_TEMP}/${name}.json`, 'utf8'))
           const run = read('source-run')
+          let commit = read('source-ref').object
+          for (let depth = 0; commit.type === 'tag' && depth < 8; depth++) {
+            assert.match(commit.sha, /^[a-f0-9]{40}$/)
+            const tag = JSON.parse(execFileSync('gh', ['api', `repos/${process.env.GITHUB_REPOSITORY}/git/tags/${commit.sha}`], { encoding: 'utf8' }))
+            commit = tag.object
+          }
+          assert.equal(commit.type, 'commit', 'Tag did not resolve to a commit')
+          assert.match(commit.sha, /^[a-f0-9]{40}$/)
+          assert.equal(run.repository.full_name, process.env.GITHUB_REPOSITORY)
           assert.equal(run.path, '.github/workflows/release.yml')
           assert.equal(run.event, 'push')
           assert.equal(run.status, 'completed')
           assert.equal(run.head_branch, process.env.TAG)
-          assert.equal(run.head_sha, execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim())
+          assert.equal(run.head_sha, commit.sha)
           const { jobs } = read('source-jobs')
           for (const name of ['check', 'verify / client', 'verify / admin', 'verify / docs', 'verify / server', 'manifest']) {
             assert.ok(jobs.some(job => job.name === name && job.conclusion === 'success'), `${name} did not pass`)
           }
+          appendFileSync(process.env.GITHUB_OUTPUT, `sha=${commit.sha}\n`)
           JS
+      # No script from the selected tag runs before its original run is verified.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.provenance.outputs.sha }}
+          persist-credentials: false
+      - name: Check verified release files
+        run: node scripts/check-release.mjs "$TAG"
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ecoku-sdk

@@ -87,7 +87,9 @@ func enqueue(tx *gorm.DB, eventType string, commentID uint, target string) error
 // CancelForDeletedComment runs inside the tombstone transaction. Queued
 // notifications about the comment are cancelled, reply emails addressed to
 // its now-erased private email are removed, and Telegram messages that were
-// already sent (or are being sent right now) are queued for retraction.
+// already sent (or are being sent right now), including direct replies quoting
+// this comment, are queued for retraction/refresh. The caller holds the lifecycle
+// gate before starting the transaction.
 // Emails that already left the SMTP server cannot be recalled.
 func CancelForDeletedComment(tx *gorm.DB, commentID uint) error {
 	now := time.Now().UTC()
@@ -104,16 +106,23 @@ WHERE event_type = ? AND comment_id IN (SELECT id FROM comments WHERE parent_id 
 	}
 	return tx.Exec(`INSERT INTO notification_outbox
   (event_type, comment_id, target, status, attempts, available_at, locked_at, last_error_code, created_at, updated_at, sent_at, provider_message_id)
-SELECT ?, comment_id, target, 'pending', 0, ?, NULL, NULL, ?, ?, NULL, NULL
-FROM notification_outbox
-WHERE comment_id = ? AND event_type = ? AND status IN ('sent', 'processing')
-ON CONFLICT(event_type, comment_id, target) DO NOTHING`,
+SELECT ?, notice.comment_id, notice.target, 'pending', 0, ?, NULL, NULL, ?, ?, NULL, NULL
+FROM notification_outbox AS notice
+JOIN comments AS comment ON comment.id = notice.comment_id
+JOIN comments AS deleted ON deleted.id = ?
+WHERE (comment.id = deleted.id OR
+  (comment.parent_id = deleted.id AND comment.site_id = deleted.site_id AND comment.mark = deleted.mark))
+  AND notice.event_type = ? AND notice.status IN ('sent', 'processing')
+ON CONFLICT(event_type, comment_id, target) DO UPDATE SET
+  status = 'pending', attempts = 0, available_at = excluded.available_at,
+  locked_at = NULL, last_error_code = NULL, updated_at = excluded.updated_at,
+  sent_at = NULL, provider_message_id = NULL`,
 		EventBloggerTelegramRetract, now, now, now, commentID, EventBloggerTelegram).Error
 }
 
 func StartWorker(ctx context.Context) (*Worker, error) {
 	now := time.Now().UTC()
-	if err := model.DB.Exec(`UPDATE notification_outbox
+	if err := model.DB.WithContext(ctx).Exec(`UPDATE notification_outbox
 SET status = CASE WHEN attempts >= ? THEN 'exhausted' ELSE 'failed' END,
     locked_at = NULL, last_error_code = 'worker_recovered', available_at = ?, updated_at = ?
 WHERE status = 'processing'`, maxDeliveryAttempts, now, now).Error; err != nil {
@@ -167,7 +176,7 @@ func ProcessPendingOnce(ctx context.Context) (bool, error) {
 	}
 	now := time.Now().UTC()
 	var event outboxRow
-	err := model.DB.Transaction(func(tx *gorm.DB) error {
+	err := model.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Table("notification_outbox").
 			Where("status IN ('pending', 'failed') AND attempts < ? AND available_at <= ?", maxDeliveryAttempts, now).
 			Order("available_at ASC, id ASC").First(&event).Error; err != nil {
@@ -191,6 +200,7 @@ func ProcessPendingOnce(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	event.LockedAt = &now
 
 	messageID, deliveryErr := deliverEvent(ctx, event)
 	finish := time.Now().UTC()
@@ -222,8 +232,11 @@ func ProcessPendingOnce(ctx context.Context) (bool, error) {
 	}
 	// Keep the delivery result in this worker until storage recovers. Retrying
 	// only the write avoids sending the same message again after a transient fault.
+	// A deletion can requeue a refresh after sending but before completion. Only
+	// finish our own claim; zero affected rows means newer work already replaced it.
 	for {
-		err = model.DB.WithContext(ctx).Table("notification_outbox").Where("id = ?", event.ID).Updates(updates).Error
+		err = model.DB.WithContext(ctx).Table("notification_outbox").
+			Where("id = ? AND status = 'processing' AND locked_at = ?", event.ID, now).Updates(updates).Error
 		if err == nil {
 			return true, nil
 		}
@@ -248,105 +261,133 @@ func invalidTarget(target string) bool {
 // deliverEvent sends one outbox row and returns the provider message id when
 // the channel reports one.
 func deliverEvent(ctx context.Context, event outboxRow) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	database := model.DB.WithContext(ctx)
 	var comment model.Comment
-	if err := model.DB.Where("id = ?", event.CommentID).First(&comment).Error; err != nil {
+	if err := database.Where("id = ?", event.CommentID).First(&comment).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return "", errDeliveryCancelled
 		}
 		return "", err
 	}
-	site, err := model.GetSite(comment.SiteID)
+	site, err := model.GetSiteWithContext(ctx, comment.SiteID)
 	if err != nil {
 		return "", err
 	}
+	if invalidTarget(event.Target) || (comment.DeletedAt != nil && event.EventType != EventBloggerTelegramRetract) {
+		return "", errDeliveryCancelled
+	}
+	// Cheap preflight and settings preparation stay outside the gate. Neither
+	// these snapshots nor a successful preflight authorize the later send.
+	if event.EventType == EventVisitorReply {
+		parent, err := loadParent(ctx, comment)
+		if err != nil {
+			return "", err
+		}
+		if parent == nil {
+			return "", errDeliveryCancelled
+		}
+	}
+	var email EmailConfig
+	var telegram TelegramConfig
 	switch event.EventType {
-	case EventBloggerEmail:
-		// A tombstone has no nickname or body left; never mail an empty notice.
-		if invalidTarget(event.Target) || comment.DeletedAt != nil {
-			return "", errDeliveryCancelled
-		}
-		row, err := loadSetting(model.DB, ChannelEmail)
+	case EventBloggerEmail, EventVisitorReply:
+		row, err := loadSetting(database, ChannelEmail)
 		if err != nil {
 			return "", err
 		}
-		settings, err := emailFromRow(row, true)
+		email, err = emailFromRow(row, true)
 		if err != nil {
 			return "", err
 		}
-		message, err := renderBloggerEmail(comment, site)
+	case EventBloggerTelegram, EventBloggerTelegramRetract:
+		row, err := loadSetting(database, ChannelTelegram)
 		if err != nil {
 			return "", err
 		}
-		return "", sendSMTPMessage(ctx, settings, event.Target, message)
-	case EventBloggerTelegram:
-		if invalidTarget(event.Target) || comment.DeletedAt != nil {
-			return "", errDeliveryCancelled
-		}
-		row, err := loadSetting(model.DB, ChannelTelegram)
+		telegram, err = telegramFromRow(row, true)
 		if err != nil {
 			return "", err
 		}
-		settings, err := telegramFromRow(row, true)
-		if err != nil {
-			return "", err
-		}
-		message, err := renderTelegram(comment, site)
-		if err != nil {
-			return "", err
-		}
-		return sendTelegramMessage(ctx, settings.Token, event.Target, message)
-	case EventBloggerTelegramRetract:
-		if invalidTarget(event.Target) || comment.DeletedAt == nil {
-			return "", errDeliveryCancelled
-		}
-		var original outboxRow
-		err := model.DB.Table("notification_outbox").
-			Where("event_type = ? AND comment_id = ? AND target = ?", EventBloggerTelegram, comment.ID, event.Target).
-			First(&original).Error
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", errDeliveryCancelled
-		}
-		if err != nil {
-			return "", err
-		}
-		if original.Status == "processing" {
-			return "", &deliveryFailure{code: "retract_waiting"}
-		}
-		if original.Status != "sent" || original.ProviderMessageID == nil || *original.ProviderMessageID == "" {
-			return "", errDeliveryCancelled
-		}
-		row, err := loadSetting(model.DB, ChannelTelegram)
-		if err != nil {
-			return "", err
-		}
-		settings, err := telegramFromRow(row, true)
-		if err != nil {
-			return "", err
-		}
-		return "", editTelegramMessage(ctx, settings.Token, event.Target, *original.ProviderMessageID, renderTelegramRetracted(comment, site))
-	case EventVisitorReply:
-		if comment.ParentID == nil || comment.DeletedAt != nil || invalidTarget(event.Target) {
-			return "", errDeliveryCancelled
-		}
-		var parent model.Comment
-		if err := model.DB.Where("id = ? AND site_id = ? AND mark = ?", *comment.ParentID, comment.SiteID, comment.Mark).First(&parent).Error; err != nil {
-			return "", errDeliveryCancelled
-		}
-		if parent.DeletedAt != nil {
-			return "", errDeliveryCancelled
-		}
-		row, err := loadSetting(model.DB, ChannelEmail)
-		if err != nil {
-			return "", err
-		}
-		settings, err := emailFromRow(row, true)
-		if err != nil {
-			return "", err
-		}
-		return "", sendSMTPMessage(ctx, settings, event.Target, renderReplyEmail(comment, parent, site, pageURL(site, comment.Mark)))
 	default:
 		return "", errDeliveryCancelled
 	}
+	var messageID string
+	err = WithCommentLifecycle(ctx, func() error {
+		// No transaction spans rendering or transport I/O. The lifecycle gate
+		// prevents a tombstone commit between these checks and the actual send.
+		var claimed outboxRow
+		if err := database.Table("notification_outbox").
+			Where("id = ? AND status = 'processing' AND locked_at = ?", event.ID, event.LockedAt).First(&claimed).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errDeliveryCancelled
+			}
+			return err
+		}
+		var current model.Comment
+		if err := database.Where("id = ?", event.CommentID).First(&current).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return errDeliveryCancelled
+			}
+			return err
+		}
+		if current.DeletedAt != nil && event.EventType != EventBloggerTelegramRetract {
+			return errDeliveryCancelled
+		}
+		switch event.EventType {
+		case EventBloggerEmail:
+			message, err := renderBloggerEmail(ctx, current, site)
+			if err != nil {
+				return err
+			}
+			return sendSMTPMessage(ctx, email, event.Target, message)
+		case EventVisitorReply:
+			parent, err := loadParent(ctx, current)
+			if err != nil {
+				return err
+			}
+			if parent == nil {
+				return errDeliveryCancelled
+			}
+			return sendSMTPMessage(ctx, email, event.Target, renderReplyEmail(current, *parent, site, pageURL(site, current.Mark)))
+		case EventBloggerTelegram:
+			message, err := renderTelegram(ctx, current, site)
+			if err != nil {
+				return err
+			}
+			messageID, err = sendTelegramMessage(ctx, telegram.Token, event.Target, message)
+			return err
+		case EventBloggerTelegramRetract:
+			var original outboxRow
+			if err := database.Table("notification_outbox").
+				Where("event_type = ? AND comment_id = ? AND target = ?", EventBloggerTelegram, current.ID, event.Target).
+				First(&original).Error; err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					return errDeliveryCancelled
+				}
+				return err
+			}
+			if original.Status == "processing" {
+				return &deliveryFailure{code: "retract_waiting"}
+			}
+			if original.Status != "sent" || original.ProviderMessageID == nil || *original.ProviderMessageID == "" {
+				return errDeliveryCancelled
+			}
+			message := renderTelegramRetracted(current, site)
+			if current.DeletedAt == nil {
+				var err error
+				message, err = renderTelegram(ctx, current, site)
+				if err != nil {
+					return err
+				}
+			}
+			return editTelegramMessage(ctx, telegram.Token, event.Target, *original.ProviderMessageID, message)
+		default:
+			return errDeliveryCancelled
+		}
+	})
+	return messageID, err
 }
 
 func SendTestEmail(ctx context.Context, input EmailConfig) string {

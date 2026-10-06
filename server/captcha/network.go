@@ -19,6 +19,7 @@ var blockedPublicPrefixes = []netip.Prefix{
 	netip.MustParsePrefix("198.51.100.0/24"),
 	netip.MustParsePrefix("203.0.113.0/24"),
 	netip.MustParsePrefix("2001:db8::/32"),
+	netip.MustParsePrefix("fec0::/10"),
 }
 
 func isPublicIP(ip net.IP) bool {

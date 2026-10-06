@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"context"
 	"ecoku-server/middleware"
 	"ecoku-server/model"
 	"ecoku-server/utils"
@@ -72,23 +73,25 @@ func ListComments(c *gin.Context) {
 		return
 	}
 
-	query := model.DB.Model(&model.Comment{}).Where("site_id = ?", siteID)
+	ctx := c.Request.Context()
+	counts, err := commentManagementCounts(ctx, siteID)
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "统计管理评论失败")
+		return
+	}
+	total := counts[status]
+	query := model.DB.WithContext(ctx).Model(&model.Comment{}).Where("site_id = ?", siteID)
 	if status == "deleted" {
 		query = query.Where("deleted_at IS NOT NULL")
 	} else {
 		query = query.Where("deleted_at IS NULL")
-	}
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
-		utils.SendError(c, http.StatusInternalServerError, "查询管理评论失败")
-		return
 	}
 	var comments []model.Comment
 	if err := query.Order(orderClause).Limit(pageSize).Offset((page - 1) * pageSize).Find(&comments).Error; err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "查询管理评论失败")
 		return
 	}
-	childCounts, err := reviewChildCounts(comments)
+	childCounts, err := reviewChildCounts(ctx, comments)
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "查询评论后代失败")
 		return
@@ -96,11 +99,6 @@ func ListComments(c *gin.Context) {
 	dtos := make([]CommentReviewDTO, 0, len(comments))
 	for _, comment := range comments {
 		dtos = append(dtos, commentReviewDTO(comment, childCounts[comment.ID] > 0))
-	}
-	counts, err := commentManagementCounts(siteID)
-	if err != nil {
-		utils.SendError(c, http.StatusInternalServerError, "统计管理评论失败")
-		return
 	}
 	pageCount := int64(0)
 	if total > 0 {
@@ -112,14 +110,14 @@ func ListComments(c *gin.Context) {
 	})
 }
 
-func commentManagementCounts(siteID string) (map[string]int64, error) {
+func commentManagementCounts(ctx context.Context, siteID string) (map[string]int64, error) {
 	result := map[string]int64{"published": 0, "deleted": 0}
 	type row struct {
 		Deleted bool  `gorm:"column:deleted"`
 		Total   int64 `gorm:"column:total"`
 	}
 	var rows []row
-	err := model.DB.Raw(`SELECT deleted_at IS NOT NULL AS deleted, COUNT(*) AS total
+	err := model.DB.WithContext(ctx).Raw(`SELECT deleted_at IS NOT NULL AS deleted, COUNT(*) AS total
 FROM comments WHERE site_id = ? GROUP BY deleted_at IS NOT NULL`, siteID).Scan(&rows).Error
 	if err != nil {
 		return nil, err
@@ -144,7 +142,7 @@ func GetComment(c *gin.Context) {
 		return
 	}
 	var comment model.Comment
-	err := model.DB.Where("id = ? AND site_id = ?", commentID, siteID).First(&comment).Error
+	err := model.DB.WithContext(c.Request.Context()).Where("id = ? AND site_id = ?", commentID, siteID).First(&comment).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		utils.SendError(c, http.StatusNotFound, "评论不存在")
 		return
@@ -153,7 +151,7 @@ func GetComment(c *gin.Context) {
 		utils.SendError(c, http.StatusInternalServerError, "查询评论失败")
 		return
 	}
-	children, err := directChildCount(comment.ID)
+	children, err := directChildCount(c.Request.Context(), comment.ID)
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "查询评论后代失败")
 		return
@@ -208,13 +206,13 @@ func commentReviewDTO(comment model.Comment, childState ...bool) CommentReviewDT
 	}
 }
 
-func directChildCount(commentID uint) (int64, error) {
+func directChildCount(ctx context.Context, commentID uint) (int64, error) {
 	var count int64
-	err := model.DB.Model(&model.Comment{}).Where("parent_id = ?", commentID).Count(&count).Error
+	err := model.DB.WithContext(ctx).Model(&model.Comment{}).Where("parent_id = ?", commentID).Count(&count).Error
 	return count, err
 }
 
-func reviewChildCounts(comments []model.Comment) (map[uint]int64, error) {
+func reviewChildCounts(ctx context.Context, comments []model.Comment) (map[uint]int64, error) {
 	result := make(map[uint]int64, len(comments))
 	if len(comments) == 0 {
 		return result, nil
@@ -228,7 +226,7 @@ func reviewChildCounts(comments []model.Comment) (map[uint]int64, error) {
 		Total    int64 `gorm:"column:total"`
 	}
 	var rows []row
-	if err := model.DB.Model(&model.Comment{}).Select("parent_id, COUNT(*) AS total").Where("parent_id IN ?", ids).Group("parent_id").Scan(&rows).Error; err != nil {
+	if err := model.DB.WithContext(ctx).Model(&model.Comment{}).Select("parent_id, COUNT(*) AS total").Where("parent_id IN ?", ids).Group("parent_id").Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	for _, item := range rows {

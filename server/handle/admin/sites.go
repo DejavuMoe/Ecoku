@@ -73,7 +73,7 @@ type SiteWriteRequest struct {
 }
 
 func ListSites(c *gin.Context) {
-	sites, err := model.ListSites()
+	sites, err := model.ListSites(c.Request.Context())
 	if err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "读取站点列表失败")
 		return
@@ -86,7 +86,7 @@ func ListSites(c *gin.Context) {
 }
 
 func GetSite(c *gin.Context) {
-	site, err := model.GetSite(strings.TrimSpace(c.Param("siteId")))
+	site, err := model.GetSiteWithContext(c.Request.Context(), strings.TrimSpace(c.Param("siteId")))
 	if errors.Is(err, model.ErrSiteNotFound) {
 		utils.SendError(c, http.StatusNotFound, "站点不存在")
 		return
@@ -108,9 +108,9 @@ func CreateSite(c *gin.Context) {
 	if !ok {
 		return
 	}
-	created, err := model.CreateSite(input, time.Now().UTC())
+	created, err := model.CreateSite(c.Request.Context(), input, time.Now().UTC())
 	if err != nil {
-		if exists, lookupErr := model.SiteExists(input.ID); lookupErr == nil && exists {
+		if exists, lookupErr := model.SiteExists(c.Request.Context(), input.ID); lookupErr == nil && exists {
 			utils.SendError(c, http.StatusConflict, "站点 ID 已存在")
 			return
 		}
@@ -132,7 +132,7 @@ func UpdateSite(c *gin.Context) {
 		return
 	}
 	request.ID = pathID
-	existing, err := model.GetSite(pathID)
+	existing, err := model.GetSiteWithContext(c.Request.Context(), pathID)
 	if errors.Is(err, model.ErrSiteNotFound) {
 		utils.SendError(c, http.StatusNotFound, "站点不存在")
 		return
@@ -145,7 +145,7 @@ func UpdateSite(c *gin.Context) {
 	if !ok {
 		return
 	}
-	updated, err := model.UpdateSite(pathID, input, time.Now().UTC())
+	updated, err := model.UpdateSite(c.Request.Context(), pathID, input, time.Now().UTC())
 	switch {
 	case errors.Is(err, model.ErrSiteNotFound):
 		utils.SendError(c, http.StatusNotFound, "站点不存在")

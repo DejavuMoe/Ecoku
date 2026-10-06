@@ -22,7 +22,7 @@ func listRequest(router http.Handler, query string) *httptest.ResponseRecorder {
 	return recorder
 }
 
-func seedSiblings(t *testing.T, parentID *uint, count int, content string) []model.Comment {
+func seedSiblings(t testing.TB, parentID *uint, count int, content string) []model.Comment {
 	t.Helper()
 	items := make([]model.Comment, count)
 	for i := range items {
@@ -32,6 +32,64 @@ func seedSiblings(t *testing.T, parentID *uint, count int, content string) []mod
 		t.Fatal(err)
 	}
 	return items
+}
+
+func TestPublicListReusesScopedGraphToSkipLeafQueries(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		roots    int
+		children int
+		queries  int
+	}{
+		{"root-leaves-100", 100, 0, 2},
+		{"wide-200", 1, 199, 3},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			router := setupCommentTest(t)
+			roots := seedSiblings(t, nil, tc.roots, "root")
+			if tc.children > 0 {
+				seedSiblings(t, &roots[0].ID, tc.children, "child")
+			}
+			for _, scope := range []struct{ siteID, mark string }{{"site-b", "/post"}, {"site-a", "/other"}} {
+				other := createComment(t, model.Comment{SiteID: scope.siteID, Mark: scope.mark, Username: "Guest", Content: "other root"})
+				createComment(t, model.Comment{SiteID: scope.siteID, Mark: scope.mark, ParentID: &other.ID, Username: "Guest", Content: "other child"})
+			}
+			total, rootTotal, children, err := countPublicComments(model.DB, "site-a", "/post")
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantParents := 0
+			if tc.children > 0 {
+				wantParents = 1
+			}
+			if total != int64(tc.roots+tc.children) || rootTotal != int64(tc.roots) || len(children) != wantParents || len(children[roots[0].ID]) != tc.children {
+				t.Fatalf("scoped graph: total=%d roots=%d parents=%d children=%d", total, rootTotal, len(children), len(children[roots[0].ID]))
+			}
+			queries := 0
+			if err := model.DB.Callback().Query().After("gorm:query").Register("test:leaf-queries", func(tx *gorm.DB) {
+				if tx.Statement.Table == "comments" {
+					queries++
+				}
+			}); err != nil {
+				t.Fatal(err)
+			}
+			defer model.DB.Callback().Query().Remove("test:leaf-queries")
+			got := listRequest(router, "&pageSize=100")
+			var envelope commentListEnvelope
+			if err := json.Unmarshal(got.Body.Bytes(), &envelope); err != nil {
+				t.Fatal(err)
+			}
+			// Count + roots, plus one children query only for the wide tree.
+			if got.Code != http.StatusOK || queries != tc.queries || envelope.Data.Total != rootTotal || envelope.Data.CommentTotal != total || len(envelope.Data.Data) != int(total) {
+				t.Fatalf("status=%d queries=%d want=%d data=%+v", got.Code, queries, tc.queries, envelope.Data)
+			}
+			for _, item := range envelope.Data.Data {
+				if item["site_id"] != "site-a" || item["mark"] != "/post" {
+					t.Fatalf("foreign comment in response: %+v", item)
+				}
+			}
+		})
+	}
 }
 
 func TestPublicListDepthBudgetDoesNotSilentlyTruncate(t *testing.T) {
@@ -45,6 +103,10 @@ func TestPublicListDepthBudgetDoesNotSilentlyTruncate(t *testing.T) {
 		t.Fatalf("exact depth: %d %s", got.Code, got.Body.String())
 	}
 	seedSiblings(t, &parent.ID, 1, "too deep")
+	_, _, children, err := countPublicComments(model.DB, "site-a", "/post")
+	if err != nil {
+		t.Fatal(err)
+	}
 	queries := 0
 	if err := model.DB.Callback().Query().After("gorm:query").Register("test:depth", func(tx *gorm.DB) {
 		if tx.Statement.Table == "comments" {
@@ -54,7 +116,7 @@ func TestPublicListDepthBudgetDoesNotSilentlyTruncate(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer model.DB.Callback().Query().Remove("test:depth")
-	items, err := loadPublicDescendants(model.DB, "site-a", "/post", []model.Comment{root})
+	items, err := loadPublicDescendants(model.DB, "site-a", "/post", []model.Comment{root}, children)
 	if !errors.Is(err, errPublicListBudget) || items != nil || queries > maxPublicListDepth+1 {
 		t.Fatalf("items=%d err=%v queries=%d", len(items), err, queries)
 	}
@@ -72,6 +134,10 @@ func TestPublicListNodeBudgetBoundsDatabaseMaterialization(t *testing.T) {
 		t.Fatalf("exact node budget: %d %s", got.Code, got.Body.String())
 	}
 	seedSiblings(t, &root.ID, 50, "excess")
+	_, _, children, err := countPublicComments(model.DB, "site-a", "/post")
+	if err != nil {
+		t.Fatal(err)
+	}
 	var rows int64
 	if err := model.DB.Callback().Query().After("gorm:query").Register("test:rows", func(tx *gorm.DB) {
 		if tx.Statement.Table == "comments" {
@@ -81,7 +147,7 @@ func TestPublicListNodeBudgetBoundsDatabaseMaterialization(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer model.DB.Callback().Query().Remove("test:rows")
-	items, err := loadPublicDescendants(model.DB, "site-a", "/post", []model.Comment{root})
+	items, err := loadPublicDescendants(model.DB, "site-a", "/post", []model.Comment{root}, children)
 	if !errors.Is(err, errPublicListBudget) || items != nil || rows != maxPublicListNodes {
 		t.Fatalf("items=%d err=%v materialized=%d", len(items), err, rows)
 	}
@@ -93,7 +159,7 @@ func TestPublicListNodeBudgetBoundsDatabaseMaterialization(t *testing.T) {
 func TestPublicCountBudgetAndCursorEscapeHatch(t *testing.T) {
 	router := setupCommentTest(t)
 	seedSiblings(t, nil, maxPublicCountNodes, "root")
-	total, roots, err := countPublicComments(model.DB, "site-a", "/post")
+	total, roots, _, err := countPublicComments(model.DB, "site-a", "/post")
 	if err != nil || total != maxPublicCountNodes || roots != total {
 		t.Fatalf("total=%d roots=%d err=%v", total, roots, err)
 	}
@@ -107,7 +173,7 @@ func TestPublicCountBudgetAndCursorEscapeHatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer model.DB.Callback().Query().Remove("test:count")
-	_, _, err = countPublicComments(model.DB, "site-a", "/post")
+	_, _, _, err = countPublicComments(model.DB, "site-a", "/post")
 	if !errors.Is(err, errPublicListBudget) || rows != maxPublicCountNodes+1 {
 		t.Fatalf("err=%v materialized=%d", err, rows)
 	}

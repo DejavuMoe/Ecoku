@@ -33,7 +33,7 @@ func (function commentRoundTripFunc) RoundTrip(request *http.Request) (*http.Res
 	return function(request)
 }
 
-func setupCommentTest(t *testing.T) *gin.Engine {
+func setupCommentTest(t testing.TB) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	if err := config.ApplyConfig(&config.Config{}); err != nil {

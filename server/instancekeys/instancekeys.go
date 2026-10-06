@@ -27,6 +27,7 @@ type file struct {
 }
 
 var active Keys
+var renameFile = os.Rename
 
 func Initialize(path, legacyAdminTokenKey, legacyNotificationKey string) (Keys, error) {
 	legacyAdminTokenKey = strings.TrimSpace(legacyAdminTokenKey)
@@ -160,15 +161,5 @@ func writeFile(path string, value file) error {
 	if err := temporary.Close(); err != nil {
 		return err
 	}
-	if err := os.Rename(temporaryName, path); err != nil {
-		// Windows cannot replace an existing file with Rename. This fallback is
-		// only used when rotating the admin signing key on the dev host.
-		if removeErr := os.Remove(path); removeErr != nil {
-			return err
-		}
-		if retryErr := os.Rename(temporaryName, path); retryErr != nil {
-			return retryErr
-		}
-	}
-	return nil
+	return renameFile(temporaryName, path)
 }

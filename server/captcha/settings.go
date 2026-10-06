@@ -60,17 +60,17 @@ type LegacyTurnstileSettings struct {
 }
 
 type settingRow struct {
-	ID                    uint      `gorm:"column:id"`
-	Enabled               bool      `gorm:"column:enabled"`
-	Provider              string    `gorm:"column:provider"`
-	Sitekey               string    `gorm:"column:sitekey"`
-	SecretCipher          []byte    `gorm:"column:secret_cipher"`
-	CapInstanceURL        string    `gorm:"column:cap_instance_url"`
-	CapSitekey            string    `gorm:"column:cap_sitekey"`
-	CapSecretCipher       []byte    `gorm:"column:cap_secret_cipher"`
-	Revision              uint      `gorm:"column:revision"`
-	CreatedAt             time.Time `gorm:"column:created_at"`
-	UpdatedAt             time.Time `gorm:"column:updated_at"`
+	ID              uint      `gorm:"column:id"`
+	Enabled         bool      `gorm:"column:enabled"`
+	Provider        string    `gorm:"column:provider"`
+	Sitekey         string    `gorm:"column:sitekey"`
+	SecretCipher    []byte    `gorm:"column:secret_cipher"`
+	CapInstanceURL  string    `gorm:"column:cap_instance_url"`
+	CapSitekey      string    `gorm:"column:cap_sitekey"`
+	CapSecretCipher []byte    `gorm:"column:cap_secret_cipher"`
+	Revision        uint      `gorm:"column:revision"`
+	CreatedAt       time.Time `gorm:"column:created_at"`
+	UpdatedAt       time.Time `gorm:"column:updated_at"`
 }
 
 func GetSettings() (Settings, error) {
@@ -116,8 +116,8 @@ func PublicConfigWithContext(ctx context.Context) (config.CaptchaPublicConfig, e
 	}
 }
 
-func ActiveCapOrigin() (string, error) {
-	row, err := loadSetting()
+func ActiveCapOrigin(ctx context.Context) (string, error) {
+	row, err := loadSettingWithContext(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -294,15 +294,15 @@ func loadSettingWithContext(ctx context.Context) (settingRow, error) {
 func updateSetting(row settingRow) error {
 	return model.DB.Transaction(func(tx *gorm.DB) error {
 		result := tx.Table("captcha_settings").Where("id = 1 AND revision = ?", row.Revision).Updates(map[string]any{
-			"enabled":             row.Enabled,
-			"provider":            row.Provider,
-			"sitekey":             row.Sitekey,
-			"secret_cipher":       row.SecretCipher,
-			"cap_instance_url":    row.CapInstanceURL,
-			"cap_sitekey":         row.CapSitekey,
-			"cap_secret_cipher":   row.CapSecretCipher,
-			"revision":            gorm.Expr("revision + 1"),
-			"updated_at":          time.Now().UTC(),
+			"enabled":           row.Enabled,
+			"provider":          row.Provider,
+			"sitekey":           row.Sitekey,
+			"secret_cipher":     row.SecretCipher,
+			"cap_instance_url":  row.CapInstanceURL,
+			"cap_sitekey":       row.CapSitekey,
+			"cap_secret_cipher": row.CapSecretCipher,
+			"revision":          gorm.Expr("revision + 1"),
+			"updated_at":        time.Now().UTC(),
 		})
 		if result.Error != nil {
 			return result.Error

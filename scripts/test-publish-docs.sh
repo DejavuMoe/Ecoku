@@ -45,6 +45,20 @@ if publish 3-0; then exit 1; fi
 [ -s "$DOCS_DEPLOY_ROOT/releases/$sha-2-0/index.html" ]
 printf 'fixture\n' > "$source_dir/index.html"
 
+# Nested links (including dangling links) and special files never reach releases.
+mkdir "$source_dir/nested"
+for target in "$source_dir/index.html" "$source_dir/en" "$test_root/missing"; do
+  ln -s "$target" "$source_dir/nested/unsafe"
+  if publish 3-0; then exit 1; fi
+  [ "$(readlink "$DOCS_DEPLOY_ROOT/html")" = "releases/$sha-2-1" ]
+  [ ! -e "$DOCS_DEPLOY_ROOT/releases/$sha-3-0" ]
+  rm "$source_dir/nested/unsafe"
+done
+mkfifo "$source_dir/nested/unsafe"
+if publish 3-0; then exit 1; fi
+[ "$(readlink "$DOCS_DEPLOY_ROOT/html")" = "releases/$sha-2-1" ]
+rm "$source_dir/nested/unsafe"
+
 # Neither an existing html directory nor the old symlink layout is replaced.
 export DOCS_DEPLOY_ROOT="$test_root/existing"
 mkdir -p "$DOCS_DEPLOY_ROOT/html"

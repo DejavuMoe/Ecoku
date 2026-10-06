@@ -36,12 +36,24 @@ func forCommentPath(path string, handler gin.HandlerFunc) gin.HandlerFunc {
 	}
 }
 
+func rejectUnknownPublicAPI(c *gin.Context) {
+	path := c.Request.URL.Path
+	if c.Request.Method != http.MethodOptions && c.FullPath() == "" &&
+		(path == "/api" || strings.HasPrefix(path, "/api/")) &&
+		path != "/api/admin" && !strings.HasPrefix(path, "/api/admin/") {
+		utils.SendError(c, http.StatusNotFound, "接口不存在")
+		c.Abort()
+		return
+	}
+	c.Next()
+}
+
 func NewRouter() (*gin.Engine, error) {
 	r := gin.New()
 	if err := r.SetTrustedProxies(config.GetTrustedProxies()); err != nil {
 		return nil, err
 	}
-	r.Use(middleware.RequestLogger(), middleware.Recovery(),
+	r.Use(middleware.RequestLogger(), middleware.Recovery(), rejectUnknownPublicAPI,
 		forCommentPath("/api/comment/list", middleware.RateLimit("comment_list")),
 		forCommentPath("/api/comment/list", comment.PublicListBudget),
 		forCommentPath("/api/comment/submit", comment.PublicSubmitBudget), middleware.Cors())
@@ -258,7 +270,7 @@ func adminStaticSecurityHeaders() gin.HandlerFunc {
 		c.Set(adminCSPNonceKey, nonce)
 		// Keep scripts strict while allowing browser accessibility/annotation tools
 		// to apply transient style attributes to the administrator UI.
-		capOrigin, _ := captcha.ActiveCapOrigin()
+		capOrigin, _ := captcha.ActiveCapOrigin(c.Request.Context())
 		scriptSources := "'self' https://challenges.cloudflare.com 'nonce-" + nonce + "'"
 		connectSources := "'self' https://challenges.cloudflare.com"
 		workerSources := "'none'"
@@ -282,12 +294,20 @@ func adminStaticSecurityHeaders() gin.HandlerFunc {
 	}
 }
 
+func serverListenAddress() string {
+	host := "127.0.0.1"
+	if os.Getenv("ECOKU_RUNTIME") == "container" {
+		host = ""
+	}
+	return fmt.Sprintf("%s:%d", host, config.GetPort())
+}
+
 func RunServer(ctx context.Context) error {
 	r, err := NewRouter()
 	if err != nil {
 		return fmt.Errorf("路由初始化失败: %w", err)
 	}
-	listenAddress := fmt.Sprintf(":%d", config.GetPort())
+	listenAddress := serverListenAddress()
 	log.Println("Server starting on " + listenAddress)
 	server := &http.Server{
 		Addr:              listenAddress,

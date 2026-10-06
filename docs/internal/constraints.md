@@ -115,7 +115,8 @@
 - SMTP 密码与 Telegram Bot Token 使用持久化的独立主密钥进行 AES-256-GCM 加密后写入 SQLite；
   API 和 UI 只返回「已设置」状态，不明文回显。主密钥缺失或无法解密已保存密文时失败关闭。
 - 通知事件与评论事务共同写入 SQLite outbox，并按入队当时的收件人/目标拆成每目标一行；后台单进程 worker 最多尝试 8 次，用完或遇到不可重试的拒绝（SMTP 55x、Telegram 400/403）即标为 `exhausted`，Telegram 429 按 `retry_after` 推迟；启动时把所有 `processing` 行收回。投递时不再重新检查渠道是否启用或评论是否仍为博主，但评论已成为墓碑时取消。日志与错误码不得包含凭据、评论正文或第三方响应正文；outbox 可以保存已快照的目标地址（邮箱或 Telegram chat id）与已发 Telegram 消息的 `message_id`，以便按目标重试和撤回。`sent`、`cancelled`、`exhausted` 行在最后更新 30 天后由 worker 自动清理，未完成的行不清理。
-- 评论删除为墓碑时，在同一事务中：取消该评论尚未发出的通知；删除发往其私有邮箱的访客回复邮件行（不再保留已抹除的地址）；为已发出或正在发出的博主 Telegram 消息排入撤回事件，worker 用 `editMessageText` 把原消息改写为「这条评论已被删除，通知内容已移除。」，只保留站点名称与文章标题。已离开 SMTP 服务器的邮件无法撤回。通知记录已被清理（超过 30 天）、墓碑在撤回完成前被彻底删除，或发送结果未能记录时，无法撤回。
+- 评论墓碑删除与通知最终发送共用单进程协调门：删除在数据库事务外等待取得协调门，提交后释放；worker 在门内重新验证事件仍由本次领取处理、评论及被回复评论状态，再发送，外部投递不占数据库事务。删除完成后不会再依据旧快照开始投递。若已有投递开始，删除可能等待该投递结束，最长到其 20 秒投递期限；这是单笔投递的上限，不是删除排队的总时限，等待支持请求取消。
+- 墓碑删除在同一事务中取消该评论尚未发出的通知、删除发往其私有邮箱的访客回复邮件行，并为已发出或正在发出的相关博主 Telegram 消息排入撤回或刷新事件。worker 用 `editMessageText` 将被删评论的原消息改写为「这条评论已被删除，通知内容已移除。」，只保留站点名称与文章标题；同站点、同页面仍存在的直接回复消息去掉父评论引用，保留回复自己的正文。回复之后也被删除时，重新排入撤回；旧一轮完成写回不得覆盖新一轮待处理事件。已离开 SMTP 服务器的邮件无法撤回。通知记录已按 30 天保留期清理、相关评论在处理完成前被彻底删除，或崩溃导致发送结果及 `message_id` 未能记录时，无法改写已发出的消息；发送后持久化前崩溃仍可能造成重复投递。
 
 ## Twikoo 首次导入
 
@@ -169,9 +170,9 @@
   容器内管理端静态文件缺失时，服务必须启动失败；源码运行只提供 API，页面由 Vite 开发服务器提供。
 - 镜像以 `GIN_MODE=release`、`ECOKU_RUNTIME=container` 运行；监听端口固定为 12123，容器内浏览器资源、后台、数据库分别固定在 `/app/client`、`/app/admin`、`/data/ecoku.sqlite3`，源码运行数据库固定在工作目录下 `./data/ecoku.bin`。部署模板只要求 `notifications.instance_public_url`，
   新部署不需要 `ecoku.env`；管理员账户、会话签名密钥和通知加密主密钥由程序写入 `data/`。旧 `ecoku.env` 在迁移期继续兼容。
-- 应用日志写入 stdout，供 `docker compose logs` 跟随，轮转和保留由 Docker 日志设置决定；不写文件副本，Compose 不再挂载 `app/logs`。访问日志只记录路由模板，未匹配路由使用固定值；不写入实际路径参数。日志仍不得包含 IP、UA、凭据、token 或评论正文。
-- 浏览器 SDK 的 npm 包名为 `ecoku`，版本为 `0.1.0`，提供 ESM、CommonJS、UMD 和 TypeScript 声明；
-  根工作区为 private，自动化只生成发布候选构件，不创建 tag、release 或执行 npm publish。容器版本仍以根 `VERSION` 为准。
+- 应用默认将日志写入 stdout，供 `docker compose logs` 跟随，轮转和保留由 Docker 日志设置决定；可选 `site.log_path` 启用按大小轮转的文件日志。Compose 不挂载 `app/logs`，也不覆盖 daemon 的日志策略。访问日志只记录路由模板，未匹配路由使用固定值；不写入实际路径参数。日志仍不得包含 IP、UA、凭据、token 或评论正文。
+- 浏览器 SDK 的 npm 包名为 `ecoku`，版本由 `packages/client/package.json` 声明，并与根 `VERSION` 一致，提供 ESM、CommonJS、UMD 和 TypeScript 声明；
+  根工作区为 private。master/PR 的 CI 只验证并保存构件；经授权推送 `v*` tag 后，Release 复用完整验证，发布 GHCR 双架构镜像和 npm SDK，再创建 GitHub Release。自动化不创建 Git tag，也不部署评论服务。
 - 旧持久开发验收实例已经退役；其专用域名、IP、同步脚本、部署模板和登录指引不再属于当前
   测试范围。任何新的远程测试或部署环境都必须重新获得授权并使用独立配置。npm 发布、镜像推送、
   Git tag/Release 和其他真实环境迁移仍必须单独授权。

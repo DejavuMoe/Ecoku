@@ -1,6 +1,7 @@
 package notifications
 
 import (
+	"context"
 	"ecoku-server/config"
 	"ecoku-server/model"
 	"ecoku-server/utils"
@@ -32,8 +33,8 @@ const (
 
 var smojiMarkerPattern = regexp.MustCompile(`!\[smoji:([^\]\r\n]+)\]\((https?://[^()\s]+)\)`)
 
-func renderBloggerEmail(comment model.Comment, site model.Site) (emailMessage, error) {
-	parent, err := loadParent(comment)
+func renderBloggerEmail(ctx context.Context, comment model.Comment, site model.Site) (emailMessage, error) {
+	parent, err := loadParent(ctx, comment)
 	if err != nil {
 		return emailMessage{}, err
 	}
@@ -120,8 +121,8 @@ func renderTestEmail() emailMessage {
 
 // renderTelegram quotes the replied-to comment in a blockquote and keeps the
 // new content as plain message text.
-func renderTelegram(comment model.Comment, site model.Site) (string, error) {
-	parent, err := loadParent(comment)
+func renderTelegram(ctx context.Context, comment model.Comment, site model.Site) (string, error) {
+	parent, err := loadParent(ctx, comment)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return "", err
 	}
@@ -177,12 +178,12 @@ func telegramAuthor(comment model.Comment, site model.Site, budget int) string {
 	return value
 }
 
-func loadParent(comment model.Comment) (*model.Comment, error) {
+func loadParent(ctx context.Context, comment model.Comment) (*model.Comment, error) {
 	if comment.ParentID == nil {
 		return nil, nil
 	}
 	var parent model.Comment
-	if err := model.DB.Where("id = ? AND site_id = ? AND mark = ?", *comment.ParentID, comment.SiteID, comment.Mark).First(&parent).Error; err != nil {
+	if err := model.DB.WithContext(ctx).Where("id = ? AND site_id = ? AND mark = ?", *comment.ParentID, comment.SiteID, comment.Mark).First(&parent).Error; err != nil {
 		return nil, err
 	}
 	// A tombstoned parent has no nickname or body left to quote.

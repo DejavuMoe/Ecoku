@@ -27,7 +27,15 @@ docs/.vitepress/dist
 *.sw?
 config.yaml
 .env
-/ecoku.env
+.env.*
+!.env.example
+ecoku.env
+ecoku-secrets.json
+data/
+backups/
+ecoku-data/
+*.sqlite-*
+*.sqlite3-*
 deploy/config.yaml
 deploy/ecoku.env
 /data/

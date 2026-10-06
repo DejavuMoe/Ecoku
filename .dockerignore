@@ -25,3 +25,21 @@ README.md
 designs
 docs
 examples
+
+# Exclude runtime state at every depth, including exported build-cache layers.
+**/.env
+**/.env.*
+**/*.env
+**/config.yaml
+**/ecoku-secrets.json
+**/data
+**/backups
+**/ecoku-data
+**/*.db
+**/*.db-*
+**/*.sqlite
+**/*.sqlite-*
+**/*.sqlite3
+**/*.sqlite3-*
+**/*.bin
+**/*.log
