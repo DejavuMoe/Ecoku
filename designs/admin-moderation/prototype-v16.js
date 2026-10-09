@@ -98,7 +98,7 @@
       ["login-cap-failed", "Cap 验证失败"], ["login-error", "用户名或密码错误"], ["session-expired", "会话过期"],
     ]],
     ["评论管理", [
-      ["comments", "已发布"], ["comments-keyboard", "键盘浏览中"], ["comments-extreme", "极端文本"],
+      ["comments", "已发布"], ["comments-extreme", "极端文本"],
       ["comments-deleted", "已删除"], ["confirm-tombstone", "确认墓碑删除"], ["confirm-permanent", "确认彻底删除"],
       ["comments-action-error", "删除失败"], ["comments-empty", "空列表"], ["comments-loading", "加载中"], ["comments-error", "加载失败"],
       ["comments-single-site", "只有一个站点"], ["comments-site-menu", "切换站点"], ["comments-no-sites", "还没有站点"],
@@ -128,7 +128,6 @@
       return;
     }
     switch (name) {
-      case "comments-keyboard": S.currentId = 517; break;
       case "comments-extreme": S.currentId = 513; S.scrollTo = 513; break;
       case "comments-deleted": S.status = "deleted"; break;
       case "confirm-tombstone": S.confirm = { id: 516, kind: "tombstone" }; S.currentId = 516; S.scrollTo = 516; break;
@@ -387,13 +386,6 @@
     if (!el) return;
     if (focus) el.focus({ preventScroll: true });
     if (scroll) el.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-  }
-  function moveCurrent(delta) {
-    const entries = $$("#feed .entry");
-    if (!entries.length) return;
-    let i = entries.findIndex((el) => Number(el.dataset.comment) === S.currentId);
-    i = i < 0 ? 0 : Math.min(entries.length - 1, Math.max(0, i + delta));
-    setCurrent(Number(entries[i].dataset.comment), { focus: true, scroll: true });
   }
   function jumpTo(id) {
     const el = $(`c-${id}`);
@@ -1002,7 +994,6 @@
     if (t.closest && t.closest("form.doc")) renderSavebar();
   });
 
-  const typing = (el) => el && (el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName));
   document.addEventListener("keydown", (event) => {
     const t = event.target;
     const item = t.tagName === "INPUT" ? listContext(t) : null;
@@ -1045,20 +1036,6 @@
       }
       return;
     }
-    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s" && S.authed && dirtyForms().length) { event.preventDefault(); $("savebar-save").click(); return; }
-    if (!S.authed || S.view !== "comments" || typing(t) || event.metaKey || event.ctrlKey || event.altKey || $("confirm-dialog").open) return;
-    const k = event.key;
-    if (k === "Escape" && S.confirm) { event.preventDefault(); return closeInlineConfirm(); }
-    if (S.confirm) return;
-    if (k === "j" || k === "J" || (k === "ArrowDown" && t.classList?.contains("entry"))) { event.preventDefault(); return moveCurrent(1); }
-    if (k === "k" || k === "K" || (k === "ArrowUp" && t.classList?.contains("entry"))) { event.preventDefault(); return moveCurrent(-1); }
-    if ((k === "o" || k === "O") && S.currentId) { $(`c-${S.currentId}`)?.querySelector("[data-source]")?.click(); return; }
-    if ((k === "Delete" || k === "#") && S.currentId) {
-      const btn = $(`c-${S.currentId}`)?.querySelector('[data-action="tombstone"], [data-action="permanent"]');
-      if (btn) { event.preventDefault(); openInlineConfirm(S.currentId, btn.dataset.action); }
-      return;
-    }
-    if (k === "r" || k === "R") { event.preventDefault(); refresh(); }
   });
 
   // Pasting several values (one per line, or separated by commas or spaces) fills one item each.

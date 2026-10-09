@@ -27,7 +27,6 @@ const present = [
   ["实例级页面标注范围", html, /id="view-notifications"[\s\S]*class="scope">实例设置<[\s\S]*id="view-security"[\s\S]*class="scope">实例设置</],
   ["评论按日期分组", js, /"今天"[\s\S]*"昨天"[\s\S]*class="day layout"/],
   ["删除在评论旁确认", js, /^(?=[\s\S]*class="entry-confirm" role="alertdialog")(?=[\s\S]*墓碑删除这条评论？)(?=[\s\S]*彻底删除这条墓碑？)/],
-  ["键盘快捷键", js, /^(?=[\s\S]*k === "j")(?=[\s\S]*k === "k")(?=[\s\S]*k === "o")(?=[\s\S]*k === "Delete")(?=[\s\S]*k === "Escape")/],
   ["有改动才出现保存栏", html, /id="savebar" class="savebar in-main"[^>]*hidden/],
   ["离开前确认放弃修改", html, /放弃未保存的修改？[\s\S]*离开后，本页的修改不会保存。/],
 
@@ -76,6 +75,7 @@ const present = [
 ];
 
 const absent = [
+  ["无全局快捷键及提示", all, /<kbd>|class="in-margin keys"|comments-keyboard|moveCurrent|const typing|event\.metaKey|event\.ctrlKey|刷新评论（R）/],
   ["不再使用逐行横线", all, /ruled-paper|repeating-linear-gradient/],
   ["不再使用 chip 输入", all, /chip-field|addChips|按 Enter、逗号或换行添加/],
   ["实例设置前不加短横线", css, /\.scope::before/],

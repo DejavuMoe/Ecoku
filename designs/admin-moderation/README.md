@@ -3,6 +3,7 @@
 本目录保存 Ecoku 管理端的已批准设计证据、脱敏 fixture 与发送模板设计基线。
 `index-v16.html` 是当前已批准并实施的管理端基线，覆盖登录、评论管理、站点管理、通知设置与安全：
 颜色、圆角与深色 token 与评论区 v17「纸与墨」一致，界面使用操作系统自带的 CJK 与英文无衬线字体栈，不加载网络字体。
+2026-10-09 按用户要求移除后台全局快捷键及提示，保留表单、菜单和按钮的基本键盘操作。
 仅供服务端渲染参考的通知模板为邮件 v7（`email-notification-v7.html`）与 Telegram v6（`telegram-notification-v6.html`），与 v16 使用同一套纸墨 token 与系统字体栈。v12 的关闭 / Cloudflare Turnstile / 自托管 Cap 三态语义与 Cap 官方组件几何在 v16 中保留，只映射 Ecoku token。停服恢复命令只属于自托管文档，不进入界面。原型文件本身不调用真实 API，也不进入运行时镜像。
 
 `first-login-v1.html` 是首次临时密码登录与强制改密的待审扩展，范围和实现边界见 [首次登录 v1](./first-login-v1.md)；不替代 v16 的已批准基线。
