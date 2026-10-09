@@ -19,6 +19,7 @@ import { createAdminStore } from './stores/admin.svelte'
 import { formatDate } from './ui'
 import type { CommentPage, CommentReview, NotificationSettings, SiteSummary } from './types'
 import { smojiPlainText, tokenizeAdminSmoji } from './smoji'
+import { installAdminTranslations, setAdminLocale } from './i18n.svelte'
 
 let testStore = createAdminStore()
 const useAdminStore = () => testStore
@@ -618,6 +619,21 @@ describe('approved production surface', () => {
     expect(wrapper.text()).not.toContain('通知判定预览')
     expect(wrapper.text()).not.toContain('站点域名')
     expect(wrapper.text()).not.toContain('审核方式')
+  })
+
+  it.each([
+    ['en', 'Press Enter to add the next one, or paste several lines at once.', 'up to 100 characters; it cannot be changed later.'],
+    ['zh-Hant', '按 Enter 新增下一項，可一次貼上多行。', '最多 100 個字元；建立後不能修改。'],
+  ] as const)('translates site creation hints without template formatting changing the source text: %s', async (locale, originHint, idHint) => {
+    const store = useAdminStore(); store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
+    const wrapper = mount(SiteManagementView, {})
+    await wrapper.get('#new-site-button').trigger('click')
+    setAdminLocale(locale)
+    const stop = installAdminTranslations(wrapper.element)
+    try {
+      expect(wrapper.text()).toContain(originHint)
+      expect(wrapper.get('#site-id-help').text()).toContain(idHint)
+    } finally { stop(); setAdminLocale('zh-CN') }
   })
 
   it('switches sites from the comment list and shows a static label when only one site exists', async () => {

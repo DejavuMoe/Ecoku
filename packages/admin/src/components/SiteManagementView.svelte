@@ -280,8 +280,7 @@
               /></label
             >
             <p id="site-id-help" class="help">
-              对应接入代码中的 <code>data-site-id</code>{#if creating}。字母或数字开头，可含 <code>. _ -</code>，最多
-                100 个字符；创建后不能修改。{:else}，创建后不能修改。{/if}
+              对应接入代码中的 <code>data-site-id</code>{#if creating}。字母或数字开头，可含 <code>. _ -</code>{'，最多 100 个字符；创建后不能修改。'}{:else}，创建后不能修改。{/if}
             </p>
             {#if errors.id}<p class="field-error">{errors.id}</p>{/if}
           </div>
@@ -332,8 +331,7 @@
                 />{/key}
             </div>
             <p class="help">
-              放置评论区的网页来源，只含协议、域名和端口，例如 <code>https://blog.example.com</code>。按 Enter
-              添加下一项，可一次粘贴多行。
+              放置评论区的网页来源，只含协议、域名和端口，例如 <code>https://blog.example.com</code>{'。按 Enter 添加下一项，可一次粘贴多行。'}
             </p>
             {#if errors.origins}<p class="field-error">{errors.origins}</p>{/if}
           </div>
