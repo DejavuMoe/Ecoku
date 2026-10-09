@@ -28,7 +28,7 @@ const copy: SidebarCopy & NavCopy = {
   api: 'REST API',
   internalVersions: '内测记录（请勿使用）',
   earlierVersions: '更早的候选版本',
-  versionCurrent: 'v0.4.0',
+  versionCurrent: 'v0.4.1',
   versionLatest: '（最新）',
 }
 

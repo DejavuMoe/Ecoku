@@ -5,7 +5,7 @@ const numeric = '(0|[1-9][0-9]*)'
 const identifier = '(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)'
 const releaseTag = new RegExp(`^v${numeric}\\.${numeric}\\.${numeric}(-${identifier}(\\.${identifier})*)?$`)
 
-function validate(tag, version, root, client, compose, changelog) {
+function validate(tag, version, root, client, compose, changelog, clientReadme, clientChangelog) {
   assert.match(tag, releaseTag, 'Expected vMAJOR.MINOR.PATCH or a SemVer prerelease')
   assert.equal(tag, `v${version}`, 'Tag must match VERSION')
   assert.equal(root.version, version, 'Workspace version must match VERSION')
@@ -15,12 +15,16 @@ function validate(tag, version, root, client, compose, changelog) {
   assert.ok(compose.split(/\r?\n/).includes(`    image: "ghcr.io/dejavumoe/ecoku:${tag}"`), 'Compose must pin the GHCR release image')
   assert.ok(!compose.includes('ECOKU_VERSION'), 'Compose must not interpolate the image version')
   assert.ok(changelog.includes(`## [${version}] - `), 'Missing release changelog heading')
+  assert.ok(clientReadme.includes(`Install version ${version}:`), 'SDK README version must match VERSION')
+  assert.ok(clientReadme.split(/\r?\n/).includes(`npm install --save-exact ecoku@${version}`), 'SDK README install command must pin VERSION')
+  assert.ok(clientChangelog.includes(`## ${version} - `), 'Missing SDK changelog heading')
 }
 
 if (process.argv[2] === '--self-test') {
   const fixture = version => [
     `v${version}`, version, { version }, { name: 'ecoku', version },
     `    image: "ghcr.io/dejavumoe/ecoku:v${version}"`, `## [${version}] - 2026-01-01`,
+    `Install version ${version}:\n\nnpm install --save-exact ecoku@${version}`, `## ${version} - 2026-01-01`,
   ]
   for (const version of ['1.2.3', '0.3.0-rc.1', '1.0.0-0']) validate(...fixture(version))
   for (const version of ['01.2.3', '1.2', '1.2.3-01', '1.2.3-', '1.2.3+x', '1.2.3-rc..1']) {
@@ -31,6 +35,9 @@ if (process.argv[2] === '--self-test') {
     [3, { name: 'wrong', version: '1.2.3' }],
     [4, '    image: "ghcr.io/dejavumoe/ecoku:latest"'],
     [4, '    image: "git.via.moe/dejavu/ecoku:v1.2.3"'], [5, '## [Unreleased]'],
+    [6, 'Install version 0.3.8:\n\nnpm install --save-exact ecoku@1.2.3'],
+    [6, 'Install version 1.2.3:\n\nnpm install --save-exact ecoku@0.3.8'],
+    [7, '## 0.3.8 - 2026-01-01'],
   ]) {
     const args = fixture('1.2.3')
     args[index] = value
@@ -46,6 +53,7 @@ if (process.argv[2] === '--self-test') {
   }
   validate(process.argv[2] ?? `v${version}`, version,
     JSON.parse(read('package.json')), client,
-    read('compose.yaml'), read('CHANGELOG.md'))
+    read('compose.yaml'), read('CHANGELOG.md'),
+    read('packages/client/README.md'), read('packages/client/CHANGELOG.md'))
   console.log(`Release metadata valid: v${version}`)
 }
