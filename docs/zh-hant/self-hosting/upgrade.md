@@ -2,9 +2,9 @@
 
 公開版本從 v0.3.0 開始。新部署直接使用 [Docker 部署](./docker)；本頁用於既有實例升級。
 
-目前版本是 **v0.3.7**（2026-10-06 發布，schema v12）。
+目前版本是 **v0.3.8**（2026-10-09 發布，schema v12）。
 
-新映像檔統一發布到 GHCR。使用 Forgejo 映像檔的實例，後續升級請將 `image` 改為 `ghcr.io/dejavumoe/ecoku:v0.3.7` 或目標版本的精確 tag，保留原本的資料與設定掛載；Forgejo registry 不再發布新版本。同版本切換倉庫不必重新初始化實例。
+新映像檔統一發布到 GHCR。使用 Forgejo 映像檔的實例，後續升級請將 `image` 改為 `ghcr.io/dejavumoe/ecoku:v0.3.8` 或目標版本的精確 tag，保留原本的資料與設定掛載；Forgejo registry 不再發布新版本。同版本切換倉庫不必重新初始化實例。
 
 ## 升級時會發生什麼
 
@@ -26,7 +26,7 @@
 **3. 修改映像檔版本**。編輯 `~/Ecoku/compose.yaml`，把 `image` 改成目標版本，例如：
 
 ```yaml
-    image: "ghcr.io/dejavumoe/ecoku:v0.3.7"
+    image: "ghcr.io/dejavumoe/ecoku:v0.3.8"
 ```
 
 請寫明確的版本號，不要用 `latest`。如果升級說明要求修改 `app/config.yaml` 或 `ecoku.env`，請一併修改。
@@ -61,6 +61,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | 版本 | 發布日期 | schema | 重點 |
 | --- | --- | --- | --- |
+| [v0.3.8](./upgrades/v0.3.8) | 2026-10-09 | v12 | Go 1.27.2 與 x/net v0.60.0 安全修正，無資料庫遷移。 |
 | [v0.3.7](./upgrades/v0.3.7) | 2026-10-06 | v12 | 清單效能最佳化、通知刪除協調、安全加固、OpenSSL 更新與映像檔檢查修正。 |
 | [v0.3.6](./upgrades/v0.3.6) | 2026-10-06 | v12 | 映像檔發布未完成，請使用 v0.3.7。 |
 | [v0.3.5](./upgrades/v0.3.5) | 2026-10-05 | v12 | 修正管理後台切換選單和載入資料時的整頁橫向晃動。 |

@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.3.8] - 2026-10-09
+
 ### 变更
 
 - 文档 Demo 与三语 SDK 安装说明改用 npm 发布包 `ecoku@0.3.7`。
@@ -669,4 +671,5 @@
 [0.3.5]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.5
 [0.3.6]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.6
 [0.3.7]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.7
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.3.7...master
+[0.3.8]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.8
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.3.8...master
