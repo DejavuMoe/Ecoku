@@ -162,18 +162,6 @@
       }
     })
   })
-  function saveShortcut(event: KeyboardEvent) {
-    if (
-      (event.ctrlKey || event.metaKey) &&
-      !event.altKey &&
-      event.key.toLowerCase() === 's' &&
-      store.dirtyView &&
-      !store.discardRequested
-    ) {
-      event.preventDefault()
-      document.querySelector<HTMLButtonElement>('.save-button')?.click()
-    }
-  }
   function beforeUnload(event: BeforeUnloadEvent) {
     if (store.dirtyView) {
       event.preventDefault()
@@ -192,7 +180,6 @@
     )
     const expired = takeSessionNotice()
     window.addEventListener('beforeunload', beforeUnload)
-    document.addEventListener('keydown', saveShortcut)
     await store.restoreSession()
     if (!store.authenticated && !loginController.signal.aborted) {
       if (expired && !store.loginMessage) store.loginMessage = messages.sessionExpired
@@ -204,7 +191,6 @@
   onDestroy(() => {
     loginController.abort()
     window.removeEventListener('beforeunload', beforeUnload)
-    document.removeEventListener('keydown', saveShortcut)
     if (toastTimer !== undefined) clearTimeout(toastTimer)
     loginWidget?.remove()
     loginWidget = null
