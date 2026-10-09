@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-09
+
 ### 变更
 
 - 管理后台由 Vue 迁移至 Svelte 5，保留现有界面与交互。评论区 SDK 继续使用无框架 TypeScript；管理地址、API、会话、配置及数据库格式不因本次迁移改变。
@@ -677,4 +679,5 @@
 [0.3.6]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.6
 [0.3.7]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.7
 [0.3.8]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.8
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.3.8...master
+[0.4.0]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.4.0
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.4.0...master
