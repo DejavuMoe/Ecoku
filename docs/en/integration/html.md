@@ -44,8 +44,8 @@ Keep all four elements with `data-ecoku-*` inside the wrapper: `data-ecoku-mount
 | `data-page-key` | Yes | The current post's page key: a relative path on the site, at most 512 characters, without `?` or `#`. See below. |
 | `data-page-title` | No | The post title, shown in notification emails. Anything beyond 200 characters is cut off. |
 | `data-page-size` | No | How many root comments to show per page, 1 to 100, default 10. Invalid values are treated as 10. |
-| `data-theme` | No | `auto` (default), `light`, or `dark`. `auto` follows the page's light/dark setting. |
-| `data-css-url` | No | Replaces the default styles. See [Custom styles](./custom-css). |
+| `data-theme` | No | `auto` (default), `light`, or `dark`. `auto` reads the colour variables defined by the blog first, and falls back to the system light/dark preference. |
+| `data-css-url` | No | Replaces the default styles. Accepts an absolute HTTP(S) URL, a path starting with `/`, `none`, or the compatible value `-`. See [Custom styles](./custom-css). |
 | `data-i18n` | No | The comment language: `zh-CN`, `zh-Hant`, or `en`. Overrides 「评论区语言」 (Comment language) in the admin site settings. If it is missing or has any other value, the site setting is used. |
 
 ## Choose a page key

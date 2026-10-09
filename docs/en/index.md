@@ -23,10 +23,10 @@ features:
     details: No moderation queue. Replies open inline, deletions leave a tombstone, and discussion context remains intact.
     link: /en/guide/concepts#threads
   - title: No visitor IP storage
-    details: Stores only nickname, body, and optional email or website. Public APIs omit email; visitor IP and User-Agent are never logged. Browsers remember identity encrypted locally for 7 days.
+    details: Stores only the nickname, body, and the email or website a visitor enters. Public APIs omit email; visitor IP and User-Agent are never logged. Browsers remember identity encrypted locally for 7 days.
     link: /en/guide/concepts#data
   - title: Self-contained container
-    details: A single Go binary serves APIs, admin console, and embed assets. SQLite holds data while secrets persist independently. Back up just one directory to restore.
+    details: A single Go binary serves APIs, admin console, and embed assets. SQLite holds data while secrets persist independently. Back up the data directory, the configuration and Compose to restore.
     link: /en/guide/introduction#components
   - title: Multi-site support
     details: One instance serves multiple sites, each with isolated origin allowlists, form fields, constraints, and blogger identities.

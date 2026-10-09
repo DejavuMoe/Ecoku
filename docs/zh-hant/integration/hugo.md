@@ -15,6 +15,7 @@
     class="ecoku-shell"
     data-ecoku-comments
     aria-label="評論區"
+    aria-busy="false"
     data-server-url="{{ $ecoku.server_url }}"
     data-site-id="{{ $ecoku.site_id }}"
     data-page-key="{{ .RelPermalink }}"

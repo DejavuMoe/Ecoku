@@ -42,7 +42,7 @@ Visitors do not need to register to comment. They fill in three fields:
 | Field | Required | Public |
 | --- | --- | --- |
 | Nickname | Required, at most 80 characters | Public |
-| Email | Required by default; a site setting can make it optional | Not public; used only for reply notifications |
+| Email | Required by default; a site setting can make it optional | Not public; used for notification delivery, notification deduplication and the blogger-mark backfill on existing comments |
 | Website | Optional by default; can be made required; only `http://` or `https://` is accepted | Public, as a link on the nickname |
 
 The identity a visitor enters in the root comment box is reused automatically for replies. When a visitor clicks "Reply" (回复) under a comment directly, any missing identity fields are filled in inside that reply box, without jumping back to the top of the page.
@@ -64,7 +64,7 @@ The blogger does not need a separate account. After you set the blogger nickname
 
 The blogger mark is written when the comment is saved and is never recalculated. Changing the blogger nickname or the passphrase does not change the mark on existing comments.
 
-Only two cases backfill the blogger mark on existing comments by matching "nickname equals the blogger nickname and email equals the blogger email (case-insensitive)": the one-time migration when upgrading from an older release to schema v5, and the [first Twikoo import](../self-hosting/twikoo).
+Only two cases backfill the blogger mark on existing comments: the one-time migration when upgrading from an older release to schema v5, and the first import during [Migrate from Twikoo](../self-hosting/twikoo). Both require the nickname to match the blogger nickname exactly and the email to match the blogger email case-insensitively.
 
 ## Plain text
 
@@ -74,7 +74,7 @@ Comment bodies and nicknames are always displayed as plain text:
 - Markdown is not rendered, and URLs are not turned into links automatically;
 - Line breaks are preserved.
 
-The only exception is [Smoji stickers](../integration/smoji). When enabled, `![smoji:name](image-url)` renders as an image if its format and origin satisfy the site’s image-origin rule; other content stays text. The manifest origin is the default, and administrators can specify a separate image origin; see [hosting the manifest and images separately](../integration/smoji#hosting).
+The only exception is [Smoji stickers](../integration/smoji). When enabled, `![smoji:name](image-url)` renders as an image if its format and origin satisfy the site’s image-origin rule; other content stays text. The manifest origin is the default, and administrators can specify a separate image origin; see [hosting the manifest and images](../integration/smoji#hosting).
 
 A visitor's website appears only as a link on their nickname, with `rel="nofollow ugc noopener noreferrer"`.
 

@@ -62,7 +62,7 @@ An "origin" is `scheme://domain[:port]`, without a path. The origin of the page 
 
 Press Enter in an input to add the next one; press Backspace in an empty input to remove it. Pasting several lines, or several origins separated by commas, splits them into separate items. After you leave an item that lacks a scheme or includes a path, a note appears under it with a "Change to …" (改为 …) button that replaces it with the correct origin. Duplicate origins are merged when you save.
 
-If someone edited the same site in another browser tab while you were editing it, saving shows "Site configuration was updated by another session" (站点配置已被其他会话更新). Reload and edit again.
+If someone edited the same site in another browser tab while you were editing it, the save is refused and the console shows 「数据已经被其他请求修改，请刷新后重试。」 ("The data was changed by another request. Refresh and try again."). Reload and edit again.
 
 ### Sticker packs
 

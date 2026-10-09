@@ -9,7 +9,7 @@ cd ~/Ecoku
 sudo docker compose run --rm --no-deps ecoku <子命令> [参数]
 ```
 
-除 `hash-password` 外，子命令都会读取 `app/config.yaml` 并打开数据库；如果数据库版本低于当前镜像，还会先执行迁移。请先用 `sudo docker compose stop ecoku` 停止服务再运行，避免和正在运行的实例同时写库。
+除 `hash-password` 外，子命令都会读取 `app/config.yaml` 并打开数据库。写库的子命令（`admin reset-password`、`captcha disable`、`import-twikoo`）请先用 `sudo docker compose stop ecoku` 停止服务再运行，避免和正在运行的实例同时写库；只读取设置的 `captcha status` 可以在服务运行时执行。
 
 ## admin reset-password {#admin-reset-password}
 
@@ -56,15 +56,19 @@ sudo docker compose up -d
 先加 `--dry-run` 预检：
 
 ```bash
+sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku \
   import-twikoo --site=blog --file=/data/twikoo.json --dry-run
+sudo docker compose up -d
 ```
 
 确认结果后去掉 `--dry-run` 正式导入：
 
 ```bash
+sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku \
   import-twikoo --site=blog --file=/data/twikoo.json
+sudo docker compose up -d
 ```
 
 | 参数 | 说明 |

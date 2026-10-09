@@ -23,10 +23,10 @@ features:
     details: 无审核队列。回复就地展开，删除保留墓碑，讨论上下文始终连贯。
     link: /guide/concepts#threads
   - title: 不记录访客 IP
-    details: 仅保存昵称、正文及选填的邮箱与网址；公开接口不返回邮箱，不记录访客 IP 与 User-Agent。浏览器本地加密记住身份 7 天。
+    details: 仅保存昵称、正文与访客填写的邮箱和网址；公开接口不返回邮箱，不记录访客 IP 与 User-Agent。浏览器本地加密记住身份 7 天。
     link: /guide/concepts#data
   - title: 单容器独立运行
-    details: Go 单二进制整合接口、管理后台与嵌入脚本；SQLite 存储业务数据，密钥独立持久化。冷备单个数据目录即可恢复。
+    details: Go 单二进制整合接口、管理后台与嵌入脚本；SQLite 存储业务数据，密钥独立持久化。冷备数据目录、配置与 Compose 即可恢复。
     link: /guide/introduction#components
   - title: 多站点支持
     details: 单实例服务多个网站，各站点独立配置来源白名单、表单字段、限制规则与博主身份。

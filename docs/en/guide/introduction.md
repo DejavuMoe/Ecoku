@@ -6,9 +6,9 @@ The design philosophy emphasizes restraint and simplicity:
 
 - **Plain text conversations**: HTML and Markdown are not parsed, and there is no rich-text editor.
 - **Live on submit**: No moderation queue; inappropriate comments are pruned by administrators after posting.
-- **No visitor accounts**: Visitors only need a nickname; email (optional by site setting) and website are optional.
-- **Unified multi-site hosting**: A single instance supports multiple sites with strictly isolated comments, allowlists, and settings.
-- **Embedded storage with separate secrets**: Application data resides in SQLite, while cryptographic secrets persist independently. No external database or Redis is required—a cold backup of a single directory restores the full state.
+- **No visitor accounts**: Visitors post with a nickname, an email (required by default; a site can make it optional) and an optional website.
+- **Unified multi-site hosting**: A single instance supports multiple sites; comment data and per-site settings are isolated between sites.
+- **Embedded storage with separate secrets**: Application data resides in SQLite, while cryptographic secrets persist independently. No external database or Redis is required—a cold backup of the deployment directory restores the full state.
 
 ## Who it is for
 

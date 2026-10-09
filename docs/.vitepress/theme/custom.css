@@ -174,7 +174,6 @@
   --ecoku-code-bg: var(--code-bg);
   --ecoku-surface-muted: var(--wash);
   --ecoku-accent: var(--accent);
-  --ecoku-font-family: var(--vp-font-family-base);
 }
 .vp-doc table { display: block; width: max-content; min-width: 100%; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: 14px; }
 .vp-doc th, .vp-doc td { border-color: var(--line-soft); padding: 10px 16px; line-height: 1.75; }

@@ -9,7 +9,7 @@ cd ~/Ecoku
 sudo docker compose run --rm --no-deps ecoku <subcommand> [arguments]
 ```
 
-Except for `hash-password`, every subcommand reads `app/config.yaml` and opens the database. If the database is on an older version than the current image, it is migrated first. Stop the service with `sudo docker compose stop ecoku` before running a subcommand, so it does not write to the database at the same time as the running instance.
+Except for `hash-password`, every subcommand reads `app/config.yaml` and opens the database. Stop the service with `sudo docker compose stop ecoku` before running a subcommand that writes (`admin reset-password`, `captcha disable`, `import-twikoo`), so it does not write to the database at the same time as the running instance; `captcha status` only reads the settings and can run while the service is up.
 
 ## admin reset-password {#admin-reset-password}
 
@@ -56,15 +56,19 @@ Imports a Twikoo JSON export into a site that has no comments.
 First run a dry run with `--dry-run`:
 
 ```bash
+sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku \
   import-twikoo --site=blog --file=/data/twikoo.json --dry-run
+sudo docker compose up -d
 ```
 
 After checking the result, drop `--dry-run` to run the real import:
 
 ```bash
+sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku \
   import-twikoo --site=blog --file=/data/twikoo.json
+sudo docker compose up -d
 ```
 
 | Argument | Description |

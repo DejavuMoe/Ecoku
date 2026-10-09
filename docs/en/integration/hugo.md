@@ -15,6 +15,7 @@ In your Hugo site, create `layouts/_partials/comments.html` (Hugo versions befor
     class="ecoku-shell"
     data-ecoku-comments
     aria-label="Comments"
+    aria-busy="false"
     data-server-url="{{ $ecoku.server_url }}"
     data-site-id="{{ $ecoku.site_id }}"
     data-page-key="{{ .RelPermalink }}"
