@@ -1,27 +1,30 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { nextTick } from 'vue'
-import { createPinia, setActivePinia } from 'pinia'
-import { flushPromises, mount } from '@vue/test-utils'
+import { tick as nextTick, type Component } from 'svelte'
+import { cleanup, flushPromises, render } from './test/render.svelte'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import App from './App.vue'
-import CommentManagementView from './components/CommentManagementView.vue'
-import FirstLoginSetupView from './components/FirstLoginSetupView.vue'
-import ListInput from './components/ListInput.vue'
-import NotificationSettingsView from './components/NotificationSettingsView.vue'
-import SecurityView from './components/SecurityView.vue'
-import SiteManagementView from './components/SiteManagementView.vue'
-import SmojiContent from './components/SmojiContent.vue'
+import App from './App.svelte'
+import CommentManagementView from './components/CommentManagementView.svelte'
+import FirstLoginSetupView from './components/FirstLoginSetupView.svelte'
+import ListInput from './components/ListInput.svelte'
+import NotificationSettingsView from './components/NotificationSettingsView.svelte'
+import SecurityView from './components/SecurityView.svelte'
+import SiteManagementView from './components/SiteManagementView.svelte'
+import SmojiContent from './components/SmojiContent.svelte'
 import { adminApi, ApiError } from './api'
 import * as captcha from './captcha'
 import { messages } from './messages'
-import { useAdminStore } from './stores/admin'
+import { createAdminStore } from './stores/admin.svelte'
 import { formatDate } from './ui'
 import type { CommentPage, CommentReview, NotificationSettings, SiteSummary } from './types'
 import { smojiPlainText, tokenizeAdminSmoji } from './smoji'
 
-let pinia = createPinia()
+let testStore = createAdminStore()
+const useAdminStore = () => testStore
+function mount<Props extends Record<string, unknown>, Exports extends Record<string, unknown>>(component: Component<Props, Exports>, options: { props?: Props; attachTo?: HTMLElement } = {}) {
+  return render(component, { ...options, context: new Map([['admin', testStore]]) })
+}
 
 function site(overrides: Partial<SiteSummary> = {}): SiteSummary {
   return {
@@ -64,8 +67,21 @@ function response(status: number, data: unknown): Response {
   return new Response(JSON.stringify({ code: status, message: 'ok', data }), { status, headers: { 'Content-Type': 'application/json' } })
 }
 
-beforeEach(() => { pinia = createPinia(); setActivePinia(pinia) })
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); document.body.innerHTML = '' })
+beforeEach(() => { testStore = createAdminStore() })
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); document.body.innerHTML = '' })
+
+it('keeps each mounted admin context independent when replacing the Pinia store', () => {
+  const first = createAdminStore()
+  const second = createAdminStore()
+  first.authenticated = true
+  first.sites = [site()]
+  first.selectedSiteId = 'site-a'
+  first.setDirty('sites', true)
+  expect(first.selectedSite?.id).toBe('site-a')
+  expect(second.authenticated).toBe(false)
+  expect(second.selectedSite).toBeNull()
+  expect(second.dirtyView).toBeNull()
+})
 
 describe('administrator API contract', () => {
   it('maps only the direct-publish site and comment fields and uses the HttpOnly session without a bearer header', async () => {
@@ -164,7 +180,7 @@ describe('administrator Smoji rendering', () => {
     const wrapper = mount(SmojiContent, { props: { content: marker, enabled: true, manifestUrl } })
     expect(wrapper.get('img').attributes('alt')).toBe('[表情：挥手]')
     expect(wrapper.get('img').attributes('src')).toBe('https://static.example.test/wave.webp')
-    expect(wrapper.html()).not.toContain('v-html')
+    expect(wrapper.html()).not.toContain('<script')
   })
 
   it('reads a quoted parent the way its body renders: shown emoji as labels, other markers as written', () => {
@@ -176,7 +192,7 @@ describe('administrator Smoji rendering', () => {
     const store = useAdminStore()
     store.authenticated = true; store.sites = [site({ smojiEnabled: true, smojiManifestUrl: manifestUrl })]; store.selectedSiteId = 'site-a'
     store.comments = [comment({ id: 8, parent: 7, content: '子评论' }), comment({ content: `你好\n${marker}` })]
-    const view = mount(CommentManagementView, { global: { plugins: [pinia] } })
+    const view = mount(CommentManagementView, {})
     expect(view.get('#c-8 .quote-text').text()).toBe('你好 [表情：挥手]')
     expect(view.get('#c-7 .entry-copy img').attributes('alt')).toBe('[表情：挥手]')
     view.unmount()
@@ -262,7 +278,7 @@ describe('approved production surface', () => {
     store.comments = [comment({ id: 8, parent: 7, content: '子评论' }), comment()]
     vi.spyOn(adminApi, 'getComment').mockResolvedValue(comment({ id: 8, parent: 7, content: '子评论' }))
     const remove = vi.spyOn(adminApi, 'tombstone')
-    const wrapper = mount(CommentManagementView, { global: { plugins: [pinia] } })
+    const wrapper = mount(CommentManagementView, {})
     expect(wrapper.findAll('.entry')).toHaveLength(2)
     expect(wrapper.get('#c-8 .entry-copy').text()).toBe('子评论')
     expect(wrapper.get('#c-7 .entry-copy').text()).toContain('<script>')
@@ -284,7 +300,7 @@ describe('approved production surface', () => {
     vi.spyOn(adminApi, 'tombstone').mockResolvedValue({ comment: comment({ id: 8, deleted: true, status: 'deleted' }), unchanged: false })
     const list = vi.spyOn(adminApi, 'listComments').mockImplementation(() => new Promise((resolve) => { release = resolve }))
     vi.spyOn(adminApi, 'getComment').mockImplementation(async (_siteId, id) => comment({ id }))
-    const wrapper = mount(CommentManagementView, { global: { plugins: [pinia] }, attachTo: document.body })
+    const wrapper = mount(CommentManagementView, { attachTo: document.body })
     await wrapper.get('#c-8 .is-danger').trigger('click')
     await wrapper.get('#c-8 .entry-confirm .button-danger').trigger('click')
     await vi.waitFor(() => expect(wrapper.get('#c-8').classes()).toContain('is-leaving'))
@@ -310,7 +326,7 @@ describe('approved production surface', () => {
       store.authenticated = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
       store.comments = [comment({ id: 8, parent: 7, content: '子评论' }), comment()]
       vi.spyOn(adminApi, 'getComment').mockImplementation(async (_siteId, id) => comment({ id }))
-      const wrapper = mount(CommentManagementView, { global: { plugins: [pinia] }, attachTo: document.body })
+      const wrapper = mount(CommentManagementView, { attachTo: document.body })
       await wrapper.get('#c-8 .entry-quote').trigger('click')
       await flushPromises()
       expect(wrapper.get('#c-7').classes()).toContain('is-flash')
@@ -324,7 +340,7 @@ describe('approved production surface', () => {
 
   it('shows the save bar only after editing and restores the persisted site on discard', async () => {
     const store = useAdminStore(); store.sites = [site()]; store.selectedSiteId = 'site-a'
-    const wrapper = mount(SiteManagementView, { global: { plugins: [pinia] } })
+    const wrapper = mount(SiteManagementView, {})
     expect(wrapper.find('.savebar').exists()).toBe(false)
     await wrapper.get('#site-name').setValue('新名称')
     expect(wrapper.find('.savebar').exists()).toBe(true)
@@ -339,7 +355,7 @@ describe('approved production surface', () => {
   it('validates, normalizes and clears the approved image-origin field without losing drafts', async () => {
     const store = useAdminStore(); store.authenticated = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
     const save = vi.spyOn(adminApi, 'updateSite').mockImplementation(async input => site({ ...input }))
-    const wrapper = mount(SiteManagementView, { attachTo: document.body, global: { plugins: [pinia] } })
+    const wrapper = mount(SiteManagementView, { attachTo: document.body })
     await wrapper.get('#smoji-image-origin').setValue('https://cdn.example/path')
     await wrapper.get('.save-button').trigger('click')
     expect(save).not.toHaveBeenCalled()
@@ -359,7 +375,7 @@ describe('approved production surface', () => {
   it('stops at an allowed origin that needs fixing and saves the normalized, merged list', async () => {
     const store = useAdminStore(); store.authenticated = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
     const save = vi.spyOn(adminApi, 'updateSite').mockImplementation(async input => site({ ...input }))
-    const wrapper = mount(SiteManagementView, { attachTo: document.body, global: { plugins: [pinia] } })
+    const wrapper = mount(SiteManagementView, { attachTo: document.body })
     await wrapper.get('#site-origins .list-add').trigger('click')
     await flushPromises()
     expect(wrapper.find('.savebar').exists()).toBe(false)
@@ -383,12 +399,12 @@ describe('approved production surface', () => {
   it('preserves the edited site and write-only passphrase when saving fails', async () => {
     const store = useAdminStore(); store.authenticated = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
     vi.spyOn(adminApi, 'updateSite').mockRejectedValue(new ApiError(409, 'conflict'))
-    const wrapper = mount(SiteManagementView, { global: { plugins: [pinia] } })
+    const wrapper = mount(SiteManagementView, {})
     await wrapper.get('#site-name').setValue('尚未保存的名称')
     await wrapper.get('#blogger-passphrase').setValue('new-private-passphrase')
     await wrapper.get('.save-button').trigger('click')
     await vi.waitFor(() => expect(store.siteBusy).toBe(false))
-    await wrapper.vm.$nextTick()
+    await nextTick()
     expect(store.siteMessage).toBe(messages.conflict)
     expect((wrapper.get('#site-name').element as HTMLInputElement).value).toBe('尚未保存的名称')
     expect((wrapper.get('#blogger-passphrase').element as HTMLInputElement).value).toBe('new-private-passphrase')
@@ -402,8 +418,8 @@ describe('approved production surface', () => {
     store.notificationMessage = messages.serverError; store.captchaMessage = messages.serverError
     const notificationsRetry = vi.spyOn(store, 'loadNotifications').mockResolvedValue()
     const captchaRetry = vi.spyOn(store, 'loadCaptcha').mockResolvedValue()
-    const notificationView = mount(NotificationSettingsView, { global: { plugins: [pinia] } })
-    const securityView = mount(SecurityView, { global: { plugins: [pinia] } })
+    const notificationView = mount(NotificationSettingsView, {})
+    const securityView = mount(SecurityView, {})
     expect(notificationView.get('#email-form > fieldset').attributes('disabled')).toBeDefined()
     expect(notificationView.get('#telegram-form > fieldset').attributes('disabled')).toBeDefined()
     expect(securityView.get('#captcha-form > fieldset').attributes('disabled')).toBeDefined()
@@ -420,7 +436,7 @@ describe('approved production surface', () => {
     const store = useAdminStore(); store.authenticated = true; store.notificationSettings = notifications()
     const saveEmail = vi.spyOn(store, 'saveEmail').mockResolvedValue({ ...notifications().email, username: 'changed', revision: 3 })
     const saveTelegram = vi.spyOn(store, 'saveTelegram')
-    const wrapper = mount(NotificationSettingsView, { global: { plugins: [pinia] } })
+    const wrapper = mount(NotificationSettingsView, {})
     expect(wrapper.find('.savebar').exists()).toBe(false)
     await wrapper.get('#email-user').setValue('changed')
     await wrapper.get('#telegram-token').setValue('new-private-token')
@@ -437,7 +453,7 @@ describe('approved production surface', () => {
 
   it('treats a blank item as no change, a typed one as a change, and restores the saved items on discard', async () => {
     const store = useAdminStore(); store.notificationSettings = notifications()
-    const wrapper = mount(NotificationSettingsView, { attachTo: document.body, global: { plugins: [pinia] } })
+    const wrapper = mount(NotificationSettingsView, { attachTo: document.body })
     await wrapper.get('#email-recipients .list-add').trigger('click')
     await flushPromises()
     expect(wrapper.findAll('#email-recipients .list-row')).toHaveLength(2)
@@ -456,7 +472,7 @@ describe('approved production surface', () => {
   it('marks an empty recipient list invalid on its first item without sending the settings', async () => {
     const store = useAdminStore(); store.authenticated = true; store.notificationSettings = notifications()
     const save = vi.spyOn(store, 'saveEmail')
-    const wrapper = mount(NotificationSettingsView, { attachTo: document.body, global: { plugins: [pinia] } })
+    const wrapper = mount(NotificationSettingsView, { attachTo: document.body })
     await wrapper.get('#email-recipients .row-remove').trigger('click')
     expect(wrapper.findAll('#email-recipients .list-row')).toHaveLength(1)
     expect(wrapper.get('#email-recipients .row-remove').classes()).toContain('is-idle')
@@ -475,7 +491,7 @@ describe('approved production surface', () => {
 
   it('shows an item problem under that item and links it to the input', async () => {
     const store = useAdminStore(); store.notificationSettings = notifications()
-    const wrapper = mount(NotificationSettingsView, { global: { plugins: [pinia] } })
+    const wrapper = mount(NotificationSettingsView, {})
     expect(wrapper.find('.row-note').exists()).toBe(false)
     await wrapper.get('#telegram-targets-1').setValue('@channel')
     await wrapper.get('#telegram-targets-1').trigger('blur')
@@ -496,7 +512,7 @@ describe('approved production surface', () => {
   it('renders published/deleted management only, escapes comments, and links to the original page', () => {
     const store = useAdminStore()
     store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'; store.comments = [comment(), comment({ id: 8, createdAt: 'not-a-date' })]; store.selectedComment = comment(); store.counts = { published: 2, deleted: 0 }; store.total = 2; store.pageCount = 1
-    const wrapper = mount(CommentManagementView, { global: { plugins: [pinia] } })
+    const wrapper = mount(CommentManagementView, {})
     expect(wrapper.text()).toContain('评论管理')
     expect(wrapper.text()).toContain('已发布 2')
     expect(wrapper.text()).toContain('已删除 0')
@@ -525,7 +541,7 @@ describe('approved production surface', () => {
       cap: { instanceUrl: 'https://cap.example.test', sitekey: 'cap-public', secret: '', secretSet: true },
       revision: 2,
     }
-    const wrapper = mount(SecurityView, { global: { plugins: [pinia] } })
+    const wrapper = mount(SecurityView, {})
     expect(wrapper.text()).toContain('安全')
     expect(wrapper.findAll('input[type="radio"]')).toHaveLength(3)
     expect(wrapper.text()).toContain('关闭')
@@ -563,7 +579,7 @@ describe('approved production surface', () => {
       cap: { instanceUrl: 'https://cap.example.test', sitekey: 'cap-public', secret: '', secretSet: true },
       revision: 2,
     })
-    const wrapper = mount(SecurityView, { global: { plugins: [pinia] } })
+    const wrapper = mount(SecurityView, {})
     await wrapper.get('#cap-instance-url').setValue('https://cap.example.test/')
     await wrapper.get('#cap-sitekey').setValue('cap-public')
     await wrapper.get('#cap-secret').setValue('cap-private')
@@ -578,7 +594,7 @@ describe('approved production surface', () => {
 
   it('shows only approved site fields and explains how to add origins one per item', () => {
     const store = useAdminStore(); store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
-    const wrapper = mount(SiteManagementView, { global: { plugins: [pinia] } })
+    const wrapper = mount(SiteManagementView, {})
     expect(wrapper.text()).toContain('站点名称')
     expect(wrapper.text()).toContain('评论排序')
     expect(wrapper.text()).toContain('评论长度上限')
@@ -608,7 +624,7 @@ describe('approved production surface', () => {
     const store = useAdminStore()
     store.authenticated = true; store.sessionReady = true; store.sites = [site(), site({ id: 'site-b', name: '', siteUrl: 'https://notes.example.test' })]; store.selectedSiteId = 'site-a'
     const select = vi.spyOn(store, 'selectSite').mockResolvedValue()
-    const wrapper = mount(CommentManagementView, { global: { plugins: [pinia] }, attachTo: document.body })
+    const wrapper = mount(CommentManagementView, { attachTo: document.body })
     const trigger = wrapper.get('.site-trigger')
     expect(trigger.text()).toContain("Dejavu's Blog")
     await trigger.trigger('click')
@@ -617,7 +633,7 @@ describe('approved production surface', () => {
     await options[1]!.trigger('click')
     expect(select).toHaveBeenCalledWith('site-b')
     store.sites = [site()]
-    await wrapper.vm.$nextTick()
+    await nextTick()
     expect(wrapper.find('.site-trigger').exists()).toBe(false)
     expect(wrapper.get('.site-static').text()).toContain("Dejavu's Blog")
     wrapper.unmount()
@@ -627,17 +643,17 @@ describe('approved production surface', () => {
     const store = useAdminStore()
     const tombstone = comment({ status: 'deleted', deleted: true, hasChildren: true, username: '', content: '' })
     store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'; store.status = 'deleted'; store.comments = [tombstone]; store.selectedComment = tombstone
-    const wrapper = mount(CommentManagementView, { global: { plugins: [pinia] } })
+    const wrapper = mount(CommentManagementView, {})
     expect(wrapper.find('.entry-actions .is-danger').exists()).toBe(false)
     expect(wrapper.text()).toContain('仍有回复，不能彻底删除')
     store.selectedComment = { ...tombstone, hasChildren: false }; store.comments = [store.selectedComment]
-    await wrapper.vm.$nextTick()
+    await nextTick()
     expect(wrapper.get('.entry-actions .is-danger').text()).toBe('彻底删除')
   })
 
   it('collapses a disabled channel and asks to save only after turning a saved channel off', async () => {
     const store = useAdminStore(); store.authenticated = true; store.sessionReady = true; store.notificationSettings = notifications()
-    const wrapper = mount(NotificationSettingsView, { global: { plugins: [pinia] } })
+    const wrapper = mount(NotificationSettingsView, {})
     expect(wrapper.text()).toContain('发送测试邮件')
     expect(wrapper.find('input[type="checkbox"][disabled][checked]').exists()).toBe(false)
     await wrapper.get('input[name="email-enabled"][value="false"]').setValue(true)
@@ -651,7 +667,7 @@ describe('approved production surface', () => {
 
   it('renders redacted secret placeholders and one input per destination without public template previews', () => {
     const store = useAdminStore(); store.authenticated = true; store.sessionReady = true; store.notificationSettings = notifications()
-    const wrapper = mount(NotificationSettingsView, { global: { plugins: [pinia] } })
+    const wrapper = mount(NotificationSettingsView, {})
     expect(wrapper.find<HTMLInputElement>('#email-password').element.placeholder).toBe('已设置，输入新值以更换')
     expect(wrapper.find<HTMLInputElement>('#telegram-token').element.placeholder).toBe('已设置，输入新值以更换')
     expect(wrapper.text()).toContain('每项一个邮箱。按 Enter 添加下一项')
@@ -665,10 +681,11 @@ describe('approved production surface', () => {
   })
 
   it('edits one item per input: Enter starts the next item and Backspace removes an empty one', async () => {
+    const onupdate = vi.fn()
     const wrapper = mount(ListInput, { attachTo: document.body, props: { id: 'list', modelValue: [], kind: 'email', label: '通知收件人', addLabel: '添加收件人' } })
     expect(wrapper.findAll('.list-row')).toHaveLength(1)
     await wrapper.get('#list-0').setValue('a@example.com')
-    expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toEqual(['a@example.com'])
+    expect(wrapper.props.modelValue).toEqual(['a@example.com'])
     await wrapper.get('#list-0').trigger('keydown', { key: 'Enter' })
     await flushPromises()
     expect(wrapper.findAll('.list-row')).toHaveLength(2)
@@ -682,18 +699,19 @@ describe('approved production surface', () => {
     await flushPromises()
     expect(wrapper.findAll('.list-row')).toHaveLength(1)
     expect(document.activeElement?.id).toBe('list-0')
-    expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toEqual(['a@example.com'])
+    expect(wrapper.props.modelValue).toEqual(['a@example.com'])
     wrapper.unmount()
   })
 
   it('splits a pasted block into items up to the limit, flags each item and applies a suggested fix', async () => {
+    const onupdate = vi.fn()
     const wrapper = mount(ListInput, { attachTo: document.body, props: { id: 'list', modelValue: [], kind: 'origin', label: '允许来源', addLabel: '添加来源', max: 3 } })
     const paste = new Event('paste', { bubbles: true, cancelable: true })
     Object.defineProperty(paste, 'clipboardData', { value: { getData: () => 'https://a.example\nnotes.example.com/post, https://A.example:443/\nhttps://d.example' } })
     wrapper.get('#list-0').element.dispatchEvent(paste)
     await flushPromises()
     expect(paste.defaultPrevented).toBe(true)
-    expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toEqual(['https://a.example', 'notes.example.com/post', 'https://A.example:443/'])
+    expect(wrapper.props.modelValue).toEqual(['https://a.example', 'notes.example.com/post', 'https://A.example:443/'])
     expect(wrapper.get('.visually-hidden').text()).toBe('已添加 3 项；最多 3 项，其余 1 项未添加')
     expect(wrapper.get('.list-add').attributes('disabled')).toBeDefined()
     expect(wrapper.get('.list-add').text()).toBe('已达上限 3 项')
@@ -705,17 +723,18 @@ describe('approved production surface', () => {
     expect(wrapper.get('#list-2').attributes('aria-invalid')).toBeUndefined()
     await wrapper.get('#list-1-note .row-fix').trigger('click')
     await flushPromises()
-    expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toEqual(['https://a.example', 'https://notes.example.com', 'https://A.example:443/'])
+    expect(wrapper.props.modelValue).toEqual(['https://a.example', 'https://notes.example.com', 'https://A.example:443/'])
     expect(wrapper.find('#list-1-note').exists()).toBe(false)
     expect(document.activeElement?.id).toBe('list-1')
     wrapper.unmount()
   })
 
   it('holds back the problem of an item being typed until the cursor leaves it or the form is saved', async () => {
+    const onupdate = vi.fn()
     const wrapper = mount(ListInput, { props: { id: 'list', modelValue: [], kind: 'telegram', label: '接收目标 ID', addLabel: '添加接收目标' } })
     await wrapper.get('#list-0').setValue('12a')
     expect(wrapper.find('.row-note').exists()).toBe(false)
-    ;(wrapper.vm as unknown as { reveal: () => void }).reveal()
+    ;wrapper.instance.reveal()
     await nextTick()
     expect(wrapper.get('#list-0-note').text()).toBe('只能填写数字 ID，可带负号')
     await wrapper.setProps({ modelValue: [], requiredError: '至少填写一个接收目标' })
@@ -725,7 +744,7 @@ describe('approved production surface', () => {
 
   it('contains no ordinary-user, Count, management-key, or review workflow surface', () => {
     const store = useAdminStore(); store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'; store.comments = []; store.counts = { published: 0, deleted: 0 }
-    const wrapper = mount(App, { global: { plugins: [pinia] } })
+    const wrapper = mount(App, {})
     const text = wrapper.text()
     for (const forbidden of ['用户注册', 'Count', 'management key', '站点管理密钥', '待审核', '批准所选', '拒绝所选', '配色预览']) expect(text).not.toContain(forbidden)
     expect(text).toContain('评论管理')
@@ -783,12 +802,13 @@ describe('approved production surface', () => {
       const store = useAdminStore()
       store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
       vi.spyOn(adminApi, 'listComments').mockResolvedValue(page([comment()]))
-      const wrapper = mount(App, { global: { plugins: [pinia] } })
+      const wrapper = mount(App, {})
       // Each time the message is inserted into the live region again, it is announced again.
       const heard: string[] = []
-      const hear = (records: MutationRecord[]) => { for (const record of records) for (const node of record.addedNodes) heard.push(node.textContent ?? '') }
+      const liveRegion = wrapper.get('div.visually-hidden[aria-live="polite"]').element
+      const hear = (records: MutationRecord[]) => { if (records.length && liveRegion.textContent) heard.push(liveRegion.textContent) }
       const observer = new MutationObserver(hear)
-      observer.observe(wrapper.get('div.visually-hidden[aria-live="polite"]').element, { childList: true })
+      observer.observe(liveRegion, { childList: true, characterData: true, subtree: true })
       await store.loadComments(true)
       await flushPromises()
       expect(wrapper.get('.toast').text()).toBe(messages.refreshed)
@@ -869,7 +889,7 @@ describe('login verification startup', () => {
     let finishWidget!: (value: captcha.ChallengeWidget) => void
     const mountChallenge = vi.spyOn(captcha, 'mountChallenge').mockImplementation(() => new Promise(resolve => { finishWidget = resolve }))
     const login = vi.spyOn(useAdminStore(), 'login').mockResolvedValue(false)
-    const wrapper = mount(App, { global: { plugins: [pinia] } })
+    const wrapper = mount(App, {})
     try {
       if (order === 'config-first') {
         finishConfig(response(200, { captcha: capConfig, locale: 'zh-CN' }))
@@ -916,7 +936,7 @@ describe('login verification startup', () => {
     const mountChallenge = vi.spyOn(captcha, 'mountChallenge').mockResolvedValue(widget())
     if (failure === 'widget') mountChallenge.mockRejectedValueOnce(new Error('Script failed'))
     const login = vi.spyOn(useAdminStore(), 'login').mockResolvedValue(false)
-    const wrapper = mount(App, { global: { plugins: [pinia] } })
+    const wrapper = mount(App, {})
     try {
       await flushPromises()
       expect(wrapper.get('[role="alert"]').text()).toBe(messages.loginChallengeUnavailable)
@@ -973,7 +993,7 @@ describe('persistent administrator session', () => {
     vi.spyOn(adminApi, 'listSites').mockResolvedValue([])
     await store.restoreSession()
     expect(store.setupUsername).toBe('owner')
-    const view = mount(FirstLoginSetupView, { global: { plugins: [pinia] } })
+    const view = mount(FirstLoginSetupView, {})
     expect((view.get('input[autocomplete="username"]').element as HTMLInputElement).value).toBe('owner')
     expect(view.get('.first-login-intro').text()).toBe('更换临时密码后，即可进入管理后台。用户名可以保留为 owner。')
     const [, password, confirm] = view.findAll('input:not([type="checkbox"])')
@@ -1039,21 +1059,21 @@ describe('persistent administrator session', () => {
     vi.spyOn(adminApi, 'listComments').mockRejectedValue(new ApiError(401, 'expired'))
     const store = useAdminStore()
     store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
-    const signedIn = mount(App, { global: { plugins: [pinia] } })
+    const signedIn = mount(App, {})
     await store.loadComments()
     await flushPromises()
     expect(reload).toHaveBeenCalledTimes(1)
     signedIn.unmount()
 
     // The reloaded page starts with a fresh store and no session.
-    pinia = createPinia(); setActivePinia(pinia)
-    const reloaded = mount(App, { global: { plugins: [pinia] } })
+    testStore = createAdminStore()
+    const reloaded = mount(App, {})
     await flushPromises()
     expect(reloaded.get('.auth-form [role="alert"]').text()).toBe(messages.sessionExpired)
     reloaded.unmount()
 
-    pinia = createPinia(); setActivePinia(pinia)
-    const later = mount(App, { global: { plugins: [pinia] } })
+    testStore = createAdminStore()
+    const later = mount(App, {})
     await flushPromises()
     expect(later.find('.auth-form [role="alert"]').exists()).toBe(false)
     later.unmount()
@@ -1063,7 +1083,7 @@ describe('persistent administrator session', () => {
     const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
     vi.spyOn(adminApi, 'logout').mockResolvedValue(undefined)
     const store = useAdminStore(); store.authenticated = true; store.sessionReady = true
-    const wrapper = mount(App, { global: { plugins: [pinia] } })
+    const wrapper = mount(App, {})
     await flushPromises()
     await store.logout()
     await flushPromises()

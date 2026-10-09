@@ -1,7 +1,6 @@
-import { ref } from 'vue'
 import type { EcokuLocale } from './types'
 
-export const adminLocale = ref<EcokuLocale>('zh-CN')
+export const adminLocale = $state<{ value: EcokuLocale }>({ value: 'zh-CN' })
 let refreshTranslations: () => void = () => {}
 
 const catalog = {
@@ -201,8 +200,8 @@ const untranslatable = (element: Element | null): boolean => !element || SKIP_TA
 
 interface Rendering { source: string; rendered: string }
 
-// Vue may rewrite a node in place. A node still showing our last rendering keeps its
-// recorded source; any other content is a new source written by Vue.
+// Components may rewrite a node in place. A node still showing our last rendering
+// keeps its recorded source; any other content is a new source.
 function sourceOf(current: string, previous: Rendering | undefined): string {
   return previous && previous.rendered === current ? previous.source : current
 }

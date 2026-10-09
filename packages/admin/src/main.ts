@@ -1,6 +1,6 @@
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
+import { mount } from 'svelte'
 import './style.css'
-import App from './App.vue'
+import App from './App.svelte'
+import { createAdminStore } from './stores/admin.svelte'
 
-createApp(App).use(createPinia()).mount('#app')
+mount(App, { target: document.getElementById('app')!, context: new Map([['admin', createAdminStore()]]) })

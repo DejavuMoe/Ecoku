@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { commentCountNoun, installAdminTranslations, refreshAdminTranslations, setAdminLocale, translateAdminText } from './i18n'
+import { commentCountNoun, installAdminTranslations, refreshAdminTranslations, setAdminLocale, translateAdminText } from './i18n.svelte'
 
 afterEach(() => { setAdminLocale('zh-CN'); vi.unstubAllGlobals(); vi.restoreAllMocks() })
 
@@ -23,7 +23,7 @@ it('does not rewrite translated text on repeated observer scans', () => {
   } finally { stop() }
 })
 
-it('keeps text that Vue rewrites in place, in the default locale', () => {
+it('keeps text that the renderer rewrites in place, in the default locale', () => {
   const root = document.createElement('p')
   root.append('8 ', document.createTextNode('条评论'))
   const noun = root.lastChild as Text

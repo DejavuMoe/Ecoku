@@ -1,12 +1,13 @@
 import { defineConfig } from 'vitest/config'
-import vue from '@vitejs/plugin-vue'
+import { svelte } from '@sveltejs/vite-plugin-svelte'
 
 export default defineConfig(() => {
   const developmentApiTarget = process.env.ECOKU_ADMIN_DEV_API_URL?.trim()
 
   return {
     base: '/admin/',
-    plugins: [vue()],
+    plugins: [svelte()],
+    resolve: { conditions: ['browser'] },
     server: developmentApiTarget
       ? {
           proxy: {
