@@ -105,7 +105,6 @@ h1[tabindex="-1"]:focus { outline: none; }
 .chevron { width: 12px; height: 12px; transition: transform 0.15s ease; }
 [aria-expanded="true"] > .chevron { transform: rotate(180deg); }
 code { padding: 1px 5px; border-radius: var(--radius-sm); color: var(--ink-soft); background: var(--code-bg); font-family: var(--mono); font-size: 0.92em; }
-kbd { display: inline-grid; min-width: 18px; height: 18px; place-items: center; margin-right: 3px; padding: 0 4px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; color: var(--ink-soft); font-family: var(--mono); font-size: 10.5px; line-height: 1; }
 
 /* The ledger: a margin column for context and a main column for the work, shared by every row. */
 .layout { display: grid; width: min(100% - var(--gutter) * 2, var(--margin-w) + var(--col-gap) + var(--main-w)); grid-template-columns: var(--margin-w) minmax(0, 1fr); column-gap: var(--col-gap); margin-inline: auto; }
@@ -395,7 +394,6 @@ a.entry-quote:hover .quote-ref { color: var(--accent); }
 .skeleton-entry span:nth-child(3) { width: 54%; }
 
 .feed-foot { align-items: center; padding: 22px 0 64px; }
-.keys { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 0; color: var(--muted); font-size: 11.5px; letter-spacing: 0.04em; }
 .pager { display: flex; min-height: 48px; align-items: center; justify-content: center; gap: 12px; color: var(--muted); font-size: 13px; }
 .pager-button { min-height: 34px; padding: 0 4px; border: 0; color: inherit; background: transparent; letter-spacing: 0.04em; transition: color 0.15s ease; }
 .pager-button:not(:disabled):hover { color: var(--accent); }
@@ -510,7 +508,6 @@ body:has(.savebar-dock) .toast { bottom: calc(var(--savebar-bottom) + 66px); }
   .entry-actions { margin-left: auto; }
   .entry-confirm .confirm-actions .button { flex: 1 1 0; min-height: 38px; }
   .feed-foot { padding: 12px 0 28px; }
-  .keys { display: none; }
 
   .doc-section { padding: 22px 0 26px; }
   .section-margin { position: static; padding: 0 0 12px; }
@@ -553,7 +550,6 @@ body:has(.savebar-dock) .toast { bottom: calc(var(--savebar-bottom) + 66px); }
   .row-remove { width: 42px; height: 42px; }
   .list-add { min-height: 40px; }
   .entry-actions .quiet-link { min-height: 32px; }
-  .keys { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

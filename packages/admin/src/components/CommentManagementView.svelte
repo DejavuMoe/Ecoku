@@ -187,47 +187,6 @@
   function outside(event: PointerEvent) {
     if (!sortPicker?.contains(event.target as Node)) sortOpen = false
   }
-  function keyboard(event: KeyboardEvent) {
-    if (
-      event.defaultPrevented ||
-      event.altKey ||
-      event.ctrlKey ||
-      event.metaKey ||
-      (event.target instanceof Element &&
-        event.target.closest('input, textarea, select, [contenteditable="true"], [role="listbox" tabindex="-1"]'))
-    )
-      return
-    if (event.key === 'Escape') {
-      sortOpen = false
-      void closeConfirm()
-      return
-    }
-    if (store.queueBusy || store.actionBusy || confirmation) return
-    const key = event.key.toLowerCase()
-    if (['j', 'k', 'arrowdown', 'arrowup'].includes(key)) {
-      event.preventDefault()
-      const current = rows.findIndex((c) => c.id === store.selectedComment?.id)
-      const index =
-        current < 0
-          ? 0
-          : Math.max(0, Math.min(rows.length - 1, current + (key === 'j' || key === 'arrowdown' ? 1 : -1)))
-      const comment = rows[index]
-      if (comment) select(comment, true)
-    } else if (key === 'o' && store.selectedComment) {
-      const url = sourceURL(store.selectedComment)
-      if (url) {
-        event.preventDefault()
-        window.open(url, '_blank', 'noopener,noreferrer')
-      }
-    } else if (event.key === 'Delete' && store.selectedComment) {
-      event.preventDefault()
-      void openConfirm(store.selectedComment)
-    } else if (key === 'r' && store.selectedSite) {
-      event.preventDefault()
-      void store.loadComments(true)
-    }
-  }
-
   $effect.pre(() => {
     store.selectedSiteId
     store.status
@@ -249,11 +208,9 @@
     })
   })
   onMount(() => {
-    document.addEventListener('keydown', keyboard)
     document.addEventListener('pointerdown', outside)
   })
   onDestroy(() => {
-    document.removeEventListener('keydown', keyboard)
     document.removeEventListener('pointerdown', outside)
     if (flashTimer !== undefined) clearTimeout(flashTimer)
   })
@@ -295,7 +252,7 @@
             <button
               type="button"
               aria-label="刷新评论"
-              title="刷新评论（R）"
+              title="刷新评论"
               disabled={store.queueBusy || store.actionBusy}
               onclick={() => {
                 store.loadComments(true)
@@ -501,9 +458,6 @@
       </div>{/if}
   </div>
   {#if store.selectedSite}<footer class="feed-foot layout">
-      <p aria-hidden="true" class="in-margin keys">
-        <kbd>J</kbd><kbd>K</kbd>上下条　<kbd>O</kbd>原评论　<kbd>Del</kbd>删除
-      </p>
       <nav aria-label="评论列表分页" class="in-main pager">
         <button
           type="button"

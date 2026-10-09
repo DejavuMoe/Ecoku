@@ -91,7 +91,7 @@ Setting or changing the passphrase does not change the blogger mark on existing 
 
 「评论」 (Comments) has 「已发布」 (Published) and 「已删除」 (Deleted) lists with 20 items per page. Choose 「最新在前」 (Newest first) or 「最早在前」 (Oldest first). Comments are grouped by date and show their body, time, post title and page key directly, together with any private email and visitor website. A reply quotes its parent when that parent is on the current page; click the quote to jump to it. Otherwise, the parent ID is shown.
 
-Tombstone and permanent deletion are confirmed beside the relevant comment. Outside input fields, J/K or the up/down arrows move between comments, O opens the original comment, Delete opens the deletion confirmation, Esc cancels it, and R refreshes the list. On settings pages with changes, Ctrl+S or ⌘+S saves.
+Tombstone and permanent deletion are confirmed beside the relevant comment.
 
 「查看原评论」 (View original comment) opens the post in a new tab, scrolled to this comment (`site URL + page key + #ecoku-comment-<comment ID>`).
 
