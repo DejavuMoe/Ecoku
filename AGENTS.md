@@ -61,7 +61,7 @@
   SDK 的 `packages/client/package.json` 版本须与它一致，admin 的 package 版本保持独立。
 - 发版提交必须同步五项：`VERSION`、根 `package.json` 与 `packages/client/package.json` 的 `version`、`compose.yaml` 的
   `image`（`ghcr.io/dejavumoe/ecoku:v` + `VERSION`，禁止占位符或浮动 tag）、`CHANGELOG.md`
-  对应章节与页脚链接。若该 tag 影响部署，同时在 `docs/self-hosting/upgrades/` 增加对应页面（三套 locale）。
+  对应章节与页脚链接。同步 `packages/client/README.md` 中的安装版本与包内 `CHANGELOG.md`，由发布脚本校验；npm 包首页使用随包发布的 README。若该 tag 影响部署，同时在 `docs/self-hosting/upgrades/` 增加对应页面（三套 locale）。
 - Git tag 必须为 `v` + `VERSION`。GitHub Actions 只在 `v*` tag 上自动发布镜像与 npm SDK，
   发布前校验 tag 与 `VERSION`、包版本、`compose.yaml` 一致。改 `VERSION` 不会出镜像。
   镜像 CI 不部署应用生产、不碰生产库。文档站点仅由 `master` push 的 Woodpecker 流程自动构建并原子发布，
@@ -72,7 +72,7 @@
   验证该 tag，再发布 GHCR 双架构镜像与同版本 npm SDK，最后创建 GitHub Release。文档仅保存构建产物，不部署。
   Woodpecker 仅启用 `docs-deploy.yml`；其余 YAML 保留原步骤与已注释触发条件，用 `when: [{ evaluate: 'false' }]` 禁用，不能只删除 `when`。
   不再向 Forgejo 发布新镜像。发布设置见 `packages/client/PUBLISH.md`。
-- 当前文档与 Compose 模板中的 Docker 镜像统一使用 GHCR 与精确发布版本号（`ghcr.io/dejavumoe/ecoku:v` + `VERSION`，禁止占位镜像或浮动 tag，当前为 `v0.4.0`）；内测归档不再展示镜像下载地址。真实域名、密码、token、SMTP、Telegram、数据库和日志等敏感信息仍使用占位符，不得进 Git。
+- 当前文档与 Compose 模板中的 Docker 镜像统一使用 GHCR 与精确发布版本号（`ghcr.io/dejavumoe/ecoku:v` + `VERSION`，禁止占位镜像或浮动 tag，当前为 `v0.4.1`）；内测归档不再展示镜像下载地址。真实域名、密码、token、SMTP、Telegram、数据库和日志等敏感信息仍使用占位符，不得进 Git。
 - 应用界面支持 `zh-CN`、`zh-Hant`、`en`。后台语言由 `ECOKU_ADMIN_LOCALE` 决定；站点前台语言由站点 `i18n` 默认值决定，SDK 的 `i18n` 参数优先覆盖。缺省均为简体中文。
 - 提交、推送、tag、镜像发布、生产部署和真实数据库操作需要当前任务的明确授权。
 - 新 tag 若可能影响平滑升级（schema、Compose 挂载、配置键、日志出口、镜像契约），回复中先写：
@@ -83,7 +83,7 @@
 
 Run these steps in order. Stop and report at any failure. Never move, recreate or force-push a published tag.
 
-1. **Master first.** Commit the release prep: the five synced items, the three-locale upgrade page, `upgrade.md`, and the latest marker in `shared.ts`. The docs demo stays on the previous published SDK, because the new npm version does not exist yet. Run `node scripts/check-release.mjs v<VERSION>`, push `master`, and wait for its CI to pass.
+1. **Master first.** Commit the release prep: the five synced items, the SDK README and package changelog, the three-locale upgrade page, `upgrade.md`, and the latest marker in `shared.ts`. The docs demo stays on the previous published SDK, because the new npm version does not exist yet. Run `node scripts/check-release.mjs v<VERSION>`, push `master`, and wait for its CI to pass.
 2. **Then the tag.** Once master CI is green and the user approves the release, create the annotated tag `v<VERSION>` (message `Ecoku v<VERSION>`) on that commit. Push it and wait for the Release workflow to pass: check, verify, npm, both images, manifest and release.
 3. **Then the SDK pins.** Confirm npm `latest`, the GHCR amd64/arm64 manifest and the GitHub Release. In one commit, move the VitePress docs site to the published SDK: `docs/package.json`, `minimumReleaseAgeExclude` in `pnpm-workspace.yaml`, the lockfile integrity taken from `npm view`, the demo and install lines in the three-locale `sdk.md`, and a `CHANGELOG.md` `[Unreleased]` entry. Check it with `pnpm install --frozen-lockfile --lockfile-only`, push `master`, and wait for CI.
 4. **Remind the user.** Tell the user to move each deployed instance to the new exact image tag, including the server behind the docs demo. Do not change any deployed instance yourself.

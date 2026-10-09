@@ -4,14 +4,15 @@
 
 ## 发布顺序
 
-1. 校验 tag、`VERSION`、根与 `packages/client/package.json` 的版本、Compose 镜像和根 `CHANGELOG.md` 的发布章节。
-2. 复用 `ci.yml`，验证该 tag 的 SDK、管理端、Go 服务和文档。SDK 完成 ESM、CommonJS、UMD、类型声明检查后打成 tarball。
-3. 并行执行 npm 发布和镜像构建。npm 发布同一次运行保存的 tarball，不在有写权限的发布 job 中重新安装依赖或构建。amd64 / arm64 镜像在原生 runner 构建并按 digest 推送；分别拉取同一 digest 完成运行时检查、SBOM 与漏洞扫描后，才导出 digest 并汇总为精确版本 tag。
-4. npm 与镜像均成功后，使用根更新日志对应章节创建 GitHub Release，附带 `ecoku-<版本>.tgz` 和 `SHA256SUMS`。
+1. 同步 `packages/client/README.md` 的安装版本与包内 `CHANGELOG.md`；它们随 SDK 打包发布，npm 包首页读取该 README。发布脚本校验它们与 `VERSION` 一致。
+2. 校验 tag、`VERSION`、根与 `packages/client/package.json` 的版本、Compose 镜像和根 `CHANGELOG.md` 的发布章节。
+3. 复用 `ci.yml`，验证该 tag 的 SDK、管理端、Go 服务和文档。SDK 完成 ESM、CommonJS、UMD、类型声明检查后打成 tarball。
+4. 并行执行 npm 发布和镜像构建。npm 发布同一次运行保存的 tarball，不在有写权限的发布 job 中重新安装依赖或构建。amd64 / arm64 镜像在原生 runner 构建并按 digest 推送；分别拉取同一 digest 完成运行时检查、SBOM 与漏洞扫描后，才导出 digest 并汇总为精确版本 tag。
+5. npm 与镜像均成功后，使用根更新日志对应章节创建 GitHub Release，附带 `ecoku-<版本>.tgz` 和 `SHA256SUMS`。
 
 普通 `master` / PR CI 只验证 SDK、检查包内容并生成 tarball，不运行 `npm publish --dry-run`。npm 的发布预演也会查询 registry，并拒绝已发布的同版本；它不适合作为主线构建检查。实际发布仅在 tag 流程或显式触发的恢复流程中执行。
 
-发布 `v0.4.0` 时，SDK 版本为 `0.4.0`，镜像为 `ghcr.io/dejavumoe/ecoku:v0.4.0`。正式 npm 版本使用 `latest`，含预发布后缀的 tag 使用 `next` 并创建 GitHub prerelease；镜像只发布精确版本，不创建 `latest`。
+发布 `v0.4.1` 时，SDK 版本为 `0.4.1`，镜像为 `ghcr.io/dejavumoe/ecoku:v0.4.1`。正式 npm 版本使用 `latest`，含预发布后缀的 tag 使用 `next` 并创建 GitHub prerelease；镜像只发布精确版本，不创建 `latest`。
 
 SDK 的 `repository.url` 设为 `git+https://github.com/DejavuMoe/Ecoku.git`，`directory` 为 `packages/client`。如果实际 GitHub 仓库名称不同，首次发布前同步修改此字段和 npm Trusted Publisher；流水线会拒绝来源仓库不一致的包。
 

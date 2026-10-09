@@ -5,10 +5,16 @@
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-09
+
 ### 变更
 
 - 文档 Demo 与三语 SDK 安装说明改用 npm 发布包 `ecoku@0.4.0`。
 - 移除管理后台全局快捷键及界面提示，评论导航、刷新、查看原文、删除和保存设置通过界面控件操作；同步三语后台操作说明。
+
+### 修复
+
+- npm 包首页的安装示例同步至当前 SDK 版本，补齐包内更新日志，并将 README 安装版本与包内更新日志纳入发布校验，避免再次遗漏。
 
 ## [0.4.0] - 2026-10-09
 
@@ -685,4 +691,5 @@
 [0.3.7]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.7
 [0.3.8]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.3.8
 [0.4.0]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.4.0
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.4.0...master
+[0.4.1]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.4.1
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.4.1...master

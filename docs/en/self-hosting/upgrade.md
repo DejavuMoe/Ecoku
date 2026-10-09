@@ -2,9 +2,9 @@
 
 Public releases start at v0.3.0. For a new instance use [Docker deployment](./docker); this page covers upgrades.
 
-The current release is **v0.4.0** (released 2026-10-09, schema v12).
+The current release is **v0.4.1** (released 2026-10-09, schema v12).
 
-New images are published to GHCR. Deployments using Forgejo images should change `image` to `ghcr.io/dejavumoe/ecoku:v0.4.0` or the exact target tag for future upgrades, keeping existing data and configuration mounts. No new versions will be published to the Forgejo registry. Switching registries at the same version does not require reinitializing the instance.
+New images are published to GHCR. Deployments using Forgejo images should change `image` to `ghcr.io/dejavumoe/ecoku:v0.4.1` or the exact target tag for future upgrades, keeping existing data and configuration mounts. No new versions will be published to the Forgejo registry. Switching registries at the same version does not require reinitializing the instance.
 
 ## What happens during an upgrade
 
@@ -26,7 +26,7 @@ That makes a backup taken before the upgrade the only way to roll back to an old
 **3. Change the image version.** Edit `~/Ecoku/compose.yaml` and change `image` to the target version, for example:
 
 ```yaml
-    image: "ghcr.io/dejavumoe/ecoku:v0.4.0"
+    image: "ghcr.io/dejavumoe/ecoku:v0.4.1"
 ```
 
 Use an exact version number, not `latest`. If the upgrade notes ask you to change `app/config.yaml` or `ecoku.env`, change them at the same time.
@@ -61,6 +61,7 @@ First check whether the old and new versions have the same schema (see the table
 
 | Version | Release date | Schema | Highlights |
 | --- | --- | --- | --- |
+| [v0.4.1](./upgrades/v0.4.1) | 2026-10-09 | v12 | Remove global admin shortcuts and hints, and correct the npm README install version; no database migration. |
 | [v0.4.0](./upgrades/v0.4.0) | 2026-10-09 | v12 | Admin migrated to Svelte 5; SDK and deployment remain compatible, with no database migration. |
 | [v0.3.8](./upgrades/v0.3.8) | 2026-10-09 | v12 | Go 1.27.2 and x/net v0.60.0 security fixes; no database migration. |
 | [v0.3.7](./upgrades/v0.3.7) | 2026-10-06 | v12 | List optimizations, notification deletion coordination, security hardening, OpenSSL updates and image-check fixes. |
