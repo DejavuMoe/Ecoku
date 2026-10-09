@@ -5,24 +5,19 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc -b && vite build",
+    "build": "svelte-check --tsconfig ./tsconfig.app.json && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "type-check": "vue-tsc --noEmit -p tsconfig.app.json"
-  },
-  "dependencies": {
-    "pinia": "^3.0.4",
-    "vue": "^3.5.42"
+    "type-check": "svelte-check --tsconfig ./tsconfig.app.json && tsc --noEmit -p tsconfig.node.json"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
-    "@vitejs/plugin-vue": "^6.0.8",
-    "@vue/test-utils": "^2.4.11",
-    "@vue/tsconfig": "^0.9.1",
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "svelte": "5.57.1",
+    "svelte-check": "4.7.6",
     "happy-dom": "^20.11.2",
     "typescript": "~6.0.3",
     "vite": "^8.2.1",
-    "vitest": "^4.1.10",
-    "vue-tsc": "^3.3.9"
+    "vitest": "^4.1.10"
   }
 }
