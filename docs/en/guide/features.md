@@ -4,7 +4,7 @@ This page lists the features of the current Ecoku release (v0.3.7), grouped by w
 
 ## Visitors
 
-- Post without registering by entering a nickname, email address, and optional website. Each site decides whether the email address and website are required. [Visitor identity](./concepts#visitor-identity)
+- Post without registering by entering a nickname, email address, and website. Each site decides whether the email address and website are required (email is required and the website optional by default). [Visitor identity](./concepts#visitor-identity)
 - Reply directly under any comment. The reply box opens in place, and any missing identity fields are filled in inside that reply box.
 - The browser remembers the visitor's identity, encrypted, for 7 days. No cookies are used.
 - Preview before posting. Length is counted in Unicode characters, so one CJK character counts as one.

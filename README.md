@@ -23,6 +23,8 @@ English · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-Hant.md)
 
 ```bash
 mkdir -p ~/Ecoku/app ~/Ecoku/data && cd ~/Ecoku
+# The container runs as UID/GID 10001, and only data/ is writable
+sudo chown -R 10001:10001 data && sudo chmod 750 data
 # Prepare compose.yaml and app/config.yaml; see the compose.yaml and deploy/ templates in this repo
 sudo docker compose up -d
 ```

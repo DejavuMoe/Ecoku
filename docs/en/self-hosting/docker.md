@@ -78,7 +78,7 @@ services:
     stop_grace_period: 30s
 ```
 
-The port is bound to `127.0.0.1` only. To use another host port, change only the part before the colon, such as `"127.0.0.1:8080:12123"`; the container port is always `12123`. Logs go to standard output. View them with `docker compose logs`; Docker handles retention and rotation.
+The port is bound to `127.0.0.1` only. To use another host port, change only the part before the colon, such as `"127.0.0.1:8080:12123"`; the container port stays `12123`. To change the port the container listens on, follow the notes in the [configuration template](#config) and update `site.port`, the Compose container port and the health check together. Logs go to standard output. View them with `docker compose logs`; Docker handles retention and rotation.
 
 ## 3. Create app/config.yaml {#config}
 

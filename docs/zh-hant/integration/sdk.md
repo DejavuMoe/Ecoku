@@ -33,7 +33,7 @@ await comments.init()
 | `container` | `string \| HTMLElement` | 是 | — | 掛載位置，為 CSS 選擇器或 DOM 元素。容器原有的內容會被取代。 |
 | `serverURL` | `string` | 是 | — | Ecoku 的網址，以 `http://` 或 `https://` 開頭，可以帶路徑，不能帶使用者名稱密碼、查詢參數或 `#`。 |
 | `siteId` | `string` | 是 | — | 後台建立的站點 ID。 |
-| `pageKey` | `string` | 是 | — | 目前文章的頁面 key，1～512 個字元。SDK 不會自動從網址推斷，必須明確傳入。 |
+| `pageKey` | `string` | 是 | — | 目前文章的頁面 key，1～512 個字元的站內相對路徑，不能帶 `?` 或 `#`。SDK 不會自動從網址推斷，必須明確傳入。 |
 | `pageTitle` | `string` | 否 | `''` | 文章標題，顯示在通知中，最多 200 個字元。 |
 | `pageSize` | `number` | 否 | `10` | 每頁根評論數，1～100 的整數。 |
 | `theme` | `'auto' \| 'light' \| 'dark'` | 否 | `'auto'` | 配色。`auto` 優先讀取宿主顏色變數，未提供時跟隨系統偏好；手動主題開關需對應顏色變數，見下方 VitePress 範例。 |

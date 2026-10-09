@@ -33,7 +33,7 @@ await comments.init()
 | `container` | `string \| HTMLElement` | Yes | — | Where to mount: a CSS selector or a DOM element. The container's existing content is replaced. |
 | `serverURL` | `string` | Yes | — | The Ecoku address, starting with `http://` or `https://`. It may include a path, but not a username and password, a query string or `#`. |
 | `siteId` | `string` | Yes | — | The site ID created in the admin console. |
-| `pageKey` | `string` | Yes | — | The current post's page key, 1 to 512 characters. The SDK does not infer it from the URL; you must pass it explicitly. |
+| `pageKey` | `string` | Yes | — | The current post's page key: a site-relative path of 1 to 512 characters, without `?` or `#`. The SDK does not infer it from the URL; you must pass it explicitly. |
 | `pageTitle` | `string` | No | `''` | The post title, shown in notifications, at most 200 characters. |
 | `pageSize` | `number` | No | `10` | Root comments per page, an integer from 1 to 100. |
 | `theme` | `'auto' \| 'light' \| 'dark'` | No | `'auto'` | `auto` reads host color variables, falling back to the system preference. Map variables for manual theme switches, as in the VitePress example below. |

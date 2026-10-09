@@ -23,6 +23,8 @@
 
 ```bash
 mkdir -p ~/Ecoku/app ~/Ecoku/data && cd ~/Ecoku
+# 容器以 UID/GID 10001 运行，只有 data/ 可写
+sudo chown -R 10001:10001 data && sudo chmod 750 data
 # 准备 compose.yaml 与 app/config.yaml，参考仓库根目录的 compose.yaml 与 deploy/ 模板
 sudo docker compose up -d
 ```

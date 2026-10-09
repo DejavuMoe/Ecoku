@@ -14,7 +14,7 @@ All `/api/` endpoints return JSON with the same structure:
 { "code": 200, "message": "Success", "data": { } }
 ```
 
-`code` is the same as the HTTP status code. On error there is usually no `data` (a failed test notification is the exception, see [Notifications](#notifications)), and `message` is a short explanation in Chinese, for example (the origin does not belong to the current site):
+`code` is the same as the HTTP status code. `data` is omitted when there is nothing to return: usually on error, and also for a successful sign-out or test notification; a failed test notification carries `error_code` instead, see [Notifications](#notifications). `message` is a short explanation in Chinese, for example (the origin does not belong to the current site):
 
 ```json
 { "code": 403, "message": "来源不属于当前站点" }
@@ -31,19 +31,22 @@ Time fields are RFC 3339 strings in UTC, such as `2026-08-20T12:00:00Z`.
 | `401` | Not signed in to the admin API, or the session has expired. |
 | `403` | The origin is not on the allowed list, or permission is denied. |
 | `404` | The site, comment, or endpoint does not exist. |
-| `405` | The path exists, but does not support the request method. |
 | `409` | State conflict: the parent comment belongs to another page, the reply targets a deleted comment, the settings were changed by another session, and so on. |
 | `413` | The request body exceeds the limit. |
 | `422` | The comment list exceeds the read limits, or the reply is more than 16 levels deep. |
 | `429` | Rate limited. The `Retry-After` response header gives the number of seconds to wait. |
+| `500` | Internal server error; the operation was not completed. |
 | `502` | Sending a test notification failed. |
 | `503` | The service is busy, request processing timed out, the CAPTCHA service is unavailable, the admin session store is unavailable, or the credential encryption master key is not configured. |
+
+When the path exists but does not support the request method, the response is the same `404` with 「接口不存在」 (no such endpoint); the server does not distinguish the two cases.
 
 ### Cross-origin requests and origins
 
 - When a browser request carries `Origin`, public endpoints accept only addresses registered as an allowed origin of some site, and admin endpoints accept only addresses in `admin.allowed_origins`. Other origins get `403`.
 - Submitting a comment **must** carry an `Origin` that belongs to the site. Submissions without `Origin` are rejected too.
 - Reading the comment list does not require `Origin`, so server-side scripts can call it directly.
+- For a CORS preflight, the `OPTIONS` request returns `204` with an empty body.
 
 ### Request body limits
 
