@@ -115,7 +115,9 @@ func deliverSMTP(ctx context.Context, config EmailConfig, recipient string, mess
 	if err := writer.Close(); err != nil {
 		return smtpRejection(err, "message_rejected")
 	}
-	return client.Quit()
+	// DATA was accepted; a cleanup failure must not trigger another delivery.
+	_ = client.Quit()
+	return nil
 }
 
 // smtpRejection marks 55x replies as permanent: the mailbox or the message was

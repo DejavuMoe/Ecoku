@@ -52,7 +52,7 @@ sudo docker compose up -d
 <script src="https://ecoku.example.com/client/ecoku-loader.js" defer></script>
 ```
 
-更多接入方式（JavaScript SDK、Hugo PaperMod、自定义样式）见文档站的 [接入文档](https://ecoku.zsh.moe/integration/html)。
+更多接入方式（JavaScript SDK、Hugo PaperMod 模板、自定义样式）见文档站的 [HTML 接入](https://ecoku.zsh.moe/integration/html)。
 
 ## 文档
 

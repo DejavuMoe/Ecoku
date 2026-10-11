@@ -99,6 +99,7 @@
     invalidTargets = 0
   }
   async function saveChanged() {
+    store.notificationMessage = ''
     const validEmail = !emailDirty || validateEmail()
     const validTelegram = !telegramDirty || validateTelegram()
     if (emailDirty && validEmail) await saveEmail()

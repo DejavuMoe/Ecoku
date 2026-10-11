@@ -44,6 +44,7 @@ When the path exists but does not support the request method, the response is th
 ### Cross-origin requests and origins
 
 - When a browser request carries `Origin`, public endpoints accept only addresses registered as an allowed origin of some site, and admin endpoints accept only addresses in `admin.allowed_origins`. Other origins get `403`.
+- Origins are matched by scheme, host, and port. HTTP `:80` and HTTPS `:443` are equivalent to omitting the port; leading zeros in a port and compressed or expanded IPv6 spellings do not affect matching. Other ports must still match. This also applies to previously stored site origins.
 - Submitting a comment **must** carry an `Origin` that belongs to the site. Submissions without `Origin` are rejected too.
 - Reading the comment list does not require `Origin`, so server-side scripts can call it directly.
 - For a CORS preflight, the `OPTIONS` request returns `204` with an empty body.
@@ -320,6 +321,8 @@ Creating a site whose ID already exists, or whose `allowed_origins` duplicates `
 | `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent` | Permanent delete. Only works on a tombstone with no replies; otherwise returns `409`. |
 
 Both delete endpoints are rate limited by `rate_limit.comment_delete`.
+
+In a tombstone deletion response, `data.comment.has_children` reports whether direct replies still exist, including deleted replies. Both the first and repeated deletion return the current state.
 
 ### CAPTCHA
 

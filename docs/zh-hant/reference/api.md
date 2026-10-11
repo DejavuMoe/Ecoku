@@ -44,6 +44,7 @@
 ### 跨來源與來源
 
 - 瀏覽器請求帶有 `Origin` 時，公開 API 只接受已登記為某個站點允許來源的位址，管理 API 只接受 `admin.allowed_origins` 中的位址，其他來源回傳 `403`。
+- 來源依協定、主機和連接埠比對；HTTP 的 `:80`、HTTPS 的 `:443` 與省略連接埠等價，連接埠前導零及 IPv6 的壓縮、展開寫法不影響比對，其他連接埠仍須一致。此規則也適用於已儲存的站點來源。
 - 送出評論**必須**帶有屬於該站點的 `Origin`，沒有 `Origin` 的送出請求也會被拒絕。
 - 讀取評論清單不要求 `Origin`，伺服器端腳本可以直接呼叫。
 - 瀏覽器發起 CORS 預檢時，`OPTIONS` 請求直接回傳 `204`，沒有回應本文。
@@ -320,6 +321,8 @@ Origin: https://blog.example.com
 | `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent` | 徹底刪除。只能用於沒有回覆的墓碑，否則回傳 `409`。 |
 
 兩個刪除端點都受 `rate_limit.comment_delete` 速率限制。
+
+墓碑刪除回應中的 `data.comment.has_children` 表示是否仍有直接回覆，包含已刪除的回覆；首次刪除與重複刪除都回傳目前狀態。
 
 ### 人機驗證
 

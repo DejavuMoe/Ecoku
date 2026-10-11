@@ -27,6 +27,16 @@ func InitDatabase() error {
 		_ = CloseSQLiteDatabase(database)
 		return err
 	}
+	for _, origin := range config.GetAdminAllowedOrigins() {
+		allowed, err := isOriginAllowed(database, origin)
+		if err != nil || allowed {
+			_ = CloseSQLiteDatabase(database)
+			if err != nil {
+				return fmt.Errorf("校验管理端与公开站点来源: %w", err)
+			}
+			return fmt.Errorf("管理端来源 %q 与已存储的公开站点来源重叠", origin)
+		}
+	}
 	DB = database
 	log.Printf("数据库初始化成功，使用 SQLite3")
 	return nil

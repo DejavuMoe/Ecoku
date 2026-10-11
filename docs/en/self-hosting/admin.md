@@ -57,8 +57,11 @@ A "site" is one website that embeds the comment section. On 「站点」 (Sites)
 An "origin" is `scheme://domain[:port]`, without a path. The origin of the page that hosts the comment section must be listed here. Otherwise the browser is refused both when reading and when submitting comments.
 
 - `https://blog.example.com` and `https://www.blog.example.com` are two different origins. If your blog is reachable on both domains, list both.
+- Default ports can be omitted: `https://blog.example.com:443` and `https://blog.example.com` are the same origin. Leading zeros in ports and equivalent IPv6 spellings are normalized too. Different non-default ports remain different origins, and equivalent spellings already stored remain valid.
 - When you preview your blog locally, add addresses such as `http://localhost:1313` too. You can remove them after you go live.
 - You cannot list the admin console's own origin (the address of `instance_public_url`, or of `admin.allowed_origins` if you set it). The two must be kept separate.
+
+Service startup and database CLI commands check for overlap between admin origins and stored site origins. See [applying configuration and origin checks](../reference/configuration#reload) for how to resolve conflicts.
 
 Press Enter in an input to add the next one; press Backspace in an empty input to remove it. Pasting several lines, or several origins separated by commas, splits them into separate items. After you leave an item that lacks a scheme or includes a path, a note appears under it with a "Change to …" (改为 …) button that replaces it with the correct origin. Duplicate origins are merged when you save.
 

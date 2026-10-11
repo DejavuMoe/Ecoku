@@ -188,7 +188,7 @@ func parseAdminPositiveInt(value string, fallback, maximum int) (int, error) {
 	return parsed, nil
 }
 
-func commentReviewDTO(comment model.Comment, childState ...bool) CommentReviewDTO {
+func commentReviewDTO(comment model.Comment, hasChildren bool) CommentReviewDTO {
 	deleted := comment.DeletedAt != nil
 	username, content, email, website := comment.Username, comment.Content, comment.Email, comment.URL
 	status := "published"
@@ -199,7 +199,7 @@ func commentReviewDTO(comment model.Comment, childState ...bool) CommentReviewDT
 	return CommentReviewDTO{
 		ID: comment.ID, SiteID: comment.SiteID, Mark: comment.Mark, PageTitle: comment.PageTitle,
 		Parent: comment.ParentValue(), Status: status, Deleted: deleted,
-		HasChildren: len(childState) > 0 && childState[0], Username: username,
+		HasChildren: hasChildren, Username: username,
 		Email: email, URL: website, Content: content,
 		CreatedAt: comment.CreatedAt.UTC().Format(time.RFC3339Nano),
 		UpdatedAt: comment.UpdatedAt.UTC().Format(time.RFC3339Nano),

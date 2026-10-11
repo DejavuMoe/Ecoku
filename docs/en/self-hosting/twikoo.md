@@ -6,9 +6,9 @@ The `import-twikoo` command imports comments exported from Twikoo into one Ecoku
 
 | Twikoo field | After import |
 | --- | --- |
-| `_id` / `id`, `pid`, `rid` | Reply relationships are rebuilt, preferring the direct parent comment. If the direct parent is not in the export file, the comment is attached under the root comment that `rid` points to. If neither can be found, the parent is on a different page, or forms a cycle, the comment becomes a root comment and is counted as a "missing parent". |
+| `_id` / `id`, `pid`, `rid` | Reply relationships are rebuilt, preferring the direct parent comment. If the direct parent is not in the export file, the comment is attached under the root comment that `rid` points to. If neither can be found, the parent is on a different page, or forms a cycle, the comment becomes a root comment and is counted as a "missing parent". Valid descendants on the same page keep their reply relationships. |
 | `url` | The path part becomes the page key, with the query string and `#` fragment removed. |
-| `comment` | HTML is converted to plain text: `<br>` and block-level elements become line breaks, images become their alt text or `[图片]` ("image"), and `<script>` and `<style>` are dropped. Markdown is not parsed. |
+| `comment` | HTML is converted to plain text: `<br>` and block-level elements become line breaks; tags are removed while preserving indentation, tabs, and internal blank lines in the text inside `<pre>`; images become their alt text or `[图片]` ("image"); and `<script>` and `<style>` are dropped. Markdown is not parsed. |
 | `nick` | Nickname. If empty, it is recorded as "访客" ("Visitor"). |
 | `mail` | Private email address, used for later reply notifications. Addresses longer than 254 characters are not imported. |
 | `link` | Visitor website. Only `http`/`https` URLs are kept; an address without a scheme (such as `example.com`) gets `https://` added. |
@@ -18,12 +18,14 @@ Not imported: IP addresses, User-Agents, avatars, likes, Twikoo user IDs, and th
 
 Imported comments are public immediately, and the import does not send any notifications.
 
+Imported content still appears as ordinary comment text, without code-block styling or syntax highlighting. Conversion rules apply only to this import; they do not automatically change previously imported text or reply relationships.
+
 **Blogger marks** are backfilled from the target site's blogger nickname and email at the time of import: comments whose nickname matches exactly and whose email matches (case-insensitive) are marked as blogger comments. If you want this, set up the blogger identity in the admin console before importing.
 
 ## 1. Prepare
 
 1. [Register the target site](./admin#sites) in the admin console. If you want blogger markers backfilled, set both the blogger nickname and the blogger email.
-2. Export your comments from Twikoo. You get a file containing a JSON array (64 MiB at most).
+2. Export your comments from Twikoo. The file must contain one JSON array and be no larger than 64 MiB, including trailing whitespace. Only whitespace may follow the array; a second array or other trailing content is rejected.
 3. Take a cold backup as described in [Backup and restore](./backup#cold-backup). The backup script starts the service at the end; you stop it again below.
 
 Copy the export file into the `data/` directory so the container user can read it (replace `/path/to/twikoo.json` with the actual path; the original file is left untouched):
@@ -51,10 +53,10 @@ Twikoo 导入预检通过：评论=128 根评论=90 回复=38 页面=24 邮箱=1
 
 Check that these numbers match what you have in Twikoo. If "missing parents" (缺失父记录) is not 0, some replies will become root comments; they are not skipped.
 
-If the JSON is malformed, the export is an empty array, there are duplicate IDs, a body exceeds 10000 characters, a nickname exceeds 80 characters, a page key is empty or exceeds 512 characters, or the target site does not exist or already has comments, the command exits with an error and changes nothing.
+If the JSON is malformed, the file exceeds 64 MiB, the export is an empty array, there are duplicate IDs, a body exceeds 10000 characters, a nickname exceeds 80 characters, a page key is empty or exceeds 512 characters, or the target site does not exist or already has comments, the command exits with an error and saves no imported comments.
 
 ::: info
-The dry run does not save comments, but the command still opens the database when it starts. If the database is on an older version, it is migrated first, so this is not a fully read-only operation.
+The dry run does not save comments, but the command still opens the database when it starts. If the database is on an older version, it is migrated first, so this is not a fully read-only operation. The command also checks for [overlapping admin and site origins](../reference/configuration#reload). Correct any conflict before running the dry run again.
 :::
 
 ## 3. Import

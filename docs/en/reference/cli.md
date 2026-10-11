@@ -11,6 +11,8 @@ sudo docker compose run --rm --no-deps ecoku <subcommand> [arguments]
 
 Except for `hash-password`, every subcommand reads `app/config.yaml` and opens the database. Stop the service with `sudo docker compose stop ecoku` before running a subcommand that writes (`admin reset-password`, `captcha disable`, `import-twikoo`), so it does not write to the database at the same time as the running instance; `captcha status` only reads the settings and can run while the service is up.
 
+Opening the database first initializes or migrates its schema and performs the same [origin-conflict check](./configuration#reload) as service startup. Consequently, neither `captcha status` nor `import-twikoo --dry-run` is unconditionally read-only. If the database has not yet been upgraded, stop the service and make a cold backup first. Correct origin conflicts in the configuration; these subcommands do not bypass the check.
+
 ## admin reset-password {#admin-reset-password}
 
 Generate a new temporary password for the persistent administrator account. Stop the running service first:
@@ -53,6 +55,8 @@ The saved Turnstile and Cap settings and keys are all kept. After signing in to 
 
 Imports a Twikoo JSON export into a site that has no comments.
 
+The file must be a single JSON array, with the entire file no larger than 64 MiB, including trailing whitespace. Any other content after the array causes failure. HTML is converted to plain text; see [migrating from Twikoo](../self-hosting/twikoo) for conversion rules.
+
 First run a dry run with `--dry-run`:
 
 ```bash
@@ -94,7 +98,7 @@ Reads one line of password from standard input and prints a bcrypt hash (cost 10
 
 ```bash
 read -rsp 'Admin password: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i ghcr.io/dejavumoe/ecoku:v0.4.1 hash-password
+printf '%s\n' "$P" | sudo docker run --rm -i ghcr.io/dejavumoe/ecoku:v0.5.0 hash-password
 unset P
 ```
 

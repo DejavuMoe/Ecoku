@@ -21,6 +21,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
+Import-Module Microsoft.PowerShell.Utility
 
 if ([string]::IsNullOrWhiteSpace($env:ECOKU_SMOKE_ADMIN_USERNAME) -or
     [string]::IsNullOrWhiteSpace($env:ECOKU_SMOKE_ADMIN_PASSWORD)) {
@@ -44,7 +45,9 @@ function Invoke-Json {
 
         [hashtable]$Headers = @{},
 
-        [object]$Body
+        [object]$Body,
+
+        [Microsoft.PowerShell.Commands.WebRequestSession]$WebSession
     )
 
     $parameters = @{
@@ -56,6 +59,7 @@ function Invoke-Json {
     if ($PSBoundParameters.ContainsKey("Body")) {
         $parameters.Body = $Body | ConvertTo-Json -Depth 8 -Compress
     }
+    if ($null -ne $WebSession) { $parameters.WebSession = $WebSession }
     Invoke-RestMethod @parameters
 }
 
@@ -81,7 +85,7 @@ function Submit-Comment {
         [uint32]$Parent = 0
     )
 
-    $response = Invoke-Json -Method POST -Uri "$base/api/comment/submit" -Headers $publicHeaders -Body @{
+    $body = @{
         siteId    = $SiteId
         mark      = $PageKey
         pageTitle = $PageTitle
@@ -91,9 +95,33 @@ function Submit-Comment {
         url       = "https://example.test/ecoku-smoke"
         parent    = $Parent
     }
+    $waited = 0
+    for ($attempt = 0; ; $attempt += 1) {
+        try {
+            $response = Invoke-Json -Method POST -Uri "$base/api/comment/submit" -Headers $publicHeaders -Body $body
+            break
+        } catch {
+            # Only an explicit rejection can be retried without duplicating a comment.
+            $httpResponse = $_.Exception.Response
+            if ($null -eq $httpResponse -or [int]$httpResponse.StatusCode -ne 429 -or $attempt -ge 3) { throw }
+            $retryAfter = @($httpResponse.Headers.GetValues('Retry-After'))[0]
+            $delay = 0
+            if (-not [int]::TryParse($retryAfter, [ref]$delay) -or $delay -lt 0 -or $delay -gt (120 - $waited)) { throw }
+            Start-Sleep -Seconds $delay
+            $waited += $delay
+        }
+    }
     Assert-True -Condition ($response.code -eq 201 -and [uint32]$response.data.id -gt 0) -Message "comment submission failed"
     [uint32]$response.data.id
 }
+
+$adminSession = [Microsoft.PowerShell.Commands.WebRequestSession]::new()
+$login = Invoke-Json -Method POST -Uri "$base/api/admin/login" -Headers $adminHeaders -WebSession $adminSession -Body @{
+    username = $env:ECOKU_SMOKE_ADMIN_USERNAME
+    password = $env:ECOKU_SMOKE_ADMIN_PASSWORD
+}
+Assert-True -Condition ($login.code -eq 200 -and [int64]$login.data.expires_in -gt 0) -Message "admin login failed"
+Assert-True -Condition (-not [bool]$login.data.requires_password_change) -Message "complete administrator password setup before running the smoke test"
 
 $created = [System.Collections.Generic.List[uint32]]::new()
 $chain = [System.Collections.Generic.List[uint32]]::new()
@@ -110,17 +138,9 @@ for ($index = 1; $index -le ($CommentCount - $MaximumDepth); $index += 1) {
 }
 Assert-True -Condition ($created.Count -eq $CommentCount) -Message "fixture count mismatch"
 
-$login = Invoke-Json -Method POST -Uri "$base/api/admin/login" -Headers $adminHeaders -Body @{
-    username = $env:ECOKU_SMOKE_ADMIN_USERNAME
-    password = $env:ECOKU_SMOKE_ADMIN_PASSWORD
-}
-$token = [string]$login.data.token
-Assert-True -Condition ($login.code -eq 200 -and -not [string]::IsNullOrWhiteSpace($token)) -Message "admin login failed"
-$authorization = @{ Authorization = "Bearer $token"; Origin = $base }
-
 $encodedSite = [Uri]::EscapeDataString($SiteId)
 $encodedKey = [Uri]::EscapeDataString($PageKey)
-$published = Invoke-Json -Method GET -Uri "$base/api/admin/sites/$encodedSite/comments?status=published&page=1&pageSize=100" -Headers $authorization
+$published = Invoke-Json -Method GET -Uri "$base/api/admin/sites/$encodedSite/comments?status=published&page=1&pageSize=100" -Headers $adminHeaders -WebSession $adminSession
 $publishedIds = @($published.data.data | ForEach-Object { [uint32]$_.id })
 Assert-True -Condition (@($created | Where-Object { $_ -notin $publishedIds }).Count -eq 0) -Message "published list omitted a created comment"
 
@@ -155,8 +175,8 @@ Assert-True -Condition ($newestRoots.Count -gt 1 -and $oldestRoots.Count -eq $ne
 Assert-True -Condition ($newestRoots[0] -eq $oldestRoots[$oldestRoots.Count - 1]) -Message "root ordering did not reverse"
 
 $leaf = [uint32]$created[$created.Count - 1]
-$deleted = Invoke-Json -Method DELETE -Uri "$base/api/admin/sites/$encodedSite/comments/$leaf" -Headers $authorization
-$deletedAgain = Invoke-Json -Method DELETE -Uri "$base/api/admin/sites/$encodedSite/comments/$leaf" -Headers $authorization
+$deleted = Invoke-Json -Method DELETE -Uri "$base/api/admin/sites/$encodedSite/comments/$leaf" -Headers $adminHeaders -WebSession $adminSession
+$deletedAgain = Invoke-Json -Method DELETE -Uri "$base/api/admin/sites/$encodedSite/comments/$leaf" -Headers $adminHeaders -WebSession $adminSession
 Assert-True -Condition ($deleted.code -eq 200 -and -not [bool]$deleted.data.unchanged) -Message "tombstone deletion failed"
 Assert-True -Condition ($deletedAgain.code -eq 200 -and [bool]$deletedAgain.data.unchanged) -Message "repeated tombstone deletion was not idempotent"
 

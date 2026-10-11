@@ -70,9 +70,16 @@ func ImportTwikoo(ctx context.Context, database *gorm.DB, reader io.Reader, opti
 		return result, fmt.Errorf("site ID is required")
 	}
 
-	decoder := json.NewDecoder(io.LimitReader(reader, 64<<20))
+	const maxExportBytes = 64 << 20
+	data, err := io.ReadAll(io.LimitReader(reader, maxExportBytes+1))
+	if err != nil {
+		return result, fmt.Errorf("read Twikoo export: %w", err)
+	}
+	if len(data) > maxExportBytes {
+		return result, fmt.Errorf("Twikoo export exceeds 64 MiB")
+	}
 	var source []twikooComment
-	if err := decoder.Decode(&source); err != nil {
+	if err := json.Unmarshal(data, &source); err != nil {
 		return result, fmt.Errorf("decode Twikoo export: %w", err)
 	}
 	if len(source) == 0 {
@@ -113,15 +120,15 @@ func ImportTwikoo(ctx context.Context, database *gorm.DB, reader io.Reader, opti
 			for _, item := range remaining {
 				parentKey := item.parentKey
 				if parentKey != "" {
-					parent, found := inserted[parentKey]
-					if !found && !known[parentKey] && item.rootKey != "" {
-						parent, found = inserted[item.rootKey]
+					if !known[parentKey] {
+						parentKey = item.rootKey
 					}
-					if !found {
+					parent, found := inserted[parentKey]
+					if !found && known[parentKey] {
 						next = append(next, item)
 						continue
 					}
-					if parent.Mark != item.comment.Mark {
+					if !found || parent.Mark != item.comment.Mark {
 						item.parentKey = ""
 						item.rootKey = ""
 						result.Orphaned++
@@ -148,18 +155,35 @@ func ImportTwikoo(ctx context.Context, database *gorm.DB, reader io.Reader, opti
 				remaining = next
 				continue
 			}
-			// Broken exports can reference a deleted parent or contain a cycle. Keep
-			// the historical comment as a root instead of dropping personal data.
-			for _, item := range next {
-				item.comment.ParentID = nil
-				if err := tx.Create(&item.comment).Error; err != nil {
-					return fmt.Errorf("insert orphaned Twikoo comment: %w", err)
-				}
-				inserted[item.sourceID] = item.comment
-				result.Orphaned++
-				result.Roots++
+			// Only cycle members become roots; their descendants resolve on the next pass.
+			pending := make(map[string]*preparedTwikooComment, len(next))
+			for i := range next {
+				pending[next[i].sourceID] = &next[i]
 			}
-			break
+			visited := make(map[string]bool, len(next))
+			for _, start := range next {
+				path := make(map[string]bool)
+				key := start.sourceID
+				for pending[key] != nil && !visited[key] {
+					path[key], visited[key] = true, true
+					item := pending[key]
+					key = item.parentKey
+					if !known[key] {
+						key = item.rootKey
+					}
+				}
+				for path[key] {
+					item := pending[key]
+					delete(path, key)
+					key = item.parentKey
+					if !known[key] {
+						key = item.rootKey
+					}
+					item.parentKey, item.rootKey = "", ""
+					result.Orphaned++
+				}
+			}
+			remaining = next
 		}
 		if err := model.BackfillHistoricalBloggerComments(tx, siteID); err != nil {
 			return fmt.Errorf("backfill imported blogger comments: %w", err)
@@ -208,7 +232,7 @@ func prepareTwikooComments(siteID string, source []twikooComment) ([]preparedTwi
 		if sanitized {
 			result.SanitizedHTML++
 		}
-		if content == "" {
+		if strings.TrimSpace(content) == "" {
 			content = "[图片]"
 		}
 		if utf8.RuneCountInString(content) > 10000 {
@@ -325,9 +349,30 @@ func htmlToPlainText(raw string) (string, bool, error) {
 		return "", false, err
 	}
 	var builder strings.Builder
-	var walk func(*html.Node)
-	walk = func(node *html.Node) {
+	var blocks []string
+	flush := func(preformatted bool) {
+		text := strings.ReplaceAll(builder.String(), "\r\n", "\n")
+		builder.Reset()
+		if preformatted {
+			text = strings.TrimSuffix(text, "\n")
+		} else {
+			text = cleanTwikooText(text)
+		}
+		if text != "" {
+			blocks = append(blocks, text)
+		}
+	}
+	var walk func(*html.Node, bool)
+	walk = func(node *html.Node, preformatted bool) {
 		if node.Type == html.ElementNode && (node.Data == "script" || node.Data == "style") {
+			return
+		}
+		if node.Type == html.ElementNode && node.Data == "pre" && !preformatted {
+			flush(false)
+			for child := node.FirstChild; child != nil; child = child.NextSibling {
+				walk(child, true)
+			}
+			flush(true)
 			return
 		}
 		if node.Type == html.TextNode {
@@ -353,7 +398,7 @@ func htmlToPlainText(raw string) (string, bool, error) {
 			}
 		}
 		for child := node.FirstChild; child != nil; child = child.NextSibling {
-			walk(child)
+			walk(child, preformatted)
 		}
 		if node.Type == html.ElementNode {
 			switch node.Data {
@@ -362,9 +407,13 @@ func htmlToPlainText(raw string) (string, bool, error) {
 			}
 		}
 	}
-	walk(document)
-	text := strings.ReplaceAll(builder.String(), "\u00a0", " ")
-	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
+	walk(document, false)
+	flush(false)
+	return strings.Join(blocks, "\n"), strings.Contains(raw, "<"), nil
+}
+
+func cleanTwikooText(text string) string {
+	lines := strings.Split(strings.ReplaceAll(text, "\u00a0", " "), "\n")
 	cleaned := make([]string, 0, len(lines))
 	blank := false
 	for _, line := range lines {
@@ -379,5 +428,5 @@ func htmlToPlainText(raw string) (string, bool, error) {
 		cleaned = append(cleaned, line)
 		blank = false
 	}
-	return strings.TrimSpace(strings.Join(cleaned, "\n")), strings.Contains(raw, "<"), nil
+	return strings.TrimSpace(strings.Join(cleaned, "\n"))
 }

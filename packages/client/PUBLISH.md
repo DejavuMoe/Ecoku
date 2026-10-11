@@ -12,7 +12,7 @@
 
 普通 `master` / PR CI 只验证 SDK、检查包内容并生成 tarball，不运行 `npm publish --dry-run`。npm 的发布预演也会查询 registry，并拒绝已发布的同版本；它不适合作为主线构建检查。实际发布仅在 tag 流程或显式触发的恢复流程中执行。
 
-发布 `v0.4.1` 时，SDK 版本为 `0.4.1`，镜像为 `ghcr.io/dejavumoe/ecoku:v0.4.1`。正式 npm 版本使用 `latest`，含预发布后缀的 tag 使用 `next` 并创建 GitHub prerelease；镜像只发布精确版本，不创建 `latest`。
+发布 `v0.5.0` 时，SDK 版本为 `0.5.0`，镜像为 `ghcr.io/dejavumoe/ecoku:v0.5.0`。正式 npm 版本使用 `latest`，含预发布后缀的 tag 使用 `next` 并创建 GitHub prerelease；镜像只发布精确版本，不创建 `latest`。
 
 SDK 的 `repository.url` 设为 `git+https://github.com/DejavuMoe/Ecoku.git`，`directory` 为 `packages/client`。如果实际 GitHub 仓库名称不同，首次发布前同步修改此字段和 npm Trusted Publisher；流水线会拒绝来源仓库不一致的包。
 
@@ -56,6 +56,8 @@ SDK 的 `repository.url` 设为 `git+https://github.com/DejavuMoe/Ecoku.git`，`
 ## 缓存与失败恢复
 
 - SDK、管理端、文档和 Go 并行验证。pnpm store 由锁文件确定缓存；Go 缓存依据 `server/go.sum`，包含模块与构建缓存。
+- 前端各任务只安装对应 workspace 的依赖，安装后关闭 pnpm 的隐式依赖重装。管理端构建调用一次完整类型检查，CI 运行测试后直接构建，避免重复执行 Svelte 检查；应用与构建配置的类型错误仍会阻止构建。
+- API 冒烟脚本的回归在 client 任务中使用 HTTP mock 执行，不连接真实实例。测试源码和浏览器测试产物不进入 Docker 构建上下文，运行时镜像只复制服务二进制和前端构建产物。
 - Node、pnpm 与 `mise.toml` 的精确版本一致；Go 读取 `server/go.mod`。外部 Actions 固定完整提交 SHA，更新时同时检查运行时要求和跨版本行为。
 - 依赖安装使用 `--frozen-lockfile --prefer-offline`，优先复用缓存；Docker 显式指定与缓存挂载一致的 pnpm store 路径。GitHub 文档产物使用较低压缩级别，SDK tarball 不重复压缩。
 - Go 测试、vet 和构建统一使用 `CGO_ENABLED=0`，与生产镜像一致。两个架构仍原生并行构建；manifest 合并只使用 Buildx CLI，不启动额外的 BuildKit 容器。

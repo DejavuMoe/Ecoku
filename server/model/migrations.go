@@ -67,9 +67,21 @@ func PrepareDatabaseForStartup(database *gorm.DB) error {
 		if !empty {
 			return fmt.Errorf("检测到旧版或未版本化数据库；本版本不执行历史迁移，请备份后删除数据库并重新初始化")
 		}
-		if err := createFreshSchema(database); err != nil {
-			return err
-		}
+		// Fresh seeds and their post-migration fields must commit together.
+		return database.Transaction(func(tx *gorm.DB) error {
+			if err := createFreshSchema(tx); err != nil {
+				return err
+			}
+			if err := PrepareDatabaseForStartup(tx); err != nil {
+				return err
+			}
+			for _, seed := range config.GetRegisteredSites() {
+				if err := tx.Exec("UPDATE sites SET i18n_locale = ? WHERE id = ?", config.NormalizeLocale(seed.Locale), seed.ID).Error; err != nil {
+					return fmt.Errorf("初始化站点 %q 语言: %w", seed.ID, err)
+				}
+			}
+			return nil
+		})
 	}
 	currentVersion, err := validateKnownSchemaHistory(database)
 	if err != nil {

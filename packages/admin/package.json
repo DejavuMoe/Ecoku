@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "svelte-check --tsconfig ./tsconfig.app.json && vite build",
+    "build": "pnpm run type-check && vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "type-check": "svelte-check --tsconfig ./tsconfig.app.json && tsc --noEmit -p tsconfig.node.json"

@@ -11,6 +11,8 @@ sudo docker compose run --rm --no-deps ecoku <子命令> [参数]
 
 除了 `hash-password` 之外，子指令都會讀取 `app/config.yaml` 並開啟資料庫。寫入資料庫的子指令（`admin reset-password`、`captcha disable`、`import-twikoo`）請先用 `sudo docker compose stop ecoku` 停止服務再執行，避免與正在執行的實例同時寫入資料庫；只讀取設定的 `captcha status` 可以在服務執行時使用。
 
+開啟資料庫時會先初始化或遷移 schema，並執行與服務啟動相同的 [來源衝突檢查](./configuration#reload)。因此 `captcha status` 和 `import-twikoo --dry-run` 也不能一概視為唯讀；資料庫尚未升級時，先停服冷備份，再執行。來源衝突時先修正設定，不能靠這些子指令繞過檢查。
+
 ## admin reset-password {#admin-reset-password}
 
 為持久化管理員帳戶產生新的臨時密碼。先停止正在執行的服務：
@@ -53,6 +55,8 @@ sudo docker compose up -d
 
 把 Twikoo 匯出的 JSON 匯入到一個沒有任何評論的站點。
 
+檔案必須是單一 JSON 陣列，整個檔案不超過 64 MiB（包含結尾空白）；陣列後的其他內容會導致失敗。HTML 會轉換成純文字，具體保留規則見 [從 Twikoo 遷移](../self-hosting/twikoo)。
+
 先加 `--dry-run` 預檢：
 
 ```bash
@@ -94,7 +98,7 @@ Twikoo 导入完成：评论=128 根评论=90 回复=38 页面=24 邮箱=110 网
 
 ```bash
 read -rsp '管理员密码: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i ghcr.io/dejavumoe/ecoku:v0.4.1 hash-password
+printf '%s\n' "$P" | sudo docker run --rm -i ghcr.io/dejavumoe/ecoku:v0.5.0 hash-password
 unset P
 ```
 

@@ -14,6 +14,7 @@ function checkSecurity(source) {
   assert.match(source, /^      - name: Check Go vulnerabilities\n        run: go run golang\.org\/x\/vuln\/cmd\/govulncheck@v\d+\.\d+\.\d+ \.\/\.\.\.\n(?=      - )/m)
   assert.match(source, /^      - name: Install target dependencies\n        env:\n          FILTER: \$\{\{ matrix.filter \}\}\n        run: pnpm --filter "\$FILTER" --fail-if-no-match install --frozen-lockfile --prefer-offline\n      - name: Install SDK test browser\n        if: matrix.target == 'client'\n        run: pnpm -C packages\/client exec playwright install --with-deps chromium\n(?=      - name: Verify SDK browser behavior\n)/m)
   assert.match(source, /^      - name: Verify SDK browser behavior\n        if: matrix.target == 'client'\n        run: pnpm -C packages\/client run test:browser\n(?=      - )/m)
+  assert.match(source, /^      - name: Verify API smoke script\n        if: matrix.target == 'client'\n        run: pwsh -NoProfile -File scripts\/real-api-smoke.test.ps1\n(?=      - )/m)
   assert.match(source, /^      - name: Verify frontend\n        if: matrix.target != 'docs'\n        env:\n          TARGET: \$\{\{ matrix.target \}\}\n        run: pnpm "verify:\$TARGET"\n(?=      - )/m)
   assert.match(source, /^      - name: Build and verify documentation\n        if: matrix.target == 'docs'\n        run: \|\n          pnpm docs:build\n          sh scripts\/verify-docs-output.sh docs\/\.vitepress\/dist\n(?=      - )/m)
   assert.match(source, /^      - run: go test -count=1 \.\/\.\.\.\n      - run: go vet \.\/\.\.\.\n      - run: go build -trimpath -ldflags="-s -w" -o \/tmp\/ecoku-server \.\n/m)
@@ -41,6 +42,7 @@ for (const [before, after] of [
   [' ./...\n', ' -json ./...\n'],
   ['playwright install --with-deps chromium', 'playwright install chromium'],
   ['run test:browser\n', 'run test:browser || true\n'],
+  ['-File scripts/real-api-smoke.test.ps1', '-Command exit 0'],
   ["if: matrix.target != 'docs'", 'if: false'],
   ['pnpm docs:build', 'pnpm docs:build || true'],
   ['go test -count=1 ./...', 'go test -count=1 ./... || true'],

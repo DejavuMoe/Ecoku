@@ -244,12 +244,7 @@ func IsPublicOriginAllowedWithContext(ctx context.Context, origin string) (bool,
 	if DB == nil {
 		return false, fmt.Errorf("database unavailable")
 	}
-	var row struct{ Origin string }
-	err := DB.WithContext(ctx).Table("site_origins").Select("origin").Where("origin = ?", origin).Take(&row).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return false, nil
-	}
-	return err == nil, err
+	return isOriginAllowed(DB.WithContext(ctx), origin)
 }
 
 func IsSiteOriginAllowedWithContext(ctx context.Context, siteID, normalizedOrigin string) (bool, error) {
@@ -259,11 +254,31 @@ func IsSiteOriginAllowedWithContext(ctx context.Context, siteID, normalizedOrigi
 	if strings.TrimSpace(normalizedOrigin) == "" {
 		return true, nil
 	}
-	var count int64
-	if err := DB.WithContext(ctx).Table("site_origins").Where("site_id = ? AND origin = ?", siteID, normalizedOrigin).Count(&count).Error; err != nil {
+	return isOriginAllowed(DB.WithContext(ctx).Where("site_id = ?", siteID), normalizedOrigin)
+}
+
+func isOriginAllowed(database *gorm.DB, origin string) (bool, error) {
+	normalized, err := config.NormalizeOrigin(origin)
+	if err != nil {
+		return false, nil
+	}
+	parsed, _ := url.Parse(normalized)
+	prefix := strings.TrimSuffix(normalized, ":"+parsed.Port()) + ":"
+	if strings.HasPrefix(parsed.Host, "[") {
+		// Legacy IPv6 spellings require candidates from the indexed bracketed-host range.
+		prefix = parsed.Scheme + "://["
+	}
+	var origins []string
+	// Domain lookups stay host-bounded; candidate normalization preserves port/address isolation.
+	if err := database.Table("site_origins").Where("origin = ? OR (origin >= ? AND origin < ?)", normalized, prefix, prefix+"~").Pluck("origin", &origins).Error; err != nil {
 		return false, err
 	}
-	return count == 1, nil
+	for _, stored := range origins {
+		if canonical, err := config.NormalizeOrigin(stored); err == nil && canonical == normalized {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func replaceSiteOrigins(tx *gorm.DB, siteID string, origins []string) error {

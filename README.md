@@ -52,7 +52,7 @@ Once your site is registered, embed the comment section in your post template:
 <script src="https://ecoku.example.com/client/ecoku-loader.js" defer></script>
 ```
 
-For other integration paths — the JavaScript SDK, a Hugo PaperMod template, and custom styling — see [HTML Embed](https://ecoku.zsh.moe/en/integration/html).
+For other integration paths — the JavaScript SDK, a Hugo PaperMod template, and custom styling — see [HTML Integration](https://ecoku.zsh.moe/en/integration/html).
 
 ## Documentation
 
