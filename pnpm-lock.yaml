@@ -14,8 +14,8 @@ importers:
   docs:
     dependencies:
       ecoku:
-        specifier: 0.4.1
-        version: 0.4.1
+        specifier: 0.5.0
+        version: 0.5.0
     devDependencies:
       mermaid:
         specifier: ^11.17.2
@@ -1214,8 +1214,8 @@ packages:
   dompurify@3.4.14:
     resolution: {integrity: sha512-dVoH9z+MY+C9IilgGCk3YfFqjLi3fChm2OiKJMzh6axrJ5qwxqWaZamgmHrpv22CN/KdbZJuGEGgfQoL00LTdg==}
 
-  ecoku@0.4.1:
-    resolution: {integrity: sha512-jQdb9b847Vjto2593niESbdThOtWR3OuLWi5rlueOsMkZ701gLGAB4CBSBWNotAcMfQbDNy7f/FtZYYT555NUQ==}
+  ecoku@0.5.0:
+    resolution: {integrity: sha512-a/u/dSXB37XaIbkEoU13vveZrX6o2NFmOYH07SFO9qFLA5Dv2HOg+lyK/GNQuLe/FN8QYYtUwgXnjLhbv/R6Vg==}
     engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
 
   emoji-regex-xs@1.0.0:
@@ -2944,7 +2944,7 @@ snapshots:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
-  ecoku@0.4.1: {}
+  ecoku@0.5.0: {}
 
   emoji-regex-xs@1.0.0: {}
 
