@@ -10,7 +10,7 @@
 
 ## 升级时会发生什么
 
-升级就是把 `compose.yaml` 中的镜像换成新版本再启动。新版本启动时检查数据库的 schema 版本，如果低于自己支持的版本，就按顺序执行迁移：
+升级流程即更新 `compose.yaml` 中的镜像版本并重启容器。新版本服务启动时会自动检查数据库的 schema 版本，若低于目标版本，将按顺序执行原位迁移：
 
 - 每一步迁移在一个事务中完成，失败则整步回滚，数据库保持原样，服务不启动；
 - 迁移在原数据库文件上进行，不会删除或重建数据库、评论、配置、WAL 文件或你的备份；
@@ -57,7 +57,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 先看新旧两个版本的 schema 是否相同（见下表）：
 
 - **schema 相同**：停止服务，把 `compose.yaml` 中的镜像改回旧版本号，拉取并启动。数据库不用动，升级后产生的新评论也会保留。如果升级时按新版本的默认值省略了某些字段，先补回旧版本要求的配置；如果为新版本加过旧版本不认识的配置项，先删掉，否则旧版本会因未知字段拒绝启动。
-- **schema 不同**：只改回镜像版本号不行，旧版本打不开已迁移的数据库。需要用升级前的冷备份[恢复](./backup#restore)。备份之后产生的评论和设置修改会丢失。
+- **schema 不同**：只改回镜像版本号不行，旧版本打不开已迁移的数据库。需要用升级前的冷备份 [恢复](./backup#restore)。备份之后产生的评论和设置修改会丢失。
 
 ## 版本列表 {#versions}
 
@@ -111,7 +111,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 v0.2.9 在 schema v9 上增加 v10 管理员账户表。现有站点、评论、通知、验证码和历史管理员凭据都会保留；旧实例不需要在升级前修改配置。
 
-升级时保留原来的 `compose.yaml`、`app/config.yaml` 和 `ecoku.env`，按[升级步骤](#steps)停服备份后启动新镜像。新版本第一次启动会：
+升级时保留原来的 `compose.yaml`、`app/config.yaml` 和 `ecoku.env`，按 [升级步骤](#steps) 停服备份后启动新镜像。新版本第一次启动会：
 
 1. 把旧的 `ECOKU_ADMIN_USERNAME`、`ECOKU_ADMIN_PASSWORD_HASH` 和 `ECOKU_ADMIN_TOKEN_KEY` 导入管理员账户和持久会话密钥；
 2. 把 `ECOKU_NOTIFICATION_ENCRYPTION_KEY` 写入 `data/ecoku-secrets.json`，并用它继续解密数据库中已有的凭据；
@@ -122,7 +122,7 @@ v0.2.9 在 schema v9 上增加 v10 管理员账户表。现有站点、评论、
 
 1. 确认能登录后台、站点数量和历史评论正确，通知设置可以打开；
 2. 确认 `data/ecoku-secrets.json` 已创建，并且日志中没有 `通知凭据校验失败`；
-3. 停服并按[备份](./backup#cold-backup)保存整个 `data/`、`app/config.yaml`、`compose.yaml` 和旧的 `ecoku.env`；
+3. 停服并按 [备份](./backup#cold-backup) 保存整个 `data/`、`app/config.yaml`、`compose.yaml` 和旧的 `ecoku.env`；
 4. 停服后删除 `ecoku.env` 中的管理员变量和 `ECOKU_NOTIFICATION_ENCRYPTION_KEY`。如果仍需要 `TZ`，把它移到 Compose 的 `environment`；保留 `env_file` 时也可以只保留 `TZ`；
 5. 不再需要该环境文件时才删除 Compose 的 `env_file`。如果仍通过它注入 `TZ` 或站点管理密钥，就保留 `env_file`；
 6. 新配置保留 `notifications.instance_public_url`、实际使用的 `site.trusted_proxies`、`admin.allowed_origins` 和 `rate_limit`。旧字段可以暂时保留，删除前先确认不再使用旧数据库路径、文件日志或 `EcokuSite` 自动化；

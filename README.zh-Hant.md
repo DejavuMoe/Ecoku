@@ -73,7 +73,7 @@ Ecoku 已進入維護階段：後續更新將著重於細節打磨、效能與�
 
 遇到問題或發現錯誤，歡迎至 [Issues](https://github.com/DejavuMoe/Ecoku/issues) 回報。
 
-本專案不接受 Pull Request。如果你有功能需求，歡迎在 Issue 中把需求描述清楚（也就是一段 Prompt），交由我們評估後自行實作。
+本專案暫不接受 Pull Request。若有功能建議或需求，歡迎在 Issues 中詳細說明具體情境與行為預期，由維護者評估後規劃實作。
 
 ## 授權條款
 

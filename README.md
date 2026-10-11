@@ -73,7 +73,7 @@ To build from source or run it locally, see [docs/contribute/local-dev.md](docs/
 
 Found a bug, or have a question? Please [open an issue](https://github.com/DejavuMoe/Ecoku/issues).
 
-This project does not accept pull requests. If you have a feature request, write it up as a prompt in an issue — we'll evaluate it and implement it ourselves.
+This project does not accept pull requests. If you have a feature suggestion or requirement, please open an issue describing your use case and expected behavior; the maintainers will evaluate and implement it.
 
 ## License
 

@@ -52,7 +52,7 @@ await comments.init()
 - `cssURL` 填样式表地址：SDK 不再注入，也**不会**替你加载这个地址，需要自己在页面中加 `<link rel="stylesheet">`。（HTML 加载器会自动添加，SDK 不会。）
 - `cssURL` 为 `'none'`：不注入任何样式，完全由你的 CSS 决定外观。
 
-可以使用实例提供的 `/client/ecoku.css`（与默认样式相同）或 `/client/ecoku.unstyled.css`（只有布局）。详见[自定义样式](./custom-css)。
+可以使用实例提供的 `/client/ecoku.css`（与默认样式相同）或 `/client/ecoku.unstyled.css`（只有布局）。详见 [自定义样式](./custom-css)。
 
 ## 实例方法
 
