@@ -45,7 +45,7 @@
 | `data-page-title` | 否 | 文章标题，显示在通知邮件中。超过 200 个字符的部分会被截掉。 |
 | `data-page-size` | 否 | 每页显示多少条根评论，1～100，默认 10。填写无效值时按 10 处理。 |
 | `data-theme` | 否 | `auto`（默认）、`light` 或 `dark`。`auto` 优先读取博客定义的颜色变量，未提供时跟随系统的明暗偏好。 |
-| `data-css-url` | 否 | 替换默认样式，只接受 HTTP(S) 绝对地址、以 `/` 开头的路径、`none` 或兼容值 `-`。见[自定义样式](./custom-css)。 |
+| `data-css-url` | 否 | 替换默认样式，只接受 HTTP(S) 绝对地址、以 `/` 开头的路径、`none` 或兼容值 `-`。见 [自定义样式](./custom-css)。 |
 | `data-i18n` | 否 | 评论区语言：`zh-CN`、`zh-Hant` 或 `en`，覆盖后台站点设置的「评论区语言」。不写或写其他值时使用站点设置。 |
 
 ## 选择页面 key
@@ -83,8 +83,8 @@
 
 - `script-src` 和 `connect-src`：Ecoku 的来源，如 `https://ecoku.example.com`；
 - 默认样式以 `<style>` 元素注入。CSP 不允许内联样式时，把 `data-css-url` 设为 `https://ecoku.example.com/client/ecoku.css`，改用外链样式表，并在 `style-src` 中放行该来源；
-- 启用了人机验证时，还要放行验证服务，见[人机验证 · 内容安全策略](../self-hosting/captcha#csp)；
-- 启用了 [Smoji 表情](./smoji)时，在 `connect-src` 中放行清单来源，在 `img-src` 中放行图片来源。二者分开托管时需要分别填写，见[清单与图片的托管](./smoji#hosting)。
+- 启用了人机验证时，还要放行验证服务，见 [人机验证 · 内容安全策略](../self-hosting/captcha#csp)；
+- 启用了 [Smoji 表情](./smoji) 时，在 `connect-src` 中放行清单来源，在 `img-src` 中放行图片来源。二者分开托管时需要分别填写，见 [清单与图片的托管](./smoji#hosting)。
 
 ## 不用加载器
 

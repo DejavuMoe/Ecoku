@@ -1,6 +1,6 @@
 # 常见问题
 
-遇到问题时，先看容器日志，大多数启动错误都会在这里写明原因：
+遇到问题时，可首先查阅容器日志，服务启动与运行异常均会在日志中记录具体原因：
 
 ```bash
 cd ~/Ecoku
@@ -38,7 +38,7 @@ chmod 644 app/config.yaml
 
 ### 容器反复重启，日志提示 config.yaml is a directory
 
-启动前 `app/config.yaml` 不存在，Docker 在这个位置创建了一个空目录。停止服务，删掉这个目录，按 [Docker 部署](./docker)第 3 步重新写入配置文件后再启动：
+启动前 `app/config.yaml` 不存在，Docker 在这个位置创建了一个空目录。停止服务，删掉这个目录，按 [Docker 部署](./docker) 第 3 步重新写入配置文件后再启动：
 
 ```bash
 cd ~/Ecoku
@@ -70,7 +70,7 @@ cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 
 加载器找不到必需的元素或属性时会静默跳过，不显示任何提示。请检查：
 
-- 外壳元素上有 `data-ecoku-comments`，内部有 `data-ecoku-mount`、`data-ecoku-loader`、`data-ecoku-status`、`data-ecoku-retry` 四个元素，结构与[接入示例](../integration/html)一致；
+- 外壳元素上有 `data-ecoku-comments`，内部有 `data-ecoku-mount`、`data-ecoku-loader`、`data-ecoku-status`、`data-ecoku-retry` 四个元素，结构与 [接入示例](../integration/html) 一致；
 - `data-server-url`、`data-site-id`、`data-page-key` 三个属性都有值；
 - 浏览器开发者工具的「网络」面板中，`ecoku-loader.js` 和 `ecoku.umd.js` 能正常加载。
 
@@ -80,11 +80,11 @@ cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
 
 ### 访客频繁看到「提交过于频繁，请稍后再试。」
 
-Ecoku 放在反向代理后面，但没有配置 `trusted_proxies`，所有访客被算作同一个 IP，共用默认每分钟 5 次的提交额度。按[反向代理](./reverse-proxy#trusted-proxies)填写 Docker 网关地址，并确认反向代理用覆盖方式设置了 `X-Forwarded-For`。
+Ecoku 放在反向代理后面，但没有配置 `trusted_proxies`，所有访客被算作同一个 IP，共用默认每分钟 5 次的提交额度。按 [反向代理](./reverse-proxy#trusted-proxies) 填写 Docker 网关地址，并确认反向代理用覆盖方式设置了 `X-Forwarded-For`。
 
 ### 某篇文章的评论加载失败，其他文章正常
 
-这篇文章的讨论可能超出了单次读取的上限（200 条评论、16 层或 1 MiB）。可以在接入代码中调小 `data-page-size`；如果是单个讨论串本身过大，调小也没用，需要在后台删除部分评论。详见[讨论串与分页](../guide/concepts#threads)。
+这篇文章的讨论可能超出了单次读取的上限（200 条评论、16 层或 1 MiB）。可以在接入代码中调小 `data-page-size`；如果是单个讨论串本身过大，调小也没用，需要在后台删除部分评论。详见 [讨论串与分页](../guide/concepts#threads)。
 
 ### 调整博客链接格式后，旧评论不见了
 
@@ -103,7 +103,7 @@ Ecoku 放在反向代理后面，但没有配置 `trusted_proxies`，所有访�
 1. 通过 HTTPS 访问后台。只有 `localhost`、`127.0.0.1` 等回环地址可以用 HTTP。
 2. 地址栏中的来源与 `notifications.instance_public_url`（或另外写的 `admin.allowed_origins`）完全一致，包括端口。
 3. 用户名和密码正确。同一 IP 默认每分钟最多 5 次登录请求（成功的也计入），超出后按提示等待。没有配置 [`trusted_proxies`](./reverse-proxy#trusted-proxies) 时，所有人共用这一个额度。
-4. 人机验证组件能正常完成。验证服务出问题时，用 `captcha disable` 临时关闭，见[人机验证](./captcha#disable)。
+4. 人机验证组件能正常完成。验证服务出问题时，用 `captcha disable` 临时关闭，见 [人机验证](./captcha#disable)。
 
 ### 忘记了管理员密码
 
@@ -121,7 +121,7 @@ sudo docker compose up -d
 
 ### 测试邮件发送失败
 
-见[通知](./notifications#troubleshooting)。
+见 [通知](./notifications#troubleshooting)。
 
 ### 保存 Cap 设置时提示地址无效
 
@@ -129,4 +129,4 @@ Cap 实例地址必须是公网可访问的 HTTPS 地址，不能带用户名密
 
 ### 启用 Cap 后，浏览器控制台报 CSP 错误
 
-如果报错出现在博客页面，说明博客自己的 CSP 没有为 Cap 放行，需要加入 Cap 实例来源、`worker-src blob:` 和 WebAssembly 权限，详见[人机验证 · 内容安全策略](./captcha#csp)。管理后台的 CSP 由 Ecoku 自动调整，无需手动处理。
+如果报错出现在博客页面，说明博客自己的 CSP 没有为 Cap 放行，需要加入 Cap 实例来源、`worker-src blob:` 和 WebAssembly 权限，详见 [人机验证 · 内容安全策略](./captcha#csp)。管理后台的 CSP 由 Ecoku 自动调整，无需手动处理。

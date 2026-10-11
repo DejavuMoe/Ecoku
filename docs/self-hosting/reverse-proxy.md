@@ -16,7 +16,7 @@ flowchart LR
     P -->|"HTTP 127.0.0.1:12123"| E["Ecoku 容器"]
 ```
 
-反向代理连到 `127.0.0.1:12123` 时，Docker 会把连接转交给容器。容器看到的对端地址不是访客，而是 Docker 网桥的网关（通常形如 `172.18.0.1`）。所以访客的真实 IP 只能由反向代理写进 `X-Forwarded-For` 请求头传过去，而 Ecoku 只在确认请求确实来自这个网关时才读取它。
+反向代理连接 `127.0.0.1:12123` 时，Docker 会把网络连接转交给容器。容器看到的对端地址不是访客，而是 Docker 网桥网关（通常形如 `172.18.0.1`）。因此，访客的真实 IP 需要由反向代理写入 `X-Forwarded-For` 请求头；Ecoku 仅在确认请求直连对端与配置的网关匹配时，才会读取该请求头。
 
 ## 直接回源
 
@@ -80,7 +80,7 @@ ecoku.example.com {
 }
 ```
 
-`CF-Connecting-IP` 只有在请求确实经过 Cloudflare 时才可信。请在防火墙或 Caddy 中只放行 Cloudflare 的 IP 段，避免有人直连源站并自己填这个请求头。
+`CF-Connecting-IP` 仅在请求确实来自 Cloudflare 节点时可信。建议在防火墙或反向代理中仅放行 Cloudflare 的官方 IP 段，避免绕过 CDN 直连源站伪造该请求头。
 
 Ecoku 这一侧的配置不变：`trusted_proxies` 仍然只填 Docker 网关，不要把 CDN 的网段填进去。
 
@@ -88,7 +88,7 @@ Ecoku 这一侧的配置不变：`trusted_proxies` 仍然只填 Docker 网关，
 
 `app/config.yaml` 里的 `site.trusted_proxies` 决定 Ecoku 信任谁转发的 `X-Forwarded-For`：
 
-- **留空（默认）**：不读取任何转发头，一律按容器看到的对端地址限流。放在反向代理后面时，这个地址就是 Docker 网关，于是所有访客共享同一个限流额度。默认每分钟只允许 5 次评论提交，访问量稍大就会有人收到 `429`。
+- **留空（默认）**：不读取任何转发头，一律按容器看到的对端地址限流。放在反向代理后面时，这个地址就是 Docker 网关，于是所有访客共享同一个限流额度。默认每分钟仅允许 5 次评论提交，连续提交时容易触发 `429` 限制。
 - **填 Docker 网关**：只有直连对端正好是网关时，才从 `X-Forwarded-For` 取访客 IP。
 
 查出 Ecoku 所在网络的网关：
@@ -127,4 +127,4 @@ done
 
 三行都应以 `200` 开头。健康接口可以对公网开放，它只返回状态和时间戳。
 
-确认无误后，打开 `https://ecoku.example.com/admin/` 继续[配置管理后台](./admin)。
+确认无误后，打开 `https://ecoku.example.com/admin/` 继续 [配置管理后台](./admin)。
