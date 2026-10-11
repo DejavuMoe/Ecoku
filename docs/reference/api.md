@@ -44,6 +44,7 @@
 ### 跨域与来源
 
 - 浏览器请求带有 `Origin` 时，公开接口只接受已登记为某个站点允许来源的地址，管理接口只接受 `admin.allowed_origins` 中的地址，其他来源返回 `403`。
+- 来源按协议、主机和端口匹配；HTTP 的 `:80`、HTTPS 的 `:443` 与省略端口等价，端口前导零及 IPv6 的压缩、展开写法不影响匹配，其他端口仍须一致。此规则也适用于已保存的站点来源。
 - 提交评论**必须**带有属于该站点的 `Origin`，没有 `Origin` 的提交也会被拒绝。
 - 读取评论列表不要求 `Origin`，服务端脚本可以直接调用。
 - 浏览器发起 CORS 预检时，`OPTIONS` 请求直接返回 `204`，没有响应体。
@@ -320,6 +321,8 @@ Origin: https://blog.example.com
 | `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent` | 彻底删除。只能用于没有回复的墓碑，否则返回 `409`。 |
 
 两个删除接口都受 `rate_limit.comment_delete` 限流。
+
+墓碑删除响应中的 `data.comment.has_children` 表示是否仍有直接回复，包括已删除的回复；首次删除和重复删除都返回当前状态。
 
 ### 人机验证
 

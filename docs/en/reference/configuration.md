@@ -23,6 +23,8 @@ sudo docker compose logs --tail=100 ecoku
 
 Only one YAML document is allowed. Unknown fields, invalid values, and duplicate fields prevent startup. Correct the reported problem and start again.
 
+Startup also compares admin origins with every site's allowed origins in the database; checking only YAML site seeds is insufficient. An overlap prevents startup and logs 「管理端来源 … 与已存储的公开站点来源重叠」. Default ports, leading zeros in ports, and equivalent IPv6 spellings are treated as the same origin. Before upgrading, correct site origins in the existing console, or adjust the admin domain, `notifications.instance_public_url` / `admin.allowed_origins`, and reverse proxy so the console and public comment pages use separate origins. CLI subcommands that open the database perform the same check.
+
 ## Rate-limit behavior {#rate-limit}
 
 Defaults, units, and examples for every `rate_limit` field are in the template. Counters are per IP; excess requests return `429` and `Retry-After`, and restart resets counters. `0` restores the default rather than disabling limits. Behind a reverse proxy, also set `site.trusted_proxies` so visitors do not share the proxy IP’s allowance.
@@ -45,3 +47,5 @@ The template’s `*_env` fields name environment variables read by the process, 
 ## Initialization and persistent data {#legacy}
 
 The `sites` seeds are imported only when creating a brand-new database and do not overwrite existing sites. Later site edits, SMTP, Telegram, CAPTCHA and Smoji settings belong in the console. Back up the database and its sibling `ecoku-secrets.json` together. Changing the database path does not move data.
+
+Initial setup applies each seed's `i18n`. For a new database, schema creation, migrations, and seed writes share one transaction and roll back together if any of those steps fails. Existing sites always use their stored language; editing YAML and restarting does not overwrite it. Change the language in the console instead. Failed instance-key validation does not write the proposed keys, but upgrading does not repair a previously damaged key file.

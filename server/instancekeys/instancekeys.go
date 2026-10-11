@@ -33,6 +33,7 @@ func Initialize(path, legacyAdminTokenKey, legacyNotificationKey string) (Keys, 
 	legacyAdminTokenKey = strings.TrimSpace(legacyAdminTokenKey)
 	legacyNotificationKey = strings.TrimSpace(legacyNotificationKey)
 	var stored file
+	persist := false
 
 	data, err := os.ReadFile(path)
 	switch {
@@ -54,6 +55,7 @@ func Initialize(path, legacyAdminTokenKey, legacyNotificationKey string) (Keys, 
 			return Keys{}, fmt.Errorf("持久密钥文件版本 %d 不受支持", stored.Version)
 		}
 	case errors.Is(err, os.ErrNotExist):
+		persist = true
 		stored.Version = fileVersion
 		stored.AdminTokenKey = legacyAdminTokenKey
 		stored.NotificationEncryptionKey = legacyNotificationKey
@@ -69,18 +71,13 @@ func Initialize(path, legacyAdminTokenKey, legacyNotificationKey string) (Keys, 
 				return Keys{}, err
 			}
 		}
-		if err := writeFile(path, stored); err != nil {
-			return Keys{}, err
-		}
 	default:
 		return Keys{}, fmt.Errorf("读取持久密钥文件: %w", err)
 	}
 
 	if legacyAdminTokenKey != "" && legacyAdminTokenKey != stored.AdminTokenKey {
 		stored.AdminTokenKey = legacyAdminTokenKey
-		if err := writeFile(path, stored); err != nil {
-			return Keys{}, fmt.Errorf("更新管理员签名密钥: %w", err)
-		}
+		persist = true
 	}
 	if legacyNotificationKey != "" && legacyNotificationKey != stored.NotificationEncryptionKey {
 		return Keys{}, fmt.Errorf("持久通知加密主密钥与旧环境变量不一致；为避免无法解密已有凭据，已拒绝启动")
@@ -92,6 +89,11 @@ func Initialize(path, legacyAdminTokenKey, legacyNotificationKey string) (Keys, 
 	}
 	if len(stored.AdminTokenKey) < 32 {
 		return Keys{}, fmt.Errorf("持久管理员签名密钥至少需要 32 个字符")
+	}
+	if persist {
+		if err := writeFile(path, stored); err != nil {
+			return Keys{}, fmt.Errorf("保存持久密钥: %w", err)
+		}
 	}
 	active = Keys{AdminTokenKey: stored.AdminTokenKey, NotificationEncryption: notificationKey}
 	return active, nil

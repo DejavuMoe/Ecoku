@@ -4,6 +4,8 @@ Ecoku can notify the blogger when a new comment arrives, and email a visitor whe
 
 After changing a channel, click 「保存」 (save) in the bottom save bar. Email and Telegram are validated and saved separately. If one channel has an error, the other valid channel can still be saved; unsaved changes remain on the page.
 
+Retrying a save clears the previous error. If a channel still fails in this attempt, its error remains visible. If the session has expired when sending a test, the console returns to sign-in; sign in again before retrying.
+
 | Channel | Recipients |
 | --- | --- |
 | Email (SMTP) | Blogger: the recipient list you enter. Visitor: the email address left on the comment that was replied to. |
@@ -44,7 +46,7 @@ In addition:
 | Port (端口) | Use what your mail provider requires, usually 465 (SSL/TLS) or 587 (STARTTLS). |
 | Encryption (加密方式) | `SSL/TLS`: encrypted from the moment the connection opens. `STARTTLS`: opens a plain connection and then upgrades it. Unencrypted SMTP is not supported. |
 | Username (用户名) | May be empty. If empty, no SMTP authentication is performed. The password is still required; for a server that needs no authentication, enter any value. |
-| Password (密码) | After saving, the field shows 「已设置，输入新值以更换」 (Already set; enter a new value to replace it). Leaving it empty keeps it unchanged. |
+| Password (密码) | After saving, the field shows 「已设置，输入新值以更换」 (Already set; enter a new value to replace it). Leaving it empty keeps it unchanged. Saving and testing preserve leading and trailing spaces in the password. |
 | From address (发件人地址) | The From address of the email. Many providers require it to match the sign-in account. |
 | Recipients (通知收件人) | Email addresses that receive blogger notifications, one input per address. Press Enter to add the next one, or paste several lines or a comma-separated list at once. |
 
@@ -82,6 +84,7 @@ Notifications are not sent synchronously when a comment is submitted. The commen
 
 - A mail server that is temporarily unreachable does not stop visitors from commenting.
 - Each recipient has its own record and is retried separately. A failure for one address does not affect other addresses.
+- Once the SMTP server confirms acceptance of the complete message, a failure to close the session does not trigger another delivery. Errors before that confirmation are still treated as failures.
 - After a failure, retries happen at intervals of 2, 4, 8, 16, 32, 64, and 128 minutes, for 8 attempts in total, and then Ecoku gives up.
 - Failures that a retry cannot fix are given up immediately: the mailbox does not exist or the server rejects the message (SMTP 55x), or Telegram cannot find the chat or the bot was removed or blocked (HTTP 400/403). When Telegram asks to slow down (HTTP 429), the retry waits for the longer of the time it gives and the normal retry interval, and the attempt still counts toward the 8.
 - Records that were sent, canceled, or given up are kept for 30 days and then removed automatically.

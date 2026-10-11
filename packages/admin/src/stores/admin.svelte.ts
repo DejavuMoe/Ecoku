@@ -156,7 +156,8 @@ export function createAdminStore() {
       await loadSites(true)
       return true
     } catch (error) {
-      state.passwordSetupMessage = failureMessage(error)
+      if (error instanceof ApiError && error.status === 401) clearSession(messages.sessionExpired)
+      else state.passwordSetupMessage = failureMessage(error)
       return false
     } finally { state.passwordSetupBusy = false }
   }
@@ -229,7 +230,7 @@ export function createAdminStore() {
         return await loadComments(announce, quiet)
       }
       state.comments = result.data; state.counts = result.counts; state.total = result.total
-      state.page = result.page; state.pageSize = result.pageSize; state.pageCount = result.pageCount
+      state.page = result.pageCount === 0 ? 1 : result.page; state.pageSize = result.pageSize; state.pageCount = result.pageCount
       const next = state.comments.find((item) => item.id === state.selectedComment?.id) ?? null
       state.selectedComment = next; if (next) void loadDetail(next.id)
       if (announce) toast(messages.refreshed)
@@ -292,13 +293,19 @@ export function createAdminStore() {
   async function testEmail(settings: EmailNotificationSettings) {
     state.notificationBusy = true; state.emailTestState = 'idle'; state.emailTestMessage = ''
     try { await adminApi.testEmail(settings); state.emailTestState = 'success'; state.emailTestMessage = '测试邮件已发送' }
-    catch (error) { state.emailTestState = 'failure'; state.emailTestMessage = testFailureMessage(error, 'email') }
+    catch (error) {
+      if (error instanceof ApiError && error.status === 401) return clearSession(messages.sessionExpired)
+      state.emailTestState = 'failure'; state.emailTestMessage = testFailureMessage(error, 'email')
+    }
     finally { state.notificationBusy = false }
   }
   async function testTelegram(settings: TelegramNotificationSettings) {
     state.notificationBusy = true; state.telegramTestState = 'idle'; state.telegramTestMessage = ''
     try { await adminApi.testTelegram(settings); state.telegramTestState = 'success'; state.telegramTestMessage = '测试消息已发送' }
-    catch (error) { state.telegramTestState = 'failure'; state.telegramTestMessage = testFailureMessage(error, 'telegram') }
+    catch (error) {
+      if (error instanceof ApiError && error.status === 401) return clearSession(messages.sessionExpired)
+      state.telegramTestState = 'failure'; state.telegramTestMessage = testFailureMessage(error, 'telegram')
+    }
     finally { state.notificationBusy = false }
   }
   async function loadCaptcha() {

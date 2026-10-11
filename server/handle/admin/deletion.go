@@ -31,7 +31,7 @@ func DeleteComment(c *gin.Context) {
 		return
 	}
 
-	comment, unchanged, err := tombstoneComment(c.Request.Context(), siteID, commentID, time.Now().UTC())
+	comment, unchanged, hasChildren, err := tombstoneComment(c.Request.Context(), siteID, commentID, time.Now().UTC())
 	switch {
 	case errors.Is(err, errCommentNotFound):
 		utils.SendError(c, http.StatusNotFound, "评论不存在")
@@ -43,14 +43,15 @@ func DeleteComment(c *gin.Context) {
 		utils.SendError(c, http.StatusInternalServerError, "删除评论失败")
 	default:
 		utils.SendResponse(c, http.StatusOK, "评论已删除", gin.H{
-			"comment":   commentReviewDTO(comment),
+			"comment":   commentReviewDTO(comment, hasChildren),
 			"unchanged": unchanged,
 		})
 	}
 }
 
-func tombstoneComment(ctx context.Context, siteID string, commentID uint, deletedAt time.Time) (model.Comment, bool, error) {
+func tombstoneComment(ctx context.Context, siteID string, commentID uint, deletedAt time.Time) (model.Comment, bool, bool, error) {
 	var updated model.Comment
+	var children int64
 	changed := false
 	err := notifications.WithCommentLifecycle(ctx, func() error {
 		return model.DB.WithContext(ctx).Transaction(func(transaction *gorm.DB) error {
@@ -60,6 +61,9 @@ func tombstoneComment(ctx context.Context, siteID string, commentID uint, delete
 				return errCommentNotFound
 			}
 			if err != nil {
+				return err
+			}
+			if err := transaction.Model(&model.Comment{}).Where("parent_id = ?", commentID).Count(&children).Error; err != nil {
 				return err
 			}
 			if current.DeletedAt != nil {
@@ -96,22 +100,27 @@ func tombstoneComment(ctx context.Context, siteID string, commentID uint, delete
 	})
 	if errors.Is(err, errCommentDeleteStateChanged) {
 		var current model.Comment
-		reloadError := model.DB.WithContext(ctx).Where("id = ? AND site_id = ?", commentID, siteID).First(&current).Error
+		reloadError := model.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			if err := tx.Where("id = ? AND site_id = ?", commentID, siteID).First(&current).Error; err != nil {
+				return err
+			}
+			return tx.Model(&model.Comment{}).Where("parent_id = ?", commentID).Count(&children).Error
+		})
 		if errors.Is(reloadError, gorm.ErrRecordNotFound) {
-			return model.Comment{}, false, errCommentNotFound
+			return model.Comment{}, false, false, errCommentNotFound
 		}
 		if reloadError != nil {
-			return model.Comment{}, false, reloadError
+			return model.Comment{}, false, false, reloadError
 		}
 		if current.DeletedAt != nil {
-			return current, true, nil
+			return current, true, children > 0, nil
 		}
-		return model.Comment{}, false, errCommentDeleteStateChanged
+		return model.Comment{}, false, false, errCommentDeleteStateChanged
 	}
 	if err != nil {
-		return model.Comment{}, false, err
+		return model.Comment{}, false, false, err
 	}
-	return updated, !changed, nil
+	return updated, !changed, children > 0, nil
 }
 
 // PermanentlyDeleteComment removes only a tombstone with no direct

@@ -84,6 +84,147 @@ it('keeps each mounted admin context independent when replacing the Pinia store'
   expect(second.dirtyView).toBeNull()
 })
 
+describe('verified admin regressions', () => {
+  it.each(['setup', 'email', 'telegram'] as const)('EC-15 clears a revoked session and reloads after %s returns 401', async (operation) => {
+    const store = useAdminStore()
+    store.authenticated = true; store.sessionReady = true
+    store.expiresAt = new Date(Date.now() + 3600000).toISOString()
+    store.passwordSetupRequired = operation === 'setup'; store.setupUsername = operation === 'setup' ? 'owner' : ''
+    store.notificationSettings = notifications()
+    store.view = operation === 'setup' ? 'comments' : 'notifications'
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
+    vi.spyOn(adminApi, 'getLoginConfig').mockResolvedValue({ captcha: { provider: 'off', sitekey: '', instanceUrl: '' } })
+    const wrapper = mount(App, {})
+    await flushPromises()
+    try {
+      if (operation === 'setup') {
+        vi.spyOn(adminApi, 'initialSetup').mockRejectedValue(new ApiError(401, 'revoked'))
+        expect(await store.completeInitialSetup('owner', 'new-password-for-owner')).toBe(false)
+      } else if (operation === 'email') {
+        vi.spyOn(adminApi, 'testEmail').mockRejectedValue(new ApiError(401, 'revoked'))
+        await store.testEmail(notifications().email)
+      } else {
+        vi.spyOn(adminApi, 'testTelegram').mockRejectedValue(new ApiError(401, 'revoked'))
+        await store.testTelegram(notifications().telegram)
+      }
+      await flushPromises()
+      expect(store.authenticated).toBe(false)
+      expect(store.passwordSetupRequired).toBe(false)
+      expect(store.setupUsername).toBe('')
+      expect(store.expiresAt).toBe('')
+      expect(store.notificationSettings).toBeNull()
+      expect(store.loginMessage).toBe(messages.sessionExpired)
+      expect(store.passwordSetupBusy || store.notificationBusy).toBe(false)
+      expect(reload).toHaveBeenCalledTimes(1)
+      expect(history.state).toEqual({ ecokuAdminNotice: 'session-expired' })
+      expect(wrapper.find('#setup-title').exists()).toBe(false)
+      expect(wrapper.find('#notifications-title').exists()).toBe(false)
+    } finally { wrapper.unmount(); history.replaceState(null, '') }
+  })
+
+  it('EC-15 retains setup validation and notification delivery errors without ending the session', async () => {
+    const store = useAdminStore(); store.authenticated = true; store.passwordSetupRequired = true
+    vi.spyOn(adminApi, 'initialSetup').mockRejectedValue(new ApiError(400, 'invalid'))
+    expect(await store.completeInitialSetup('owner', 'new-password-for-owner')).toBe(false)
+    expect(store.passwordSetupMessage).toBe(messages.invalidRequest)
+    expect(store.passwordSetupRequired).toBe(true)
+    vi.spyOn(adminApi, 'testEmail').mockRejectedValue(new ApiError(502, 'private detail', 'authentication_failed'))
+    vi.spyOn(adminApi, 'testTelegram').mockRejectedValue(new ApiError(502, 'private detail', 'delivery_failed'))
+    await store.testEmail(notifications().email)
+    await store.testTelegram(notifications().telegram)
+    expect(store.emailTestState).toBe('failure')
+    expect(store.emailTestMessage).toBe('发送失败：SMTP 认证未通过')
+    expect(store.telegramTestState).toBe('failure')
+    expect(store.telegramTestMessage).toBe('发送失败：Telegram 消息投递失败')
+    expect(store.authenticated).toBe(true)
+    expect(store.passwordSetupBusy || store.notificationBusy).toBe(false)
+  })
+
+  it.each([false, true])('EC-16 clamps an empty page to 1, including after creating a site: %s', async (createSite) => {
+    const store = useAdminStore()
+    store.authenticated = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
+    store.page = 2; store.pageCount = 2; store.total = 21; store.comments = [comment()]
+    if (createSite) {
+      vi.spyOn(adminApi, 'listSites').mockResolvedValue([site()])
+      await store.switchView('sites')
+      const created = site({ id: 'site-b', name: 'Empty site' })
+      vi.spyOn(adminApi, 'createSite').mockResolvedValue(created)
+      await store.saveSite(created, true)
+      expect(store.selectedSiteId).toBe('site-b')
+    }
+    const list = vi.spyOn(adminApi, 'listComments').mockImplementation(async (_site, _status, requestedPage) => ({ ...page([]), page: requestedPage }))
+    if (createSite) await store.switchView('comments')
+    else await store.loadComments()
+    const wrapper = mount(CommentManagementView, {})
+    expect(store.page).toBe(1)
+    expect(store.pageCount).toBe(0)
+    expect(wrapper.get('.pager-status').text()).toBe('1/1')
+    expect(wrapper.findAll('.pager-button')).toHaveLength(2)
+    for (const button of wrapper.findAll('.pager-button')) expect(button.attributes('disabled')).toBeDefined()
+    expect(list).toHaveBeenCalledTimes(1)
+    await store.loadComments(true)
+    expect(list.mock.calls.map(call => call[2])).toEqual([2, 1])
+    expect(store.page).toBe(1)
+    wrapper.unmount()
+  })
+
+  it.each(['email', 'telegram'] as const)('EC-17 removes the previous %s save error after a successful retry', async (channel) => {
+    const store = useAdminStore(); store.authenticated = true; store.notificationSettings = notifications()
+    const saveEmail = vi.spyOn(adminApi, 'saveEmail').mockRejectedValueOnce(new ApiError(503, 'unavailable'))
+      .mockImplementation(async settings => ({ ...settings, revision: 3 }))
+    const saveTelegram = vi.spyOn(adminApi, 'saveTelegram').mockRejectedValueOnce(new ApiError(503, 'unavailable'))
+      .mockImplementation(async settings => ({ ...settings, token: '', revision: 3 }))
+    const wrapper = mount(NotificationSettingsView, {})
+    const selector = channel === 'email' ? '#email-user' : '#telegram-token'
+    await wrapper.get(selector).setValue('changed-draft')
+    await wrapper.get('.save-button').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.notice-error').text()).toBe(messages.serverError)
+    expect(store.dirtyView).toBe('notifications')
+    expect((wrapper.get(selector).element as HTMLInputElement).value).toBe('changed-draft')
+    await wrapper.get('.save-button').trigger('click')
+    await flushPromises()
+    expect(channel === 'email' ? saveEmail : saveTelegram).toHaveBeenCalledTimes(2)
+    expect(channel === 'email' ? saveTelegram : saveEmail).not.toHaveBeenCalled()
+    expect(store.notificationSettings?.[channel].revision).toBe(3)
+    expect(store.dirtyView).toBeNull()
+    expect(wrapper.find('.savebar').exists()).toBe(false)
+    expect(store.toastMessage).toBe(channel === 'email' ? messages.emailSaved : messages.telegramSaved)
+    expect(store.notificationMessage).toBe('')
+    expect(wrapper.find('.notice-error').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('EC-17 preserves an email failure and its draft when Telegram succeeds in the same save', async () => {
+    const store = useAdminStore(); store.authenticated = true; store.notificationSettings = notifications()
+    const saveEmail = vi.spyOn(adminApi, 'saveEmail').mockRejectedValue(new ApiError(503, 'unavailable'))
+    const saveTelegram = vi.spyOn(adminApi, 'saveTelegram').mockImplementation(async settings => ({ ...settings, token: '', revision: 3 }))
+    const wrapper = mount(NotificationSettingsView, {})
+    await wrapper.get('#email-user').setValue('changed-mailer')
+    await wrapper.get('#email-password').setValue('unsaved-secret')
+    await wrapper.get('#telegram-token').setValue('dummy-new-token')
+    await wrapper.get('.save-button').trigger('click')
+    await flushPromises()
+    expect(saveEmail).toHaveBeenCalledTimes(1)
+    expect(saveTelegram).toHaveBeenCalledTimes(1)
+    expect(store.notificationMessage).toBe(messages.serverError)
+    expect(wrapper.get('.notice-error').text()).toBe(messages.serverError)
+    expect(store.notificationSettings?.email.revision).toBe(2)
+    expect(store.notificationSettings?.telegram.revision).toBe(3)
+    expect((wrapper.get('#email-user').element as HTMLInputElement).value).toBe('changed-mailer')
+    expect((wrapper.get('#email-password').element as HTMLInputElement).value).toBe('unsaved-secret')
+    expect((wrapper.get('#telegram-token').element as HTMLInputElement).value).toBe('')
+    expect(store.dirtyView).toBe('notifications')
+    expect(wrapper.find('.savebar').exists()).toBe(true)
+    await wrapper.get('.save-button').trigger('click')
+    await flushPromises()
+    expect(saveEmail).toHaveBeenCalledTimes(2)
+    expect(saveTelegram).toHaveBeenCalledTimes(1)
+    expect(wrapper.get('.notice-error').text()).toBe(messages.serverError)
+    wrapper.unmount()
+  })
+})
+
 describe('administrator API contract', () => {
   it('maps only the direct-publish site and comment fields and uses the HttpOnly session without a bearer header', async () => {
     const fetchMock = vi.fn<typeof fetch>()
@@ -1097,6 +1238,7 @@ describe('persistent administrator session', () => {
 
   it('reloads after a deliberate logout without leaving a notice behind', async () => {
     const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
+    vi.spyOn(adminApi, 'getLoginConfig').mockResolvedValue({ captcha: { provider: 'off', sitekey: '', instanceUrl: '' } })
     vi.spyOn(adminApi, 'logout').mockResolvedValue(undefined)
     const store = useAdminStore(); store.authenticated = true; store.sessionReady = true
     const wrapper = mount(App, {})

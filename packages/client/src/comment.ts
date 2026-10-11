@@ -101,7 +101,6 @@ export class CommentSurface {
   private timeZone = DEFAULT_DISPLAY_TIME_ZONE
   private listController: AbortController | null = null
   private submitController: AbortController | null = null
-  private refreshController: AbortController | null = null
   private activeReply: ActiveReply | null = null
   private rootWidget: ChallengeWidget | null = null
   private captchaGeneration = 0
@@ -143,7 +142,7 @@ export class CommentSurface {
     const pageKey = normalizePageKey(value)
     this.config = { ...this.config, pageTitle: pageTitle.trim() }
     if (pageKey === this.config.pageKey) {
-      await this.refreshAfterSubmission()
+      await this.loadPage(Math.max(1, this.currentPage), true)
       return
     }
     this.pageRevision += 1
@@ -520,6 +519,14 @@ export class CommentSurface {
     })
     const contentLabel = this.rootForm.querySelector('.ecoku-visually-hidden')
     if (contentLabel) contentLabel.textContent = this.messages.commentContent
+    for (const button of this.rootForm.querySelectorAll('.ecoku-preview-trigger')) button.textContent = this.messages.preview
+    for (const preview of this.rootForm.querySelectorAll('.ecoku-composer-preview')) preview.setAttribute('aria-label', this.messages.commentPreview)
+    for (const control of this.smojiControls) {
+      const trigger = control.querySelector('.ecoku-smoji-trigger')
+      if (trigger) trigger.textContent = this.messages.sticker
+      control.querySelector('.ecoku-smoji-panel')?.setAttribute('aria-label', this.messages.sticker)
+      control.querySelector('.ecoku-smoji-tabs')?.setAttribute('aria-label', this.messages.stickerPack)
+    }
     this.sortTriggerLabel.textContent = this.sort === 'oldest' ? this.messages.sortOldest : this.messages.sortNewest
   }
 
@@ -564,12 +571,12 @@ export class CommentSurface {
     for (const option of this.sortOptions) option.setAttribute('aria-selected', String(option.dataset.sort === sort))
   }
 
-  private async loadPage(targetPage: number): Promise<void> {
-    if (this.destroyed || this.listBusy) return
-    const controller = this.beginListRequest()
+  private async loadPage(targetPage: number, silent = false): Promise<void> {
+    if (this.destroyed || (this.listBusy && !silent)) return
+    const controller = this.beginListRequest(silent)
     const version = this.requestVersion
     const revision = this.pageRevision
-    this.setInitialLoading(this.comments.length === 0)
+    if (!silent) this.setInitialLoading(this.comments.length === 0)
 
     try {
       const result = await fetchComments(this.config, Math.max(1, targetPage), this.sort, controller.signal)
@@ -584,12 +591,12 @@ export class CommentSurface {
       this.hideServiceError()
       this.renderComments()
     } catch (error) {
-      if (isAbortError(error) || !this.isCurrentRequest(version, revision)) return
+      if ((silent && this.currentPage > 0) || isAbortError(error) || !this.isCurrentRequest(version, revision)) return
       this.showListFailure(error, this.comments.length === 0)
     } finally {
       if (version === this.requestVersion) {
         this.listBusy = false
-        this.setSortDisabled(false)
+        this.setSortDisabled(this.submissionBusy)
         this.updatePagination()
       }
     }
@@ -607,12 +614,12 @@ export class CommentSurface {
     await this.loadPage(targetPage)
   }
 
-  private beginListRequest(): AbortController {
+  private beginListRequest(silent: boolean): AbortController {
     this.listController?.abort()
     this.listController = new AbortController()
     this.requestVersion += 1
-    this.listBusy = true
-    this.setSortDisabled(true)
+    this.listBusy = !silent
+    this.setSortDisabled(this.listBusy || this.submissionBusy)
     this.updatePagination()
     return this.listController
   }
@@ -972,6 +979,7 @@ export class CommentSurface {
           image.referrerPolicy = 'no-referrer'
           button.append(image)
           button.addEventListener('click', () => {
+            if (this.submissionBusy || textarea.disabled) return
             const marker = smojiMarker(item)
             const start = textarea.selectionStart ?? textarea.value.length
             const end = textarea.selectionEnd ?? start
@@ -1011,6 +1019,7 @@ export class CommentSurface {
     }
 
     trigger.addEventListener('click', async () => {
+      if (this.submissionBusy || textarea.disabled) return
       const opening = panel.hidden
       if (opening) {
         for (const control of this.smojiControls) {
@@ -1140,9 +1149,10 @@ export class CommentSurface {
     if (this.submissionBusy) return
     this.submissionBusy = true
     const revision = this.pageRevision
-    const pageKey = this.config.pageKey
     this.submitController?.abort()
-    this.submitController = new AbortController()
+    const controller = new AbortController()
+    this.submitController = controller
+    const isCurrent = (): boolean => !this.destroyed && revision === this.pageRevision && this.submitController === controller
     this.clearError(errorElement, contentElement)
     this.setSubmissionControls(true, submitButton, reply)
     this.root.setAttribute('aria-busy', 'true')
@@ -1152,6 +1162,7 @@ export class CommentSurface {
       if (this.formConfig.captcha.provider !== 'off') {
         let token = ''
         try { token = await widget?.waitForToken() ?? '' } catch { token = '' }
+        if (!isCurrent()) return
         if (!token) {
           this.showInlineError(errorElement, contentElement, this.messages.challengeRequired)
           return
@@ -1159,8 +1170,8 @@ export class CommentSurface {
         draft.captchaToken = token
         challengeAttempted = true
       }
-      const submitted = await submitComment(this.config, draft, this.submitController.signal)
-      if (this.destroyed || revision !== this.pageRevision || pageKey !== this.config.pageKey) return
+      const submitted = await submitComment(this.config, draft, controller.signal)
+      if (!isCurrent()) return
       this.identityRevision += 1
       if (submitted.data.isBlogger || this.looksLikeBloggerProofAttempt(identity)) {
         if (submitted.data.isBlogger) {
@@ -1182,7 +1193,7 @@ export class CommentSurface {
       }
       this.announce(reply ? this.messages.replySubmitted : this.messages.submitted)
       await this.reload()
-      if (!this.destroyed) {
+      if (isCurrent()) {
         if (reply) {
           const refreshedTrigger = this.root.querySelector<HTMLButtonElement>(`[data-comment-id="${draft.parent}"] .ecoku-text-action`)
           refreshedTrigger?.focus({ preventScroll: true })
@@ -1191,14 +1202,17 @@ export class CommentSurface {
         }
       }
     } catch (error) {
-      if (this.destroyed || revision !== this.pageRevision) return
+      if (!isCurrent()) return
       this.showInlineError(errorElement, contentElement, this.submissionErrorMessage(error))
     } finally {
-      if (challengeAttempted) widget?.reset()
-      this.submissionBusy = false
-      this.root.removeAttribute('aria-busy')
-      this.setSubmissionControls(false, submitButton, reply)
-      this.updateRootFormState()
+      if (isCurrent()) {
+        if (challengeAttempted) widget?.reset()
+        this.submitController = null
+        this.submissionBusy = false
+        this.root.removeAttribute('aria-busy')
+        this.setSubmissionControls(false, submitButton, reply)
+        this.updateRootFormState()
+      }
     }
   }
 
@@ -1218,6 +1232,7 @@ export class CommentSurface {
     this.email.disabled = busy
     this.website.disabled = busy
     this.rootContent.disabled = busy
+    for (const trigger of this.rootForm.querySelectorAll<HTMLButtonElement>('.ecoku-smoji-trigger')) trigger.disabled = busy
     this.setSortDisabled(busy || this.listBusy)
     this.updatePagination()
     for (const action of this.root.querySelectorAll<HTMLButtonElement>('.ecoku-text-action')) {
@@ -1236,35 +1251,6 @@ export class CommentSurface {
       submitButton.textContent = busy ? this.messages.submitting : (reply ? this.messages.submitReply : this.messages.submitComment)
       if (!busy && reply && this.activeReply) this.updateReplyFormState(this.activeReply)
       else if (!busy) this.updateRootFormState()
-    }
-  }
-
-  private async refreshAfterSubmission(): Promise<void> {
-    this.refreshController?.abort()
-    const controller = new AbortController()
-    this.refreshController = controller
-    const revision = this.pageRevision
-    const pageKey = this.config.pageKey
-    try {
-      const result = await fetchComments(this.config, Math.max(1, this.currentPage), this.sort, controller.signal)
-      if (this.destroyed || revision !== this.pageRevision || pageKey !== this.config.pageKey) return
-      this.comments = result.comments
-      this.currentPage = Math.max(1, result.page)
-      this.pageCount = result.pageCount
-      this.rootTotal = result.rootTotal
-      this.commentTotal = result.commentTotal
-      this.applyTimeZone(result.timeZone)
-      this.applyFormConfig(result.formConfig)
-      this.hideServiceError()
-      this.renderComments()
-    } catch (error) {
-      if (!isAbortError(error) && !this.destroyed && revision === this.pageRevision) {
-        // Submission success remains authoritative. A failed refresh can be
-        // retried independently without replacing the success announcement.
-        this.updatePagination()
-      }
-    } finally {
-      if (this.refreshController === controller) this.refreshController = null
     }
   }
 
@@ -1482,11 +1468,11 @@ export class CommentSurface {
     this.requestVersion += 1
     this.listController?.abort()
     this.submitController?.abort()
-    this.refreshController?.abort()
     this.listController = null
     this.submitController = null
-    this.refreshController = null
     this.listBusy = false
     this.submissionBusy = false
+    this.root.removeAttribute('aria-busy')
+    this.setSubmissionControls(false, this.rootSubmit, false)
   }
 }

@@ -228,7 +228,6 @@ func normalizeEmail(input EmailConfig) EmailConfig {
 	input.Encryption = strings.ToLower(strings.TrimSpace(input.Encryption))
 	input.Username = strings.TrimSpace(input.Username)
 	input.FromAddress = strings.TrimSpace(input.FromAddress)
-	input.Password = strings.TrimSpace(input.Password)
 	input.Recipients = normalizeValues(input.Recipients)
 	if input.Encryption == "" {
 		input.Encryption = "tls"

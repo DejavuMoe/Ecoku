@@ -10,6 +10,13 @@ tmp
 node_modules
 **/node_modules
 **/dist
+**/*_test.go
+**/*.test.ts
+**/test-results
+**/playwright-report
+packages/client/browser-tests
+packages/client/playwright.config.ts
+packages/client/vitest.config.ts
 data
 deploy
 scripts

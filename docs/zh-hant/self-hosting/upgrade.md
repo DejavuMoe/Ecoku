@@ -2,9 +2,11 @@
 
 公開版本從 v0.3.0 開始。新部署直接使用 [Docker 部署](./docker)；本頁用於既有實例升級。
 
-目前版本是 **v0.4.1**（2026-10-09 發布，schema v12）。
+目前版本是 **v0.5.0**（2026-10-11 發布，schema v12）。
 
-新映像檔統一發布到 GHCR。使用 Forgejo 映像檔的實例，後續升級請將 `image` 改為 `ghcr.io/dejavumoe/ecoku:v0.4.1` 或目標版本的精確 tag，保留原本的資料與設定掛載；Forgejo registry 不再發布新版本。同版本切換倉庫不必重新初始化實例。
+新映像檔統一發布到 GHCR。使用 Forgejo 映像檔的實例，後續升級請將 `image` 改為 `ghcr.io/dejavumoe/ecoku:v0.5.0` 或目標版本的精確 tag，保留原本的資料與設定掛載；Forgejo registry 不再發布新版本。同版本切換倉庫不必重新初始化實例。
+
+升級至 v0.5.0 前，先核對 [來源衝突與歷史資料的相容性說明](./upgrades/v0.5.0#compatibility)。本次沒有資料庫遷移，但管理來源與已儲存站點來源重疊會阻止啟動。
 
 ## 升級時會發生什麼
 
@@ -26,7 +28,7 @@
 **3. 修改映像檔版本**。編輯 `~/Ecoku/compose.yaml`，把 `image` 改成目標版本，例如：
 
 ```yaml
-    image: "ghcr.io/dejavumoe/ecoku:v0.4.1"
+    image: "ghcr.io/dejavumoe/ecoku:v0.5.0"
 ```
 
 請寫明確的版本號，不要用 `latest`。如果升級說明要求修改 `app/config.yaml` 或 `ecoku.env`，請一併修改。
@@ -61,6 +63,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | 版本 | 發布日期 | schema | 重點 |
 | --- | --- | --- | --- |
+| [v0.5.0](./upgrades/v0.5.0) | 2026-10-11 | v12 | 修復評論區並行請求、後台狀態、匯入、通知與來源驗證；無資料庫遷移，升級前檢查來源衝突。 |
 | [v0.4.1](./upgrades/v0.4.1) | 2026-10-09 | v12 | 移除後台全局快捷鍵與提示，修正 npm 套件首頁安裝版本，無資料庫遷移。 |
 | [v0.4.0](./upgrades/v0.4.0) | 2026-10-09 | v12 | 後台遷移至 Svelte 5，SDK 與部署方式保持相容，無資料庫遷移。 |
 | [v0.3.8](./upgrades/v0.3.8) | 2026-10-09 | v12 | Go 1.27.2 與 x/net v0.60.0 安全修正，無資料庫遷移。 |

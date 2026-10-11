@@ -64,6 +64,7 @@ admin:
   # 範例：["https://ecoku.example.com", "https://admin.example.com"]。
   # 僅多網址管理或前後端分離開發時需要明確填寫。
   # 與部落格評論區的來源分開；公開管理來源必須使用 HTTPS。
+  # HTTP :80、HTTPS :443 與省略連接埠等價；啟動時也會檢查與資料庫中站點來源的衝突。
   # 此處與 instance_public_url 都為空時，啟動會因缺少管理來源而失敗。
   allowed_origins: []
 

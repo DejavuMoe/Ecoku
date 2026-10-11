@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/netip"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -715,7 +716,31 @@ func NormalizeOrigin(raw string) (string, error) {
 	if parsed.Host == "" || parsed.User != nil || (parsed.Path != "" && parsed.Path != "/") || parsed.RawQuery != "" || parsed.Fragment != "" {
 		return "", fmt.Errorf("来源必须只包含 scheme、host 和可选端口")
 	}
-	return strings.ToLower(parsed.Scheme) + "://" + strings.ToLower(parsed.Host), nil
+	host := strings.ToLower(parsed.Host)
+	hostname := strings.ToLower(parsed.Hostname())
+	if address, err := netip.ParseAddr(hostname); err == nil && address.Is6() && address.Zone() == "" {
+		hostname = address.String()
+		if address.Is4In6() {
+			// Browser origins serialize mapped IPv6 as hex, never as an IPv4 host.
+			bytes := address.As16()
+			hostname = fmt.Sprintf("::ffff:%x:%x", uint16(bytes[12])<<8|uint16(bytes[13]), uint16(bytes[14])<<8|uint16(bytes[15]))
+		}
+		host = "[" + hostname + "]"
+	}
+	if port := parsed.Port(); port != "" {
+		value, err := strconv.Atoi(port)
+		if err != nil || value < 1 || value > 65535 {
+			return "", fmt.Errorf("来源端口无效")
+		}
+		host = net.JoinHostPort(hostname, strconv.Itoa(value))
+		if (parsed.Scheme == "https" && value == 443) || (parsed.Scheme == "http" && value == 80) {
+			host = hostname
+			if strings.Contains(host, ":") {
+				host = "[" + host + "]"
+			}
+		}
+	}
+	return parsed.Scheme + "://" + host, nil
 }
 
 // NormalizeSiteURL validates a canonical site or instance URL. Paths are

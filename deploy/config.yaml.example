@@ -64,6 +64,7 @@ admin:
   # 示例：["https://ecoku.example.com", "https://admin.example.com"]。
   # 多地址访问后台或前后端分离开发时才需显式填写。
   # 与博客评论区的允许来源分开；公网管理来源必须使用 HTTPS。
+  # HTTP :80、HTTPS :443 与省略端口等价；启动时也会检查与数据库中站点来源的冲突。
   # 如果此处与 instance_public_url 都为空，服务启动时会报缺少管理来源。
   allowed_origins: []
 

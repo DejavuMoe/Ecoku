@@ -13,9 +13,19 @@ import {
   saveVisitorIdentity,
   type StoredVisitorIdentity,
 } from './identity-store'
-import { zhCN } from './messages'
+import { getMessages, zhCN } from './messages'
 
 type RawComment = Record<string, unknown>
+
+const regressionFormConfig = {
+  emailRequired: true, websiteRequired: false, placeholder: zhCN.commentPlaceholder,
+  captcha: { provider: 'off' as const, sitekey: '' },
+  smoji: { enabled: true, manifestUrl: 'https://stickers.example/manifest.json' },
+}
+const regressionManifest: smoji.SmojiManifest = {
+  version: 1,
+  packs: [{ id: 'custom', label: 'Custom pack', items: [{ id: 'wave', label: 'Wave', src: 'https://stickers.example/wave.png' }] }],
+}
 
 const activeClients: Ecoku[] = []
 
@@ -1378,4 +1388,298 @@ it('counts non-BMP comment input by code point while retaining a safe native cei
   expect(submit.disabled).toBe(false)
   setValue(input, '😀😀😀')
   expect(submit.disabled).toBe(true)
+})
+
+describe('verified client regressions', () => {
+  it.each([
+    { server: 'en' as const, override: undefined },
+    { server: 'zh-Hant' as const, override: undefined },
+    { server: 'zh-Hant' as const, override: 'en' as const },
+  ])('EC-01 updates retained root controls for $server with SDK override $override', async ({ server, override }) => {
+    vi.spyOn(smoji, 'loadSmojiManifest').mockResolvedValue(regressionManifest)
+    let locale: 'en' | 'zh-Hant' = server
+    const { client, container } = createClient(vi.fn<typeof fetch>(async () => listResponse([comment(1, 0, 'root')], {
+      formConfig: { ...regressionFormConfig, i18n: locale },
+    })), 'article-a', { i18n: override })
+    await client.init()
+    const root = container.querySelector<HTMLFormElement>('.ecoku-composer')!
+    const assertLabels = (form: HTMLElement) => {
+      const copy = getMessages(override ?? locale)
+      expect.soft(form.querySelector('.ecoku-preview-trigger')?.textContent).toBe(copy.preview)
+      expect.soft(form.querySelector('.ecoku-composer-preview')?.getAttribute('aria-label')).toBe(copy.commentPreview)
+      expect.soft(form.querySelector('.ecoku-smoji-trigger')?.textContent).toBe(copy.sticker)
+      expect.soft(form.querySelector('.ecoku-smoji-panel')?.getAttribute('aria-label')).toBe(copy.sticker)
+    }
+    assertLabels(root)
+    root.querySelector<HTMLButtonElement>('.ecoku-smoji-trigger')!.click()
+    await vi.waitFor(() => expect(root.querySelector('.ecoku-smoji-tab')?.textContent).toBe('Custom pack'))
+    locale = server === 'en' ? 'zh-Hant' : 'en'
+    await client.reload()
+    assertLabels(root)
+    expect(root.querySelector('.ecoku-smoji-tabs')?.getAttribute('aria-label')).toBe(getMessages(override ?? locale).stickerPack)
+    expect(root.querySelector('.ecoku-smoji-tab')?.textContent).toBe('Custom pack')
+    container.querySelector<HTMLButtonElement>('.ecoku-reply-action')!.click()
+    assertLabels(container.querySelector('.ecoku-reply-composer')!)
+  })
+
+  it('EC-02 ignores an owned Turnstile timeout while the new page reply is awaiting its token', async () => {
+    const host = { render: vi.fn(() => 'widget'), reset: vi.fn(), remove: vi.fn(), getResponse: () => '', execute: vi.fn() }
+    vi.stubGlobal('turnstile', host)
+    const posts: unknown[] = []
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      if (String(input).includes('/api/comment/submit')) { posts.push(init?.body); return jsonResponse(201, { id: 2 }) }
+      return listResponse([comment(1, 0, 'root', { mark: new URL(String(input)).searchParams.get('key') })], {
+        formConfig: { ...regressionFormConfig, captcha: { provider: 'turnstile', sitekey: 'local-test' } },
+      })
+    })
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    await vi.waitFor(() => expect(host.render).toHaveBeenCalledTimes(1))
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    const root = fillIdentityAndContent(container, 'Old draft')
+    await submitForm(root)
+    expect(host.execute).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1000)
+    await client.setPageKey('article-b')
+    container.querySelector<HTMLButtonElement>('.ecoku-reply-action')!.click()
+    await vi.advanceTimersByTimeAsync(0)
+    const reply = container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!
+    fillIdentityAndContent(reply, 'New reply')
+    await submitForm(reply)
+    expect(host.execute).toHaveBeenCalledTimes(2)
+    await vi.advanceTimersByTimeAsync(11000)
+    expect.soft(root.querySelector('.ecoku-form-error')?.textContent).toBe('')
+    expect.soft(container.querySelector('.ecoku-comments')?.getAttribute('aria-busy')).toBe('true')
+    expect.soft(reply.querySelector<HTMLTextAreaElement>('textarea')?.disabled).toBe(true)
+    expect.soft(reply.querySelector<HTMLButtonElement>('[type="submit"]')?.disabled).toBe(true)
+    await submitForm(reply)
+    expect.soft(host.execute).toHaveBeenCalledTimes(2)
+    expect(posts).toHaveLength(0)
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(reply.querySelector('.ecoku-form-error')?.textContent).toBe(zhCN.challengeRequired)
+    expect(reply.querySelector<HTMLTextAreaElement>('textarea')?.disabled).toBe(false)
+  })
+
+  it.each(['token', 'error'] as const)('EC-02 ignores obsolete CAPTCHA %s without posting or releasing a newer POST', async (outcome) => {
+    const oldToken = deferred<string>()
+    const oldWidget = { waitForToken: vi.fn(() => oldToken.promise), reset: vi.fn(), remove: vi.fn() }
+    const newWidget = { waitForToken: vi.fn(async () => 'new-token'), reset: vi.fn(), remove: vi.fn() }
+    vi.spyOn(captcha, 'mountChallenge').mockResolvedValue(newWidget).mockResolvedValueOnce(oldWidget)
+    const post = deferred<Response>()
+    const posts: Record<string, unknown>[] = []
+    const { client, container } = createClient(vi.fn<typeof fetch>(async (input, init) => {
+      if (String(input).includes('/api/comment/submit')) { posts.push(JSON.parse(String(init?.body))); return post.promise }
+      return listResponse([comment(1, 0, 'root', { mark: new URL(String(input)).searchParams.get('key') })], {
+        formConfig: { ...regressionFormConfig, captcha: { provider: 'cap', sitekey: 'local-test', instanceUrl: 'https://cap.example/' } },
+      })
+    }))
+    await client.init()
+    const root = fillIdentityAndContent(container, 'Old draft')
+    await submitForm(root)
+    expect(oldWidget.waitForToken).toHaveBeenCalledOnce()
+    await client.setPageKey('article-b', 'New title')
+    container.querySelector<HTMLButtonElement>('.ecoku-reply-action')!.click()
+    await Promise.resolve()
+    const reply = container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!
+    fillIdentityAndContent(reply, 'New reply')
+    await submitForm(reply)
+    await vi.waitFor(() => expect(posts).toHaveLength(1))
+    expect(posts[0]).toMatchObject({ mark: 'article-b', pageTitle: 'New title', content: 'New reply', captchaToken: 'new-token' })
+    if (outcome === 'token') oldToken.resolve('obsolete-token')
+    else oldToken.reject(new Error('obsolete provider error'))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect.soft(posts).toHaveLength(1)
+    expect.soft(root.querySelector('.ecoku-form-error')?.textContent).toBe('')
+    expect.soft(container.querySelector('.ecoku-comments')?.getAttribute('aria-busy')).toBe('true')
+    expect.soft(reply.querySelector<HTMLTextAreaElement>('textarea')?.disabled).toBe(true)
+    await submitForm(reply)
+    expect.soft(newWidget.waitForToken).toHaveBeenCalledOnce()
+    post.resolve(jsonResponse(201, { id: 2 }))
+    await vi.waitFor(() => expect(container.querySelector('.ecoku-reply-composer')).toBeNull())
+    await vi.waitFor(() => expect(container.querySelector('.ecoku-comments')?.hasAttribute('aria-busy')).toBe(false))
+    expect(oldWidget.reset).not.toHaveBeenCalled()
+  })
+
+  it.each(['page', 'destroy'] as const)('EC-02 restores controls immediately on %s without waiting for the obsolete CAPTCHA', async (change) => {
+    const token = deferred<string>()
+    vi.spyOn(captcha, 'mountChallenge').mockResolvedValue({ waitForToken: () => token.promise, reset: vi.fn(), remove: vi.fn() })
+    const fetchMock = vi.fn<typeof fetch>(async () => listResponse([], {
+      formConfig: { ...regressionFormConfig, captcha: { provider: 'cap', sitekey: 'local-test', instanceUrl: 'https://cap.example/' } },
+    }))
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    const root = fillIdentityAndContent(container)
+    await submitForm(root)
+    expect(root.querySelector<HTMLTextAreaElement>('textarea')?.disabled).toBe(true)
+    if (change === 'page') await client.setPageKey('article-b')
+    else client.destroy()
+    expect.soft(root.querySelector<HTMLTextAreaElement>('textarea')?.disabled).toBe(false)
+    token.resolve('obsolete-token')
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(fetchMock.mock.calls.filter(([input]) => String(input).includes('/api/comment/submit'))).toHaveLength(0)
+    expect(root.querySelector('.ecoku-form-error')?.textContent).toBe('')
+  })
+
+  it.each(['sort', 'page'] as const)('EC-03 a newer %s result wins over a pending same-key refresh', async (action) => {
+    const refresh = deferred<Response>()
+    const newer = deferred<Response>()
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(listResponse([comment(1, 0, 'initial')], { pageCount: 2, total: 4 }))
+      .mockReturnValueOnce(refresh.promise).mockReturnValueOnce(newer.promise)
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    const pending = client.setPageKey('article-a')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const control = action === 'sort'
+      ? container.querySelector<HTMLButtonElement>('[data-sort="oldest"]')!
+      : container.querySelectorAll<HTMLButtonElement>('.ecoku-pager-button')[1]!
+    expect(control.disabled).toBe(false)
+    control.click()
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    const request = new URL(String(fetchMock.mock.calls[2][0]))
+    expect(request.searchParams.get(action === 'sort' ? 'sort' : 'page')).toBe(action === 'sort' ? 'oldest' : '2')
+    newer.resolve(listResponse([comment(2, 0, 'newer result')], { page: action === 'page' ? 2 : 1, pageCount: 2, total: 4, commentTotal: 7 }))
+    await vi.waitFor(() => expect(container.textContent).toContain('newer result'))
+    refresh.resolve(listResponse([comment(3, 0, 'obsolete refresh')], { pageCount: 1, total: 1 }))
+    await pending
+    expect.soft(container.textContent).toContain('newer result')
+    expect.soft(container.textContent).not.toContain('obsolete refresh')
+    expect.soft(container.querySelector('.ecoku-pagination-status')?.textContent).toBe(action === 'page' ? '2/2' : '1/2')
+    expect.soft(container.querySelector('.ecoku-section-title')?.textContent).toBe(zhCN.commentCount(7))
+    if (action === 'sort') expect(container.querySelector('.ecoku-sort-trigger')?.textContent).toContain(zhCN.sortOldest)
+  })
+
+  describe.each(['reject', 'timeout'] as const)('EC-03 review refresh %s', (failure) => {
+    it.each(['initial', 'navigation', 'loaded empty'] as const)('keeps failure recovery appropriate for %s', async (state) => {
+      const fetchMock = vi.fn<typeof fetch>(async () => listResponse([]))
+      const { client, container } = createClient(fetchMock)
+      if (state !== 'initial') await client.init()
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      let pending: Promise<void> | undefined
+      let oldSignal: AbortSignal | undefined
+      if (state !== 'loaded empty') {
+        const old = deferred<Response>()
+        fetchMock.mockImplementationOnce((_input, init) => {
+          oldSignal = init?.signal ?? undefined
+          oldSignal?.addEventListener('abort', () => old.reject(new DOMException('Superseded', 'AbortError')), { once: true })
+          return old.promise
+        })
+        pending = state === 'initial' ? client.init() : client.setPageKey('article-b')
+      }
+      const replacement = deferred<Response>()
+      fetchMock.mockImplementationOnce((_input, init) => {
+        init?.signal?.addEventListener('abort', () => replacement.reject(new DOMException('Timed out', 'AbortError')), { once: true })
+        return replacement.promise
+      })
+      const refresh = client.setPageKey(state === 'navigation' ? 'article-b' : 'article-a', 'Updated title')
+      if (state !== 'loaded empty') expect(oldSignal?.aborted).toBe(true)
+      if (failure === 'timeout') await vi.advanceTimersByTimeAsync(10_000)
+      else replacement.reject(new TypeError('offline'))
+      await Promise.all([pending, refresh])
+
+      const loaded = state === 'loaded empty'
+      const error = container.querySelector<HTMLElement>('.ecoku-service-error')!
+      expect.soft(error.hidden).toBe(loaded)
+      expect.soft(container.querySelector<HTMLElement>('.ecoku-core')?.hidden).toBe(!loaded)
+      expect(container.querySelector('.ecoku-status-line')?.textContent).toBe('')
+      if (loaded) {
+        expect(container.querySelector<HTMLElement>('.ecoku-empty-state')?.hidden).toBe(false)
+      } else {
+        const retry = error.querySelector<HTMLButtonElement>('button')!
+        expect.soft(document.activeElement).toBe(retry)
+        retry.click()
+        await vi.waitFor(() => expect(container.querySelector<HTMLElement>('.ecoku-empty-state')?.hidden).toBe(false))
+        expect(error.hidden).toBe(true)
+        expect(container.querySelector<HTMLElement>('.ecoku-core')?.hidden).toBe(false)
+      }
+    })
+  })
+
+  it('EC-04 preserves the draft and restores sticker editing after a rejected POST', async () => {
+    vi.spyOn(smoji, 'loadSmojiManifest').mockResolvedValue(regressionManifest)
+    const post = deferred<Response>()
+    const posts: Record<string, unknown>[] = []
+    const { client, container } = createClient(vi.fn<typeof fetch>(async (input, init) => {
+      if (String(input).includes('/api/comment/submit')) { posts.push(JSON.parse(String(init?.body))); return post.promise }
+      return listResponse([], { formConfig: regressionFormConfig })
+    }))
+    await client.init()
+    const root = fillIdentityAndContent(container, 'Keep this draft')
+    const textarea = root.querySelector<HTMLTextAreaElement>('textarea')!
+    const trigger = root.querySelector<HTMLButtonElement>('.ecoku-smoji-trigger')!
+    const panel = root.querySelector<HTMLElement>('.ecoku-smoji-panel')!
+    trigger.click()
+    await vi.waitFor(() => expect(root.querySelector('.ecoku-smoji-item')).not.toBeNull())
+    expect(panel.hidden).toBe(false)
+    await submitForm(root)
+    await vi.waitFor(() => expect(posts).toHaveLength(1))
+    expect(posts[0].content).toBe('Keep this draft')
+    expect(textarea.disabled).toBe(true)
+    expect(trigger.disabled).toBe(true)
+    root.querySelector<HTMLButtonElement>('.ecoku-smoji-item')!.click()
+    expect(textarea.value).toBe('Keep this draft')
+
+    post.reject(new TypeError('offline'))
+    await vi.waitFor(() => expect(textarea.disabled).toBe(false))
+    expect(root.querySelector('.ecoku-form-error')?.textContent).toBe(zhCN.submitNetwork)
+    expect(textarea.value).toBe('Keep this draft')
+    expect(container.querySelector('.ecoku-comments')?.hasAttribute('aria-busy')).toBe(false)
+    expect(trigger.disabled).toBe(false)
+    expect(root.querySelector<HTMLButtonElement>('[type="submit"]')?.disabled).toBe(false)
+    for (const input of root.querySelectorAll<HTMLInputElement>('input')) expect(input.disabled).toBe(false)
+    if (!panel.hidden) trigger.click()
+    expect(panel.hidden).toBe(true)
+    trigger.click()
+    expect(panel.hidden).toBe(false)
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length)
+    root.querySelector<HTMLButtonElement>('.ecoku-smoji-item')!.click()
+    expect(textarea.value).toBe(`Keep this draft${smoji.smojiMarker(regressionManifest.packs[0].items[0])}`)
+    expect(panel.hidden).toBe(true)
+    expect(posts).toHaveLength(1)
+  })
+
+  it.each(['closed', 'open', 'late'] as const)('EC-04 prevents sticker edits during a POST with a %s picker', async (state) => {
+    const manifest = deferred<smoji.SmojiManifest>()
+    vi.spyOn(smoji, 'loadSmojiManifest').mockReturnValue(manifest.promise)
+    const post = deferred<Response>()
+    const posts: Record<string, unknown>[] = []
+    const { client, container } = createClient(vi.fn<typeof fetch>(async (input, init) => {
+      if (String(input).includes('/api/comment/submit')) { posts.push(JSON.parse(String(init?.body))); return post.promise }
+      return listResponse([], { formConfig: regressionFormConfig })
+    }))
+    await client.init()
+    const root = fillIdentityAndContent(container, 'Sent draft')
+    const textarea = root.querySelector<HTMLTextAreaElement>('textarea')!
+    const trigger = root.querySelector<HTMLButtonElement>('.ecoku-smoji-trigger')!
+    if (state !== 'closed') trigger.click()
+    if (state !== 'late') {
+      manifest.resolve(regressionManifest)
+      if (state === 'open') await vi.waitFor(() => expect(root.querySelector('.ecoku-smoji-item')).not.toBeNull())
+    }
+    await submitForm(root)
+    await vi.waitFor(() => expect(posts).toHaveLength(1))
+    expect(posts[0].content).toBe('Sent draft')
+    expect(textarea.disabled).toBe(true)
+    expect.soft(trigger.disabled).toBe(true)
+    if (state === 'closed') {
+      trigger.click()
+      expect.soft(root.querySelector<HTMLElement>('.ecoku-smoji-panel')?.hidden).toBe(true)
+    } else {
+      if (state === 'late') {
+        manifest.resolve(regressionManifest)
+        await vi.waitFor(() => expect(root.querySelector('.ecoku-smoji-item')).not.toBeNull())
+      }
+      root.querySelector<HTMLButtonElement>('.ecoku-smoji-item')!.click()
+      expect.soft(textarea.value).toBe('Sent draft')
+    }
+    post.resolve(jsonResponse(201, { id: 1 }))
+    await vi.waitFor(() => expect(textarea.disabled).toBe(false))
+    expect(textarea.value).toBe('')
+    expect(trigger.disabled).toBe(false)
+    const panel = root.querySelector<HTMLElement>('.ecoku-smoji-panel')!
+    if (panel.hidden) trigger.click()
+    await vi.waitFor(() => expect(root.querySelector('.ecoku-smoji-item')).not.toBeNull())
+    root.querySelector<HTMLButtonElement>('.ecoku-smoji-item')!.click()
+    expect(textarea.value).toContain('![smoji:Wave]')
+  })
 })

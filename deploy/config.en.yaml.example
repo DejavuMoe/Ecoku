@@ -64,6 +64,7 @@ admin:
   # Example: ["https://ecoku.example.com", "https://admin.example.com"].
   # Set explicitly only for multiple admin URLs or separate frontend/backend development.
   # Keep separate from blog comment origins. Public admin origins must use HTTPS.
+  # HTTP :80 and HTTPS :443 equal an omitted port; startup also checks stored site origins for conflicts.
   # If both this list and instance_public_url are empty, startup fails for lack of an admin origin.
   allowed_origins: []
 
