@@ -88,7 +88,7 @@ await comments.init()
 
 ## VitePress {#vitepress}
 
-本文档站页面底部的评论区就是用 SDK 接入的：使用 `ecoku@0.5.0`，服务地址为 `https://ecoku-dev.zsh.moe/`，站点 ID 为 `ecoku-docs`。接入自己的网站时替换这两个值，并在 Ecoku 后台把网站来源加入该站点的允许来源。
+下面使用 `ecoku@0.5.0`，服务地址 `https://ecoku.example.com` 和站点 ID `your-site-id` 均为占位符。接入时替换为你部署的 Ecoku 服务地址和后台创建的站点 ID，并把网站来源加入该站点的允许来源。
 
 在 `.vitepress/theme/EcokuComments.vue` 中使用 VitePress 自带的 `useRoute`，不要从 `vue-router` 导入。路由路径作为稳定的页面 key，页面数据提供标题。仅在浏览器挂载时创建实例，切换文章时更新，卸载时销毁。
 
@@ -109,7 +109,7 @@ onMounted(() => {
   comments = new Ecoku({
     container: el.value,
     serverURL: 'https://ecoku.example.com',
-    siteId: 'docs',
+    siteId: 'your-site-id',
     pageKey: route.path,
     pageTitle: page.value.title,
   })
@@ -164,6 +164,85 @@ export default {
   }),
 }
 ```
+
+## Astro {#astro}
+
+先按 [获取 SDK](#install) 安装 `ecoku`，再创建 `src/components/EcokuComments.astro`。下面的服务地址和站点 ID 均为占位符；接入前替换它们，并在 Ecoku 后台允许你的网站来源（本地预览也需要加入对应来源）。
+
+SDK 放在组件模板的普通 `<script>` 中，由 Astro 打包后在浏览器运行。不要放进顶部的 `---` 代码区，也不要给脚本添加 `is:inline`、`define:vars` 或 `type="module"`，否则 npm 导入和 TypeScript 不会按这个示例处理。页面 key 和标题通过 `data-*` 属性传给脚本，详见 [Astro 脚本处理说明](https://docs.astro.build/en/guides/client-side-scripts/#script-processing)。
+
+```astro
+---
+interface Props {
+  pageKey: string
+  pageTitle: string
+}
+
+const { pageKey, pageTitle } = Astro.props
+---
+
+<ecoku-comments data-page-key={pageKey} data-page-title={pageTitle}></ecoku-comments>
+
+<script>
+  import Ecoku from 'ecoku'
+
+  class EcokuComments extends HTMLElement {
+    private comments: Ecoku | null = null
+
+    connectedCallback() {
+      if (this.comments) return
+      this.comments = new Ecoku({
+        container: this,
+        serverURL: 'https://ecoku.example.com',
+        siteId: 'your-site-id',
+        pageKey: this.dataset.pageKey!,
+        pageTitle: this.dataset.pageTitle,
+      })
+      this.comments.init().catch(console.error)
+    }
+
+    disconnectedCallback() {
+      this.comments?.destroy()
+      this.comments = null
+    }
+  }
+
+  customElements.define('ecoku-comments', EcokuComments)
+</script>
+
+<style>
+  ecoku-comments { display: block; }
+</style>
+```
+
+在文章页或文章布局中引入组件。例如 `src/pages/posts/hello-world.astro`：
+
+```astro
+---
+import EcokuComments from '../../components/EcokuComments.astro'
+
+const title = 'Hello, world'
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <main>
+      <h1>{title}</h1>
+      <p>Article content.</p>
+      <EcokuComments pageKey={Astro.url.pathname} pageTitle={title} />
+    </main>
+  </body>
+</html>
+```
+
+将 `title` 换成文章数据中的标题。`Astro.url.pathname` 只取路径，不包含查询参数和片段；同一篇文章应始终使用相同的页面 key，包括结尾斜杠。
+
+该组件适用于静态页面，也适用于启用 [ClientRouter](https://docs.astro.build/en/guides/view-transitions/) 的网站：自定义元素插入页面时初始化，移除时销毁，切换文章后按新页面的数据创建实例。不要为评论组件添加 `transition:persist`，以免沿用旧文章的页面数据。
 
 ## Vue 3
 

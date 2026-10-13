@@ -88,7 +88,7 @@ Returns whether the instance is currently initialized.
 
 ## VitePress {#vitepress}
 
-The comments at the bottom of this documentation site are embedded with the SDK: they use `ecoku@0.5.0`, the server address `https://ecoku-dev.zsh.moe/` and the site ID `ecoku-docs`. For your own website, replace those two values and add the website's origin to the site's allowed origins in the Ecoku admin console.
+The example below uses `ecoku@0.5.0`. Both the server address `https://ecoku.example.com` and the site ID `your-site-id` are placeholders. Replace them with your Ecoku server address and the site ID created in the admin console, then add your website's origin to that site's allowed origins.
 
 In `.vitepress/theme/EcokuComments.vue`, import `useRoute` from VitePress, not `vue-router`. Use the route path as the stable page key and page data for the title. Create the instance on browser mount, update it when navigating and destroy it on unmount.
 
@@ -109,7 +109,7 @@ onMounted(() => {
   comments = new Ecoku({
     container: el.value,
     serverURL: 'https://ecoku.example.com',
-    siteId: 'docs',
+    siteId: 'your-site-id',
     pageKey: route.path,
     pageTitle: page.value.title,
   })
@@ -164,6 +164,85 @@ export default {
   }),
 }
 ```
+
+## Astro {#astro}
+
+Install `ecoku` as described in [Get the SDK](#install), then create `src/components/EcokuComments.astro`. The server address and site ID below are placeholders. Replace them and allow your website's origin in the Ecoku admin console, including the local preview origin when testing locally.
+
+Keep the SDK in a plain `<script>` in the component template so Astro bundles it for the browser. Do not put it in the top `---` block or add `is:inline`, `define:vars`, or `type="module"` to the script: those attributes disable the processing needed for npm imports and TypeScript in this example. Pass the page key and title through `data-*` attributes. See [Astro script processing](https://docs.astro.build/en/guides/client-side-scripts/#script-processing).
+
+```astro
+---
+interface Props {
+  pageKey: string
+  pageTitle: string
+}
+
+const { pageKey, pageTitle } = Astro.props
+---
+
+<ecoku-comments data-page-key={pageKey} data-page-title={pageTitle}></ecoku-comments>
+
+<script>
+  import Ecoku from 'ecoku'
+
+  class EcokuComments extends HTMLElement {
+    private comments: Ecoku | null = null
+
+    connectedCallback() {
+      if (this.comments) return
+      this.comments = new Ecoku({
+        container: this,
+        serverURL: 'https://ecoku.example.com',
+        siteId: 'your-site-id',
+        pageKey: this.dataset.pageKey!,
+        pageTitle: this.dataset.pageTitle,
+      })
+      this.comments.init().catch(console.error)
+    }
+
+    disconnectedCallback() {
+      this.comments?.destroy()
+      this.comments = null
+    }
+  }
+
+  customElements.define('ecoku-comments', EcokuComments)
+</script>
+
+<style>
+  ecoku-comments { display: block; }
+</style>
+```
+
+Import the component in an article page or layout. For example, `src/pages/posts/hello-world.astro`:
+
+```astro
+---
+import EcokuComments from '../../components/EcokuComments.astro'
+
+const title = 'Hello, world'
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <main>
+      <h1>{title}</h1>
+      <p>Article content.</p>
+      <EcokuComments pageKey={Astro.url.pathname} pageTitle={title} />
+    </main>
+  </body>
+</html>
+```
+
+Replace `title` with the title from your article data. `Astro.url.pathname` contains only the path, without a query string or fragment. Keep the page key consistent for each article, including its trailing slash.
+
+This component works on static pages and on sites using [ClientRouter](https://docs.astro.build/en/guides/view-transitions/). The custom element initializes when inserted into the page and destroys its instance when removed. Navigating to another article creates an instance with the new page's data. Do not add `transition:persist` to the comments component, to avoid reusing the previous article's page data.
 
 ## Vue 3
 
