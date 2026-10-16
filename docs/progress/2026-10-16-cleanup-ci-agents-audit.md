@@ -193,3 +193,5 @@ Ecoku 是 SQLite 单库、多站点、自托管纯文本评论系统，包含 Go
 - 重新核对真实 CORS、管理凭据与评论表单配置调用路径，确认均不依赖删除的函数。第一次 YAML 解码仍启用 `KnownFields(true)`，保留 `Site.LogPath` 的类型及未知字段校验。
 - 在现有 `TestLegacyDeploymentFieldsRemainReadable` 中补充 `LogFilePath` 保留原值的断言。测试其余修改仍只是等价常量替换；完整 Go 测试由 CI 执行。
 - 本地 `node scripts/check-ci.mjs`、`node scripts/check-release.mjs --self-test`、当前版本元数据检查及 `git diff --check` 均通过。正式 CI 与发布状态以随后对应提交的运行结果为准。
+- 清理与优化提交 `a80844988ca8c905f3d7a722b762a5fb5f38b9a3` 的 [CI 38850553735](https://github.com/DejavuMoe/Ecoku/actions/runs/38850553735) 全部通过：client、admin、server、docs 均成功。client 日志确认只下载 Chrome Headless Shell，4 个浏览器测试通过；未下载完整 Chromium。这个结果证明安装范围和测试可用性，单次运行不足以验证前述长期节省估计。
+- 同一提交的 Woodpecker 文档发布 [pipeline 137](https://ci.via.moe/repos/3/pipeline/137/1) 状态为成功。随后进入 v0.5.1 发布准备，文档站 SDK 在 npm 新版可见前仍固定为 0.5.0。

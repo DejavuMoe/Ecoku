@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-16
+
 ### 变更
 
 - CI 的 SDK 浏览器测试只安装 Chromium headless shell，保留系统依赖安装与浏览器行为验证。
@@ -722,4 +724,5 @@
 [0.4.0]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.4.0
 [0.4.1]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.4.1
 [0.5.0]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.0
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.5.0...master
+[0.5.1]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.1
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.5.1...master
