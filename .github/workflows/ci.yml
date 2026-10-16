@@ -56,7 +56,7 @@ jobs:
         run: pnpm --filter "$FILTER" --fail-if-no-match install --frozen-lockfile --prefer-offline
       - name: Install SDK test browser
         if: matrix.target == 'client'
-        run: pnpm -C packages/client exec playwright install --with-deps chromium
+        run: pnpm -C packages/client exec playwright install --with-deps --only-shell chromium
       - name: Verify SDK browser behavior
         if: matrix.target == 'client'
         run: pnpm -C packages/client run test:browser

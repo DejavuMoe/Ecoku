@@ -43,7 +43,7 @@ func TestParseLocaleRejectsUnknownLanguages(t *testing.T) {
 
 func TestDeploymentTemplatesUseDocumentedDefaults(t *testing.T) {
 	t.Setenv(runtimeEnvironment, containerRuntime)
-	for _, name := range []string{adminUsernameEnv, adminPasswordHashEnv, adminTokenKeyEnv} {
+	for _, name := range []string{defaultAdminUsernameEnv, defaultAdminPasswordEnv, defaultAdminTokenKeyEnv} {
 		t.Setenv(name, "")
 	}
 	previousConfig, previousPort, previousLog := GlobalConfig, Port, LogFilePath
@@ -75,9 +75,9 @@ func setAdminEnvironment(t *testing.T, tokenKey string) string {
 	if err != nil {
 		t.Fatalf("hash password: %v", err)
 	}
-	t.Setenv(adminUsernameEnv, "instance-admin")
-	t.Setenv(adminPasswordHashEnv, string(hash))
-	t.Setenv(adminTokenKeyEnv, tokenKey)
+	t.Setenv(defaultAdminUsernameEnv, "instance-admin")
+	t.Setenv(defaultAdminPasswordEnv, string(hash))
+	t.Setenv(defaultAdminTokenKeyEnv, tokenKey)
 	return string(hash)
 }
 
@@ -163,22 +163,22 @@ func TestRemovedConfigurationIsRejected(t *testing.T) {
 }
 
 func TestLegacyDeploymentFieldsRemainReadable(t *testing.T) {
-	t.Setenv(adminUsernameEnv, "")
-	t.Setenv(adminPasswordHashEnv, "")
-	t.Setenv(adminTokenKeyEnv, "")
+	t.Setenv(defaultAdminUsernameEnv, "")
+	t.Setenv(defaultAdminPasswordEnv, "")
+	t.Setenv(defaultAdminTokenKeyEnv, "")
 	data := "site:\n  port: 12123\n  log_path: /var/log/ecoku/ecoku.log\nclient:\n  static_dir: /app/client\nadmin:\n  enabled: true\n  static_dir: /app/admin\n  token_ttl_minutes: 480\ndatabase:\n  sqlite:\n    path: /data/ecoku.sqlite3\nnotifications:\n  encryption_key_env: ECOKU_NOTIFICATION_ENCRYPTION_KEY\n"
 	if err := LoadConfigFile(writeConfig(t, data)); err != nil {
 		t.Fatalf("legacy deployment fields rejected: %v", err)
 	}
-	if GetSQLitePath() != "/data/ecoku.sqlite3" || GetClientStaticDir() != "/app/client" || GetAdminStaticDir() != "/app/admin" {
+	if GetSQLitePath() != "/data/ecoku.sqlite3" || GetClientStaticDir() != "/app/client" || GetAdminStaticDir() != "/app/admin" || LogFilePath != "/var/log/ecoku/ecoku.log" {
 		t.Fatalf("legacy paths not retained")
 	}
 }
 
 func TestCommandsLoadConfigWithoutAdminCredentials(t *testing.T) {
-	t.Setenv(adminUsernameEnv, "")
-	t.Setenv(adminPasswordHashEnv, "")
-	t.Setenv(adminTokenKeyEnv, "")
+	t.Setenv(defaultAdminUsernameEnv, "")
+	t.Setenv(defaultAdminPasswordEnv, "")
+	t.Setenv(defaultAdminTokenKeyEnv, "")
 	if err := ApplyConfig(&Config{Admin: AdminConfig{AllowedOrigins: []string{"https://admin.example"}}}); err != nil {
 		t.Fatalf("CLI commands must load a config without admin credentials: %v", err)
 	}
@@ -225,7 +225,7 @@ func TestAdminCredentialsComeFromEnvironment(t *testing.T) {
 
 func TestAdminSigningKeyCannotReusePasswordHash(t *testing.T) {
 	passwordHash := setAdminEnvironment(t, strings.Repeat("t", 32))
-	t.Setenv(adminTokenKeyEnv, passwordHash)
+	t.Setenv(defaultAdminTokenKeyEnv, passwordHash)
 	if err := ApplyConfig(&Config{Admin: AdminConfig{AllowedOrigins: []string{"https://admin.example"}}}); err != nil {
 		t.Fatal(err)
 	}

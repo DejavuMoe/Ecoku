@@ -12,7 +12,7 @@ function checkSecurity(source) {
   assert.equal((source.match(/pnpm_config_verify_deps_before_run/gi) ?? []).length, 1, 'No step may override explicit installation')
   assert.match(source, /^      - name: Audit JavaScript dependencies\n        if: matrix.target == 'client'\n        run: pnpm audit --audit-level=high\n(?=      - )/m)
   assert.match(source, /^      - name: Check Go vulnerabilities\n        run: go run golang\.org\/x\/vuln\/cmd\/govulncheck@v\d+\.\d+\.\d+ \.\/\.\.\.\n(?=      - )/m)
-  assert.match(source, /^      - name: Install target dependencies\n        env:\n          FILTER: \$\{\{ matrix.filter \}\}\n        run: pnpm --filter "\$FILTER" --fail-if-no-match install --frozen-lockfile --prefer-offline\n      - name: Install SDK test browser\n        if: matrix.target == 'client'\n        run: pnpm -C packages\/client exec playwright install --with-deps chromium\n(?=      - name: Verify SDK browser behavior\n)/m)
+  assert.match(source, /^      - name: Install target dependencies\n        env:\n          FILTER: \$\{\{ matrix.filter \}\}\n        run: pnpm --filter "\$FILTER" --fail-if-no-match install --frozen-lockfile --prefer-offline\n      - name: Install SDK test browser\n        if: matrix.target == 'client'\n        run: pnpm -C packages\/client exec playwright install --with-deps --only-shell chromium\n(?=      - name: Verify SDK browser behavior\n)/m)
   assert.match(source, /^      - name: Verify SDK browser behavior\n        if: matrix.target == 'client'\n        run: pnpm -C packages\/client run test:browser\n(?=      - )/m)
   assert.match(source, /^      - name: Verify API smoke script\n        if: matrix.target == 'client'\n        run: pwsh -NoProfile -File scripts\/real-api-smoke.test.ps1\n(?=      - )/m)
   assert.match(source, /^      - name: Verify frontend\n        if: matrix.target != 'docs'\n        env:\n          TARGET: \$\{\{ matrix.target \}\}\n        run: pnpm "verify:\$TARGET"\n(?=      - )/m)
@@ -40,7 +40,8 @@ for (const [before, after] of [
   ["if: matrix.target == 'client'", 'if: false'],
   [/govulncheck@v[\d.]+/, 'govulncheck@latest'],
   [' ./...\n', ' -json ./...\n'],
-  ['playwright install --with-deps chromium', 'playwright install chromium'],
+  ['playwright install --with-deps --only-shell chromium', 'playwright install --only-shell chromium'],
+  ['--only-shell chromium', 'chromium'],
   ['run test:browser\n', 'run test:browser || true\n'],
   ['-File scripts/real-api-smoke.test.ps1', '-Command exit 0'],
   ["if: matrix.target != 'docs'", 'if: false'],
