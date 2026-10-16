@@ -46,9 +46,6 @@ const (
 	defaultNotificationKeyEnv = "ECOKU_NOTIFICATION_ENCRYPTION_KEY"
 	adminLocaleEnv            = "ECOKU_ADMIN_LOCALE"
 	EncryptionKeyEnv          = defaultNotificationKeyEnv
-	adminUsernameEnv          = defaultAdminUsernameEnv
-	adminPasswordHashEnv      = defaultAdminPasswordEnv
-	adminTokenKeyEnv          = defaultAdminTokenKeyEnv
 )
 
 var (
@@ -69,8 +66,7 @@ type Config struct {
 
 	// adminEnabledSet records whether config.yaml wrote admin.enabled, so the
 	// container default can tell an omitted key from an explicit false.
-	adminEnabledSet  bool
-	legacyLogPathSet bool
+	adminEnabledSet bool
 }
 
 type RuntimePaths struct {
@@ -262,9 +258,6 @@ func LoadConfigFile(path string) error {
 		return fmt.Errorf("配置文件只允许一个 YAML 文档")
 	}
 	var presence struct {
-		Site struct {
-			LogPath *string `yaml:"log_path"`
-		} `yaml:"site"`
 		Admin struct {
 			Enabled *bool `yaml:"enabled"`
 		} `yaml:"admin"`
@@ -273,7 +266,6 @@ func LoadConfigFile(path string) error {
 		return fmt.Errorf("解析 YAML: %w", err)
 	}
 	loaded.adminEnabledSet = presence.Admin.Enabled != nil
-	loaded.legacyLogPathSet = presence.Site.LogPath != nil
 
 	return ApplyConfig(&loaded)
 }
@@ -652,13 +644,6 @@ func installGlobals(loaded *Config) {
 	LogFilePath = loaded.Site.LogPath
 }
 
-func GetSiteConfig() *SiteConfig {
-	if GlobalConfig == nil {
-		return nil
-	}
-	return &GlobalConfig.Site
-}
-
 func GetRegisteredSite(siteID string) (*RegisteredSiteConfig, bool) {
 	if GlobalConfig == nil {
 		return nil, false
@@ -670,24 +655,6 @@ func GetRegisteredSite(siteID string) (*RegisteredSiteConfig, bool) {
 		}
 	}
 	return nil, false
-}
-
-func GetAllAllowedOrigins() []string {
-	if GlobalConfig == nil {
-		return nil
-	}
-	seen := make(map[string]struct{})
-	result := make([]string, 0)
-	for _, site := range GlobalConfig.Sites {
-		for _, origin := range site.AllowedOrigins {
-			if _, exists := seen[origin]; exists {
-				continue
-			}
-			seen[origin] = struct{}{}
-			result = append(result, origin)
-		}
-	}
-	return result
 }
 
 func GetAdminAllowedOrigins() []string {
@@ -813,25 +780,6 @@ func NormalizeSmojiImageOrigin(raw string) (string, error) {
 	return NormalizeOrigin(normalized)
 }
 
-func IsOriginAllowed(site *RegisteredSiteConfig, origin string) bool {
-	if site == nil {
-		return false
-	}
-	if strings.TrimSpace(origin) == "" {
-		return true
-	}
-	normalized, err := NormalizeOrigin(origin)
-	if err != nil {
-		return false
-	}
-	for _, allowed := range site.AllowedOrigins {
-		if normalized == allowed {
-			return true
-		}
-	}
-	return false
-}
-
 func GetManagementKey(siteID string) (string, bool) {
 	site, ok := GetRegisteredSite(siteID)
 	if !ok {
@@ -841,36 +789,8 @@ func GetManagementKey(siteID string) (string, bool) {
 	return key, len(key) >= minimumSecretLength
 }
 
-func GetManagementKeyBindings() []RegisteredSiteConfig {
-	return GetRegisteredSites()
-}
-
 func IsValidSiteID(siteID string) bool {
 	return siteIDPattern.MatchString(strings.TrimSpace(siteID))
-}
-
-func GetCommentFormConfig(siteID string) (CommentFormConfig, bool) {
-	site, ok := GetRegisteredSite(siteID)
-	if !ok || site.Comment.EmailRequired == nil || site.Comment.WebsiteRequired == nil {
-		return CommentFormConfig{}, false
-	}
-	return CommentFormConfig{
-		Locale:              string(NormalizeLocale(site.Locale)),
-		EmailRequired:       *site.Comment.EmailRequired,
-		WebsiteRequired:     *site.Comment.WebsiteRequired,
-		Placeholder:         site.Comment.Placeholder,
-		DefaultSort:         site.Comment.DefaultSort,
-		LengthLimit:         site.Comment.LengthLimit,
-		EmptyMessage:        site.Comment.EmptyMessage,
-		BloggerBadge:        DefaultBloggerBadge,
-		TurnstileSitekey:    "",
-		BloggerProofEnabled: false,
-		Captcha:             CaptchaPublicConfig{Provider: "off"},
-	}, true
-}
-
-func IsAdminEnabled() bool {
-	return GlobalConfig != nil
 }
 
 // SetAdminCredentials installs credentials resolved from SQLite or the legacy
@@ -969,13 +889,6 @@ func GetTrustedProxies() []string {
 	return append([]string(nil), GlobalConfig.Site.TrustedProxies...)
 }
 
-func GetAdminConfig() *AdminConfig {
-	if GlobalConfig == nil {
-		return nil
-	}
-	return &GlobalConfig.Admin
-}
-
 func GetAdminStaticDir() string {
 	if GlobalConfig == nil {
 		return ""
@@ -1010,18 +923,4 @@ func GetInstanceSecretsPath() string {
 		return ""
 	}
 	return filepath.Join(filepath.Dir(path), "ecoku-secrets.json")
-}
-
-func GetDatabaseConfig() *DatabaseConfig {
-	if GlobalConfig == nil {
-		return nil
-	}
-	return &GlobalConfig.Database
-}
-
-func GetSQLiteConfig() *SQLiteConfig {
-	if GlobalConfig == nil {
-		return nil
-	}
-	return &GlobalConfig.Database.SQLite
 }
