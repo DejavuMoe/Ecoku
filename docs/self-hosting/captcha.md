@@ -181,7 +181,7 @@ cap.example.com {
 
 ### 内容安全策略 {#csp}
 
-启用 Cap 后，Ecoku 会自动调整管理后台的 CSP：放行 Cap 实例的来源、WebAssembly、`blob:` Worker，以及 Cap 3.x 运行时检测脚本需要的 `'unsafe-eval'`。切换到 Turnstile 或关闭验证后，这些放行会立即撤回。
+启用 Cap 后，Ecoku 会自动调整管理后台的 CSP：放行 Cap 实例的来源、WebAssembly、`blob:` Worker，以及 Cap 3.x 运行时检测脚本需要的 `'unsafe-eval'`。这些响应头在重新加载后台页面时生效；首次启用 Cap 后请刷新后台，再检查验证组件。切换到 Turnstile 或关闭验证后，新加载的后台页面不再包含这些放行；已经打开的页面保留旧 CSP，直到刷新。
 
 如果你的博客页面自己设置了 CSP，也要为验证组件放行：
 
@@ -199,11 +199,14 @@ Cap key 如果启用了 instrumentation（运行时检测），`script-src` 还�
 若验证服务配置错误或外部网络不可用导致管理员无法登录后台，可在宿主机上通过命令行停用验证：
 
 ```bash
+(
+set -eu
 cd ~/Ecoku
 sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku captcha status
 sudo docker compose run --rm --no-deps ecoku captcha disable
-sudo docker compose up -d
+sudo docker compose up -d --wait --wait-timeout 120 ecoku
+)
 ```
 
 关闭后用账号密码登录后台，在「安全」页修正配置再重新启用。已保存的 Sitekey 和 Secret key 不会被清除。

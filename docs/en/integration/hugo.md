@@ -70,6 +70,8 @@ comments: false
 
 In the Ecoku admin console, add an allowed origin for this site, such as `https://blog.example.com`. If you preview locally with `hugo server`, add `http://localhost:1313` as well.
 
+Hugo’s `.RelPermalink` includes the subdirectory in `baseURL`. For example, `baseURL: https://example.com/blog/` produces `/blog/posts/…`; set the Ecoku site URL to `https://example.com` to avoid repeating `/blog` in notification and admin links. See [Site URL and page paths](../self-hosting/admin#site-url).
+
 ## Appearance
 
 The default styles read PaperMod's color variables (`--theme`, `--entry`, `--primary`, `--secondary`, `--content`, `--border`) and follow the theme's light/dark switch, so you usually do not need any extra setup.

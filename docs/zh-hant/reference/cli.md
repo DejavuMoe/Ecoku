@@ -50,9 +50,12 @@ provider=turnstile turnstile_secret_set=true cap_secret_set=false
 關閉人機驗證。用於驗證服務設定錯誤、導致管理員無法登入後台的情況。
 
 ```bash
+(
+set -eu
 sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku captcha disable
-sudo docker compose up -d
+sudo docker compose up -d --wait --wait-timeout 120 ecoku
+)
 ```
 
 已儲存的 Turnstile 與 Cap 設定和金鑰都會保留，登入後台後可以直接在「安全」頁修正並重新啟用。如果已經是關閉狀態，會輸出 `CAPTCHA 已处于关闭状态`，不做任何修改。
@@ -66,19 +69,24 @@ sudo docker compose up -d
 先加 `--dry-run` 預檢：
 
 ```bash
+(
+set -eu
 sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku \
   import-twikoo --site=blog --file=/data/twikoo.json --dry-run
-sudo docker compose up -d
+)
 ```
 
-確認結果後去掉 `--dry-run` 正式匯入：
+預檢後保持停服，避免目標站點產生新評論。確認結果後去掉 `--dry-run` 正式匯入：
 
 ```bash
+(
+set -eu
 sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku \
   import-twikoo --site=blog --file=/data/twikoo.json
-sudo docker compose up -d
+sudo docker compose up -d --wait --wait-timeout 120 ecoku
+)
 ```
 
 | 參數 | 說明 |

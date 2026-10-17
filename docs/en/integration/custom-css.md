@@ -63,7 +63,7 @@ On touch devices, input font size is at least 16px, so iOS does not zoom the pag
 
 ## Structural styles
 
-`/client/ecoku.unstyled.css` contains layout only: grid, spacing, the sticker panel, verification widget size, collapse button width, and so on. It has no colors, borders, or backgrounds, and does not use `--ecoku-*` variables.
+`/client/ecoku.unstyled.css` contains layout only: grid, spacing, the sticker panel, verification widget size, collapse button width, and so on. It omits theme colors and decoration but retains necessary resets and accessibility rules.
 
 ```html
 <section
@@ -73,7 +73,7 @@ On touch devices, input font size is at least 16px, so iOS does not zoom the pag
 >
 ```
 
-With the HTML loader, a `<link>` to this stylesheet is inserted into the page automatically. When you use the SDK directly, include it yourself. See [SDK · Styles](./sdk#styles).
+The HTML loader adds only the first external stylesheet’s `<link>`; multiple comment sections must share the same `data-css-url`. When you use the SDK directly, include it yourself. See [SDK · Styles](./sdk#styles).
 
 ## Fully custom
 

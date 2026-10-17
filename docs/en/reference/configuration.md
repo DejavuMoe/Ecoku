@@ -17,7 +17,11 @@ Copy the template and replace `instance_public_url`. Other active values are def
 Save the file, then recreate the container from the Compose directory and inspect its logs. Editing the mounted YAML does not hot-reload the service:
 
 ```bash
-sudo docker compose up -d --force-recreate ecoku
+(
+set -eu
+sudo docker compose config --quiet
+sudo docker compose up -d --force-recreate --wait --wait-timeout 120 ecoku
+)
 sudo docker compose logs --tail=100 ecoku
 ```
 

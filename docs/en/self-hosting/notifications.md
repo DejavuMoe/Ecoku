@@ -88,7 +88,7 @@ Notifications are not sent synchronously when a comment is submitted. The commen
 - After a failure, retries happen at intervals of 2, 4, 8, 16, 32, 64, and 128 minutes, for 8 attempts in total, and then Ecoku gives up.
 - Failures that a retry cannot fix are given up immediately: the mailbox does not exist or the server rejects the message (SMTP 55x), or Telegram cannot find the chat or the bot was removed or blocked (HTTP 400/403). When Telegram asks to slow down (HTTP 429), the retry waits for the longer of the time it gives and the normal retry interval, and the attempt still counts toward the 8.
 - Records that were sent, canceled, or given up are kept for 30 days and then removed automatically.
-- Recipients are fixed when a notification is queued. If you later disable a channel or change recipients, notifications already in the queue are still delivered as they were.
+- Recipients are fixed when a notification is queued. Disabling a channel or changing recipients does not cancel queued notifications or change their targets. Delivery uses the current SMTP / Bot settings and credentials and reloads the comment content, so a broken connection configuration can still prevent delivery. See below for deletion behavior.
 - If the process crashes right after a message has been sent but before the result is recorded, it may be sent again after restart. In rare cases you may receive a duplicate notification.
 
 Logs record only the notification ID, error type, and attempt count. They do not record recipient addresses, comment content, or credentials.

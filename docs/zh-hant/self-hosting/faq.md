@@ -61,7 +61,7 @@ sudo rmdir app/config.yaml
 新部署不使用 `ecoku.env`。修改 `app/config.yaml` 或 Compose 後，用下面的指令重建容器：
 
 ```bash
-cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
+cd ~/Ecoku && sudo docker compose up -d --force-recreate --wait --wait-timeout 120 ecoku
 ```
 
 ## 評論區
@@ -84,7 +84,7 @@ Ecoku 放在反向代理後面，但沒有設定 `trusted_proxies`，所有訪�
 
 ### 某篇文章的評論載入失敗，其他文章正常
 
-這篇文章的討論可能超出了單次讀取的上限（200 則評論、16 層或 1 MiB）。可以在接入程式碼中調低 `data-page-size`；如果是單一討論串本身過大，調低也沒有用，需要在後台刪除部分評論。詳見 [討論串與分頁](../guide/concepts#threads)。
+先在瀏覽器網路面板確認列表請求是否回傳 `422`。單次讀取最多包含 200 個評論節點（含墓碑）、深度 16（根評論為 0）與 1 MiB 回應；頁面統計最多檢查 10,000 個節點。多則根評論合計超限時可調低 `data-page-size`；單一討論串或頁面統計本身超限時無效。墓碑刪除仍保留節點與層級，不能解決條數或深度超限。不要為恢復顯示直接刪除歷史資料；自訂前端可使用 [逐層讀取介面](../reference/api#cursor)，官方 SDK 不會自動切換到該介面。詳見 [討論串與分頁](../guide/concepts#threads)。
 
 ### 調整部落格連結格式後，舊評論不見了
 
@@ -139,4 +139,4 @@ Cap 實例位址必須是可從公開網路存取的 HTTPS 位址，不能帶使
 
 ### 啟用 Cap 後，瀏覽器主控台出現 CSP 錯誤
 
-如果錯誤出現在部落格頁面，表示部落格自己的 CSP 沒有為 Cap 放行，需要加入 Cap 實例來源、`worker-src blob:` 和 WebAssembly 權限，詳見 [人機驗證 · 內容安全政策](./captcha#csp)。管理後台的 CSP 由 Ecoku 自動調整，不需要手動處理。
+如果錯誤出現在部落格頁面，表示部落格自己的 CSP 沒有為 Cap 放行，需要加入 Cap 實例來源、`worker-src blob:` 和 WebAssembly 權限，詳見 [人機驗證 · 內容安全政策](./captcha#csp)。管理後台的 CSP 由 Ecoku 自動產生；儲存驗證方式後重新整理後台，使新回應標頭生效，再檢查元件。

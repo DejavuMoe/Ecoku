@@ -61,7 +61,7 @@ If an internal test instance still injects `ECOKU_NOTIFICATION_ENCRYPTION_KEY`, 
 New deployments do not use `ecoku.env`. After changing `app/config.yaml` or Compose, recreate the container:
 
 ```bash
-cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
+cd ~/Ecoku && sudo docker compose up -d --force-recreate --wait --wait-timeout 120 ecoku
 ```
 
 ## Comment section
@@ -84,7 +84,7 @@ Ecoku runs behind a reverse proxy, but `trusted_proxies` is not configured, so a
 
 ### Comments fail to load on one post but work on others
 
-The discussion on this post may exceed the limits of a single read (200 comments, 16 levels or 1 MiB). You can lower `data-page-size` in the embed code. If a single thread is itself too large, lowering it does not help, and you need to delete some comments in the admin console. See [Threads and pagination](../guide/concepts#threads).
+First check for a `422` list response in the browser network panel. A read is limited to 200 comment nodes including tombstones, depth 16 with roots at depth 0, and a 1 MiB response; page statistics inspect at most 10,000 nodes. Lowering `data-page-size` helps when multiple root threads exceed the combined budget, but not when one thread or page statistics already exceed it. Tombstone deletion retains nodes and depth and does not fix those limits. Do not delete historical data just to restore display. Custom frontends can use the [level-by-level endpoint](../reference/api#cursor); the official SDK does not switch to it automatically. See [Threads and pagination](../guide/concepts#threads).
 
 ### Old comments disappeared after changing the blog's link format
 
@@ -139,4 +139,4 @@ The Cap instance URL must be a publicly reachable HTTPS URL without a username a
 
 ### After enabling Cap, the browser console shows CSP errors
 
-If the error appears on your blog pages, your blog's own CSP does not allow Cap. Add the Cap instance origin, `worker-src blob:` and WebAssembly permissions; see [CAPTCHA · Content Security Policy](./captcha#csp). Ecoku adjusts the admin console's CSP automatically, so you do not need to change it.
+If the error appears on your blog pages, your blog's own CSP does not allow Cap. Add the Cap instance origin, `worker-src blob:` and WebAssembly permissions; see [CAPTCHA · Content Security Policy](./captcha#csp). Ecoku generates the admin console's CSP automatically. Reload the console after saving the verification method so the new headers take effect, then check the widget.

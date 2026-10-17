@@ -7,6 +7,7 @@
 将以下文件复制到 Hugo 站点对应目录：
 
 ```powershell
+New-Item -ItemType Directory -Force SITE/layouts/_partials, SITE/assets/css/extended | Out-Null
 Copy-Item examples/hugo-papermod/layouts/_partials/comments.html SITE/layouts/_partials/comments.html
 Copy-Item examples/hugo-papermod/assets/css/extended/ecoku.css SITE/assets/css/extended/ecoku.css
 ```
@@ -21,4 +22,4 @@ Copy-Item examples/hugo-papermod/assets/css/extended/ecoku.css SITE/assets/css/e
 {{ partial "comments.html" . }}
 ```
 
-示例使用 `.RelPermalink` 作为稳定页面 key，使用 `.Title` 作为页面标题。浏览器端只放公开的服务地址和站点 ID，不要放管理员凭据、通知密钥或站点管理密钥。
+示例使用 `.RelPermalink` 作为稳定页面 key，使用 `.Title` 作为页面标题。若 Hugo 的 `baseURL` 带子目录，页面 key 已包含该目录，Ecoku 的站点 URL 不应重复包含它，见 [站点 URL 与页面路径](../../docs/self-hosting/admin.md#site-url)。浏览器端只放公开的服务地址和站点 ID，不要放管理员凭据、通知密钥或站点管理密钥。

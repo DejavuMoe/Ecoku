@@ -181,7 +181,7 @@ The Caddy example above proxies the entire Cap service, including its admin page
 
 ### Content Security Policy {#csp}
 
-When Cap is enabled, Ecoku adjusts the admin console's CSP automatically: it allows the Cap instance's origin, WebAssembly, `blob:` workers, and the `'unsafe-eval'` needed by the Cap 3.x runtime instrumentation script. When you switch to Turnstile or turn verification off, these allowances are withdrawn immediately.
+When Cap is enabled, Ecoku adjusts the admin console's CSP automatically: it allows the Cap instance's origin, WebAssembly, `blob:` workers, and the `'unsafe-eval'` needed by the Cap 3.x runtime instrumentation script. These response headers take effect when the admin page reloads. Refresh the console after first enabling Cap before checking the widget. After switching to Turnstile or turning verification off, newly loaded admin pages omit these allowances; an already open page retains its old CSP until refreshed.
 
 If your blog pages set their own CSP, you must also allow the verification widget there:
 
@@ -199,11 +199,14 @@ If your blog uses a nonce-based CSP, set `window.CAP_SCRIPT_NONCE` and `window.C
 If the verification service is misconfigured or unreachable, the admin may be unable to sign in. In that case, turn verification off from the command line on the server:
 
 ```bash
+(
+set -eu
 cd ~/Ecoku
 sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku captcha status
 sudo docker compose run --rm --no-deps ecoku captcha disable
-sudo docker compose up -d
+sudo docker compose up -d --wait --wait-timeout 120 ecoku
+)
 ```
 
 After turning it off, sign in with your username and password, fix the settings on the **Security** (安全) page, and enable verification again. The saved Sitekey and Secret key are not cleared.

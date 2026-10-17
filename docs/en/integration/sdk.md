@@ -40,7 +40,7 @@ await comments.init()
 | `i18n` | `'zh-CN' \| 'zh-Hant' \| 'en'` | No | Site default | Comment language: SDK option → site setting → `zh-CN`. The default placeholder, empty-state message and blogger badge follow the language; text the site customized is shown as written. |
 | `cssURL` | `string` | No | `''` | When empty, the default styles are injected. A valid value (a stylesheet URL or `'none'`) stops the injection. See below. |
 
-The constructor does not validate options; invalid options make `init()` throw a `TypeError`.
+The constructor does not validate options. `init()` validates the mount element, server URL, option types and ranges, rejecting its Promise on failure. The server enforces the full page-key path rules; successful initialization does not prove that a key is valid for submission.
 
 - `pageTitle` in the constructor options is cut to its first 200 UTF-16 code units. A title passed to `setPageKey()` is not truncated; the server checks it against a limit of 200 Unicode characters.
 - `cssURL` accepts only an absolute HTTP(S) URL, a path starting with `/`, `none` or the legacy value `-`.
@@ -63,13 +63,14 @@ Mounts the comment section, restores the saved visitor identity and loads the fi
 - If you pass `options`, they replace the options given to the constructor.
 - On an instance that is already initialized, calling it again returns immediately: nothing is mounted twice, and any `options` you pass are ignored.
 - A container can be used by only one instance at a time; otherwise it throws. Call `destroy()` on the old instance first.
-- If mounting fails, the instance destroys itself, so you can fix the problem and call `init()` again.
+- If mounting fails, the instance destroys itself. You can fix the problem and call `init()` again.
+- Comment API failures are displayed inside the component with a retry button; the `init()` Promise can still resolve. The same applies to `reload()` and `setPageKey()`. Neither a resolved Promise nor `isInitialized()` is a service health check.
 
 ### `setPageKey(pageKey, pageTitle?)`
 
 Switches to another post's comment section. Call it after a route change in a single-page app. It must be called after `init()`; otherwise it throws.
 
-- If the page key is the same as the current one, only the comments are reloaded.
+- If the page key is unchanged, the title is still updated and comments are reloaded, while drafts and reply state are preserved.
 - If it differs, in-flight requests are canceled, open reply boxes are closed, the comment box is cleared, and the first page of the new page is loaded.
 - **Pass the new post's title as the second argument.** If you omit it, the title is cleared rather than kept from the previous post; otherwise notifications for new comments would show the wrong post name. Call it after both the route and the title have been updated.
 - The title passed here is not truncated. If it is longer than 200 characters, the server rejects the comment submission.

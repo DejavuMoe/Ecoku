@@ -26,7 +26,7 @@ Imported content still appears as ordinary comment text, without code-block styl
 
 1. [Register the target site](./admin#sites) in the admin console. If you want blogger markers backfilled, set both the blogger nickname and the blogger email.
 2. Export your comments from Twikoo. The file must contain one JSON array and be no larger than 64 MiB, including trailing whitespace. Only whitespace may follow the array; a second array or other trailing content is rejected.
-3. Take a cold backup as described in [Backup and restore](./backup#cold-backup). The backup script starts the service at the end; you stop it again below.
+3. Take a cold backup as described in [Backup and restore](./backup#cold-backup). Keep the service stopped after backup until the import succeeds.
 
 Copy the export file into the `data/` directory so the container user can read it (replace `/path/to/twikoo.json` with the actual path; the original file is left untouched):
 
@@ -70,7 +70,7 @@ cd ~/Ecoku
 sudo docker compose run --rm --no-deps ecoku \
   import-twikoo --site=blog --file=/data/twikoo.json
 sudo rm -- data/twikoo.json
-sudo docker compose up -d
+sudo docker compose up -d --wait --wait-timeout 120 ecoku
 )
 ```
 

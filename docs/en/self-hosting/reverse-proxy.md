@@ -108,7 +108,7 @@ site:
 Then restart the container:
 
 ```bash
-cd ~/Ecoku && sudo docker compose up -d --force-recreate ecoku
+cd ~/Ecoku && sudo docker compose up -d --force-recreate --wait --wait-timeout 120 ecoku
 ```
 
 ::: danger

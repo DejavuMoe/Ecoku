@@ -12,7 +12,7 @@
 
 升级流程即更新 `compose.yaml` 中的镜像版本并重启容器。新版本服务启动时会自动检查数据库的 schema 版本，若低于目标版本，将按顺序执行原位迁移：
 
-- 每一步迁移在一个事务中完成，失败则整步回滚，数据库保持原样，服务不启动；
+- 每一步迁移在一个事务中完成，失败只回滚当前步骤，先前已经成功的迁移不会回退，服务不启动；
 - 迁移在原数据库文件上进行，不会删除或重建数据库、评论、配置、WAL 文件或你的备份；
 - 每完成一步，在 `schema_migrations` 表中追加一条记录；
 - **只能向上迁移**。旧版本的程序打不开更高 schema 的数据库，会拒绝启动。
@@ -23,7 +23,7 @@
 
 **1. 阅读升级说明**。在下方的[版本列表](#versions)中找到目标版本，确认是否有配置变更、是否涉及 schema 迁移。
 
-**2. 停服冷备份**。按[备份与恢复](./backup#cold-backup)执行，确认输出 `Verified backup`。
+**2. 停服冷备份**。按[备份与恢复](./backup#cold-backup)执行，确认输出 `Verified backup`，并保持服务停止，直到第 4 步启动目标镜像。
 
 **3. 修改镜像版本**。编辑 `~/Ecoku/compose.yaml`，把 `image` 改成目标版本，例如：
 
@@ -36,10 +36,13 @@
 **4. 拉取并启动。**
 
 ```bash
+(
+set -eu
 cd ~/Ecoku
 sudo docker compose config --quiet
 sudo docker compose pull
-sudo docker compose up -d
+sudo docker compose up -d --force-recreate --wait --wait-timeout 120 ecoku
+)
 ```
 
 **5. 检查。**

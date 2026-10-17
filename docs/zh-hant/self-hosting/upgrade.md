@@ -12,7 +12,7 @@
 
 升級就是把 `compose.yaml` 中的映像檔換成新版本再啟動。新版本啟動時會檢查資料庫的 schema 版本，如果低於自己支援的版本，就依序執行遷移：
 
-- 每一步遷移都在一個交易中完成，失敗則整步回滾，資料庫維持原樣，服務不會啟動；
+- 每一步遷移都在一個交易中完成，失敗只回滾目前步驟，先前已成功的遷移不會回退，服務不會啟動；
 - 遷移在原本的資料庫檔案上進行，不會刪除或重建資料庫、評論、設定、WAL 檔案或你的備份；
 - 每完成一步，就在 `schema_migrations` 資料表中新增一筆記錄；
 - **只能向上遷移**。舊版本的程式無法開啟 schema 較新的資料庫，會拒絕啟動。
@@ -23,7 +23,7 @@
 
 **1. 閱讀升級說明**。在下方的[版本清單](#versions)中找到目標版本，確認是否有設定變更、是否涉及 schema 遷移。
 
-**2. 停止服務後冷備份**。依照[備份與還原](./backup#cold-backup)執行，確認輸出 `Verified backup`。
+**2. 停止服務後冷備份**。依照[備份與還原](./backup#cold-backup)執行，確認輸出 `Verified backup`，並保持服務停止，直到第 4 步啟動目標映像檔。
 
 **3. 修改映像檔版本**。編輯 `~/Ecoku/compose.yaml`，把 `image` 改成目標版本，例如：
 
@@ -36,10 +36,13 @@
 **4. 拉取並啟動。**
 
 ```bash
+(
+set -eu
 cd ~/Ecoku
 sudo docker compose config --quiet
 sudo docker compose pull
-sudo docker compose up -d
+sudo docker compose up -d --force-recreate --wait --wait-timeout 120 ecoku
+)
 ```
 
 **5. 檢查。**
