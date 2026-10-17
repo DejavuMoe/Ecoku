@@ -53,7 +53,7 @@ func Initialize() error {
 				return fmt.Errorf("导入旧管理员账户: %w", err)
 			}
 		} else {
-			password, passwordHash, err := newTemporaryPassword()
+			_, passwordHash, err := newTemporaryPassword()
 			if err != nil {
 				return err
 			}
@@ -62,7 +62,7 @@ func Initialize() error {
 			if err := model.CreateAdminAccount(*account); err != nil {
 				return fmt.Errorf("创建初始管理员账户: %w", err)
 			}
-			log.Printf("Ecoku 首次启动管理员账户：admin；临时密码：%s；请登录后台后立即修改密码", password)
+			log.Print("Ecoku 首次启动管理员账户：admin；请停止服务后运行 admin reset-password 获取临时密码，登录后台后立即修改密码")
 		}
 	} else if account.ManagedByEnvironment && legacyAvailable {
 		if account.Username != legacy.Username || account.PasswordHash != legacy.PasswordHash {

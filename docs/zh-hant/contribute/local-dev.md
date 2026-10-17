@@ -13,7 +13,7 @@ mkdir -p server/data
 
 一次性建置產物與驗證檔案放在 Git 排除的根目錄 `tmp/`。本機資料庫和持久金鑰由服務依設定寫入 `server/data/`，不要提交這些執行資料。
 
-本機服務使用 SQLite 檔案與 `server/config.yaml`。新資料庫首次啟動時會自動建立管理員 `admin`，在終端印出臨時密碼，並在 `server/data/ecoku-secrets.json` 儲存持久金鑰。使用臨時密碼登入後台後必須改密；無需預先匯出管理員憑據或通知加密金鑰。
+本機服務使用 SQLite 檔案與 `server/config.yaml`。新資料庫首次啟動時會自動建立管理員 `admin`，並在 `server/data/ecoku-secrets.json` 儲存持久金鑰，啟動日誌不輸出密碼。首次啟動完成後，先用 Ctrl+C 停止服務，再執行 `(cd server && go run . admin reset-password)`，從命令輸出取得臨時密碼，然後重新啟動服務。使用臨時密碼登入後台後必須改密；無需預先匯出管理員憑據或通知加密金鑰。
 
 既有開發資料庫繼續使用原管理員帳號；如先前設定過舊環境變數，請先完成持久化遷移再移除，參見 [舊設定遷移](../self-hosting/upgrade#legacy-config)。
 

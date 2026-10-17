@@ -82,7 +82,7 @@ admin:
   # 名稱建議以字母或底線開頭，只含字母、數字、底線，三者不得相同。
   # 一旦提供任一管理員憑據變數，就必須同時提供完整三項。
   # 使用者名稱 1～80 字元；密碼為 bcrypt 雜湊且 cost >= 10；簽章金鑰至少 32 位元組。
-  # 不注入這些憑據變數時，首次建立帳戶會印出 admin 臨時密碼，首次登入必須改密。
+  # 不注入這些憑據變數時，首次啟動建立 admin；停服後執行 admin reset-password 取得臨時密碼，首次登入必須改密。
   # username_env: "ECOKU_ADMIN_USERNAME"
   # password_hash_env: "ECOKU_ADMIN_PASSWORD_HASH"
   # token_key_env: "ECOKU_ADMIN_TOKEN_KEY"
