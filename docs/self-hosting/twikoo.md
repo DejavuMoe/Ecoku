@@ -26,7 +26,7 @@
 
 1. 在后台 [注册目标站点](./admin#sites)。需要回填博主标记时，博主昵称和邮箱两项都要设置。
 2. 从 Twikoo 导出评论，得到一个 JSON 数组文件（整个文件上限 64 MiB，含末尾空白）。数组后只允许空白，不能拼接第二个数组或其他内容。
-3. 按 [备份与恢复](./backup#cold-backup) 做一次冷备份。备份脚本最后会启动服务，下面会再次停止。
+3. 按 [备份与恢复](./backup#cold-backup) 做一次冷备份。备份完成后保持服务停止，直到导入成功。
 
 把导出文件复制到 `data/` 目录，让容器用户可以读取（把 `/path/to/twikoo.json` 换成实际路径，原文件保留不动）：
 
@@ -70,7 +70,7 @@ cd ~/Ecoku
 sudo docker compose run --rm --no-deps ecoku \
   import-twikoo --site=blog --file=/data/twikoo.json
 sudo rm -- data/twikoo.json
-sudo docker compose up -d
+sudo docker compose up -d --wait --wait-timeout 120 ecoku
 )
 ```
 

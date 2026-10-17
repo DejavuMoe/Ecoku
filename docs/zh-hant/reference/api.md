@@ -47,7 +47,7 @@
 - 來源依協定、主機和連接埠比對；HTTP 的 `:80`、HTTPS 的 `:443` 與省略連接埠等價，連接埠前導零及 IPv6 的壓縮、展開寫法不影響比對，其他連接埠仍須一致。此規則也適用於已儲存的站點來源。
 - 送出評論**必須**帶有屬於該站點的 `Origin`，沒有 `Origin` 的送出請求也會被拒絕。
 - 讀取評論清單不要求 `Origin`，伺服器端腳本可以直接呼叫。
-- 瀏覽器發起 CORS 預檢時，`OPTIONS` 請求直接回傳 `204`，沒有回應本文。
+- 通過來源與請求預算檢查的 CORS `OPTIONS` 預檢回傳 `204`，沒有回應本文。來源未登記時回傳 `403`；評論列表預檢也可能觸發讀取限流或並行預算，回傳 `429` 或 `503`。
 
 ### 請求本文上限
 
@@ -290,7 +290,7 @@ Origin: https://blog.example.com
 | --- | --- |
 | `GET /api/admin/login-config` | 不需登入。回傳登入頁需要的人機驗證設定（`captcha`、`turnstileSitekey`）和後台語言 `locale`（取自 `ECOKU_ADMIN_LOCALE`）。 |
 | `POST /api/admin/login` | 請求本文為 `{"username", "password", "captchaToken"}`。成功時回傳 `{"expires_at", "expires_in"}` 並設定 Cookie；以臨時密碼登入時另外回傳 `requires_password_change: true` 和目前的使用者名稱 `username`。受 `rate_limit.admin_login` 速率限制。 |
-| `GET /api/admin/session` | 回傳目前工作階段的 `expires_at`、剩餘秒數 `expires_in` 和是否需要首次改密的 `requires_password_change`，需要改密時另含 `username`；不延長工作階段。 |
+| `GET /api/admin/session` | 回傳目前工作階段的 `expires_at`、剩餘秒數 `expires_in` ；需要首次改密時包含 `requires_password_change: true` 與 `username`，否則省略這兩個欄位；不延長工作階段。 |
 | `POST /api/admin/initial-setup` | 只接受首次臨時密碼工作階段。請求本文為 `{"username", "password"}`；成功後撤銷臨時工作階段並設定普通管理員工作階段。 |
 | `POST /api/admin/logout` | 登出目前的工作階段並清除 Cookie。回傳 `503` 時表示登出沒有成功。 |
 

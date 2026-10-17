@@ -1,6 +1,6 @@
 # Backup and restore
 
-All Ecoku state lives in the deployment directory. A complete backup includes at least:
+With the default Compose mounts, persistent state is in the deployment directory. A complete backup includes at least:
 
 | Path | Contents |
 | --- | --- |
@@ -9,6 +9,8 @@ All Ecoku state lives in the deployment directory. A complete backup includes at
 | `compose.yaml` | Image version and mounts. |
 
 If an older instance still uses `ecoku.env`, back it up too: as long as it still holds the legacy administrator credentials or notification encryption key variables, Ecoku reads them on every start.
+
+For a custom SQLite path, back up its actual directory and the keys beside it, and retain the matching mounts. Securely preserve any additional `env_file` or credentials injected from the host environment as well. The script below covers only the default paths above and the optional `ecoku.env`.
 
 ## Cold backup {#cold-backup}
 
@@ -19,36 +21,59 @@ umask 077
 cd "$HOME/Ecoku"
 install -d -m 700 backups
 sudo docker compose stop ecoku
-archive="backups/ecoku-$(date +%Y%m%d_%H%M%S).tar.gz"
+archive=$(mktemp "backups/ecoku-$(date +%Y%m%d_%H%M%S)-XXXXXX.tar.gz")
 set -- data/ app/config.yaml compose.yaml
 if [ -f ecoku.env ]; then set -- "$@" ecoku.env; fi
 sudo tar -czf - "$@" > "$archive"
 tar -tzf "$archive" >/dev/null
 printf 'Verified backup: %s\n' "$archive"
-sudo docker compose up -d
 )
 ```
 
-The command includes `ecoku.env` when it exists. Archive the entire `data/`, not only the main SQLite file. `Verified backup` means the archive was written and its entries can be listed; it is not a restore rehearsal. A failed backup leaves the service stopped. Fix the cause and retry, or bring the service back with `sudo docker compose up -d ecoku`.
+The command includes `ecoku.env` when present and chooses an archive name without overwriting an existing file. Archive the entire `data/`, not only the main SQLite file. `Verified backup` means the archive was written and its entries can be listed; it is not a restore rehearsal.
 
-## Restore {#restore}
-
-1. Stop the service and move the current `data/` to another directory.
-2. Extract `data/`, `app/config.yaml` and `compose.yaml` from one complete backup; on an older instance, restore `ecoku.env` as well.
-3. Fix permissions and start:
+**The service stays stopped after backup.** Continue with the upgrade, import or restore steps to avoid new writes after the backup. For a routine backup only, resume service after confirming success:
 
 ```bash
 cd ~/Ecoku
+sudo docker compose up -d --wait --wait-timeout 120 ecoku
+```
+
+## Restore {#restore}
+
+To restore on a new host, first install Docker and Compose, create `~/Ecoku/backups/`, and copy the complete archive there. Do not initialize an empty instance or generate new keys first.
+
+Choose a complete cold backup you saved and replace `REPLACE-WITH-YOUR-BACKUP.tar.gz` with its filename. The script checks the archive, stops the service, retains current data and configuration in a `before-restore.*` directory, then restores the archive and waits for health. The restored `compose.yaml` also restores the image version recorded in the backup.
+
+```bash
+(
+set -eu
+cd "$HOME/Ecoku"
+archive="$PWD/backups/REPLACE-WITH-YOUR-BACKUP.tar.gz"
+test -f "$archive"
+tar -tzf "$archive" >/dev/null
+if [ -f compose.yaml ]; then sudo docker compose stop ecoku; fi
+saved=$(mktemp -d "$PWD/before-restore.XXXXXX")
+for path in data app compose.yaml ecoku.env; do
+  if [ -e "$path" ]; then sudo mv -- "$path" "$saved/"; fi
+done
+sudo tar -xzf "$archive" -C "$PWD"
 sudo chown -R 10001:10001 data
 sudo chmod 750 data
 sudo chmod 600 data/ecoku-secrets.json
-sudo docker compose up -d
+sudo chown "$(id -u):$(id -g)" app app/config.yaml
+sudo chmod 755 app
+sudo chmod 644 app/config.yaml
+sudo docker compose config --quiet
+sudo docker compose up -d --force-recreate --wait --wait-timeout 120 ecoku
 curl --fail --silent --show-error http://127.0.0.1:12123/api/health
+printf '\nPrevious files retained in: %s\n' "$saved"
+)
 ```
 
 Do not overwrite a running database, and do not mix files from different points in time: newer WAL files do not belong with an older database, and a newer `data/` does not belong with an older `ecoku-secrets.json`. When the keys do not match the database, the saved notification credentials cannot be decrypted and the service exits at startup with `通知凭据校验失败`. `ecoku-secrets.json` must grant no permissions to the group or others; otherwise startup fails with `持久密钥文件权限过宽；请设为 600`.
 
-After restoring, confirm that you can sign in to the admin console, that the site count is right, and that past comments and notification settings are present.
+Restoring discards comments and settings changes made after the backup. Confirm that you can sign in, that the site count is right, and that past comments, notification and CAPTCHA settings are present; the health endpoint does not inspect database contents. If any step fails, stop and inspect container logs and the retained `before-restore.*` directory rather than deleting the original data and retrying.
 
 ## Backup rules
 

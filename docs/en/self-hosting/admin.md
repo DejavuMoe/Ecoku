@@ -52,6 +52,10 @@ A "site" is one website that embeds the comment section. On 「站点」 (Sites)
 | Comment limit (评论长度上限) | Maximum number of characters in a comment body, 1 to 10000, default 1000. Counted in Unicode characters, so one CJK character or kana counts as one. |
 | Empty-state message (无评论文案) | Text shown when there are no comments yet, 1 to 240 characters. It may contain line breaks. |
 
+### Site URL and page paths {#site-url}
+
+Notification links and the admin link to the original comment append the page key to the site URL. If the page key already includes the deployment subdirectory, do not repeat that subdirectory in the site URL. For a key of `/blog/posts/hello/`, use `https://example.com`; using `https://example.com/blog` would produce `/blog/blog/posts/hello/`. Keep existing page keys, correct the site URL, and check the destination of a historical comment link.
+
 ### Allowed origins
 
 An "origin" is `scheme://domain[:port]`, without a path. The origin of the page that hosts the comment section must be listed here. Otherwise the browser is refused both when reading and when submitting comments.

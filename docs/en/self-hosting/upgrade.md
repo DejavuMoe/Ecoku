@@ -12,7 +12,7 @@ Before upgrading to v0.5.2, read [this release's compatibility notes](./upgrades
 
 Upgrading means changing the image in `compose.yaml` to the new version and starting it. When the new version starts, it checks the database's schema version. If it is lower than the version it supports, it runs the migrations in order:
 
-- Each migration step runs in one transaction. If a step fails, the whole step is rolled back, the database stays as it was, and the service does not start;
+- Each migration step runs in one transaction. If a step fails, that step is rolled back; earlier successful migrations remain applied, and the service does not start;
 - Migrations run on the existing database file. They do not delete or recreate the database, comments, config, WAL files, or your backups;
 - Each completed step appends a record to the `schema_migrations` table;
 - **Migrations only go forward.** An older version of the program cannot open a database with a newer schema and refuses to start.
@@ -23,7 +23,7 @@ That makes a backup taken before the upgrade the only way to roll back to an old
 
 **1. Read the upgrade notes.** Find the target version in the [version list](#versions) below, and check whether it has config changes or a schema migration.
 
-**2. Take a cold backup with the service stopped.** Follow [Backup and restore](./backup#cold-backup) and confirm that the output includes `Verified backup`.
+**2. Take a cold backup with the service stopped.** Follow [Backup and restore](./backup#cold-backup) and confirm that the output includes `Verified backup`. Keep the service stopped until step 4 starts the target image.
 
 **3. Change the image version.** Edit `~/Ecoku/compose.yaml` and change `image` to the target version, for example:
 
@@ -36,10 +36,13 @@ Use an exact version number, not `latest`. If the upgrade notes ask you to chang
 **4. Pull and start.**
 
 ```bash
+(
+set -eu
 cd ~/Ecoku
 sudo docker compose config --quiet
 sudo docker compose pull
-sudo docker compose up -d
+sudo docker compose up -d --force-recreate --wait --wait-timeout 120 ecoku
+)
 ```
 
 **5. Check.**

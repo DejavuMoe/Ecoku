@@ -17,7 +17,11 @@
 儲存檔案後，在 Compose 所在目錄重建容器並查看日誌。單純修改掛載的 YAML 不會熱更新服務：
 
 ```bash
-sudo docker compose up -d --force-recreate ecoku
+(
+set -eu
+sudo docker compose config --quiet
+sudo docker compose up -d --force-recreate --wait --wait-timeout 120 ecoku
+)
 sudo docker compose logs --tail=100 ecoku
 ```
 

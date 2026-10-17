@@ -42,7 +42,7 @@ Keep all four elements with `data-ecoku-*` inside the wrapper: `data-ecoku-mount
 | `data-server-url` | Yes | The Ecoku address, such as `https://ecoku.example.com`. It must be a full URL starting with `http://` or `https://`. |
 | `data-site-id` | Yes | The site ID registered in the admin console. |
 | `data-page-key` | Yes | The current post's page key: a relative path on the site, at most 512 characters, without `?` or `#`. See below. |
-| `data-page-title` | No | The post title, shown in notification emails. Anything beyond 200 characters is cut off. |
+| `data-page-title` | No | The post title, shown in notification emails. Truncated to the first 200 UTF-16 code units, as in the SDK constructor options. |
 | `data-page-size` | No | How many root comments to show per page, 1 to 100, default 10. Invalid values are treated as 10. |
 | `data-theme` | No | `auto` (default), `light`, or `dark`. `auto` reads the colour variables defined by the blog first, and falls back to the system light/dark preference. |
 | `data-css-url` | No | Replaces the default styles. Accepts an absolute HTTP(S) URL, a path starting with `/`, `none`, or the compatible value `-`. See [Custom styles](./custom-css). |
@@ -68,10 +68,12 @@ These are for reference only. Look at the generated HTML in your browser and con
 
 1. After the page is parsed, the loader reads the attributes on the wrapper. If `data-server-url`, `data-site-id`, or `data-page-key` is missing, or any of the four `data-ecoku-*` child elements is missing, it **skips silently**, and nothing appears on the page.
 2. The loader loads `ecoku.umd.js` from its own directory and initializes the comment section. No "Loading" text is shown while it loads.
-3. If `ecoku.umd.js` fails to load, initialization fails (for example because of an invalid attribute value), or the whole process takes longer than 12 seconds, an error message and the **Reload comments** button are shown, and the visitor can click to retry. The error message follows `data-i18n`. Without it, the page's `<html lang>` selects Traditional Chinese (`zh-Hant`, `zh-TW`, `zh-HK`, `zh-MO`) or English (`en`, `en-*`); anything else gives Simplified Chinese.
+3. If `ecoku.umd.js` fails to load, initialization fails (for example because of an invalid attribute value), or either script loading or component initialization exceeds its own 12-second timeout, an error message and the **Reload comments** button are shown, and the visitor can click to retry. The error message follows `data-i18n`. Without it, the page's `<html lang>` selects Traditional Chinese (`zh-Hant`, `zh-TW`, `zh-HK`, `zh-MO`) or English (`en`, `en-*`); anything else gives Simplified Chinese.
 4. Once the comment section is mounted, errors from the comment API itself (for example an unregistered origin, rate limiting or a network outage) are shown by the comment section as 「评论暂时不可用」 (Comments are temporarily unavailable) with a 「重新加载」 (Reload) button.
 
-A page can have more than one wrapper. Each one is initialized independently.
+A page can contain multiple wrappers, each with its own mount element and unique HTML `id`. They share one SDK. The loader automatically adds only the first external stylesheet whose value is neither `none` nor `-`, so use the same SDK version and `data-css-url` for every wrapper. Scope CSS rules under each wrapper to vary their appearance.
+
+The loader scans wrappers present at startup only; it does not automatically mount content inserted later. Use the [SDK](./sdk) to manage mounting and cleanup when an SPA changes posts.
 
 ## Host the loader yourself
 

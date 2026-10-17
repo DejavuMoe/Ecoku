@@ -70,6 +70,8 @@ comments: false
 
 在 Ecoku 後台為這個站點新增允許來源，例如 `https://blog.example.com`。在本機執行 `hugo server` 預覽時，把 `http://localhost:1313` 也加進去。
 
+Hugo 的 `.RelPermalink` 包含 `baseURL` 中的子目錄。例如 `baseURL: https://example.com/blog/` 會產生 `/blog/posts/…`；Ecoku 的站點 URL 應填寫 `https://example.com`，避免通知與後台連結重複拼接 `/blog`。詳見 [站點 URL 與頁面路徑](../self-hosting/admin#site-url)。
+
 ## 外觀
 
 預設樣式會讀取 PaperMod 的顏色變數（`--theme`、`--entry`、`--primary`、`--secondary`、`--content`、`--border`），並跟隨主題的明暗切換，通常不需要額外設定。

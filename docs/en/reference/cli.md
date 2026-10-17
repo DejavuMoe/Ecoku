@@ -50,9 +50,12 @@ provider=turnstile turnstile_secret_set=true cap_secret_set=false
 Turns CAPTCHA off. Use it when a misconfigured verification service keeps the admin from signing in to the admin console.
 
 ```bash
+(
+set -eu
 sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku captcha disable
-sudo docker compose up -d
+sudo docker compose up -d --wait --wait-timeout 120 ecoku
+)
 ```
 
 The saved Turnstile and Cap settings and keys are all kept. After signing in to the admin console, you can fix them on the **Security** (安全) page and enable CAPTCHA again. If CAPTCHA is already off, the command prints `CAPTCHA 已处于关闭状态` (CAPTCHA is already off) and changes nothing.
@@ -66,19 +69,24 @@ The file must be a single JSON array, with the entire file no larger than 64 MiB
 First run a dry run with `--dry-run`:
 
 ```bash
+(
+set -eu
 sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku \
   import-twikoo --site=blog --file=/data/twikoo.json --dry-run
-sudo docker compose up -d
+)
 ```
 
-After checking the result, drop `--dry-run` to run the real import:
+Keep the service stopped after the dry run so the target site cannot receive new comments. After checking the result, drop `--dry-run` to run the real import:
 
 ```bash
+(
+set -eu
 sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku \
   import-twikoo --site=blog --file=/data/twikoo.json
-sudo docker compose up -d
+sudo docker compose up -d --wait --wait-timeout 120 ecoku
+)
 ```
 
 | Argument | Description |

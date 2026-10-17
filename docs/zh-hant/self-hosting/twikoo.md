@@ -26,7 +26,7 @@
 
 1. 在後台[註冊目標站點](./admin#sites)。需要回填部落客標記時，部落客暱稱和信箱兩項都要設定。
 2. 從 Twikoo 匯出評論，得到一個 JSON 陣列檔案（整個檔案上限 64 MiB，包含結尾空白）。陣列後只允許空白，不能接上第二個陣列或其他內容。
-3. 依照[備份與還原](./backup#cold-backup)做一次冷備份。備份腳本最後會啟動服務，下面會再次停止。
+3. 依照[備份與還原](./backup#cold-backup)做一次冷備份。備份完成後保持服務停止，直到匯入成功。
 
 把匯出檔案複製到 `data/` 目錄，讓容器使用者可以讀取（把 `/path/to/twikoo.json` 換成實際路徑，原始檔案保留不動）：
 
@@ -70,7 +70,7 @@ cd ~/Ecoku
 sudo docker compose run --rm --no-deps ecoku \
   import-twikoo --site=blog --file=/data/twikoo.json
 sudo rm -- data/twikoo.json
-sudo docker compose up -d
+sudo docker compose up -d --wait --wait-timeout 120 ecoku
 )
 ```
 

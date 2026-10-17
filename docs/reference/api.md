@@ -47,7 +47,7 @@
 - 来源按协议、主机和端口匹配；HTTP 的 `:80`、HTTPS 的 `:443` 与省略端口等价，端口前导零及 IPv6 的压缩、展开写法不影响匹配，其他端口仍须一致。此规则也适用于已保存的站点来源。
 - 提交评论**必须**带有属于该站点的 `Origin`，没有 `Origin` 的提交也会被拒绝。
 - 读取评论列表不要求 `Origin`，服务端脚本可以直接调用。
-- 浏览器发起 CORS 预检时，`OPTIONS` 请求直接返回 `204`，没有响应体。
+- 通过来源和请求预算检查的 CORS `OPTIONS` 预检返回 `204`，没有响应体。来源未登记时返回 `403`；评论列表预检也可能触发读取限流或并发预算，返回 `429` 或 `503`。
 
 ### 请求体上限
 
@@ -290,7 +290,7 @@ Origin: https://blog.example.com
 | --- | --- |
 | `GET /api/admin/login-config` | 无需登录。返回登录页需要的人机验证配置（`captcha`、`turnstileSitekey`）和后台语言 `locale`（取自 `ECOKU_ADMIN_LOCALE`）。 |
 | `POST /api/admin/login` | 请求体 `{"username", "password", "captchaToken"}`。成功返回 `{"expires_at", "expires_in"}` 并设置 Cookie；用临时密码登录时额外返回 `requires_password_change: true` 和当前用户名 `username`。受 `rate_limit.admin_login` 限流。 |
-| `GET /api/admin/session` | 返回当前会话的 `expires_at`、剩余秒数 `expires_in` 和是否需要首次改密的 `requires_password_change`，需要改密时另含 `username`；不延长会话。 |
+| `GET /api/admin/session` | 返回当前会话的 `expires_at`、剩余秒数 `expires_in` ；需要首次改密时包含 `requires_password_change: true` 与 `username`，否则省略这两个字段；不延长会话。 |
 | `POST /api/admin/initial-setup` | 只接受首次临时密码会话。请求体为 `{"username", "password"}`，成功后撤销临时会话并设置普通管理员会话。 |
 | `POST /api/admin/logout` | 注销当前会话并清除 Cookie。返回 `503` 时表示注销没有成功。 |
 

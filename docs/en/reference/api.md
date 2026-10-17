@@ -47,7 +47,7 @@ When the path exists but does not support the request method, the response is th
 - Origins are matched by scheme, host, and port. HTTP `:80` and HTTPS `:443` are equivalent to omitting the port; leading zeros in a port and compressed or expanded IPv6 spellings do not affect matching. Other ports must still match. This also applies to previously stored site origins.
 - Submitting a comment **must** carry an `Origin` that belongs to the site. Submissions without `Origin` are rejected too.
 - Reading the comment list does not require `Origin`, so server-side scripts can call it directly.
-- For a CORS preflight, the `OPTIONS` request returns `204` with an empty body.
+- CORS `OPTIONS` preflights return an empty `204` after passing origin and request-budget checks. An unregistered origin returns `403`; comment-list preflights may also hit rate or concurrency limits and return `429` or `503`.
 
 ### Request body limits
 
@@ -290,7 +290,7 @@ Admin endpoints live under `/api/admin/`. When `admin.allowed_origins` below is 
 | --- | --- |
 | `GET /api/admin/login-config` | No sign-in needed. Returns the CAPTCHA settings the sign-in page needs (`captcha`, `turnstileSitekey`) and the admin language `locale` (from `ECOKU_ADMIN_LOCALE`). |
 | `POST /api/admin/login` | Request body `{"username", "password", "captchaToken"}`. On success, returns `{"expires_at", "expires_in"}` and sets the cookie; signing in with a temporary password also returns `requires_password_change: true` and the current `username`. Rate limited by `rate_limit.admin_login`. |
-| `GET /api/admin/session` | Returns `expires_at`, remaining `expires_in`, and `requires_password_change`, plus `username` while the password still has to be changed. It does not extend the session. |
+| `GET /api/admin/session` | Returns `expires_at` and remaining `expires_in`. Includes `requires_password_change: true` and `username` only while a password change is required; otherwise both fields are omitted. It does not extend the session. |
 | `POST /api/admin/initial-setup` | Accepts only a temporary first-login session. The body is `{"username", "password"}`; success revokes the temporary session and sets a normal administrator session. |
 | `POST /api/admin/logout` | Revokes the current session and clears the cookie. A `503` means sign-out did not succeed. |
 
