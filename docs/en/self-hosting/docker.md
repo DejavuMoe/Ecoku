@@ -8,7 +8,7 @@ This guide starts from an empty Linux host and deploys Ecoku with Docker Compose
 
 You need:
 
-- a Linux host with Docker Engine, Compose v2 and `sudo` access;
+- a Linux host with Docker Engine and Compose, with `sudo` access; Compose must support `up --wait --wait-timeout` (check `docker compose up --help`);
 - a domain dedicated to Ecoku, such as `ecoku.example.com`;
 - a reverse proxy that terminates public HTTPS.
 
@@ -96,47 +96,46 @@ Let the container's non-root user read the configuration:
 chmod 644 ~/Ecoku/app/config.yaml
 ```
 
-## 4. Start
+## 4. Start and wait for initialization {#start}
 
 ```bash
+(
+set -eu
 cd ~/Ecoku
 sudo docker compose config --quiet
 sudo docker compose pull
-sudo docker compose up -d
+sudo docker compose up -d --wait --wait-timeout 120
 sudo docker compose ps
-sudo docker compose logs --tail=100 ecoku
+)
 ```
 
-On the first start, Ecoku:
+After the command succeeds, the container should be `healthy`. `--wait` waits up to 120 seconds for the health check to pass. If it fails or the container is unhealthy, run `sudo docker compose logs --tail=100 ecoku`, fix the error, and retry before resetting the password.
 
-1. initializes the SQLite database and runs the migrations;
-2. creates the administrator `admin`;
-3. generates random initial credentials for the administrator;
-4. saves the session signing key and the notification encryption key in `data/ecoku-secrets.json`.
+The first start initializes SQLite, creates the administrator `admin`, and saves the session signing key and notification encryption key in `data/ecoku-secrets.json`. Restarting neither resets the administrator password nor replaces the persistent keys.
 
-Starting with v0.5.2, startup logs no longer print an administrator password. They ask the operator to stop the service and run `admin reset-password`. Follow the first-sign-in procedure below to obtain a temporary password and invalidate the original credentials. Restarting does not generate a new password or replace the persistent keys.
+## 5. Obtain the temporary administrator password {#temporary-password}
 
-If an existing instance has not completed its initial password change, follow the reset procedure below as well. Upgrading alone does not invalidate a password already written to the logs.
-
-Check the health endpoint:
+**This step is required for a new deployment. v0.5.2 does not print an initial password in startup logs and has no fixed default password.** Complete [startup and the health check](#start), then run this in a terminal on the deployment host:
 
 ```bash
-curl --fail --silent --show-error http://127.0.0.1:12123/api/health
-```
-
-## 5. First sign-in {#first-sign-in}
-
-Before opening the admin console, follow [configure HTTPS reverse proxying for the Ecoku domain](./reverse-proxy) to set up Caddy or Nginx, and confirm that the public health endpoint responds. By default the container listens only on the host's loopback port and cannot be reached directly from the internet.
-
-After the first startup completes, stop the service, generate a temporary login password in the host terminal, and start the service again:
-
-```bash
+(
+set -eu
+cd ~/Ecoku
 sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku admin reset-password
-sudo docker compose up -d
+sudo docker compose up -d --wait --wait-timeout 120
+)
 ```
 
-The command prints `管理员临时密码：…` and revokes every administrator session. Keep this terminal output private; do not forward it to shared logs or tickets. Instances with an established administrator account do not need this step when upgrading.
+Find `管理员临时密码：…` in this command's terminal output and save the temporary password after the colon. The one-off `docker compose run` container prints it; `docker compose logs ecoku` reads the service container's logs and cannot retrieve it. If you lose it, repeat this step to generate a new password and invalidate the previous password and every administrator session. Do not forward the terminal output to shared logs or tickets.
+
+If that line is missing, fix the command error before retrying; the command group above stops on failure. If it reports `管理员账户尚未初始化`, check the deployment directory, configuration, and data mounts. A new instance must complete [step 4](#start) first. Do not delete the database or persistent keys to fix this.
+
+An existing instance with a permanent password does not need this step when upgrading. An older instance that has not completed its initial password change does: upgrading alone does not invalidate the temporary password in its old logs.
+
+## 6. First sign-in {#first-sign-in}
+
+First [obtain the temporary administrator password](#temporary-password), then follow [configure HTTPS reverse proxying for the Ecoku domain](./reverse-proxy) to set up Caddy or Nginx and confirm that the public health endpoint responds. By default the container listens only on the host's loopback port and cannot be reached directly from the internet. `notifications.instance_public_url` must match the actual admin origin; replace the example domain.
 
 Open `https://ecoku.example.com/admin/` and sign in as `admin` with the temporary password printed by the command. The console then opens the 「设置你的密码」 (Set your password) page, which you must complete first:
 

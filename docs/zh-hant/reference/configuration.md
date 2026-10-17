@@ -44,6 +44,8 @@ sudo docker compose logs --tail=100 ecoku
 
 範本中的 `*_env` 是程式讀取的環境變數名稱，不是秘密值；需要自行注入時，在 Compose 的 `environment` 或 `env_file` 提供對應變數。預設自動建立管理員和持久金鑰，不必注入這些憑據。映像檔已設定 `GIN_MODE=release` 和 `ECOKU_RUNTIME=container`，不要覆寫。
 
+新實例自動建立帳戶，但不在日誌中提供密碼。完成首次啟動後，依 [取得管理員臨時密碼](../self-hosting/docker#temporary-password) 產生登入憑據。
+
 ## 初始化與持久資料 {#legacy}
 
 站點種子 `sites` 僅在建立全新資料庫時匯入，不會覆蓋既有站點；後續站點編輯、SMTP、Telegram、人機驗證與 Smoji 在後台完成。資料庫和同目錄的 `ecoku-secrets.json` 必須一起備份。修改資料庫路徑不會自動搬移資料。

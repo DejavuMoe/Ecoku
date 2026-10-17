@@ -127,4 +127,4 @@ done
 
 All three lines should start with `200`. It is fine to expose the health endpoint publicly; it returns only a status and a timestamp.
 
-Once everything checks out, open `https://ecoku.example.com/admin/` and continue with [setting up the admin console](./admin).
+After these checks pass, follow [first sign-in](./docker#first-sign-in) to use the temporary password, set a permanent password, and [register your site](./admin#sites). If you have not obtained the password yet, [generate a temporary password](./docker#temporary-password) first.

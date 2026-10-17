@@ -21,15 +21,12 @@
 
 ## 快速上手
 
-```bash
-mkdir -p ~/Ecoku/app ~/Ecoku/data && cd ~/Ecoku
-# 容器以 UID/GID 10001 執行，只有 data/ 可寫
-sudo chown -R 10001:10001 data && sudo chmod 750 data
-# 準備 compose.yaml 與 app/config.yaml，可參考本倉庫根目錄的 compose.yaml 與 deploy/ 範本
-sudo docker compose up -d
-```
+依 [Docker 部署](https://ecoku.zsh.moe/zh-hant/self-hosting/docker) 完成以下步驟：
 
-接著透過反向代理為容器設定 HTTPS 網域，再至 `/admin/` 註冊站點。完整步驟請見文件站的 [Docker 部署](https://ecoku.zsh.moe/zh-hant/self-hosting/docker)。
+1. 準備 `compose.yaml`、`app/config.yaml` 和 `data/`，將 `instance_public_url` 改成 Ecoku 的實際 HTTPS 位址。
+2. 啟動並等待容器健康，再 [停服產生管理員臨時密碼](https://ecoku.zsh.moe/zh-hant/self-hosting/docker#temporary-password)。**v0.5.2 的啟動日誌不提供密碼，也沒有固定預設密碼。**
+3. 設定 HTTPS 反向代理，用 `admin` 和剛才命令輸出的臨時密碼登入 `/admin/`，依頁面要求設定正式密碼。
+4. 在後台註冊站點，取得接入所需的站點 ID。
 
 站點註冊完成後，在文章範本中嵌入評論區程式碼：
 
