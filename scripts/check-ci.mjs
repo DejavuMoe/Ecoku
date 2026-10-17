@@ -65,6 +65,7 @@ function checkRelease(source, scanner) {
   assert.match(image, /^      - name: Verify final image runtime and vulnerabilities\n        env:\n          IMAGE: \$\{\{ needs.check.outputs.image \}\}@\$\{\{ steps.build.outputs.digest \}\}\n          ARCH: \$\{\{ matrix.arch \}\}\n        run: \|\n          docker pull "\$IMAGE"\n          sh scripts\/verify-image.sh "\$IMAGE"\n          bash scripts\/scan-image.sh "\$IMAGE" "\$ARCH" "\$RUNNER_TEMP\/image-checks"\n      - name: Save image SBOM and scan results\n        if: always\(\)\n        uses: actions\/upload-artifact@[a-f0-9]{40} #[^\n]+\n        with:\n          name: image-checks-\$\{\{ matrix.arch \}\}\n          path: \$\{\{ runner.temp \}\}\/image-checks\n          if-no-files-found: warn\n          retention-days: 30\n(?=      - name: Export image digest\n)/m)
   assert.match(source, /^  manifest:\n    needs: \[check, image\]\n/m)
   assert.match(source, /^  release:\n    needs: \[manifest, npm\]\n/m)
+  assert.match(source, /^          node scripts\/check-release\.mjs "\$TAG" --notes > artifact\/RELEASE_NOTES\.md$/m)
   assert.doesNotMatch(source, /^\s+continue-on-error:/m, 'Image failures must block the manifest and release')
   assert.doesNotMatch(source, /^    if:/m, 'Required release jobs must not be conditional')
   assert.doesNotMatch(source, /^(?:defaults:|    defaults:|        shell:)/m, 'Do not override the fail-fast workflow shell')
@@ -101,6 +102,7 @@ for (const [before, after] of [
   ['name: Export image digest', 'name: Export unchecked digest'],
   ['needs: [check, image]', 'needs: check'],
   ['needs: [manifest, npm]', 'needs: npm'],
+  ['--notes > artifact/RELEASE_NOTES.md', '> artifact/RELEASE_NOTES.md'],
   ['  image:\n', '  image:\n    continue-on-error: true\n'],
   ['  image:\n', '  image:\n    if: false\n'],
   ['        run: |\n          docker pull', '        shell: bash {0}\n        run: |\n          docker pull'],

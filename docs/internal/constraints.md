@@ -73,7 +73,7 @@
 
 - P1 只有一个实例级管理员，可管理全部已注册站点；站点运营员和细粒度 RBAC 后置。
 - 管理后台始终启用，没有开关。新实例在 SQLite 中保存管理员账户，在 `data/ecoku-secrets.json` 中保存会话签名密钥和通知加密主密钥；首次启动不向日志输出密码，操作者停服后通过 `admin reset-password` 获取随机临时密码，首次登录必须改密。旧实例继续读取原环境变量并在首次升级时导入持久状态；`captcha`、`import-twikoo` 命令不需要管理员凭据。
-- 新配置只写当前字段。旧实例的 `admin.enabled`、`admin.token_ttl_minutes`、管理员与通知的 `*_env`、端口、日志及存储路径在兼容期内继续读取，并在升级文档中说明迁移。YAML `sites` 是当前可选的站点种子，只在创建全新数据库时导入；其中的 `management_key_env` 是当前可选的站点管理凭据绑定，每次启动都按 YAML 生效，不限于首次导入。两者都在 `deploy/config*.yaml.example` 中按当前参数说明。
+- 新配置只写当前字段。`admin.enabled` 被忽略，不作为可配置字段；`admin.token_ttl_minutes` 仅接受省略、0 或 480。管理员与通知的 `*_env`、端口、日志及存储路径是有效的可选覆盖项，按当前参数说明。YAML `sites` 是当前可选的站点种子，只在创建全新数据库时导入；其中的 `management_key_env` 是当前可选的站点管理凭据绑定，每次启动都按 YAML 生效，不限于首次导入。两者都在 `deploy/config*.yaml.example` 中按当前参数说明。
 - `admin.allowed_origins` 未填写时取 `notifications.instance_public_url` 的来源；两者都没有时，服务必须启动失败。管理端来源不得与任何站点允许来源重复，启动时也要检查数据库中已有站点。来源按规范化后的协议、主机和端口比较：省略默认端口与 HTTP `:80`、HTTPS `:443` 等价，端口前导零不改变含义；已保存来源使用相同规则。
 - 管理员会话有效期固定为登录后 8 小时，不滚动续期，不提供 refresh token。SQLite 仅保存随机化签名凭据的 SHA-256 摘要与绝对到期时间；认证同时检查签名、凭据版本与未过期会话记录。退出撤销当前会话，Cookie 与 Bearer 均不能绕过撤销；旧版未登记 token 升级后失效。轮换密码哈希或签名密钥并重启服务会使旧 token 失效。
 - 公开的登录验证配置请求不随管理会话失效而取消，仍受请求超时和页面卸载取消约束。配置尚未加载、无效或验证组件未就绪时不得提交登录；只有明确收到关闭验证的配置才可无验证组件登录。加载失败显示错误并允许手动重试，保留已填账号密码；重试只重新加载验证，不自动提交登录。退出或会话失效仍取消私有管理请求并丢弃迟到响应。
@@ -172,7 +172,7 @@
 - P4 的默认交付拓扑是单个非 root 运行容器：Go 进程同时提供 API 和 `/admin/` 静态管理端，SQLite 数据与配置从容器外持久化；
   容器内管理端静态文件缺失时，服务必须启动失败；源码运行只提供 API，页面由 Vite 开发服务器提供。
 - 管理端使用 Svelte 5 与 Vite 构建静态资源，沿用后台 v16 及已批准补充原型；评论区 SDK 继续使用无框架 TypeScript，并保持评论区 v17 基线。框架替换不改变 `/admin/`、API、会话协议、配置、数据库格式或镜像内资源目录，不要求部署额外前端服务。
-- 镜像以 `GIN_MODE=release`、`ECOKU_RUNTIME=container` 运行；监听端口固定为 12123，容器内浏览器资源、后台、数据库分别固定在 `/app/client`、`/app/admin`、`/data/ecoku.sqlite3`，源码运行数据库固定在工作目录下 `./data/ecoku.bin`。部署模板只要求 `notifications.instance_public_url`，
+- 镜像以 `GIN_MODE=release`、`ECOKU_RUNTIME=container` 运行；监听端口默认为 12123，容器内浏览器资源、后台、数据库默认分别位于 `/app/client`、`/app/admin`、`/data/ecoku.sqlite3`，源码运行数据库默认位于工作目录下 `./data/ecoku.bin`；支持配置模板列出的覆盖项，修改容器端口需同步端口映射和健康检查，修改数据路径不会自动搬迁数据。部署模板只要求 `notifications.instance_public_url`，
   新部署不需要 `ecoku.env`；管理员账户、会话签名密钥和通知加密主密钥由程序写入 `data/`。旧 `ecoku.env` 在迁移期继续兼容。
 - 应用默认将日志写入 stdout，供 `docker compose logs` 跟随，轮转和保留由 Docker 日志设置决定；可选 `site.log_path` 启用按大小轮转的文件日志。Compose 不挂载 `app/logs`，也不覆盖 daemon 的日志策略。访问日志只记录路由模板，未匹配路由使用固定值；不写入实际路径参数。日志仍不得包含 IP、UA、凭据、token 或评论正文。
 - 浏览器 SDK 的 npm 包名为 `ecoku`，版本由 `packages/client/package.json` 声明，并与根 `VERSION` 一致，提供 ESM、CommonJS、UMD 和 TypeScript 声明；

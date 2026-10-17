@@ -1,8 +1,8 @@
 # Docker 部署
 
-本頁適用於 v0.5.1 及後續公開版本，映像檔使用 GHCR。既有實例請先閱讀 [升級說明](./upgrade)。
+本頁適用於 v0.5.2 及後續公開版本，映像檔使用 GHCR。既有實例請先閱讀 [升級說明](./upgrade)。
 
-本頁從一台空的 Linux 主機開始，用 Docker Compose 部署 Ecoku。新部署只需要三樣東西：`compose.yaml`、`app/config.yaml` 和 `data/`。管理員臨時密碼、工作階段簽章金鑰和通知加密主金鑰都在首次啟動時自動產生，不需要寫進設定檔。
+本頁從一台空的 Linux 主機開始，用 Docker Compose 部署 Ecoku。新部署只需準備：`compose.yaml`、`app/config.yaml` 和 `data/` 目錄。首次啟動會建立管理員帳戶並產生持久金鑰；登入用的臨時密碼由下方的重設命令輸出，不需要寫進設定檔。
 
 ## 開始之前
 
@@ -46,7 +46,7 @@ sudo chmod 750 data
 ```yaml
 services:
   ecoku:
-    image: "ghcr.io/dejavumoe/ecoku:v0.5.1"
+    image: "ghcr.io/dejavumoe/ecoku:v0.5.2"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -114,7 +114,7 @@ sudo docker compose logs --tail=100 ecoku
 3. 為管理員產生隨機初始憑據；
 4. 在 `data/ecoku-secrets.json` 保存工作階段簽章金鑰和通知加密主金鑰。
 
-目前發布版 `v0.5.1` 仍會把首次臨時密碼寫入日誌；尚未發布的原始碼安全修復已停止輸出密碼，改為提示停服後執行 `admin reset-password`。下面的首次登入流程適用於這兩種版本，並使原臨時密碼失效。重新啟動不會產生新密碼，也不會覆寫持久金鑰。
+從 v0.5.2 起，啟動日誌不再輸出管理員密碼，只提示停服後執行 `admin reset-password`。依下方的首次登入流程取得臨時密碼，並使原始憑據失效。重新啟動不會產生新密碼，也不會覆寫持久金鑰。
 
 若舊實例仍未完成首次改密，也應執行下面的重設流程；僅升級程式不會使已寫入日誌的密碼失效。
 

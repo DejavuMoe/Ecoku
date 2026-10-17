@@ -209,17 +209,7 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
         run: |
-          node --input-type=module <<'JS'
-          import assert from 'node:assert/strict'
-          import { readFileSync, writeFileSync } from 'node:fs'
-          const version = process.env.TAG.slice(1)
-          const changelog = readFileSync('CHANGELOG.md', 'utf8')
-          const section = changelog.split('\n## ').find(part => part.startsWith(`[${version}] - `))
-          assert.ok(section, 'Missing release notes')
-          const notes = section.slice(section.indexOf('\n') + 1).split('\n[Unreleased]:')[0].trim()
-          assert.ok(notes, 'Empty release notes')
-          writeFileSync('artifact/RELEASE_NOTES.md', `${notes}\n`)
-          JS
+          node scripts/check-release.mjs "$TAG" --notes > artifact/RELEASE_NOTES.md
           cd artifact
           sha256sum ecoku-*.tgz > SHA256SUMS
       - name: Create GitHub Release

@@ -282,7 +282,7 @@ Origin: https://blog.example.com
 - 登录请求，以及用 Cookie 认证的非 GET 请求，必须带有 `admin.allowed_origins` 中的 `Origin`。
 - 用 `Authorization: Bearer <凭据>` 认证的请求可以不带 `Origin`；如果带了，仍须在 `admin.allowed_origins` 中，否则返回 `403`。Bearer 凭据必须是当前有效、未注销的会话；v0.2.4 之前签发的旧 token 不再有效。
 - **站点管理凭据**：站点在 `app/config.yaml` 中配置了 `management_key_env` 时，服务端自动化可以用 `Authorization: EcokuSite <凭据>` 对该站点的评论执行墓碑删除（`DELETE /api/admin/sites/:siteId/comments/:commentId`）。凭据无效返回 `401`；指向其他站点返回 `403`「无权管理该站点」；访问其他管理接口（包括彻底删除和读取接口）返回 `403`「站点管理凭据不能访问此接口」。
-- 登录要求 HTTPS，只有回环地址可以用 HTTP。
+- 登录要求 HTTPS；只有已在生效的管理来源白名单中登记的 `localhost` 或回环 IP 可以用 HTTP，此时 Cookie 才省略 Secure。生产 HTTPS 来源始终设置 Secure，不根据反向代理到应用的内部 HTTP 连接或 `X-Forwarded-Proto` 降级；HttpOnly 和 SameSite=Strict 保持启用。
 
 ### 登录与会话
 

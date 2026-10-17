@@ -1,8 +1,8 @@
 # Docker deployment
 
-This guide covers public releases from v0.5.1 onward, using images from GHCR. For an existing instance, read [upgrading](./upgrade) first.
+This guide covers public releases from v0.5.2 onward, using images from GHCR. For an existing instance, read [upgrading](./upgrade) first.
 
-This guide starts from an empty Linux host and deploys Ecoku with Docker Compose. A new deployment needs only three things: `compose.yaml`, `app/config.yaml` and `data/`. The administrator's temporary password, the session signing key and the notification encryption key are all generated on the first start; you do not write them into any configuration file.
+This guide starts from an empty Linux host and deploys Ecoku with Docker Compose. A new deployment needs only `compose.yaml`, `app/config.yaml` and the `data/` directory. First startup creates the administrator account and persistent keys; the reset command below prints the temporary password used to sign in. You do not write these credentials into a configuration file.
 
 ## Before you start
 
@@ -46,7 +46,7 @@ sudo chmod 750 data
 ```yaml
 services:
   ecoku:
-    image: "ghcr.io/dejavumoe/ecoku:v0.5.1"
+    image: "ghcr.io/dejavumoe/ecoku:v0.5.2"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -114,7 +114,7 @@ On the first start, Ecoku:
 3. generates random initial credentials for the administrator;
 4. saves the session signing key and the notification encryption key in `data/ecoku-secrets.json`.
 
-The current release, `v0.5.1`, still prints the initial temporary password to the log. The unreleased source security fix stops printing passwords and instead asks the operator to stop the service and run `admin reset-password`. The first-sign-in procedure below works with both versions and invalidates the original temporary password. Restarting does not generate a new password or replace the persistent keys.
+Starting with v0.5.2, startup logs no longer print an administrator password. They ask the operator to stop the service and run `admin reset-password`. Follow the first-sign-in procedure below to obtain a temporary password and invalidate the original credentials. Restarting does not generate a new password or replace the persistent keys.
 
 If an existing instance has not completed its initial password change, follow the reset procedure below as well. Upgrading alone does not invalidate a password already written to the logs.
 
