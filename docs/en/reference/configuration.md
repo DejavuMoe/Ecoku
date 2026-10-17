@@ -44,6 +44,8 @@ Neither variable sets the comment language. Choose it in 「评论区语言」 (
 
 The template’s `*_env` fields name environment variables read by the process, not secret values. To supply values yourself, inject the named variables through Compose `environment` or `env_file`. By default the administrator and persistent keys are created automatically. Do not override the image’s `GIN_MODE=release` or `ECOKU_RUNTIME=container`.
 
+A new instance creates an account automatically but does not print a password in its logs. After the first startup completes, [obtain the temporary administrator password](../self-hosting/docker#temporary-password) to sign in.
+
 ## Initialization and persistent data {#legacy}
 
 The `sites` seeds are imported only when creating a brand-new database and do not overwrite existing sites. Later site edits, SMTP, Telegram, CAPTCHA and Smoji settings belong in the console. Back up the database and its sibling `ecoku-secrets.json` together. Changing the database path does not move data.

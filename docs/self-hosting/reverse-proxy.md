@@ -127,4 +127,4 @@ done
 
 三行都应以 `200` 开头。健康接口可以对公网开放，它只返回状态和时间戳。
 
-确认无误后，打开 `https://ecoku.example.com/admin/` 继续 [配置管理后台](./admin)。
+确认无误后，按 [首次登录](./docker#first-sign-in) 使用已取得的临时密码登录并设置正式密码，再 [注册站点](./admin#sites)。尚未取得密码时，先完成 [生成临时密码](./docker#temporary-password)。

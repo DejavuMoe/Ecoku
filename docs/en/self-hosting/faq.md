@@ -96,6 +96,12 @@ Set the time zone in Compose at `services.ecoku.environment.TZ`, for example `TZ
 
 ## Admin console
 
+### A new deployment has no initial password in its logs {#initial-password}
+
+v0.5.2 no longer writes passwords to startup logs and has no fixed default password. Follow [obtain the temporary administrator password](./docker#temporary-password): wait for the first startup to become healthy, stop the service, run `admin reset-password`, read the password from that command's terminal output, and start the service again. `docker compose logs ecoku` cannot retrieve the one-off command's output.
+
+If reset reports `管理员账户尚未初始化`, check that the current directory, configuration, and data mounts belong to the intended instance. A new instance must start successfully first. Do not delete the database or `ecoku-secrets.json`.
+
 ### Cannot sign in
 
 Check these in order:
@@ -110,9 +116,13 @@ Check these in order:
 The administrator account is stored in the database under `data/`. Stop the service and generate a new temporary password:
 
 ```bash
+(
+set -eu
+cd ~/Ecoku
 sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku admin reset-password
-sudo docker compose up -d
+sudo docker compose up -d --wait --wait-timeout 120
+)
 ```
 
 The command prints `管理员临时密码：…` and signs out every administrator session. The username stays the same; after signing in with the new temporary password you must set a password again. If an internal test instance still injects administrator credentials through environment variables, the reset hands the account over to the database, and the username and password hash in those variables no longer apply.

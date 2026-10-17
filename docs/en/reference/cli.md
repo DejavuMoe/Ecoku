@@ -18,12 +18,18 @@ Opening the database first initializes or migrates its schema and performs the s
 Generate a new temporary password for the persistent administrator account, for first sign-in or password recovery. Start a new instance once to create its account first; this command does not create an administrator in an empty database. Stop the running service first:
 
 ```bash
+(
+set -eu
+cd ~/Ecoku
 sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku admin reset-password
-sudo docker compose up -d
+sudo docker compose up -d --wait --wait-timeout 120
+)
 ```
 
 The command prints `管理员临时密码：…` and revokes every administrator session. The username stays the same; after signing in with it and the temporary password, the setup page fills in the current username, which you can keep or change, and you set a permanent password.
+
+The password appears only in this one-off command's terminal output; `docker compose logs ecoku` cannot retrieve it. If `管理员临时密码：…` is missing, fix the error before retrying; the command group above stops on failure. If it reports `管理员账户尚未初始化`, check the deployment directory, configuration, and data mounts. For a new instance, complete [startup and the health check](../self-hosting/docker#start) first. Do not delete the database or persistent keys.
 
 ## captcha status
 

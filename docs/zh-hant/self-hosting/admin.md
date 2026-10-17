@@ -4,7 +4,7 @@
 
 ## 登入
 
-新實例首次啟動後，依 [首次登入](./docker#first-sign-in) 停服並執行 `admin reset-password` 取得管理員 `admin` 的臨時密碼。首次登入必須設定正式密碼，使用者名稱可以保留 `admin`。既有實例直接使用持久帳戶；內測環境的憑據遷移見 [歷史設定說明](./upgrade#legacy-config)。啟用人機驗證時，登入頁也會顯示驗證元件。
+新實例首次啟動後，依 [取得管理員臨時密碼](./docker#temporary-password) 停服並執行 `admin reset-password` 取得管理員 `admin` 的臨時密碼。首次登入必須設定正式密碼，使用者名稱可以保留 `admin`。既有實例直接使用持久帳戶；內測環境的憑據遷移見 [歷史設定說明](./upgrade#legacy-config)。啟用人機驗證時，登入頁也會顯示驗證元件。
 
 登入需要滿足兩個條件，否則會被拒絕：
 

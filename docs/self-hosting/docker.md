@@ -8,7 +8,7 @@
 
 你需要：
 
-- 一台装有 Docker Engine 与 Compose v2 的 Linux 主机，以及 `sudo` 权限；
+- 一台装有 Docker Engine 与 Compose 的 Linux 主机，以及 `sudo` 权限；Compose 须支持 `up --wait --wait-timeout`（可用 `docker compose up --help` 检查）；
 - 一个专门给 Ecoku 使用的域名，例如 `ecoku.example.com`；
 - 一个反向代理，用来终止公网 HTTPS。
 
@@ -96,47 +96,46 @@ services:
 chmod 644 ~/Ecoku/app/config.yaml
 ```
 
-## 4. 启动
+## 4. 启动并等待初始化完成 {#start}
 
 ```bash
+(
+set -eu
 cd ~/Ecoku
 sudo docker compose config --quiet
 sudo docker compose pull
-sudo docker compose up -d
+sudo docker compose up -d --wait --wait-timeout 120
 sudo docker compose ps
-sudo docker compose logs --tail=100 ecoku
+)
 ```
 
-首次启动时，Ecoku 会：
+命令成功后，容器状态应为 `healthy`。`--wait` 会等待健康检查通过，最多等待 120 秒；退出报错或容器未健康时，先运行 `sudo docker compose logs --tail=100 ecoku` 排查，修正后重试，不要继续重置密码。
 
-1. 初始化 SQLite 数据库并执行迁移；
-2. 生成管理员 `admin`；
-3. 为管理员生成随机初始凭据；
-4. 在 `data/ecoku-secrets.json` 保存会话签名密钥和通知加密主密钥。
+首次启动会初始化 SQLite、创建管理员 `admin`，并把会话签名密钥和通知加密主密钥保存到 `data/ecoku-secrets.json`。重启不会重置管理员密码，也不会覆盖持久密钥。
 
-从 v0.5.2 起，启动日志不再输出管理员密码，只提示停服后执行 `admin reset-password`。按下面的首次登录流程取得临时密码，并使原初始凭据失效。重启不会生成新密码，也不会覆盖持久密钥。
+## 5. 取得管理员临时密码 {#temporary-password}
 
-若旧实例仍未完成首次改密，也应执行下面的重置流程；仅升级程序不会使已写入日志的密码失效。
-
-确认健康接口：
+**新部署必须完成这一步。v0.5.2 的启动日志不提供初始密码，也没有固定默认密码。** 先完成 [启动与健康检查](#start)，再在部署主机终端执行：
 
 ```bash
-curl --fail --silent --show-error http://127.0.0.1:12123/api/health
-```
-
-## 5. 首次登录 {#first-sign-in}
-
-打开后台前，请先按 [为 Ecoku 域名配置 HTTPS 反向代理](./reverse-proxy) 完成 Caddy 或 Nginx 配置，并确认公网健康接口可以访问。容器默认只监听宿主机回环端口，不能直接从外网打开。
-
-首次启动完成后，停服并在主机终端中生成登录用的临时密码，再启动服务：
-
-```bash
+(
+set -eu
+cd ~/Ecoku
 sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku admin reset-password
-sudo docker compose up -d
+sudo docker compose up -d --wait --wait-timeout 120
+)
 ```
 
-命令输出 `管理员临时密码：…`，并撤销全部管理员会话。妥善保管这次终端输出，不要转发到共享日志或工单。已有正式账户的实例不需要在升级时执行这一步。
+在这次命令的终端输出中找到 `管理员临时密码：…`，保存冒号后的临时密码。密码由 `docker compose run` 的一次性容器输出；`docker compose logs ecoku` 查看的是服务容器日志，无法找回它。丢失时重新执行本步，会生成新密码并使旧密码与全部管理员会话失效。不要把终端输出转发到共享日志或工单。
+
+如果没有看到这行输出，先处理命令报错，再重试；上面的命令组遇错会停止。提示 `管理员账户尚未初始化` 时，检查是否使用了正确的部署目录、配置和数据挂载；全新实例须先完成 [第 4 步](#start)。不能通过删除数据库或持久密钥来解决。
+
+已有正式账户的实例升级时不需要执行本步。旧实例若仍未完成首次改密，则应执行本步：仅升级不会使旧日志中的临时密码失效。
+
+## 6. 首次登录 {#first-sign-in}
+
+先完成 [取得管理员临时密码](#temporary-password)，再按 [为 Ecoku 域名配置 HTTPS 反向代理](./reverse-proxy) 完成 Caddy 或 Nginx 配置，并确认公网健康接口可以访问。容器默认只监听宿主机回环端口，不能直接从外网打开。`notifications.instance_public_url` 必须与实际后台地址的来源一致；不要保留示例域名。
 
 打开 `https://ecoku.example.com/admin/`，用户名填写 `admin`，密码填写刚才命令输出的临时密码。登录后会进入「设置你的密码」页面，必须先完成设置：
 

@@ -18,12 +18,18 @@ sudo docker compose run --rm --no-deps ecoku <子命令> [参数]
 為持久化管理員帳戶產生新的臨時密碼，用於首次登入或忘記密碼後的復原。新實例須先啟動一次以建立帳戶；命令不會在空資料庫中建立管理員。先停止正在執行的服務：
 
 ```bash
+(
+set -eu
+cd ~/Ecoku
 sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku admin reset-password
-sudo docker compose up -d
+sudo docker compose up -d --wait --wait-timeout 120
+)
 ```
 
 命令輸出 `管理员临时密码：…`，並撤銷所有管理員工作階段。使用者名稱維持不變；用它和臨時密碼登入後，設定頁會預先填入目前的使用者名稱，可以保留或修改，再設定正式密碼。
+
+密碼只顯示在本次一次性命令的終端輸出中，不能從 `docker compose logs ecoku` 找回。沒有輸出 `管理员临时密码：…` 時，先處理報錯再重試；上面的命令組遇錯會停止。若提示 `管理员账户尚未初始化`，檢查部署目錄、設定和資料掛載，新實例先依 [啟動與健康檢查](../self-hosting/docker#start) 完成初始化。不要刪除資料庫或持久金鑰。
 
 ## captcha status
 

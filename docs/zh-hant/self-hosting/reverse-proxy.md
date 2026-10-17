@@ -127,4 +127,4 @@ done
 
 三行都應以 `200` 開頭。健康檢查端點可以對公開網路開放，它只回傳狀態和時間戳記。
 
-確認無誤後，開啟 `https://ecoku.example.com/admin/` 繼續[設定管理後台](./admin)。
+確認無誤後，依 [首次登入](./docker#first-sign-in) 使用已取得的臨時密碼登入並設定正式密碼，再 [註冊站點](./admin#sites)。尚未取得密碼時，先完成 [產生臨時密碼](./docker#temporary-password)。

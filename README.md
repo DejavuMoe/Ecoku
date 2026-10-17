@@ -21,15 +21,12 @@ English · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-Hant.md)
 
 ## Quick start
 
-```bash
-mkdir -p ~/Ecoku/app ~/Ecoku/data && cd ~/Ecoku
-# The container runs as UID/GID 10001, and only data/ is writable
-sudo chown -R 10001:10001 data && sudo chmod 750 data
-# Prepare compose.yaml and app/config.yaml; see the compose.yaml and deploy/ templates in this repo
-sudo docker compose up -d
-```
+Follow [Docker deployment](https://ecoku.zsh.moe/en/self-hosting/docker) to complete these steps:
 
-Next, put the container behind a reverse proxy with HTTPS, then register your site at `/admin/`. Full steps: [Docker deployment](https://ecoku.zsh.moe/en/self-hosting/docker).
+1. Prepare `compose.yaml`, `app/config.yaml`, and `data/`, and set `instance_public_url` to Ecoku's actual HTTPS address.
+2. Start the service and wait until it is healthy, then [stop it and generate a temporary administrator password](https://ecoku.zsh.moe/en/self-hosting/docker#temporary-password). **v0.5.2 does not print passwords in startup logs and has no fixed default password.**
+3. Configure the HTTPS reverse proxy, sign in to `/admin/` as `admin` with the temporary password from the command output, and set a permanent password when prompted.
+4. Register your site in the admin console to obtain its site ID.
 
 Once your site is registered, embed the comment section in your post template:
 
