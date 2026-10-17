@@ -13,3 +13,6 @@
 *.webp binary
 *.woff binary
 *.woff2 binary
+
+.agents/** linguist-detectable=false
+designs/** linguist-detectable=false
