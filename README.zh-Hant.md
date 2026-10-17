@@ -71,6 +71,8 @@ Ecoku 已進入維護階段：後續更新將著重於細節打磨、效能與�
 
 ## 意見回饋與貢獻
 
+如發現疑似安全漏洞，請依 [安全政策](SECURITY.md) 私密回報。
+
 遇到問題或發現錯誤，歡迎至 [Issues](https://github.com/DejavuMoe/Ecoku/issues) 回報。
 
 本專案暫不接受 Pull Request。若有功能建議或需求，歡迎在 Issues 中詳細說明具體情境與行為預期，由維護者評估後規劃實作。
