@@ -15,7 +15,7 @@ Opening the database first initializes or migrates its schema and performs the s
 
 ## admin reset-password {#admin-reset-password}
 
-Generate a new temporary password for the persistent administrator account. Stop the running service first:
+Generate a new temporary password for the persistent administrator account, for first sign-in or password recovery. Start a new instance once to create its account first; this command does not create an administrator in an empty database. Stop the running service first:
 
 ```bash
 sudo docker compose stop ecoku

@@ -15,7 +15,7 @@ sudo docker compose run --rm --no-deps ecoku <子命令> [参数]
 
 ## admin reset-password {#admin-reset-password}
 
-為持久化管理員帳戶產生新的臨時密碼。先停止正在執行的服務：
+為持久化管理員帳戶產生新的臨時密碼，用於首次登入或忘記密碼後的復原。新實例須先啟動一次以建立帳戶；命令不會在空資料庫中建立管理員。先停止正在執行的服務：
 
 ```bash
 sudo docker compose stop ecoku

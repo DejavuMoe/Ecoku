@@ -111,10 +111,12 @@ On the first start, Ecoku:
 
 1. initializes the SQLite database and runs the migrations;
 2. creates the administrator `admin`;
-3. generates a one-time random temporary password and prints it to the log;
+3. generates random initial credentials for the administrator;
 4. saves the session signing key and the notification encryption key in `data/ecoku-secrets.json`.
 
-The log line reads `Ecoku 首次启动管理员账户：admin；临时密码：…；请登录后台后立即修改密码`. The temporary password is generated only when the account is first created. Restarting does not generate a new password or replace the persistent keys. Anyone who can read the Docker logs can see the temporary password; it stops working once you set your own password on first sign-in.
+The current release, `v0.5.1`, still prints the initial temporary password to the log. The unreleased source security fix stops printing passwords and instead asks the operator to stop the service and run `admin reset-password`. The first-sign-in procedure below works with both versions and invalidates the original temporary password. Restarting does not generate a new password or replace the persistent keys.
+
+If an existing instance has not completed its initial password change, follow the reset procedure below as well. Upgrading alone does not invalidate a password already written to the logs.
 
 Check the health endpoint:
 
@@ -122,11 +124,21 @@ Check the health endpoint:
 curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 ```
 
-## 5. First sign-in
+## 5. First sign-in {#first-sign-in}
 
 Before opening the admin console, follow [configure HTTPS reverse proxying for the Ecoku domain](./reverse-proxy) to set up Caddy or Nginx, and confirm that the public health endpoint responds. By default the container listens only on the host's loopback port and cannot be reached directly from the internet.
 
-Open `https://ecoku.example.com/admin/` and sign in as `admin` with the temporary password from the first-start log. The console then opens the 「设置你的密码」 (Set your password) page, which you must complete first:
+After the first startup completes, stop the service, generate a temporary login password in the host terminal, and start the service again:
+
+```bash
+sudo docker compose stop ecoku
+sudo docker compose run --rm --no-deps ecoku admin reset-password
+sudo docker compose up -d
+```
+
+The command prints `管理员临时密码：…` and revokes every administrator session. Keep this terminal output private; do not forward it to shared logs or tickets. Instances with an established administrator account do not need this step when upgrading.
+
+Open `https://ecoku.example.com/admin/` and sign in as `admin` with the temporary password printed by the command. The console then opens the 「设置你的密码」 (Set your password) page, which you must complete first:
 
 - keep `admin` as the username or choose your own;
 - the new password needs at least 12 characters and at most 72 UTF-8 bytes;
@@ -135,15 +147,7 @@ Open `https://ecoku.example.com/admin/` and sign in as `admin` with the temporar
 
 After you save, Ecoku revokes the temporary session and opens the 「新增站点」 (New site) form on the 「站点」 (Sites) page.
 
-If you lose the temporary or permanent password, stop the service and run the reset command on the host:
-
-```bash
-sudo docker compose stop ecoku
-sudo docker compose run --rm --no-deps ecoku admin reset-password
-sudo docker compose up -d
-```
-
-The command prints `管理员临时密码：…` and signs out every administrator session. The username stays as it was; sign in with it and the new temporary password, then set a password again.
+If you lose the temporary or permanent password, follow the same [administrator password reset steps](../reference/cli#admin-reset-password). The username stays as it was; sign in with it and the new temporary password, then set a password again.
 
 ## Time zone and admin language {#timezone}
 

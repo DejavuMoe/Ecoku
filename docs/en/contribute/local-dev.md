@@ -13,7 +13,7 @@ mkdir -p server/data
 
 Keep one-off build outputs and verification files in the Git-ignored root `tmp/` directory. The server writes its development database and persistent keys to `server/data/` according to the configuration; do not commit runtime data.
 
-Local services use SQLite and `server/config.yaml`. When starting a new database, Ecoku automatically creates `admin`, prints a temporary password in the terminal, and saves persistent keys to `server/data/ecoku-secrets.json`. Sign in with that password and change it on first login; no administrator or notification-key environment variables are required.
+Local services use SQLite and `server/config.yaml`. When starting a new database, Ecoku automatically creates `admin` and saves persistent keys to `server/data/ecoku-secrets.json`, without printing a password in the startup log. After the first startup completes, stop the service with Ctrl+C, run `(cd server && go run . admin reset-password)` to obtain a temporary password from the command output, and start the service again. Sign in with that password and change it on first login; no administrator or notification-key environment variables are required.
 
 Existing development databases retain their administrator account. If you previously configured legacy environment variables, complete persistent-state migration before removing them; see [legacy configuration migration](../self-hosting/upgrade#legacy-config).
 

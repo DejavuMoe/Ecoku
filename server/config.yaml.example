@@ -1,5 +1,5 @@
 # 本地开发配置：复制为 server/config.yaml。字段说明见 docs/reference/configuration.md，
-# 首次启动自动生成管理员和临时密码；本地开发步骤见 docs/contribute/local-dev.md。
+# 首次启动创建管理员；停服后运行 admin reset-password 获取临时密码。见 docs/contribute/local-dev.md。
 # 站点在管理后台创建；完整字段与兼容项见 deploy/config.yaml.example。
 
 notifications:

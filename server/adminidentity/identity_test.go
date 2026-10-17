@@ -1,17 +1,61 @@
 package adminidentity
 
 import (
+	"bytes"
 	"ecoku-server/config"
 	"ecoku-server/instancekeys"
 	"ecoku-server/model"
+	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
+
+func TestStartupLogsDoNotExposeUsableCredentials(t *testing.T) {
+	setupIdentityTest(t)
+	for _, key := range []string{"ECOKU_ADMIN_USERNAME", "ECOKU_ADMIN_PASSWORD_HASH", "ECOKU_ADMIN_TOKEN_KEY", config.EncryptionKeyEnv} {
+		t.Setenv(key, "")
+	}
+	var output bytes.Buffer
+	previous := log.Writer()
+	log.SetOutput(&output)
+	t.Cleanup(func() { log.SetOutput(previous) })
+	if err := Initialize(); err != nil {
+		t.Fatal(err)
+	}
+	account, err := model.GetAdminAccount()
+	if err != nil || account == nil {
+		t.Fatalf("initial account unavailable: %v", err)
+	}
+	for _, candidate := range regexp.MustCompile(`[A-Za-z0-9_-]{32}`).FindAllString(output.String(), -1) {
+		if bcrypt.CompareHashAndPassword([]byte(account.PasswordHash), []byte(candidate)) == nil {
+			t.Error("startup log exposes a working administrator password")
+		}
+	}
+	password, err := ResetTemporaryPassword()
+	if err != nil {
+		t.Fatal(err)
+	}
+	account, err = model.GetAdminAccount()
+	if err != nil || account == nil || bcrypt.CompareHashAndPassword([]byte(account.PasswordHash), []byte(password)) != nil {
+		t.Fatalf("explicit password reset did not provide a usable credential: %v", err)
+	}
+	if strings.Contains(output.String(), password) {
+		t.Error("explicit reset copied the password to the application log")
+	}
+	if err := CompleteInitialSetup("owner", "new-owner-password"); err != nil {
+		t.Fatal(err)
+	}
+	credentials, ok := config.GetAdminCredentials()
+	if !ok || credentials.MustChangePassword || bcrypt.CompareHashAndPassword([]byte(credentials.PasswordHash), []byte(password)) == nil {
+		t.Fatal("temporary password remained usable after initial setup")
+	}
+}
 
 func setupIdentityTest(t *testing.T) string {
 	t.Helper()

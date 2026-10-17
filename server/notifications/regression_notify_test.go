@@ -1,6 +1,7 @@
 package notifications
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"crypto/x509"
@@ -9,6 +10,7 @@ import (
 	"io"
 	"net"
 	"net/http/httptest"
+	"net/mail"
 	"net/textproto"
 	"os"
 	"os/exec"
@@ -90,8 +92,14 @@ func TestEC10SMTPAcceptance(t *testing.T) {
 									t.Error(err)
 									return
 								}
-								if _, err := wire.ReadDotBytes(); err != nil {
+								data, err := wire.ReadDotBytes()
+								if err != nil {
 									t.Error(err)
+									return
+								}
+								message, err := mail.ReadMessage(bytes.NewReader(data))
+								if err != nil || message.Header.Get("Bcc") != "" || !bytes.Contains(data, []byte("MAIL FROM:<injected@example.test>")) {
+									t.Error("untrusted comment escaped the SMTP DATA message")
 									return
 								}
 								switch phase {
@@ -123,7 +131,7 @@ func TestEC10SMTPAcceptance(t *testing.T) {
 			if _, err := SaveEmail(EmailConfig{Enabled: true, Host: "127.0.0.1", Port: listener.Addr().(*net.TCPAddr).Port, Encryption: "tls", Password: "dummy-password", FromAddress: "sender@example.test", Recipients: []string{"owner@example.test"}, Revision: 1}); err != nil {
 				t.Fatal(err)
 			}
-			comment := model.Comment{SiteID: "site-a", Mark: "/", Username: "guest", Content: "hello"}
+			comment := model.Comment{SiteID: "site-a", Mark: "/", Username: "guest", PageTitle: "title\r\nBcc: injected@example.test", Content: "hello\r\n.\r\nMAIL FROM:<injected@example.test>\r\nBcc: injected@example.test"}
 			if err := database.Create(&comment).Error; err != nil {
 				t.Fatal(err)
 			}

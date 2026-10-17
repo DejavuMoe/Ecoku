@@ -4,7 +4,7 @@ The admin console lives at `https://ecoku.example.com/admin/`. You use it to reg
 
 ## Sign in
 
-A new instance prints a temporary password for `admin` in its first-start log. Set a permanent password on first sign-in; you may keep the username `admin`. Existing instances use their persistent account. For internal test credential migration see [legacy configuration](./upgrade#legacy-config). When enabled, CAPTCHA also appears on the sign-in page.
+After starting a new instance, follow [first sign-in](./docker#first-sign-in) to stop the service and run `admin reset-password` to obtain a temporary password for `admin`. Set a permanent password on first sign-in; you may keep the username `admin`. Existing instances use their persistent account. For internal test credential migration see [legacy configuration](./upgrade#legacy-config). When enabled, CAPTCHA also appears on the sign-in page.
 
 Sign-in is rejected unless both of these hold:
 

@@ -111,10 +111,12 @@ sudo docker compose logs --tail=100 ecoku
 
 1. 初始化 SQLite 資料庫並執行遷移；
 2. 建立管理員 `admin`；
-3. 產生一次性隨機臨時密碼並印到日誌；
+3. 為管理員產生隨機初始憑據；
 4. 在 `data/ecoku-secrets.json` 保存工作階段簽章金鑰和通知加密主金鑰。
 
-日誌中對應的一行是 `Ecoku 首次启动管理员账户：admin；临时密码：…；请登录后台后立即修改密码`。臨時密碼只在首次建立帳戶時產生，重新啟動不會產生新密碼，也不會覆寫持久金鑰。能讀取 Docker 日誌的人都能看到臨時密碼，首次登入改密後它即失效。
+目前發布版 `v0.5.1` 仍會把首次臨時密碼寫入日誌；尚未發布的原始碼安全修復已停止輸出密碼，改為提示停服後執行 `admin reset-password`。下面的首次登入流程適用於這兩種版本，並使原臨時密碼失效。重新啟動不會產生新密碼，也不會覆寫持久金鑰。
+
+若舊實例仍未完成首次改密，也應執行下面的重設流程；僅升級程式不會使已寫入日誌的密碼失效。
 
 確認健康介面：
 
@@ -122,11 +124,21 @@ sudo docker compose logs --tail=100 ecoku
 curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 ```
 
-## 5. 首次登入
+## 5. 首次登入 {#first-sign-in}
 
 開啟後台前，請先依 [為 Ecoku 網域設定 HTTPS 反向代理](./reverse-proxy) 完成 Caddy 或 Nginx 設定，並確認公開健康介面可以存取。容器預設只監聽主機迴路連接埠，不能直接從外網開啟。
 
-開啟 `https://ecoku.example.com/admin/`，使用者名稱填寫 `admin`，密碼填寫首次啟動日誌中的臨時密碼。登入後會進入「设置你的密码」頁面，必須先完成設定：
+首次啟動完成後，停服並在主機終端中產生登入用的臨時密碼，再啟動服務：
+
+```bash
+sudo docker compose stop ecoku
+sudo docker compose run --rm --no-deps ecoku admin reset-password
+sudo docker compose up -d
+```
+
+命令輸出 `管理员临时密码：…`，並撤銷全部管理員工作階段。妥善保管這次終端輸出，不要轉發到共用日誌或工單。已有正式帳戶的實例不需要在升級時執行這一步。
+
+開啟 `https://ecoku.example.com/admin/`，使用者名稱填寫 `admin`，密碼填寫剛才命令輸出的臨時密碼。登入後會進入「设置你的密码」頁面，必須先完成設定：
 
 - 使用者名稱可以保留 `admin`，也可以改成自己的名稱；
 - 新密碼至少 12 個字元，最多 72 個 UTF-8 位元組；
@@ -135,15 +147,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 儲存後，Ecoku 會撤銷臨時工作階段，並直接開啟「站点」頁面的「新增站点」表單。
 
-忘記臨時密碼或正式密碼時，先停止服務，再在主機上執行重設命令：
-
-```bash
-sudo docker compose stop ecoku
-sudo docker compose run --rm --no-deps ecoku admin reset-password
-sudo docker compose up -d
-```
-
-命令輸出 `管理员临时密码：…`，並使既有的管理員工作階段全部失效。使用者名稱維持目前的值；用它和新的臨時密碼登入後，同樣需要重新設定密碼。
+忘記臨時密碼或正式密碼時，使用同樣的 [管理員密碼重設步驟](../reference/cli#admin-reset-password)。使用者名稱維持目前的值；用它和新的臨時密碼登入後，同樣需要重新設定密碼。
 
 ## 時區與後台語言 {#timezone}
 

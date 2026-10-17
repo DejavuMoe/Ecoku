@@ -82,7 +82,7 @@ admin:
   # Prefer letters/digits/underscores with a letter or underscore first; the three names must differ.
   # Supplying any administrator credential variable requires supplying all three.
   # Username: 1–80 characters; password: bcrypt hash with cost >= 10; signing key: at least 32 bytes.
-  # Without these credential values, initial account creation prints an admin temporary password to change on first login.
+  # Without these credentials, first startup creates admin; stop the service and run admin reset-password to obtain a temporary password, then change it on first login.
   # username_env: "ECOKU_ADMIN_USERNAME"
   # password_hash_env: "ECOKU_ADMIN_PASSWORD_HASH"
   # token_key_env: "ECOKU_ADMIN_TOKEN_KEY"
