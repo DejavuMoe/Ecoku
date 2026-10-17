@@ -282,7 +282,7 @@ Origin: https://blog.example.com
 - 登入請求，以及以 Cookie 驗證的非 GET 請求，必須帶有 `admin.allowed_origins` 中的 `Origin`。
 - 以 `Authorization: Bearer <憑據>` 驗證的請求可以不帶 `Origin`；如果帶了，仍須在 `admin.allowed_origins` 中，否則回傳 `403`。Bearer 憑據必須是目前有效、未登出的工作階段；v0.2.4 之前簽發的舊 token 不再有效。
 - **站點管理憑據**：站點在 `app/config.yaml` 中設定了 `management_key_env` 時，伺服器端自動化可以用 `Authorization: EcokuSite <憑據>` 對該站點的評論執行墓碑刪除（`DELETE /api/admin/sites/:siteId/comments/:commentId`）。憑據無效回傳 `401`；指向其他站點回傳 `403`「无权管理该站点」；存取其他管理介面（包括徹底刪除和讀取介面）回傳 `403`「站点管理凭据不能访问此接口」。
-- 登入要求 HTTPS，只有迴路位址可以用 HTTP。
+- 登入要求 HTTPS；只有已在生效的管理來源白名單中登記的 `localhost` 或回環 IP 可以用 HTTP，此時 Cookie 才省略 Secure。正式環境的 HTTPS 來源一律設定 Secure，不根據反向代理到應用程式的內部 HTTP 連線或 `X-Forwarded-Proto` 降級；HttpOnly 和 SameSite=Strict 保持啟用。
 
 ### 登入與工作階段
 

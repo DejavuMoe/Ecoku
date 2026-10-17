@@ -282,7 +282,7 @@ Admin endpoints live under `/api/admin/`. When `admin.allowed_origins` below is 
 - The sign-in request, and every non-GET request authenticated by cookie, must carry an `Origin` from `admin.allowed_origins`.
 - Requests authenticated with `Authorization: Bearer <credential>` may omit `Origin`; if they carry one, it must still be in `admin.allowed_origins`, otherwise the response is `403`. The Bearer credential must be a currently valid session that has not been signed out. Old tokens issued before v0.2.4 are no longer valid.
 - **Site management credential**: when a site sets `management_key_env` in `app/config.yaml`, server-side automation can use `Authorization: EcokuSite <credential>` to tombstone that site's comments (`DELETE /api/admin/sites/:siteId/comments/:commentId`). An invalid credential returns `401`; another site returns `403` 「无权管理该站点」 (no permission to manage this site); any other admin endpoint, including permanent deletion and the read endpoints, returns `403` 「站点管理凭据不能访问此接口」 (site management credentials cannot access this endpoint).
-- Sign-in requires HTTPS. Only loopback addresses may use HTTP.
+- Sign-in requires HTTPS. HTTP is allowed only for `localhost` or a loopback IP already registered in the effective admin origin allowlist; only that case omits Secure from the cookie. Production HTTPS origins always receive Secure cookies, regardless of the proxy's internal HTTP connection or `X-Forwarded-Proto`. HttpOnly and SameSite=Strict remain enabled.
 
 ### Sign-in and sessions
 
