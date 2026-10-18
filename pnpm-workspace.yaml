@@ -9,6 +9,9 @@ allowBuilds:
 # VitePress updates its dependency (GHSA-fx2h-pf6j-xcff).
 overrides:
   'vitepress@1.6.4>vite': 6.4.3
+  # Mermaid 11 still requires vulnerable KaTeX 0.16 (GHSA-238p-pmpm-9mq7).
+  'mermaid>katex': 0.18.2
+  'mermaid>dompurify': 3.4.16
 
 # This repository's published SDK is used by the documentation demo.
 minimumReleaseAgeExclude:

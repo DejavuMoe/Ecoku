@@ -45,11 +45,13 @@ jobs:
           node-version: 24.19.0
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-      # Audit the whole lockfile, including build/docs and optional dependencies.
-      # High/critical findings block release; lower severities remain non-blocking.
+      # Include build/docs, optional dependencies and standalone design tools.
       - name: Audit JavaScript dependencies
         if: matrix.target == 'client'
-        run: pnpm audit --audit-level=high
+        run: |
+          pnpm audit --audit-level=low
+          npm --prefix .agents/skills/baoyu-design/agents/gen-pptx audit --audit-level=low
+          npm --prefix .agents/skills/baoyu-design/agents/gen-video audit --audit-level=low
       - name: Install target dependencies
         env:
           FILTER: ${{ matrix.filter }}
