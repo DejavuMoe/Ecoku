@@ -14,7 +14,7 @@
 { "code": 200, "message": "Success", "data": { } }
 ```
 
-`code` 與 HTTP 狀態碼相同。沒有回傳資料時省略 `data`：出錯時通常如此，登出和測試通知成功也不帶 `data`；測試通知失敗會帶 `error_code`，見[通知](#notifications)。`message` 是一句中文說明，例如：
+`code` 與 HTTP 狀態碼相同。沒有回傳資料時省略 `data`：出錯時通常如此，登出和測試通知成功也不帶 `data`；測試通知失敗會帶 `error_code`，見 [通知](#notifications)。`message` 是一句中文說明，例如：
 
 ```json
 { "code": 403, "message": "来源不属于当前站点" }

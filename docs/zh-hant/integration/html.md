@@ -2,7 +2,7 @@
 
 在文章範本中放入一段 HTML 和一個腳本，就能在任何靜態網站上顯示評論區。腳本 `ecoku-loader.js` 由你的 Ecoku 實例提供，讀取 HTML 上的屬性後會自動載入評論元件。
 
-開始前，請確認已在後台[註冊站點](../self-hosting/admin#sites)，並把部落格的來源加入該站點的允許來源。
+開始前，請確認已在後台 [註冊站點](../self-hosting/admin#sites)，並把部落格的來源加入該站點的允許來源。
 
 ## 接入程式碼
 
@@ -45,8 +45,8 @@
 | `data-page-title` | 否 | 文章標題，顯示在通知郵件中。截取前 200 個 UTF-16 碼元，與 SDK 建構設定一致。 |
 | `data-page-size` | 否 | 每頁顯示幾則根評論，1～100，預設 10。填寫無效值時以 10 處理。 |
 | `data-theme` | 否 | `auto`（預設）、`light` 或 `dark`。`auto` 優先讀取部落格定義的顏色變數，未提供時跟隨系統的明暗偏好。 |
-| `data-css-url` | 否 | 取代預設樣式，只接受 HTTP(S) 絕對網址、以 `/` 開頭的路徑、`none` 或相容值 `-`。見[自訂樣式](./custom-css)。 |
-| `data-i18n` | 否 | 評論區語言：`zh-CN`、`zh-Hant` 或 `en`，覆寫後台站點設定的「评论区语言」。未填寫或填寫其他值時使用站點設定。 |
+| `data-css-url` | 否 | 取代預設樣式，只接受 HTTP(S) 絕對網址、以 `/` 開頭的路徑、`none` 或相容值 `-`。見 [自訂樣式](./custom-css)。 |
+| `data-i18n` | 否 | 評論區語言：`zh-CN`、`zh-Hant` 或 `en`，覆寫後台站點設定的「評論區語言」。未填寫或填寫其他值時使用站點設定。 |
 
 ## 選擇頁面 key
 
@@ -85,8 +85,8 @@
 
 - `script-src` 和 `connect-src`：Ecoku 的來源，例如 `https://ecoku.example.com`；
 - 預設樣式以 `<style>` 元素注入。CSP 不允許內嵌樣式時，把 `data-css-url` 設為 `https://ecoku.example.com/client/ecoku.css`，改用外部樣式表，並在 `style-src` 中放行該來源；
-- 啟用人機驗證時，還要放行驗證服務，見[人機驗證 · 內容安全政策](../self-hosting/captcha#csp)；
-- 啟用 [Smoji 貼圖包](./smoji)時，在 `connect-src` 中放行清單來源，在 `img-src` 中放行圖片來源。兩者分別託管時需要分別填寫，見[清單與圖片的託管](./smoji#hosting)。
+- 啟用人機驗證時，還要放行驗證服務，見 [人機驗證 · 內容安全政策](../self-hosting/captcha#csp)；
+- 啟用 [Smoji 貼圖包](./smoji) 時，在 `connect-src` 中放行清單來源，在 `img-src` 中放行圖片來源。兩者分別託管時需要分別填寫，見 [清單與圖片的託管](./smoji#hosting)。
 
 ## 不使用載入器
 

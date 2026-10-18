@@ -86,6 +86,6 @@ Hugo 的 `.RelPermalink` 包含 `baseURL` 中的子目錄。例如 `baseURL: htt
 }
 ```
 
-所有可用的變數見[自訂樣式](./custom-css#variables)。
+所有可用的變數見 [自訂樣式](./custom-css#variables)。
 
 範例目錄中的 `assets/css/extended/ecoku.css` 只為外層元素、載入失敗的提示和重試按鈕設定樣式，不影響評論區本身，可以視需要複製。

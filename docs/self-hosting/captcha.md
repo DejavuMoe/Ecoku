@@ -4,7 +4,7 @@ Ecoku 支持在访客发布评论前与管理员登录前进行人机验证。�
 
 | 方式 | 说明 |
 | --- | --- |
-| 关闭 | 不显示验证组件，只靠[限流](../reference/configuration#rate-limit)防刷。 |
+| 关闭 | 不显示验证组件，只靠 [限流](../reference/configuration#rate-limit) 防刷。 |
 | Cloudflare Turnstile | Cloudflare 提供的托管验证服务，需要 Cloudflare 账号。 |
 | Cap | 开源、可自托管的验证服务，需要自己部署一个 Cap 实例。 |
 
