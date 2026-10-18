@@ -10,7 +10,7 @@ function checkSecurity(source) {
   // Exact standalone steps prevent filters, ignored errors and success masking.
   assert.match(source, /^    env:\n      pnpm_config_verify_deps_before_run: 'false'\n    strategy:\n      fail-fast: false\n      matrix:\n        target: \[client, admin, docs\]\n        include:\n          - target: client\n            filter: \.\/packages\/client\.\.\.\n          - target: admin\n            filter: \.\/packages\/admin\.\.\.\n          - target: docs\n            filter: \.\/docs\.\.\.\n    steps:\n/m)
   assert.equal((source.match(/pnpm_config_verify_deps_before_run/gi) ?? []).length, 1, 'No step may override explicit installation')
-  assert.match(source, /^      - name: Audit JavaScript dependencies\n        if: matrix.target == 'client'\n        run: pnpm audit --audit-level=high\n(?=      - )/m)
+  assert.match(source, /^      - name: Audit JavaScript dependencies\n        if: matrix.target == 'client'\n        run: \|\n          pnpm audit --audit-level=low\n          npm --prefix \.agents\/skills\/baoyu-design\/agents\/gen-pptx audit --audit-level=low\n          npm --prefix \.agents\/skills\/baoyu-design\/agents\/gen-video audit --audit-level=low\n(?=      - )/m)
   assert.match(source, /^      - name: Check Go vulnerabilities\n        run: go run golang\.org\/x\/vuln\/cmd\/govulncheck@v\d+\.\d+\.\d+ \.\/\.\.\.\n(?=      - )/m)
   assert.match(source, /^      - name: Install target dependencies\n        env:\n          FILTER: \$\{\{ matrix.filter \}\}\n        run: pnpm --filter "\$FILTER" --fail-if-no-match install --frozen-lockfile --prefer-offline\n      - name: Install SDK test browser\n        if: matrix.target == 'client'\n        run: pnpm -C packages\/client exec playwright install --with-deps --only-shell chromium\n(?=      - name: Verify SDK browser behavior\n)/m)
   assert.match(source, /^      - name: Verify SDK browser behavior\n        if: matrix.target == 'client'\n        run: pnpm -C packages\/client run test:browser\n(?=      - )/m)
@@ -24,10 +24,14 @@ function checkSecurity(source) {
 checkSecurity(ci)
 // Exercise the guards in memory; never run scanners or alter workflow fixtures.
 for (const [before, after] of [
-  ['--audit-level=high', '--audit-level=critical'],
-  ['--audit-level=high', '--audit-level=high --ignore-registry-errors'],
-  ['--audit-level=high', '--audit-level=high --prod'],
-  ['--audit-level=high', '--audit-level=high || true'],
+  ['--audit-level=low', '--audit-level=high'],
+  ['--audit-level=low', '--audit-level=low --ignore-registry-errors'],
+  ['--audit-level=low', '--audit-level=low --prod'],
+  ['--audit-level=low', '--audit-level=low || true'],
+  ['          npm --prefix .agents/skills/baoyu-design/agents/gen-pptx audit --audit-level=low\n', ''],
+  ['          npm --prefix .agents/skills/baoyu-design/agents/gen-video audit --audit-level=low\n', ''],
+  ['gen-pptx audit --audit-level=low', 'gen-pptx audit --audit-level=high'],
+  ['gen-video audit --audit-level=low', 'gen-video audit --audit-level=low || true'],
   ['pnpm audit', 'pnpm --filter ./packages/client... audit'],
   ['target: [client, admin, docs]', 'target: [client, admin]'],
   ['filter: ./packages/client...', 'filter: ecoku'],
