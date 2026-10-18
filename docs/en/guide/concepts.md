@@ -19,9 +19,9 @@ Comments are stored by page key. If you later change your blog's permalink forma
 
 Comments form a tree: a root comment can have replies, and replies can have replies of their own.
 
-- **Depth**: a root comment is at depth 0, and new replies can go down to depth 16, so comments at depth 16 have no 「回复」 (Reply) button. To continue the discussion, reply to a comment higher up.
-- **Indentation**: indentation grows with depth up to depth 3. Deeper replies line up with depth 3. From depth 3 on, the nickname line shows a clickable `@replied-to-name` that points to the comment being replied to. This keeps deep discussions from being squeezed into a narrow strip on phones.
-- **Collapsing**: a comment with replies has a `[-]` next to it. Click it to collapse the whole branch, which then shows "N replies collapsed" (已折叠 N 条回复).
+- **Depth**: A root comment is at depth 0, and new replies can reach up to depth 16; comments at depth 16 no longer display the "Reply" button. To continue the discussion, reply to a comment higher in the thread.
+- **Indentation**: Indentation increases with depth up to depth 3, with deeper replies aligning at depth 3. From depth 3 onward, the nickname line displays a clickable `@replied-to-name` pointing back to the parent comment, preserving readable line width on mobile screens.
+- **Collapsing**: A comment with replies includes a `[-]` toggle. Clicking it collapses the entire branch and displays "N replies collapsed".
 
 Pagination applies only to root comments. Each page shows a number of root comments (10 by default) and returns them **together with all of their replies**. Turning a page swaps in a whole batch of discussions, so replies are never split onto the next page.
 
@@ -31,9 +31,9 @@ To keep a single huge discussion from overwhelming the service, one list request
 
 The admin console offers two kinds of delete. Neither can be undone.
 
-**Tombstone delete**: clears the comment's nickname, email address, website, and body, but keeps its position and time in the discussion. On public pages it shows as 「已删除」 and 「[该评论已删除]」 (in English: "Deleted" and "[Comment deleted]"). Its replies stay as they are, and nobody can reply to it anymore. Deleting one comment this way does not strip the rest of the thread of its context.
+**Tombstone delete**: Clears the comment's nickname, email address, website, and body, while preserving its position and timestamp in the discussion. Public pages display "Deleted" and "[Comment deleted]" (or 「已删除」 / 「[该评论已删除]」 in Chinese). Existing replies remain intact, but new replies cannot be posted under it. Deleting a comment this way prevents the rest of the thread from losing context.
 
-**Permanent delete**: removes a tombstone from the database. Only a tombstone with **no replies at all** can be permanently deleted.
+**Permanent delete**: Removes a tombstone record from the database. Only tombstones with **no replies at all** can be permanently deleted.
 
 ## Visitor identity {#visitor-identity}
 
@@ -45,14 +45,14 @@ Visitors do not need to register to comment. They fill in three fields:
 | Email | Required by default; a site setting can make it optional | Not public; used for notification delivery, notification deduplication and the blogger-mark backfill on existing comments |
 | Website | Optional by default; can be made required; only `http://` or `https://` is accepted | Public, as a link on the nickname |
 
-The identity a visitor enters in the root comment box is reused automatically for replies. When a visitor clicks "Reply" (回复) under a comment directly, any missing identity fields are filled in inside that reply box, without jumping back to the top of the page.
+The identity a visitor enters in the root comment box is automatically carried over to replies. When clicking "Reply" directly beneath an existing comment, any missing identity fields can be filled in within that inline reply box, without jumping to the top of the page.
 
 After a successful post, the browser attempts to remember this identity for 7 days so the visitor does not have to enter it again. Reading the identity does not block comment loading, and saving it does not delay the success message:
 
 - It is stored in the browser's IndexedDB, encrypted with a non-extractable AES-GCM key. It is not written to cookies, localStorage, or the URL.
 - It is stored separately per Ecoku server address and site ID, and is not shared between sites.
 - It expires after 7 days. If the browser does not support it, or the data is corrupted or expired, the comment box starts out empty. Commenting still works.
-- Clearing the browser's site data deletes it. The comment section has no separate "Forget me" (忘记我) button.
+- Clearing the browser's site data deletes it. The comment section has no separate "Forget me" button.
 
 ## Blogger identity {#blogger}
 

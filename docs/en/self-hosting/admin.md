@@ -96,19 +96,19 @@ Setting or changing the passphrase does not change the blogger mark on existing 
 
 ## Manage comments
 
-「评论」 (Comments) has 「已发布」 (Published) and 「已删除」 (Deleted) lists with 20 items per page. Choose 「最新在前」 (Newest first) or 「最早在前」 (Oldest first). Comments are grouped by date and show their body, time, post title and page key directly, together with any private email and visitor website. A reply quotes its parent when that parent is on the current page; click the quote to jump to it. Otherwise, the parent ID is shown.
+The "Comments" (评论) section divides comments into "Published" (已发布) and "Deleted" (已删除) lists, with 20 items per page. You can sort by "Newest first" (最新在前) or "Oldest first" (最早在前). Comments are grouped by date and display their content, timestamp, post title, and page key directly, alongside any private email and visitor website. When a parent comment is on the current page, replies quote its text; click the quote to jump to it. Otherwise, the parent comment ID is displayed.
 
-Tombstone and permanent deletion are confirmed beside the relevant comment.
+Tombstone and permanent deletions are confirmed directly beside the corresponding comment.
 
-「查看原评论」 (View original comment) opens the post in a new tab, scrolled to this comment (`site URL + page key + #ecoku-comment-<comment ID>`).
+"View original comment" (查看原评论) opens the post in a new browser tab and navigates directly to the comment (`site URL + page key + #ecoku-comment-<comment ID>`).
 
 ### Tombstone delete
 
-「墓碑删除」 (Tombstone delete) clears the comment's nickname, email, website, and body, but keeps its position in the discussion. On public pages it shows as 「已删除」 and 「[该评论已删除]」 (in English: "Deleted" and "[Comment deleted]"). Its replies stay as they are, and nobody can reply to it anymore. This cannot be undone. For what happens to notifications that are pending or already sent, see [After a comment is deleted](./notifications#after-deletion).
+"Tombstone delete" (墓碑删除) clears the nickname, email address, website, and body of the comment while preserving its position in the thread. On public pages, it appears as "Deleted" and "[Comment deleted]" (in Chinese: 「已删除」 and 「[该评论已删除]」). Child replies remain untouched, but new replies cannot be posted under it. This action cannot be undone. For handling notifications that are pending or already sent, see [After a comment is deleted](./notifications#after-deletion).
 
 ### Permanent delete
 
-In the 「已删除」 (Deleted) list, a tombstone with **no replies at all** can be removed from the database with 「彻底删除」 (Delete permanently). A tombstone that still has replies cannot be permanently deleted, so the replies do not lose their context; the comment shows 仍有回复，不能彻底删除 (it still has replies and cannot be permanently deleted).
+In the "Deleted" (已删除) list, a tombstone with **no replies at all** can be removed from the database via "Delete permanently" (彻底删除). Tombstones that still have replies cannot be permanently deleted to prevent replies from losing context; the action indicates "Replies remain; permanent deletion is unavailable" (仍有回复，不能彻底删除).
 
 ## Notifications and CAPTCHA
 

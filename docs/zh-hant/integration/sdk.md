@@ -1,6 +1,6 @@
 # JavaScript SDK
 
-[HTML 接入](./html)適合每篇文章都是獨立頁面的靜態網站。在 Vue、React 這類單頁應用程式中，切換文章時頁面不會重新整理，評論區需要跟著切換，這時請直接使用 SDK。
+[HTML 接入](./html) 適合每篇文章都是獨立頁面的靜態網站。在 Vue、React 這類單頁應用程式中，切換文章時頁面不會重新整理，評論區需要跟著切換，這時請直接使用 SDK。
 
 ## 取得 SDK {#install}
 
@@ -52,7 +52,7 @@ await comments.init()
 - `cssURL` 填入樣式表網址：SDK 不再注入，也**不會**替你載入這個網址，需要自己在頁面中加上 `<link rel="stylesheet">`。（HTML 載入器會自動加上，SDK 不會。）
 - `cssURL` 為 `'none'`：不注入任何樣式，外觀完全由你的 CSS 決定。
 
-可以使用實例提供的 `/client/ecoku.css`（與預設樣式相同）或 `/client/ecoku.unstyled.css`（只有版面配置）。詳見[自訂樣式](./custom-css)。
+可以使用實例提供的 `/client/ecoku.css`（與預設樣式相同）或 `/client/ecoku.unstyled.css`（只有版面配置）。詳見 [自訂樣式](./custom-css)。
 
 ## 實例方法
 

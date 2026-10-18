@@ -4,7 +4,7 @@ Ecoku 可以要求訪客在發布評論前、管理員在登入前先通過一�
 
 | 方式 | 說明 |
 | --- | --- |
-| 關閉 | 不顯示驗證元件，只靠[速率限制](../reference/configuration#rate-limit)防止灌水。 |
+| 關閉 | 不顯示驗證元件，只靠 [速率限制](../reference/configuration#rate-limit) 防止灌水。 |
 | Cloudflare Turnstile | Cloudflare 提供的託管驗證服務，需要 Cloudflare 帳號。 |
 | Cap | 開源、可自行託管的驗證服務，需要自己部署一個 Cap 實例。 |
 

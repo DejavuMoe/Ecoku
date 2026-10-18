@@ -42,7 +42,7 @@
 | `--ecoku-primary` | `var(--primary, #1e1c19)` | 標題、暱稱、輸入文字、主按鈕底色、聚焦底線 |
 | `--ecoku-secondary` | `var(--secondary, #6b655b)` | 時間、字數、欄位標籤、文字按鈕 |
 | `--ecoku-content` | `var(--content, #35312b)` | 評論內文與內文輸入框 |
-| `--ecoku-border` | `var(--border, #cbc3b5)` | 身分欄位底線、次要按鈕邊框、「回复」底線 |
+| `--ecoku-border` | `var(--border, #cbc3b5)` | 身分欄位底線、次要按鈕邊框、「回覆」底線 |
 | `--ecoku-border-soft` | `var(--border-soft, rgb(30 28 25 / 0.12))` | 卡片描邊、討論串分隔線、回覆引導線 |
 | `--ecoku-surface-muted` | `var(--surface-muted, #efebe3)` | 貼圖格滑過時的底色 |
 | `--ecoku-code-bg` | `var(--code-bg, #ece7de)` | 預設樣式未使用，保留給自訂樣式 |
@@ -55,7 +55,7 @@
 | `--ecoku-font-mono` | Maple Mono，後備為系統等寬字型 | 時間、`[+]` / `[-]`、字數、頁碼 |
 | `--ecoku-font-size` | `15px` | 內文與輸入框 |
 | `--ecoku-font-size-small` | `13px` | 中繼資訊、標籤、按鈕 |
-| `--ecoku-font-size-title` | `22px`（窄螢幕 `20px`） | 「N 条评论」標題 |
+| `--ecoku-font-size-title` | `22px`（窄螢幕 `20px`） | 「N 則評論」標題 |
 
 等寬字型只使用頁面已經載入的 Maple Mono，Ecoku 不會下載字型；沒有時依序後備到 `ui-monospace`、`SFMono-Regular`、`Menlo`、`Consolas`。
 
@@ -85,5 +85,5 @@
 
 - 回覆縮排：每層 22px，窄螢幕（≤ 620px）為 14px，最多 3 層。目前的層級透過元素上的 `--ecoku-depth` 變數（0～3）提供。
 - 摺疊按鈕 `[+]` / `[-]` 固定寬度為 `3ch`，切換時同一行的內容不會移動。
-- 暱稱、時間、摺疊按鈕和「回复」在同一行，依文字基線對齊。
+- 暱稱、時間、摺疊按鈕和「回覆」在同一行，依文字基線對齊。
 - Turnstile 元件寬度不超過 300px；Cap 元件維持 260×58px。
