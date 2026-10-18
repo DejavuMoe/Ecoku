@@ -207,4 +207,99 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .VPFeature, .VPButton { transition: none; }
+  .showcase-card { transition: none; transform: none; }
+}
+
+/* Home showcase section */
+.home-showcase {
+  max-width: 1152px;
+  margin: 64px auto 80px;
+  padding: 0 24px;
+}
+.home-showcase h2 {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 8px;
+  padding-top: 0;
+  border-top: none;
+}
+.home-showcase-lead {
+  text-align: center;
+  color: var(--muted);
+  font-size: 15px;
+  max-width: 640px;
+  margin: 0 auto 32px;
+  line-height: 1.7;
+}
+.showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+.showcase-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 22px 24px;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: var(--surface);
+  text-decoration: none !important;
+  color: inherit;
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+.showcase-card:hover {
+  border-color: var(--line);
+  background: var(--wash);
+  transform: translateY(-2px);
+}
+.showcase-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.showcase-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.showcase-tag {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--wash);
+  border: 1px solid var(--line-soft);
+  color: var(--muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.showcase-desc {
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--ink-soft);
+  margin: 0 0 16px;
+  flex-grow: 1;
+}
+.showcase-url {
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+@media (max-width: 768px) {
+  .showcase-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .home-showcase {
+    margin: 40px auto 56px;
+    padding: 0 16px;
+  }
 }
