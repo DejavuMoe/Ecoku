@@ -38,3 +38,51 @@ features:
     details: 适用于 Hugo、Hexo、Astro 等静态站点与 Vue、React 单页应用；支持通过 CSS 变量自由调整样式。
     link: /integration/html
 ---
+
+<div class="home-showcase">
+
+## 谁在使用 Ecoku？ {#who-is-using}
+
+<p class="home-showcase-lead">Ecoku 适用于个人博客、开源文档与数据展示等各类网站。以下是正在使用 Ecoku 承载评论交流的站点：</p>
+
+<div class="showcase-grid">
+
+<a class="showcase-card" href="https://blog.dejavu.moe/" target="_blank" rel="noopener noreferrer">
+  <div class="showcase-card-header">
+    <span class="showcase-title">Dejavu's Blog</span>
+    <span class="showcase-tag">个人博客</span>
+  </div>
+  <p class="showcase-desc">作者的个人技术与生活随笔博客，基于 Hugo 构建，使用 Ecoku 承载文章评论与读者交流。</p>
+  <span class="showcase-url">blog.dejavu.moe ↗</span>
+</a>
+
+<a class="showcase-card" href="https://ecoku.zsh.moe/" target="_blank" rel="noopener noreferrer">
+  <div class="showcase-card-header">
+    <span class="showcase-title">Ecoku 官方文档</span>
+    <span class="showcase-tag">开源文档</span>
+  </div>
+  <p class="showcase-desc">Ecoku 自身的说明文档，基于 VitePress 构建。全站各文档页面底部直接集成 Ecoku 评论区，作为自托管部署与静态站接入的实际范例。</p>
+  <span class="showcase-url">ecoku.zsh.moe ↗</span>
+</a>
+
+<a class="showcase-card" href="https://sani.zsh.moe/" target="_blank" rel="noopener noreferrer">
+  <div class="showcase-card-header">
+    <span class="showcase-title">Sani 文档</span>
+    <span class="showcase-tag">开源文档</span>
+  </div>
+  <p class="showcase-desc">自托管短链接、文本与文件分享工具 Sani 的官方文档站，在帮助与指南页面嵌入 Ecoku 收集读者使用反馈与答疑交流。</p>
+  <span class="showcase-url">sani.zsh.moe ↗</span>
+</a>
+
+<a class="showcase-card" href="https://vps.gripe" target="_blank" rel="noopener noreferrer">
+  <div class="showcase-card-header">
+    <span class="showcase-title">vps.gripe</span>
+    <span class="showcase-tag">测试报告</span>
+  </div>
+  <p class="showcase-desc">VPS 性能基准测试报告平台，收录完整的原始测试脚本输出与结构化统计摘要。在测评详情页嵌入 Ecoku，方便访客就服务器性能与网络表现展开讨论。</p>
+  <span class="showcase-url">vps.gripe ↗</span>
+</a>
+
+</div>
+
+</div>

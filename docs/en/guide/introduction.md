@@ -12,9 +12,16 @@ The design philosophy emphasizes restraint and simplicity:
 
 ## Who it is for
 
-- Static site creators using Hugo, Hexo, Astro, VitePress, Jekyll, or similar generators who need a streamlined comment section.
-- Site owners who want full sovereignty over their comment data rather than relying on third-party commercial services.
+- Static site creators using Hugo, Hexo, Astro, VitePress, Jekyll, or similar generators who need a lightweight comment section.
+- Site owners who want full ownership of their comment data rather than relying on third-party commercial services.
 - Operators managing multiple websites through a single consolidated backend.
+
+## Who Is Using Ecoku? {#who-is-using}
+
+- [**Dejavu's Blog**](https://blog.dejavu.moe/): The author's personal blog on system architecture, self-hosting practices, and essays. Built with Hugo, using Ecoku for article comments and reader interactions.
+- [**Ecoku Documentation**](https://ecoku.zsh.moe/): The official documentation for Ecoku, built with VitePress. Embeds Ecoku comments at the bottom of each doc page as a live demonstration of self-hosting and client integration.
+- [**Sani Documentation**](https://sani.zsh.moe/): Documentation site for Sani, a self-hosted short link, pastebin, and file sharing tool. Embeds Ecoku across guides and help pages for community discussion and questions.
+- [**vps.gripe**](https://vps.gripe): VPS benchmark reporting platform featuring raw script outputs and parsed summaries. Embeds Ecoku on benchmark detail pages for user discussions on server performance.
 
 ## Boundaries and non-goals
 

@@ -38,3 +38,51 @@ features:
     details: Works with Hugo, Hexo, Astro, and single-page apps like Vue or React; fully themeable with CSS variables.
     link: /en/integration/html
 ---
+
+<div class="home-showcase">
+
+## Who Is Using Ecoku? {#who-is-using}
+
+<p class="home-showcase-lead">Ecoku provides lightweight, self-hosted discussions for personal blogs, open source documentation, and data platforms. Here are some of the sites using Ecoku:</p>
+
+<div class="showcase-grid">
+
+<a class="showcase-card" href="https://blog.dejavu.moe/" target="_blank" rel="noopener noreferrer">
+  <div class="showcase-card-header">
+    <span class="showcase-title">Dejavu's Blog</span>
+    <span class="showcase-tag">Personal Blog</span>
+  </div>
+  <p class="showcase-desc">The author's personal blog covering system architecture, self-hosting practices, and essays. Built with Hugo, using Ecoku for article comments and reader interactions.</p>
+  <span class="showcase-url">blog.dejavu.moe ↗</span>
+</a>
+
+<a class="showcase-card" href="https://ecoku.zsh.moe/" target="_blank" rel="noopener noreferrer">
+  <div class="showcase-card-header">
+    <span class="showcase-title">Ecoku Documentation</span>
+    <span class="showcase-tag">Open Source Docs</span>
+  </div>
+  <p class="showcase-desc">The official documentation for Ecoku, built with VitePress. Embeds Ecoku comments at the bottom of each doc page as a live demonstration of self-hosting and client integration.</p>
+  <span class="showcase-url">ecoku.zsh.moe ↗</span>
+</a>
+
+<a class="showcase-card" href="https://sani.zsh.moe/" target="_blank" rel="noopener noreferrer">
+  <div class="showcase-card-header">
+    <span class="showcase-title">Sani Documentation</span>
+    <span class="showcase-tag">Open Source Docs</span>
+  </div>
+  <p class="showcase-desc">Documentation site for Sani, a self-hosted short link, pastebin, and file sharing tool. Embeds Ecoku across guides and help pages for community discussion and questions.</p>
+  <span class="showcase-url">sani.zsh.moe ↗</span>
+</a>
+
+<a class="showcase-card" href="https://vps.gripe" target="_blank" rel="noopener noreferrer">
+  <div class="showcase-card-header">
+    <span class="showcase-title">vps.gripe</span>
+    <span class="showcase-tag">Benchmark Reports</span>
+  </div>
+  <p class="showcase-desc">VPS benchmark reporting platform featuring raw script outputs and parsed summaries. Embeds Ecoku on benchmark detail pages for user discussions on server performance.</p>
+  <span class="showcase-url">vps.gripe ↗</span>
+</a>
+
+</div>
+
+</div>
