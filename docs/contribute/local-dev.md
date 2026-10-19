@@ -15,6 +15,8 @@ mkdir -p server/data
 
 本地服务使用 SQLite 文件与 `server/config.yaml`。新数据库首次启动时会自动创建管理员 `admin`，并在 `server/data/ecoku-secrets.json` 保存持久密钥，启动日志不输出密码。首次启动完成后，先用 Ctrl+C 停止服务，再运行 `(cd server && go run . admin reset-password)`，从命令输出取得临时密码，然后重新启动服务。用临时密码登录后台后必须改密；无需预先导出管理员凭据或通知加密密钥。
 
+服务启动时会检查 `ecoku-secrets.json` 的权限，权限宽于 `600` 时拒绝读取。Windows 文件系统无法满足这项检查，首次启动之后的启动和 `admin reset-password` 都会报「持久密钥文件权限过宽；请设为 600」，因此在 Windows 上请在 WSL 的 Linux 文件系统中运行服务端（例如仓库位于 WSL 内，或把 `GOOS=linux` 构建的二进制与配置放到 WSL 目录）；Windows 上的浏览器和管理端 Vite 开发服务器可以直接访问 WSL 中监听 `127.0.0.1:12123` 的服务。
+
 已有开发数据库继续使用原管理员账号；如之前配置过旧环境变量，请先完成持久化迁移再移除，参见 [旧配置迁移](../self-hosting/upgrade#legacy-config)。
 
 ## 启动
