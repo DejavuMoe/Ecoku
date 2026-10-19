@@ -426,8 +426,16 @@ describe('approved production surface', () => {
     expect(wrapper.get('#c-7 .entry-copy').text()).toContain('<script>')
     expect(wrapper.get('#c-8 .entry-quote').attributes('href')).toBe('#c-7')
     await wrapper.get('#c-8 .is-danger').trigger('click')
-    expect(wrapper.get('#c-8 [role="alertdialog"]').text()).toContain('下面的回复保留不变')
+    expect(wrapper.get('#c-8 [role="alertdialog"]').text()).toContain('回复保留不变')
+    expect(wrapper.get('#c-8 .is-danger').attributes('aria-expanded')).toBe('true')
+    expect(wrapper.get('#c-8 .is-danger').attributes('aria-controls')).toBe('confirm-8')
+    expect(wrapper.get('#c-8 .entry-confirm').attributes('id')).toBe('confirm-8')
     await wrapper.get('#c-8 .entry-confirm .button-quiet').trigger('click')
+    expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false)
+    expect(wrapper.get('#c-8 .is-danger').attributes('aria-expanded')).toBe('false')
+    // Escape on either button backs out the same way.
+    await wrapper.get('#c-8 .is-danger').trigger('click')
+    await wrapper.get('#c-8 .entry-confirm .button-danger').trigger('keydown', { key: 'Escape' })
     expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false)
     expect(remove).not.toHaveBeenCalled()
     wrapper.unmount()
@@ -673,6 +681,27 @@ describe('approved production surface', () => {
     expect(wrapper.find('.entry-time').text()).toBe('09:02')
     expect(wrapper.find('.entry-time').attributes('title')).toBe('2026/08/13 09:02')
     expect(wrapper.get('#c-8 .entry-time').text()).toBe('时间未知')
+    // Days are written out in full, year included and without a weekday; only today and yesterday get a second line.
+    const days = wrapper.findAll('.day-label')
+    expect(days[0]!.get('.day-name').text()).toBe('2026 年 8 月 13 日')
+    expect(days[0]!.find('.day-date').exists()).toBe(false)
+    expect(days[1]!.get('.day-name').text()).toBe('时间未知')
+    expect(wrapper.get('.tab-sep').text()).toBe('')
+  })
+
+  it('names today and yesterday above their full date', () => {
+    const store = useAdminStore()
+    store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
+    const now = new Date().toISOString()
+    store.comments = [comment({ id: 9, createdAt: now }), comment({ id: 8, createdAt: new Date(Date.now() - 86400000).toISOString() })]
+    const wrapper = mount(CommentManagementView, {})
+    const [today, yesterday] = wrapper.findAll('.day-label')
+    expect(today!.get('.day-name').text()).toBe('今天')
+    const [year, month, day] = formatDate(now).slice(0, 10).split('/')
+    expect(today!.get('.day-date').text()).toBe(`${Number(year)} 年 ${Number(month)} 月 ${Number(day)} 日`)
+    expect(yesterday!.get('.day-name').text()).toBe('昨天')
+    expect(yesterday!.get('.day-date').text()).toMatch(/^\d{4} 年 \d{1,2} 月 \d{1,2} 日$/)
+    wrapper.unmount()
   })
 
   it('renders the approved off/Turnstile/Cap selector without operational copy or plaintext secrets', () => {
@@ -929,7 +958,12 @@ describe('approved production surface', () => {
     expect(css).toContain('--accent: color-mix(in oklab, #c8553a 75%, var(--ink))')
     expect(css).toContain('--sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC"')
     expect(css).not.toMatch(/"Songti SC"|"STSong"|"Noto Serif SC"|@font-face|@import/)
-    expect(css).toContain('.options-list')
+    expect(css).toContain('.choice-cards')
+    // v17: the masthead centres its navigation, notices and the delete sheet carry no left rule, dates are not monospace.
+    expect(css).toMatch(/\.masthead-inner \{[^}]*grid-template-columns: minmax\(0, 1fr\) auto minmax\(0, 1fr\)/)
+    expect(css).not.toMatch(/\.(notice|entry-confirm) \{[^}]*border-left/)
+    expect(css).not.toMatch(/\.day-date \{[^}]*font-family: var\(--mono\)/)
+    expect(css).not.toMatch(/\.options input:checked \+ span \{[^}]*font-weight/)
     expect(css).toContain('.admin-cap-widget')
     expect(css).toContain('--cap-widget-width: 260px')
     expect(css).toContain('--cap-widget-height: 58px')

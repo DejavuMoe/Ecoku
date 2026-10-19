@@ -127,18 +127,18 @@
           <p>三种方式互斥，切换后保存才会生效。</p>
         </div>
         <div class="in-main section-body">
-          <fieldset aria-labelledby="captcha-title" class="options-list">
-            <label class="option-row"
+          <fieldset aria-labelledby="captcha-title" class="choice-cards">
+            <label class="choice-card"
               ><input bind:group={draft.provider} type="radio" name="captcha-provider" value="off" /><span
                 aria-hidden="true"
                 class="option-mark"
               ></span><strong>关闭</strong><small>不显示验证组件</small></label
-            ><label class="option-row"
+            ><label class="choice-card"
               ><input bind:group={draft.provider} type="radio" name="captcha-provider" value="turnstile" /><span
                 aria-hidden="true"
                 class="option-mark"
               ></span><strong>Cloudflare Turnstile</strong><small>由 Cloudflare 托管的验证</small></label
-            ><label class="option-row"
+            ><label class="choice-card"
               ><input bind:group={draft.provider} type="radio" name="captcha-provider" value="cap" /><span
                 aria-hidden="true"
                 class="option-mark"

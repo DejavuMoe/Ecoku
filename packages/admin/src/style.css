@@ -1,7 +1,9 @@
-/* Ecoku admin v16 — the comment surface's paper and ink (design revision 17), laid out as a ledger:
+/* Ecoku admin v17 — the comment surface's paper and ink (design revision 17), laid out as a ledger:
    a margin column carries context (site, day, section), the main column carries the work.
    Settings use boxed inputs and one input per list item; rules only separate sections and days.
-   UI text uses the operating system's own CJK and Latin faces; no webfont is loaded. */
+   The masthead centres its navigation; a delete is confirmed on a small sheet under the comment;
+   notices are tinted boxes, so a left rule only ever means a quoted reply; selection never changes
+   a word's width. UI text uses the operating system's own CJK and Latin faces; no webfont is loaded. */
 
 :root {
   --paper: #f7f4ee;
@@ -21,6 +23,8 @@
   --warn-bg: color-mix(in srgb, #b8862a 12%, var(--paper));
   --seal: #b8472f;
   --danger-rule: #9a4733;
+  --danger-line: color-mix(in srgb, var(--danger) 24%, transparent);
+  --control-ring: color-mix(in srgb, var(--muted) 55%, var(--line));
   --seal-cut: var(--paper);
   --focus: color-mix(in srgb, var(--ink) 40%, transparent);
   --shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 8px 24px -8px rgb(0 0 0 / 0.2);
@@ -39,6 +43,7 @@
   --main-w: 760px;
   --gutter: 32px;
   --masthead: 60px;
+  --page-w: min(100% - var(--gutter) * 2, var(--margin-w) + var(--col-gap) + var(--main-w));
   --savebar-bottom: 20px;
   color-scheme: light dark;
 }
@@ -91,6 +96,8 @@ button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 button:disabled, input:disabled, textarea:disabled { cursor: not-allowed; }
 a { color: inherit; }
 h1, h2, h3, p, dl, dd, figure, blockquote { margin: 0; }
+/* Short notes in narrow columns: keep a lone character or punctuation mark off the last line. */
+p { text-wrap: pretty; }
 fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
 [hidden] { display: none !important; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
@@ -107,7 +114,7 @@ h1[tabindex="-1"]:focus { outline: none; }
 code { padding: 1px 5px; border-radius: var(--radius-sm); color: var(--ink-soft); background: var(--code-bg); font-family: var(--mono); font-size: 0.92em; }
 
 /* The ledger: a margin column for context and a main column for the work, shared by every row. */
-.layout { display: grid; width: min(100% - var(--gutter) * 2, var(--margin-w) + var(--col-gap) + var(--main-w)); grid-template-columns: var(--margin-w) minmax(0, 1fr); column-gap: var(--col-gap); margin-inline: auto; }
+.layout { display: grid; width: var(--page-w); grid-template-columns: var(--margin-w) minmax(0, 1fr); column-gap: var(--col-gap); margin-inline: auto; }
 .in-margin { grid-column: 1; min-width: 0; }
 .in-main { grid-column: 2; min-width: 0; }
 
@@ -149,9 +156,10 @@ code { padding: 1px 5px; border-radius: var(--radius-sm); color: var(--ink-soft)
 .menu-option:hover, .menu-option:focus-visible { color: var(--ink); background: var(--wash); outline: 0; }
 .menu-option[aria-selected="true"] { color: var(--ink); font-weight: 600; }
 
-.notice { display: flex; align-items: flex-start; gap: 10px; padding: 10px 14px; border-left: 2px solid currentColor; border-radius: 0 var(--radius) var(--radius) 0; font-size: 13px; line-height: 1.65; }
-.notice-error { color: var(--danger); background: var(--danger-bg); }
-.notice-warn { color: var(--warn); background: var(--warn-bg); }
+/* Notices are tinted boxes. A left rule is kept for one thing only: a quoted reply. */
+.notice { display: flex; align-items: flex-start; gap: 10px; padding: 9px 13px; border: 1px solid; border-radius: var(--radius); font-size: 13px; line-height: 1.65; }
+.notice-error { border-color: var(--danger-line); color: var(--danger); background: var(--danger-bg); }
+.notice-warn { border-color: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--warn); background: var(--warn-bg); }
 .notice .button { margin-left: auto; min-height: 28px; padding: 0 10px; font-size: 12px; }
 .inline-error { color: var(--danger); font-size: 12.5px; white-space: nowrap; }
 
@@ -196,14 +204,18 @@ textarea.input { height: auto; min-height: calc(var(--control) * 2); padding: 7p
 .help code { font-size: 11.5px; }
 .field-error { color: var(--danger); }
 
-/* One input per item: Enter starts the next item, Backspace on an empty item removes it, pasted lines split. */
+/* One input per item: Enter starts the next item, Backspace on an empty item removes it, pasted lines split.
+   The remove button sits inside the input's right end, so a list keeps the same right edge as every other field. */
 .list-field { display: grid; min-width: 0; gap: 6px; }
 .list-rows { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.list-row { display: grid; grid-template-columns: minmax(0, 1fr) 32px; align-items: center; column-gap: 4px; }
-.row-remove { display: inline-grid; width: 32px; height: 32px; place-items: center; padding: 0; border: 0; border-radius: var(--radius); color: var(--muted); background: transparent; transition: color 0.15s ease, background-color 0.15s ease; }
-.row-remove:hover:not(:disabled) { color: var(--danger); background: var(--danger-bg); }
+.list-row { --remove: 28px; position: relative; display: grid; grid-template-columns: minmax(0, 1fr); }
+.list-row .input { padding-right: calc(var(--remove) + 8px); }
+.row-remove { position: absolute; top: calc((var(--control) - var(--remove)) / 2); right: calc((var(--control) - var(--remove)) / 2); display: inline-grid; width: var(--remove); height: var(--remove); place-items: center; padding: 0; border: 0; border-radius: var(--radius-sm); color: var(--muted); background: transparent; opacity: 0.7; transition: color 0.15s ease, background-color 0.15s ease, opacity 0.15s ease; }
+.row-remove .icon { width: 14px; height: 14px; }
+.list-row:hover .row-remove, .list-row:focus-within .row-remove { opacity: 1; }
+.row-remove:hover:not(:disabled) { color: var(--danger); background: var(--danger-bg); opacity: 1; }
 .row-remove.is-idle { visibility: hidden; }
-.row-note { grid-column: 1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 3px 0 0 1px; color: var(--danger); font-size: 12.5px; line-height: 1.6; }
+.row-note { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 3px 0 0 1px; color: var(--danger); font-size: 12.5px; line-height: 1.6; }
 .row-note.is-soft { color: var(--muted); }
 .row-fix { padding: 0; border: 0; color: var(--ink-soft); background: transparent; font-size: 12px; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 0.25em; }
 .row-fix:hover:not(:disabled) { color: var(--accent); text-decoration-color: currentColor; }
@@ -215,16 +227,16 @@ textarea.input { height: auto; min-height: calc(var(--control) * 2); padding: 7p
 .list-add .icon { width: 14px; height: 14px; }
 .list-count { color: var(--muted); font-family: var(--mono); font-size: 11.5px; font-variant-numeric: tabular-nums; }
 
-/* Choices written out as text; the selected one is inked. */
-.options { display: flex; min-height: var(--control); flex-wrap: wrap; align-items: center; gap: 0 24px; }
+/* Choices written out as text; the selected one is inked. Its weight stays the same, so nothing beside it moves. */
+.options { display: flex; min-height: var(--control); flex-wrap: wrap; align-items: center; gap: 0 26px; }
 .options label { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
 .options input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .options span { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 14px; letter-spacing: 0.02em; transition: color 0.15s ease; }
-.options span::before { width: 11px; height: 11px; flex: 0 0 auto; border: 1.25px solid var(--line); border-radius: 50%; content: ""; transition: border-color 0.15s ease, background 0.15s ease; }
+.options span::before, .option-mark { width: 14px; height: 14px; flex: 0 0 auto; border: 1.5px solid var(--control-ring); border-radius: 50%; content: ""; transition: border-color 0.15s ease, background 0.15s ease; }
 .options label:hover span { color: var(--ink); }
 .options label:hover span::before { border-color: var(--muted); }
-.options input:checked + span { color: var(--ink); font-weight: 600; }
-.options input:checked + span::before { border-color: var(--ink); background: radial-gradient(circle, var(--ink) 0 2.6px, transparent 3px); }
+.options input:checked + span { color: var(--ink); }
+.options input:checked + span::before { border-color: var(--ink); background: radial-gradient(circle, var(--ink) 0 3px, transparent 3.5px); }
 .options input:focus-visible + span { border-radius: 2px; outline: 2px solid var(--focus); outline-offset: 3px; }
 .options .lang { letter-spacing: 0; }
 
@@ -278,19 +290,20 @@ cap-widget.admin-cap-widget {
 .wordmark { font-family: var(--wordmark); font-size: 20px; font-weight: 700; letter-spacing: 0.005em; line-height: 1; }
 .masthead { position: sticky; z-index: 40; top: 0; border-bottom: 1px solid var(--line-soft); background: color-mix(in srgb, var(--paper) 96%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
 .masthead { --seal-cut: var(--paper); }
-.masthead-inner { height: var(--masthead); align-items: stretch; }
+/* Brand, navigation and sign-out on one bar as wide as the page; the navigation sits on the page's centre line. */
+.masthead-inner { display: grid; width: var(--page-w); height: var(--masthead); grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; column-gap: 24px; margin-inline: auto; }
 .masthead-brand { display: flex; align-items: center; }
 .brand { display: inline-flex; align-items: center; gap: 10px; margin-left: -4px; padding: 6px 4px; border: 0; border-radius: var(--radius); color: var(--ink); background: transparent; }
-.masthead-main { display: flex; align-items: stretch; gap: 20px; }
-.nav { display: flex; align-items: stretch; gap: 30px; }
-.nav-link { position: relative; padding: 0; border: 0; color: var(--muted); background: transparent; font-size: 14px; letter-spacing: 0.06em; transition: color 0.15s ease; }
+.nav { display: flex; align-items: stretch; gap: 36px; }
+/* The hidden bold copy reserves the selected width, so the bar does not shift when the page changes. */
+.nav-link { position: relative; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 2px; border: 0; color: var(--muted); background: transparent; font-size: 14px; letter-spacing: 0.06em; transition: color 0.15s ease; }
+.nav-link::before { height: 0; overflow: hidden; font-weight: 600; visibility: hidden; content: attr(data-label); }
 .nav-link::after { position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; border-radius: 2px 2px 0 0; background: transparent; content: ""; transition: background-color 0.15s ease; }
 .nav-link:hover { color: var(--ink); }
 .nav-link[aria-current="page"] { color: var(--ink); font-weight: 600; }
 .nav-link[aria-current="page"]::after { background: var(--ink); }
-.masthead-main .inline-error { align-self: center; margin-left: auto; }
-.logout { align-self: center; margin-left: auto; text-decoration-color: transparent; }
-.inline-error:not([hidden]) + .logout { margin-left: 0; }
+.masthead-actions { display: flex; min-width: 0; align-items: center; justify-content: flex-end; gap: 16px; }
+.logout { text-decoration-color: transparent; }
 
 /* ---------- page head ---------- */
 .page-head { padding: 44px 0 16px; }
@@ -305,11 +318,15 @@ cap-widget.admin-cap-widget {
 
 .tabs { display: flex; align-items: center; margin-top: 12px; }
 .tab { display: inline-flex; min-height: 30px; align-items: baseline; gap: 6px; padding: 0; border: 0; color: var(--muted); background: transparent; font-size: 13.5px; letter-spacing: 0.04em; transition: color 0.15s ease; }
+.tab-label { display: inline-grid; }
+.tab-label::after { height: 0; overflow: hidden; font-weight: 600; visibility: hidden; content: attr(data-label); }
 .tab .count { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; letter-spacing: 0; }
 .tab:hover { color: var(--ink); }
-.tab[aria-selected="true"] { color: var(--ink); font-weight: 600; }
-.tab[aria-selected="true"] .count { font-weight: 400; }
-.tab-sep { margin: 0 12px; color: var(--line); font-size: 13px; }
+.tab[aria-selected="true"] { color: var(--ink); }
+.tab[aria-selected="true"] .tab-label { font-weight: 600; }
+/* Dividers are drawn, not typed: a full-width bar glyph sits on the baseline and never centres. */
+.tab-sep, .pager-sep { width: 1px; height: 12px; flex: 0 0 auto; background: var(--line); }
+.tab-sep { margin: 0 14px; }
 
 /* Site context: the site's name, with its ID beneath, like a letterhead. */
 .site-switch { position: relative; }
@@ -333,14 +350,16 @@ cap-widget.admin-cap-widget {
 /* ---------- comment feed: a hairline between days, space between comments ---------- */
 .day + .day { border-top: 1px solid var(--line-soft); }
 .day-label { position: sticky; top: calc(var(--masthead) + 18px); align-self: start; padding: 18px 0 16px; }
-.day-name { color: var(--ink); font-size: 13.5px; font-weight: 600; letter-spacing: 0.06em; line-height: 22px; }
-.day-date { color: var(--muted); font-family: var(--mono); font-size: 12px; line-height: 18px; }
-.day-count { margin-top: 6px; color: var(--muted); font-size: 12px; }
+/* Dates are set in the UI face with tabular figures; a monospace face spaces CJK unevenly. */
+.day-name { color: var(--ink); font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0.04em; line-height: 22px; white-space: nowrap; }
+.day-date { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; line-height: 20px; white-space: nowrap; }
+.day-count { margin-top: 6px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
 
+/* A selected comment is not marked: with no keyboard shortcuts, a bar beside it only added a second rule.
+   Keyboard focus, which lands here after a delete, still gets a ring. */
 .entry { position: relative; isolation: isolate; padding: 16px 0; outline: 0; scroll-margin-top: calc(var(--masthead) + 24px); }
 .entry + .entry { margin-top: 8px; }
-.entry::before { position: absolute; top: 20px; bottom: 20px; left: -20px; width: 2px; border-radius: 2px; background: transparent; content: ""; transition: background-color 0.15s ease; }
-.entry[aria-current="true"]::before { background: var(--ink); }
+.entry:focus-visible { border-radius: var(--radius); outline: 2px solid var(--focus); outline-offset: 2px; }
 .entry.is-flash::after { position: absolute; z-index: -1; inset: 2px -14px; border-radius: var(--radius); background: var(--wash); content: ""; animation: flash 1.4s ease forwards; }
 .entry.is-leaving { animation: leave 0.24s ease forwards; pointer-events: none; }
 
@@ -361,22 +380,26 @@ a.entry-quote:hover .quote-ref { color: var(--accent); }
 
 .entry-copy { margin-top: 6px; color: var(--ink-soft); font-size: 15px; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; text-wrap: pretty; }
 .entry-foot { display: flex; min-width: 0; align-items: baseline; gap: 8px 20px; margin-top: 10px; color: var(--muted); font-size: 12.5px; line-height: 20px; }
-.entry-page { display: flex; min-width: 0; flex: 1 1 auto; align-items: baseline; gap: 10px; }
-.entry-title { flex: 0 1 auto; min-width: 3em; overflow: hidden; color: var(--ink-soft); text-overflow: ellipsis; white-space: nowrap; }
+.entry-page { display: flex; min-width: 0; flex: 1 1 auto; align-items: baseline; gap: 8px; }
+/* Trim the blank half of the opening 《 so the title starts on the text edge (fonts without halt keep it). */
+.entry-title { flex: 0 1 auto; min-width: 3em; overflow: hidden; color: var(--ink-soft); text-overflow: ellipsis; text-spacing-trim: trim-start; white-space: nowrap; }
 .entry-key { flex: 0 100 auto; min-width: 0; overflow: hidden; font-family: var(--mono); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
 .entry-actions { display: flex; flex: 0 0 auto; align-items: baseline; gap: 16px; }
 .entry-id { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
 .entry-actions .quiet-link { min-height: 20px; font-size: 12.5px; }
+.entry-actions .quiet-link[aria-expanded="true"] { color: var(--danger); }
 .entry-hint { color: var(--muted); font-size: 12.5px; }
 
 .entry.is-tombstone .entry-author { color: var(--muted); font-weight: 400; }
 .entry.is-tombstone .entry-copy { color: var(--muted); }
 
-/* Inline confirmation: the decision stays next to the comment it concerns. */
-.entry-confirm { display: grid; gap: 10px; margin-top: 14px; padding: 12px 14px 12px 16px; border-left: 2px solid var(--danger); border-radius: 0 var(--radius) var(--radius) 0; background: var(--danger-bg); animation: reveal 0.18s ease; }
-.entry-confirm p { color: var(--ink-soft); font-size: 13px; line-height: 1.7; }
-.entry-confirm strong { margin-right: 6px; color: var(--danger); font-weight: 600; }
-.entry-confirm .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
+/* Inline confirmation: a small sheet under the comment, drawn like the save bar — what happens on the left,
+   the two choices on the right. Only the destructive button carries colour. */
+.entry-confirm { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 28px; margin-top: 14px; padding: 14px 14px 14px 18px; border: 1px solid var(--line-soft); border-radius: 8px; background: var(--surface); box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 6px 18px -10px rgb(0 0 0 / 0.18); animation: reveal 0.18s ease; }
+.confirm-copy { display: grid; min-width: 0; gap: 2px; }
+.confirm-title { color: var(--ink); font-size: 14px; font-weight: 600; letter-spacing: 0.02em; line-height: 22px; }
+.confirm-text { color: var(--muted); font-size: 13px; line-height: 1.65; }
+.confirm-actions { display: flex; align-items: center; gap: 8px; }
 .entry .notice { margin-top: 12px; }
 
 .feed-state { padding: 36px 0 44px; }
@@ -399,7 +422,6 @@ a.entry-quote:hover .quote-ref { color: var(--accent); }
 .pager-button:not(:disabled):hover { color: var(--accent); }
 .pager-button:disabled { opacity: 0.4; }
 .pager-status { min-width: 40px; color: var(--ink); font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; text-align: center; }
-.pager-sep { color: var(--line); }
 
 /* ---------- settings documents ---------- */
 .doc { display: block; }
@@ -425,20 +447,21 @@ a.entry-quote:hover .quote-ref { color: var(--accent); }
 .specimen strong { color: var(--ink); font-size: 15px; font-weight: 600; line-height: 22px; }
 .specimen-badge { color: var(--accent); font-size: 12px; font-weight: 500; letter-spacing: 0.04em; }
 
-/* Provider choice: rows without rules; the chosen row is washed. */
-.options-list { display: grid; gap: 2px; margin-inline: -12px; }
-.option-row { position: relative; display: grid; grid-template-columns: 14px 156px minmax(0, 1fr); align-items: baseline; column-gap: 14px; padding: 11px 12px; border-radius: var(--radius); cursor: pointer; transition: background-color 0.15s ease; }
-.option-row:has(input:checked) { background: var(--wash); }
-.option-row input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
-.option-mark { width: 13px; height: 13px; align-self: center; border: 1.25px solid var(--line); border-radius: 50%; transition: border-color 0.15s ease; }
-.option-row strong { color: var(--ink-soft); font-size: 14px; font-weight: 500; line-height: 22px; }
-.option-row small { color: var(--muted); font-size: 12.5px; line-height: 20px; }
-.option-row:hover .option-mark { border-color: var(--muted); }
-.option-row:hover strong { color: var(--ink); }
-.option-row:has(input:checked) .option-mark { border-color: var(--ink); background: radial-gradient(circle, var(--ink) 0 3px, transparent 3.5px); }
-.option-row:has(input:checked) strong { color: var(--ink); font-weight: 600; }
-.option-row:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
-.provider-panel { margin-top: 10px; }
+/* Provider choice: three cards side by side, each a name with one line beneath. The chosen card is inked
+   and washed; the cards fill the main column, so nothing hangs outside it. */
+.choice-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.choice-card { position: relative; display: grid; grid-template-columns: 14px minmax(0, 1fr); align-content: start; gap: 2px 10px; padding: 12px 14px 13px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); cursor: pointer; transition: border-color 0.15s ease, background-color 0.15s ease; }
+.choice-card input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.choice-card .option-mark { align-self: center; }
+.choice-card strong { min-width: 0; color: var(--ink-soft); font-size: 14px; font-weight: 600; line-height: 22px; }
+.choice-card small { grid-column: 2; color: var(--muted); font-size: 12.5px; line-height: 1.6; }
+.choice-card:hover { border-color: color-mix(in srgb, var(--muted) 70%, var(--line)); }
+.choice-card:hover .option-mark { border-color: var(--muted); }
+.choice-card:has(input:checked) { border-color: var(--ink); background: var(--wash); }
+.choice-card:has(input:checked) .option-mark { border-color: var(--ink); background: radial-gradient(circle, var(--ink) 0 3px, transparent 3.5px); }
+.choice-card:has(input:checked) strong { color: var(--ink); }
+.choice-card:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.provider-panel { margin-top: 8px; }
 
 /* ---------- save bar ---------- */
 .savebar-dock { position: fixed; z-index: 60; right: 0; bottom: var(--savebar-bottom); left: 0; pointer-events: none; }
@@ -475,7 +498,7 @@ body:has(.savebar-dock) .toast { bottom: calc(var(--savebar-bottom) + 66px); }
 /* ---------- adaptive ---------- */
 @media (max-width: 1199px) {
   :root { --margin-w: 172px; --col-gap: 36px; --gutter: 28px; }
-  .nav { gap: 24px; }
+  .nav { gap: 28px; }
 }
 
 @media (max-width: 859px) {
@@ -485,8 +508,6 @@ body:has(.savebar-dock) .toast { bottom: calc(var(--savebar-bottom) + 66px); }
   body:has(.app) { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 
   .masthead-inner { grid-template-columns: minmax(0, 1fr) auto; }
-  .masthead-brand { grid-column: 1; }
-  .masthead-main { grid-column: 2; }
   .brand .seal { width: 24px; height: 24px; }
   .wordmark { font-size: 18px; }
   .nav { display: none; }
@@ -498,15 +519,18 @@ body:has(.savebar-dock) .toast { bottom: calc(var(--savebar-bottom) + 66px); }
   .site-menu { width: min(300px, calc(100vw - 32px)); }
   .page-title { font-size: 20px; }
 
-  .day-label { position: sticky; z-index: 5; top: var(--masthead); display: flex; align-items: baseline; gap: 10px; margin: 0 calc(var(--gutter) * -1); padding: 9px var(--gutter) 7px; border-bottom: 1px solid var(--line-soft); background: color-mix(in srgb, var(--paper) 97%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  /* One full-bleed bar per day, ruled above and below; the inset rule between days would double it.
+     When stuck, its top rule tucks under the masthead's. */
+  .day + .day { border-top: 0; }
+  .day-label { position: sticky; z-index: 5; top: calc(var(--masthead) - 1px); display: flex; align-items: baseline; gap: 10px; margin: 0 calc(var(--gutter) * -1); padding: 9px var(--gutter) 8px; border-block: 1px solid var(--line-soft); background: color-mix(in srgb, var(--paper) 97%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
   .day-count { margin: 0 0 0 auto; }
   .entry { padding: 16px 0; scroll-margin-top: calc(var(--masthead) + 48px); }
-  .entry::before { left: -12px; }
   .entry-head { gap: 12px; }
   .entry-foot { flex-wrap: wrap; }
   .entry-page { flex-basis: 100%; }
   .entry-actions { margin-left: auto; }
-  .entry-confirm .confirm-actions .button { flex: 1 1 0; min-height: 38px; }
+  .entry-confirm { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 14px; }
+  .confirm-actions .button { flex: 1 1 0; min-height: 40px; }
   .feed-foot { padding: 12px 0 28px; }
 
   .doc-section { padding: 22px 0 26px; }
@@ -520,8 +544,7 @@ body:has(.savebar-dock) .toast { bottom: calc(var(--savebar-bottom) + 66px); }
   .help, .field-error { padding-left: 0; }
   .section-actions { padding-left: 0; }
   .specimen { max-width: 100%; margin-left: 0; }
-  .option-row { grid-template-columns: 14px minmax(0, 1fr); row-gap: 0; }
-  .option-row small { grid-column: 2; }
+  .choice-cards { grid-template-columns: minmax(0, 1fr); gap: 8px; }
 
   .savebar { padding-left: 14px; }
   .toast { bottom: calc(64px + env(safe-area-inset-bottom) + 16px); }
@@ -546,8 +569,8 @@ body:has(.savebar-dock) .toast { bottom: calc(var(--savebar-bottom) + 66px); }
 @media (pointer: coarse) {
   :root { --control: 42px; }
   .rule input, .input, .input.mono { font-size: max(16px, 1em); }
-  .list-row { grid-template-columns: minmax(0, 1fr) 42px; }
-  .row-remove { width: 42px; height: 42px; }
+  .list-row { --remove: 36px; }
+  .row-remove { opacity: 1; }
   .list-add { min-height: 40px; }
   .entry-actions .quiet-link { min-height: 32px; }
 }

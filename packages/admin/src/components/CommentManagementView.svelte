@@ -8,7 +8,7 @@
   import AdminIcon from './AdminIcon.svelte'
   import SitePicker from './SitePicker.svelte'
   import SmojiContent from './SmojiContent.svelte'
-  import { adminLocale, commentCountNoun } from '../i18n.svelte'
+  import { adminLocale, commentCountNoun, translateAdminText } from '../i18n.svelte'
 
   const store = useAdminStore()
 
@@ -24,6 +24,8 @@
   let rows = $derived.by(() =>
     store.comments.map((c) => (store.selectedComment?.id === c.id ? (store.selectedComment ?? c) : c))
   )
+  // A day is written out in full, year included, without the weekday. Today and yesterday are named,
+  // with the full date beneath; any other day is named by its date alone.
   let groups = $derived.by(() => {
     const result: { key: string; name: string; sub: string; comments: CommentReview[] }[] = []
     const locale = adminLocale.value
@@ -36,22 +38,16 @@
         const [year, month, day] = key.split('/')
         const date = new Date(comment.createdAt)
         const valid = !Number.isNaN(date.getTime())
-        const md = !valid
+        const full = !valid
           ? '时间未知'
-          : locale === 'zh-CN'
-            ? `${Number(month)}月${Number(day)}日`
-            : new Intl.DateTimeFormat(locale, { timeZone: 'Asia/Shanghai', month: 'long', day: 'numeric' }).format(date)
-        const week = valid
-          ? new Intl.DateTimeFormat(locale, { timeZone: 'Asia/Shanghai', weekday: 'short' }).format(date)
-          : ''
+          : locale === 'en'
+            ? new Intl.DateTimeFormat(locale, { timeZone: 'Asia/Shanghai', dateStyle: 'long' }).format(date)
+            : `${Number(year)} 年 ${Number(month)} 月 ${Number(day)} 日`
+        const relative = valid && (key === today || key === yesterday)
         group = {
           key,
-          name: key === today ? '今天' : key === yesterday ? '昨天' : md,
-          sub: !valid
-            ? ''
-            : key === today || key === yesterday
-              ? `${md} ${week}`
-              : `${year === today.slice(0, 4) ? '' : `${year} · `}${week}`,
+          name: relative ? (key === today ? '今天' : '昨天') : full,
+          sub: relative ? full : '',
           comments: []
         }
         result.push(group)
@@ -137,6 +133,12 @@
     confirmation = null
     await tick()
     if (id) entry(id)?.querySelector<HTMLButtonElement>('.is-danger')?.focus()
+  }
+  // Escape backs out of a confirmation; focus is always on one of its two buttons.
+  function confirmKeydown(event: KeyboardEvent) {
+    if (event.key !== 'Escape' || store.actionBusy) return
+    event.preventDefault()
+    void closeConfirm()
   }
   async function confirmAction() {
     const target = confirmation
@@ -271,8 +273,10 @@
             onclick={() => {
               chooseStatus('published')
             }}
-            class="tab">已发布 <span class="count">{store.counts.published}</span></button
-          ><span aria-hidden="true" class="tab-sep">｜</span><button
+            class="tab"
+            ><span data-label={translateAdminText('已发布')} class="tab-label">已发布</span>
+            <span class="count">{store.counts.published}</span></button
+          ><span aria-hidden="true" class="tab-sep"></span><button
             type="button"
             role="tab"
             aria-selected={store.status === 'deleted'}
@@ -280,7 +284,9 @@
             onclick={() => {
               chooseStatus('deleted')
             }}
-            class="tab">已删除 <span class="count">{store.counts.deleted}</span></button
+            class="tab"
+            ><span data-label={translateAdminText('已删除')} class="tab-label">已删除</span>
+            <span class="count">{store.counts.deleted}</span></button
           >
         </div>{/if}
     </div>
@@ -324,7 +330,7 @@
         >
           <header class="in-margin day-label">
             <p class="day-name">{group.name}</p>
-            <p class="day-date">{group.sub}</p>
+            {#if group.sub}<p class="day-date">{group.sub}</p>{/if}
             <p class="day-count">{group.comments.length} 条</p>
           </header>
           <div class="in-main day-entries">
@@ -411,6 +417,8 @@
                         onclick={() => {
                           openConfirm(comment)
                         }}
+                        aria-expanded={confirmation?.id === comment.id}
+                        aria-controls={`confirm-${comment.id}`}
                         class="quiet-link is-danger">{comment.deleted ? '彻底删除' : '墓碑删除'}</button
                       >{:else}<span class="entry-hint">仍有回复，不能彻底删除</span>{/if}</span
                   >
@@ -418,30 +426,34 @@
                 {#if actionErrorId === comment.id && store.actionMessage}<p role="alert" class="notice notice-error">
                     {store.actionMessage}
                   </p>{/if}{#if confirmation?.id === comment.id}<div
+                    id={`confirm-${comment.id}`}
                     role="alertdialog"
                     aria-labelledby={`confirm-${comment.id}-title`}
                     aria-describedby={`confirm-${comment.id}-copy`}
                     class="entry-confirm"
                   >
-                    <p>
-                      <strong id={`confirm-${comment.id}-title`}
-                        >{confirmation.kind === 'tombstone' ? '墓碑删除这条评论？' : '彻底删除这条墓碑？'}</strong
-                      ><span id={`confirm-${comment.id}-copy`}
-                        >{confirmation.kind === 'tombstone'
-                          ? '昵称、私有邮箱、网站和正文会被清除，公开页面改为显示“已删除”，下面的回复保留不变。此操作无法撤销。'
-                          : '这条墓碑会从数据库中移除。此操作无法撤销。'}</span
-                      >
-                    </p>
+                    <div class="confirm-copy">
+                      <p id={`confirm-${comment.id}-title`} class="confirm-title">
+                        {confirmation.kind === 'tombstone' ? '墓碑删除这条评论？' : '彻底删除这条墓碑？'}
+                      </p>
+                      <p id={`confirm-${comment.id}-copy`} class="confirm-text">
+                        {confirmation.kind === 'tombstone'
+                          ? '昵称、私有邮箱、网站和正文会被清除，公开页面显示“已删除”，回复保留不变。无法撤销。'
+                          : '这条墓碑会从数据库中移除。无法撤销。'}
+                      </p>
+                    </div>
                     <div class="confirm-actions">
                       <button
                         type="button"
                         disabled={store.actionBusy}
                         onclick={closeConfirm}
+                        onkeydown={confirmKeydown}
                         class="button button-quiet">取消</button
                       ><button
                         type="button"
                         disabled={store.actionBusy}
                         onclick={confirmAction}
+                        onkeydown={confirmKeydown}
                         class="button button-danger"
                         >{store.actionBusy
                           ? '处理中…'
@@ -466,9 +478,9 @@
             store.selectPage(store.page - 1)
           }}
           class="pager-button">‹ 上一页</button
-        ><span aria-hidden="true" class="pager-sep">｜</span><span aria-live="polite" class="pager-status"
+        ><span aria-hidden="true" class="pager-sep"></span><span aria-live="polite" class="pager-status"
           >{store.page}/{Math.max(store.pageCount, 1)}</span
-        ><span aria-hidden="true" class="pager-sep">｜</span><button
+        ><span aria-hidden="true" class="pager-sep"></span><button
           type="button"
           disabled={store.page >= store.pageCount || store.queueBusy || store.actionBusy}
           onclick={() => {

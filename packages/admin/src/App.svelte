@@ -345,8 +345,8 @@
   </main>{:else if store.sessionReady && store.passwordSetupRequired}<FirstLoginSetupView
   />{:else if store.sessionReady}<div class="app">
     <header class="masthead">
-      <div class="masthead-inner layout">
-        <div class="in-margin masthead-brand">
+      <div class="masthead-inner">
+        <div class="masthead-brand">
           <button
             type="button"
             aria-label="Ecoku 评论管理首页"
@@ -361,18 +361,19 @@
             ></button
           >
         </div>
-        <div class="in-main masthead-main">
-          <nav aria-label="主导航" class="nav">
-            {#each views as item (item.id)}<button
-                type="button"
-                aria-current={store.view === item.id ? 'page' : undefined}
-                disabled={navigationBusy}
-                onclick={() => {
-                  switchView(item.id)
-                }}
-                class="nav-link">{item.label}</button
-              >{/each}
-          </nav>
+        <nav aria-label="主导航" class="nav">
+          {#each views as item (item.id)}<button
+              type="button"
+              aria-current={store.view === item.id ? 'page' : undefined}
+              disabled={navigationBusy}
+              onclick={() => {
+                switchView(item.id)
+              }}
+              data-label={item.label}
+              class="nav-link">{item.label}</button
+            >{/each}
+        </nav>
+        <div class="masthead-actions">
           {#if store.logoutMessage}<p role="alert" class="inline-error">{store.logoutMessage}</p>{/if}<button
             type="button"
             disabled={store.logoutBusy || navigationBusy}
