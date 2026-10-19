@@ -1,12 +1,12 @@
 # Ecoku 管理端设计基线
 
 本目录保存 Ecoku 管理端的已批准设计证据、脱敏 fixture 与发送模板设计基线。
-`index-v16.html` 是当前已批准并实施的管理端基线，覆盖登录、评论管理、站点管理、通知设置与安全：
-颜色、圆角与深色 token 与评论区 v17「纸与墨」一致，界面使用操作系统自带的 CJK 与英文无衬线字体栈，不加载网络字体。
+`index-v17.html` 是当前已批准并实施的管理端基线（2026-10-19 批准），覆盖登录、评论管理、站点管理、通知设置与安全：
+它在 v16 上只做视觉打磨，功能、接口与文案范围不变。颜色、圆角与深色 token 与评论区 v17「纸与墨」一致，界面使用操作系统自带的 CJK 与英文无衬线字体栈，不加载网络字体。
 2026-10-09 按用户要求移除后台全局快捷键及提示，保留表单、菜单和按钮的基本键盘操作。
-仅供服务端渲染参考的通知模板为邮件 v7（`email-notification-v7.html`）与 Telegram v6（`telegram-notification-v6.html`），与 v16 使用同一套纸墨 token 与系统字体栈。v12 的关闭 / Cloudflare Turnstile / 自托管 Cap 三态语义与 Cap 官方组件几何在 v16 中保留，只映射 Ecoku token。停服恢复命令只属于自托管文档，不进入界面。原型文件本身不调用真实 API，也不进入运行时镜像。
+仅供服务端渲染参考的通知模板为邮件 v7（`email-notification-v7.html`）与 Telegram v6（`telegram-notification-v6.html`），与管理端使用同一套纸墨 token 与系统字体栈。v12 的关闭 / Cloudflare Turnstile / 自托管 Cap 三态语义与 Cap 官方组件几何保留至今，只映射 Ecoku token。停服恢复命令只属于自托管文档，不进入界面。原型文件本身不调用真实 API，也不进入运行时镜像。
 
-`first-login-v1.html` 是首次临时密码登录与强制改密的待审扩展，范围和实现边界见 [首次登录 v1](./first-login-v1.md)；不替代 v16 的已批准基线。
+`first-login-v1.html` 是首次临时密码登录与强制改密的扩展，范围和实现边界见 [首次登录 v1](./first-login-v1.md)；不替代 v17 的已批准基线。
 
 ## 当前产品边界
 
@@ -46,7 +46,18 @@
 
 ## 文件
 
-- `index-v16.html`、`styles-v16.css`、`prototype-v16.js`、`index-v16.test.mjs`：已批准并实施，在 v15 上减少横线与下划线，布局、功能与接口不变。
+- `index-v17.html`、`styles-v17.css`、`prototype-v17.js`、`index-v17.test.mjs`：已批准并实施，只做视觉打磨，功能与接口不变。
+  桌面顶栏改为三栏，导航位于页面中线；导航与「已发布 / 已删除」用隐藏的粗体副本预留宽度，切换时不再挤动相邻项。
+  评论按「2026 年 10 月 18 日」分组，不显示星期，一律写出年份；今天、昨天在名称下方写日期，其他日期只写一次；日期改用界面字体与等宽数字。
+  实施时 zh-Hant 同为「2026 年 10 月 18 日」，en 用 `Intl.DateTimeFormat(locale, { dateStyle: 'long' })`（October 18, 2026）。
+  删除确认改为评论下方的操作卡片（与保存栏同一形制：说明在左，「取消」与危险按钮在右），触发链接标出展开状态，Esc 退出并把焦点还给链接；
+  选中评论不再画左侧竖条，键盘焦点改用焦点环。提示框改为带底色和细边框的方框，左侧竖线只表示引用的回复。
+  窄屏每天一条上下有线的通栏，去掉日期之间的内缩横线，吸顶时上缘与顶栏下缘重合。分页与状态切换的分隔线改用 CSS 绘制。
+  逐项列表的删除按钮收进输入框右端，列表右缘与其他输入框对齐；单选圆圈加大到 14px，选中时只改颜色、不改字重；
+  人机验证方式改为三张并排的选择卡（窄屏纵向排列），不再伸出正文栏；短段落用 `text-wrap: pretty` 避免孤字；
+  评论页面标题的书名号在支持 `halt` 的字体上去掉起始半角空白。通知页说明改为「访客留下邮箱后，评论被他人回复时也会收到邮件」。
+  窄屏下原型场景切换器默认收起。
+- `index-v16.html`、`styles-v16.css`、`prototype-v16.js`、`index-v16.test.mjs`：上一版已批准基线，在 v15 上减少横线与下划线，布局、功能与接口不变。
   站点、通知、安全三页的字段改为带边框的输入框（纸面卡片底色、6px 圆角），窄屏把标签放到输入框上方；只读的站点 ID 显示为文字。
   允许来源、通知收件人和 Telegram 接收目标改为逐项列表：每项一个输入框，右侧删除；Enter 进入下一项而不提交表单，空项按退格删除，
   粘贴多行或逗号分隔的内容自动拆成多项；离开某一项后才提示该项的错误，来源缺少协议或带路径时给出「改为 …」一键修正，重复项提示保存时合并；
@@ -96,6 +107,7 @@
 http://127.0.0.1:4311/admin-moderation/index-v13.html
 http://127.0.0.1:4311/admin-moderation/index-v15.html
 http://127.0.0.1:4311/admin-moderation/index-v16.html
+http://127.0.0.1:4311/admin-moderation/index-v17.html
 http://127.0.0.1:4311/brand/index-v2.html
 http://127.0.0.1:4311/admin-moderation/email-notification-v6.html
 http://127.0.0.1:4311/admin-moderation/email-notification-v7.html
@@ -111,6 +123,7 @@ node designs/admin-moderation/index-v12.test.mjs
 node designs/admin-moderation/index-v13.test.mjs
 node designs/admin-moderation/index-v15.test.mjs
 node designs/admin-moderation/index-v16.test.mjs
+node designs/admin-moderation/index-v17.test.mjs
 node designs/admin-moderation/notifications-v6.test.mjs
 node designs/admin-moderation/notifications-v7.test.mjs
 ```

@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "sources": [
     {
-      "id": "approved-admin-v16",
+      "id": "approved-admin-v17",
       "type": "html",
-      "location": "designs/admin-moderation/index-v16.html",
+      "location": "designs/admin-moderation/index-v17.html",
       "roles": [
         "visual-reference",
         "interaction-reference",
@@ -18,8 +18,8 @@
       "licenseOrPermission": "Repository-owned approved design.",
       "localCopies": [],
       "observations": [
-        "Margin column and 760px main column.",
-        "Comment feed grouped by date with inline deletion confirmation.",
+        "Margin column and 760px main column; navigation centred on the page's centre line.",
+        "Comment feed grouped by full date without weekday, with deletion confirmed on a sheet under the comment.",
         "Boxed setting inputs, one input per item for lists, save on change and guarded navigation."
       ],
       "inferences": [],
