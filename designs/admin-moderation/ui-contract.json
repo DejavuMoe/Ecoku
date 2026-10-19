@@ -7,8 +7,12 @@
   },
   "sourceReferences": [
     {
+      "path": "designs/admin-moderation/index-v17.html",
+      "role": "current approved admin baseline: v16 polished — centred navigation, full dates without weekday, delete confirmation as a sheet under the comment, notices without a left rule"
+    },
+    {
       "path": "designs/admin-moderation/index-v16.html",
-      "role": "current approved admin baseline: v15 layout with boxed setting inputs, one input per list item and fewer rules"
+      "role": "previous approved admin baseline with boxed setting inputs and one input per list item, superseded by v17"
     },
     {
       "path": "designs/admin-moderation/index-v15.html",
@@ -150,15 +154,15 @@
       "contentProfile": "operational-strict"
     },
     {
-      "id": "admin-v16-workspace",
+      "id": "admin-v17-workspace",
       "contentProfile": "operational-strict",
       "prototype": {
-        "entry": "index-v16.html",
-        "assetPath": "index-v16.html",
+        "entry": "index-v17.html",
+        "assetPath": "index-v17.html",
         "files": [
-          "index-v16.html",
-          "styles-v16.css",
-          "prototype-v16.js"
+          "index-v17.html",
+          "styles-v17.css",
+          "prototype-v17.js"
         ],
         "states": [
           "login-off",
@@ -190,6 +194,9 @@
           "security-off",
           "mobile-navigation",
           "keyboard-navigation",
+          "confirm-escape-returns-focus",
+          "centred-navigation-without-shift",
+          "full-date-groups",
           "site-save-failure-retains-draft",
           "notification-settings-load-error-retry",
           "security-settings-load-error-retry"
@@ -206,19 +213,19 @@
         "routeOrWindow": "/admin/",
         "status": "implemented",
         "files": [
-          "packages/admin/src/App.vue",
+          "packages/admin/src/App.svelte",
           "packages/admin/src/style.css",
-          "packages/admin/src/components/CommentManagementView.vue",
-          "packages/admin/src/components/SiteManagementView.vue",
-          "packages/admin/src/components/NotificationSettingsView.vue",
-          "packages/admin/src/components/SecurityView.vue",
-          "packages/admin/src/stores/admin.ts",
-          "packages/admin/src/components/SitePicker.vue",
-          "packages/admin/src/components/SaveBar.vue",
-          "packages/admin/src/components/ListInput.vue",
+          "packages/admin/src/components/CommentManagementView.svelte",
+          "packages/admin/src/components/SiteManagementView.svelte",
+          "packages/admin/src/components/NotificationSettingsView.svelte",
+          "packages/admin/src/components/SecurityView.svelte",
+          "packages/admin/src/stores/admin.svelte.ts",
+          "packages/admin/src/components/SitePicker.svelte",
+          "packages/admin/src/components/SaveBar.svelte",
+          "packages/admin/src/components/ListInput.svelte",
           "packages/admin/src/listInput.ts",
-          "packages/admin/src/i18n.ts",
-          "packages/admin/src/components/AdminIcon.vue",
+          "packages/admin/src/i18n.svelte.ts",
+          "packages/admin/src/components/AdminIcon.svelte",
           "packages/admin/index.html",
           "packages/admin/public/favicon.svg"
         ],
@@ -235,7 +242,7 @@
         "tests": [
           "packages/admin/src/admin.test.ts",
           "packages/admin/src/i18n.test.ts",
-          "designs/admin-moderation/index-v16.test.mjs"
+          "designs/admin-moderation/index-v17.test.mjs"
         ]
       },
       "status": "implemented"
@@ -272,11 +279,11 @@
         "routeOrWindow": "/admin/ initial authentication",
         "status": "implemented",
         "files": [
-          "packages/admin/src/App.vue",
+          "packages/admin/src/App.svelte",
           "packages/admin/src/api.ts",
-          "packages/admin/src/stores/admin.ts",
-          "packages/admin/src/components/FirstLoginSetupView.vue",
-          "packages/admin/src/components/SiteManagementView.vue",
+          "packages/admin/src/stores/admin.svelte.ts",
+          "packages/admin/src/components/FirstLoginSetupView.svelte",
+          "packages/admin/src/components/SiteManagementView.svelte",
           "packages/admin/src/style.css",
           "server/handle/admin/auth.go",
           "server/adminidentity/identity.go",
@@ -301,8 +308,8 @@
     "defaultProfile": "operational-strict",
     "inventory": "content-inventory.json",
     "approvedCopySources": [
-      "index-v16.html",
-      "prototype-v16.js",
+      "index-v17.html",
+      "prototype-v17.js",
       "email-notification-v7.html",
       "first-login-v1.html"
     ]

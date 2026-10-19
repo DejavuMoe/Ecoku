@@ -160,6 +160,16 @@
             "width": 1440,
             "height": 900
           }
+        },
+        {
+          "path": "index-v17.html",
+          "createdAt": "2026-10-19T00:00:00.000Z",
+          "status": "approved",
+          "subtitle": "Approved 2026-10-19: v16 polish only — centred desktop navigation, full dates without weekday, delete confirmation as a small sheet under the comment, tinted notices without a left rule, list remove buttons inside the input, drawn dividers, selection without width shift, provider choice as three cards, one ruled day bar on mobile",
+          "viewport": {
+            "width": 1440,
+            "height": 900
+          }
         }
       ]
     },
@@ -226,5 +236,5 @@
     }
   },
   "createdAt": "2026-08-12T22:31:10.516Z",
-  "updatedAt": "2026-10-04T00:00:00.000Z"
+  "updatedAt": "2026-10-19T00:00:00.000Z"
 }

@@ -38,15 +38,40 @@
       "Hidden-state copy is included. Closed shadow roots, external frames, native dialogs and pseudo-elements are not covered.",
       "The inventory deduplicates copy across states; per-state visibility and duplicate channels are not retained.",
       "Production captures use an isolated fixture API. Live backend, CAPTCHA services, SMTP and Telegram were not exercised.",
-      "v16 list copy was added from index-v16.html / prototype-v16.js and the matching production source; it was not part of the 2026-09-30 DOM capture."
+      "v16 list copy was added from index-v16.html / prototype-v16.js and the matching production source; it was not part of the 2026-09-30 DOM capture.",
+      "v17 rewordings (delete confirmation and the email section note) were edited by hand from index-v17.html / prototype-v17.js; v17 added no other copy."
     ]
   },
   "briefSources": [],
   "approvedCopySources": [
-    "index-v16.html",
-    "prototype-v16.js"
+    "index-v17.html",
+    "prototype-v17.js"
   ],
   "items": [
+    {
+      "id": "v17-permanent-confirm",
+      "text": "这条墓碑会从数据库中移除。无法撤销。",
+      "channels": [
+        "text"
+      ],
+      "locations": [
+        "prototype-v17.js"
+      ],
+      "visibility": [
+        "unknown"
+      ],
+      "captures": [
+        "index-v17.html"
+      ],
+      "purpose": "confirmation",
+      "origin": "existing-approved-ui-copy",
+      "decision": "allow",
+      "evidence": {
+        "source": "index-v17.html / prototype-v17.js (shortened from the v15 wording for the v17 confirmation sheet)",
+        "reference": "Approved v17 prototype."
+      },
+      "flags": []
+    },
     {
       "id": "4696f74ed8bab5e2",
       "text": "Ecoku",
@@ -3529,24 +3554,24 @@
     },
     {
       "id": "d7ac81883de1eb8f",
-      "text": "昵称、私有邮箱、网站和正文会被清除，公开页面改为显示“已删除”，下面的回复保留不变。此操作无法撤销。",
+      "text": "昵称、私有邮箱、网站和正文会被清除，公开页面显示“已删除”，回复保留不变。无法撤销。",
       "channels": [
         "text"
       ],
       "locations": [
-        "index-v15.html (rendered DOM)"
+        "prototype-v17.js"
       ],
       "visibility": [
         "unknown"
       ],
       "captures": [
-        "index-v15.html"
+        "index-v17.html"
       ],
       "purpose": "confirmation",
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js (carried into v16)",
+        "source": "index-v17.html / prototype-v17.js (shortened from the v15 wording for the v17 confirmation sheet)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
@@ -4177,24 +4202,24 @@
     },
     {
       "id": "46fac52d34529b4f",
-      "text": "有新评论时发给通知收件人；访客留了邮箱时，他的评论被别人回复也会收到邮件。",
+      "text": "有新评论时发给通知收件人；访客留下邮箱后，评论被他人回复时也会收到邮件。",
       "channels": [
         "text"
       ],
       "locations": [
-        "index-v15.html (rendered DOM)"
+        "index-v17.html"
       ],
       "visibility": [
         "unknown"
       ],
       "captures": [
-        "index-v15.html"
+        "index-v17.html"
       ],
       "purpose": "task-help",
       "origin": "existing-approved-ui-copy",
       "decision": "allow",
       "evidence": {
-        "source": "index-v15.html / prototype-v15.js (carried into v16)",
+        "source": "index-v17.html (v15 wording rewritten without a gendered pronoun)",
         "reference": "Approved asset metadata and rendered DOM capture."
       },
       "flags": []
