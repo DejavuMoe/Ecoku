@@ -98,7 +98,7 @@ Ecoku 放在反向代理后面，但没有配置 `trusted_proxies`，所有访�
 
 ### 新部署在日志里找不到初始密码 {#initial-password}
 
-v0.5.2 不再把密码写入启动日志，也没有固定默认密码。按 [取得管理员临时密码](./docker#temporary-password) 操作：先等待首次启动健康，再停服运行 `admin reset-password`，从该命令的终端输出取得密码，然后重新启动。`docker compose logs ecoku` 无法找回一次性命令的输出。
+自 v0.5.2 起，不再把密码写入启动日志，也没有固定默认密码。按 [取得管理员临时密码](./docker#temporary-password) 操作：先等待首次启动健康，再停服运行 `admin reset-password`，从该命令的终端输出取得密码，然后重新启动。`docker compose logs ecoku` 无法找回一次性命令的输出。
 
 若重置提示 `管理员账户尚未初始化`，确认当前目录、配置和数据挂载指向目标实例；新实例必须先成功启动。不要删除数据库或 `ecoku-secrets.json`。
 

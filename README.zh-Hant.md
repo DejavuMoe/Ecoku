@@ -24,7 +24,7 @@
 依 [Docker 部署](https://ecoku.zsh.moe/zh-hant/self-hosting/docker) 完成以下步驟：
 
 1. 準備 `compose.yaml`、`app/config.yaml` 和 `data/`，將 `instance_public_url` 改成 Ecoku 的實際 HTTPS 位址。
-2. 啟動並等待容器健康，再 [停服產生管理員臨時密碼](https://ecoku.zsh.moe/zh-hant/self-hosting/docker#temporary-password)。**v0.5.2 的啟動日誌不提供密碼，也沒有固定預設密碼。**
+2. 啟動並等待容器健康，再 [停服產生管理員臨時密碼](https://ecoku.zsh.moe/zh-hant/self-hosting/docker#temporary-password)。**自 v0.5.2 起，啟動日誌不提供密碼，也沒有固定預設密碼。**
 3. 設定 HTTPS 反向代理，用 `admin` 和剛才命令輸出的臨時密碼登入 `/admin/`，依頁面要求設定正式密碼。
 4. 在後台註冊站點，取得接入所需的站點 ID。
 

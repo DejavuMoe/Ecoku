@@ -1,6 +1,6 @@
 # Docker deployment
 
-This guide covers public releases from v0.5.2 onward, using images from GHCR. For an existing instance, read [upgrading](./upgrade) first.
+This guide covers public releases from v0.5.3 onward, using images from GHCR. For an existing instance, read [upgrading](./upgrade) first.
 
 This guide starts from an empty Linux host and deploys Ecoku with Docker Compose. A new deployment needs only `compose.yaml`, `app/config.yaml` and the `data/` directory. First startup creates the administrator account and persistent keys; the reset command below prints the temporary password used to sign in. You do not write these credentials into a configuration file.
 
@@ -46,7 +46,7 @@ sudo chmod 750 data
 ```yaml
 services:
   ecoku:
-    image: "ghcr.io/dejavumoe/ecoku:v0.5.2"
+    image: "ghcr.io/dejavumoe/ecoku:v0.5.3"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -115,7 +115,7 @@ The first start initializes SQLite, creates the administrator `admin`, and saves
 
 ## 5. Obtain the temporary administrator password {#temporary-password}
 
-**This step is required for a new deployment. v0.5.2 does not print an initial password in startup logs and has no fixed default password.** Complete [startup and the health check](#start), then run this in a terminal on the deployment host:
+**This step is required for a new deployment. Since v0.5.2, startup logs do not print an initial password and there is no fixed default password.** Complete [startup and the health check](#start), then run this in a terminal on the deployment host:
 
 ```bash
 (

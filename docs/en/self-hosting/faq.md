@@ -98,7 +98,7 @@ Set the time zone in Compose at `services.ecoku.environment.TZ`, for example `TZ
 
 ### A new deployment has no initial password in its logs {#initial-password}
 
-v0.5.2 no longer writes passwords to startup logs and has no fixed default password. Follow [obtain the temporary administrator password](./docker#temporary-password): wait for the first startup to become healthy, stop the service, run `admin reset-password`, read the password from that command's terminal output, and start the service again. `docker compose logs ecoku` cannot retrieve the one-off command's output.
+Since v0.5.2, passwords are no longer written to startup logs, and there is no fixed default password. Follow [obtain the temporary administrator password](./docker#temporary-password): wait for the first startup to become healthy, stop the service, run `admin reset-password`, read the password from that command's terminal output, and start the service again. `docker compose logs ecoku` cannot retrieve the one-off command's output.
 
 If reset reports `管理员账户尚未初始化`, check that the current directory, configuration, and data mounts belong to the intended instance. A new instance must start successfully first. Do not delete the database or `ecoku-secrets.json`.
 

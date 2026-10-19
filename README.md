@@ -24,7 +24,7 @@ English · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-Hant.md)
 Follow [Docker deployment](https://ecoku.zsh.moe/en/self-hosting/docker) to complete these steps:
 
 1. Prepare `compose.yaml`, `app/config.yaml`, and `data/`, and set `instance_public_url` to Ecoku's actual HTTPS address.
-2. Start the service and wait until it is healthy, then [stop it and generate a temporary administrator password](https://ecoku.zsh.moe/en/self-hosting/docker#temporary-password). **v0.5.2 does not print passwords in startup logs and has no fixed default password.**
+2. Start the service and wait until it is healthy, then [stop it and generate a temporary administrator password](https://ecoku.zsh.moe/en/self-hosting/docker#temporary-password). **Since v0.5.2, startup logs do not print passwords, and there is no fixed default password.**
 3. Configure the HTTPS reverse proxy, sign in to `/admin/` as `admin` with the temporary password from the command output, and set a permanent password when prompted.
 4. Register your site in the admin console to obtain its site ID.
 
