@@ -218,7 +218,7 @@
       <section class="doc-section layout">
         <div class="in-margin section-margin">
           <h2 id="email-title">电子邮件</h2>
-          <p>有新评论时发给通知收件人；访客留了邮箱时，他的评论被别人回复也会收到邮件。</p>
+          <p>有新评论时发给通知收件人；访客留下邮箱后，评论被他人回复时也会收到邮件。</p>
         </div>
         <div class="in-main section-body">
           <div class="field">
