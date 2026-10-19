@@ -6,7 +6,7 @@
   VitePress 源文为准（默认简体中文：`docs/guide/`、`docs/self-hosting/`、`docs/integration/`、`docs/reference/`）。
   `docs/progress/` 只是历史验收，不约束当前实现，也不进入文档站点。
 - 评论区基线 `designs/plain-thread-comments/index-v17.html`；管理端登录、评论管理、站点管理、
-  通知设置与安全以 `designs/admin-moderation/index-v16.html` 为准（评论区 v17 纸墨 token、系统 CJK/英文字体栈），
+  通知设置与安全以 `designs/admin-moderation/index-v17.html` 为准（评论区 v17 纸墨 token、系统 CJK/英文字体栈），
   服务端通知模板以 `designs/admin-moderation/email-notification-v7.html`、`telegram-notification-v6.html` 为准（`notifications-v7.js`、`notifications-v6.js` 为参考渲染）。生产管理端不得展示通知判定预览或通知模板预览。
 - 边界不清时先查源码和上述文档，再集中向用户确认。不要把原型 mock、测试文案或设计标注带进生产。
 - 文档站点在 `docs/`（VitePress，pnpm workspace 包 `ecoku-docs`）。本地预览 `pnpm docs:dev`。
@@ -72,7 +72,7 @@
   验证该 tag，再发布 GHCR 双架构镜像与同版本 npm SDK，最后创建 GitHub Release。文档仅保存构建产物，不部署。
   Woodpecker 仅启用 `docs-deploy.yml`；其余 YAML 保留原步骤与已注释触发条件，用 `when: [{ evaluate: 'false' }]` 禁用，不能只删除 `when`。
   不再向 Forgejo 发布新镜像。发布设置见 `packages/client/PUBLISH.md`。
-- 当前文档与 Compose 模板中的 Docker 镜像统一使用 GHCR 与精确发布版本号（`ghcr.io/dejavumoe/ecoku:v` + `VERSION`，禁止占位镜像或浮动 tag，当前为 `v0.5.2`）；内测归档不再展示镜像下载地址。真实域名、密码、token、SMTP、Telegram、数据库和日志等敏感信息仍使用占位符，不得进 Git。
+- 当前文档与 Compose 模板中的 Docker 镜像统一使用 GHCR 与精确发布版本号（`ghcr.io/dejavumoe/ecoku:v` + `VERSION`，禁止占位镜像或浮动 tag，当前为 `v0.5.3`）；内测归档不再展示镜像下载地址。真实域名、密码、token、SMTP、Telegram、数据库和日志等敏感信息仍使用占位符，不得进 Git。
 - 应用界面支持 `zh-CN`、`zh-Hant`、`en`。后台语言由 `ECOKU_ADMIN_LOCALE` 决定；站点前台语言由站点 `i18n` 默认值决定，SDK 的 `i18n` 参数优先覆盖。缺省均为简体中文。
 - 提交、推送、tag、镜像发布、生产部署和真实数据库操作需要当前任务的明确授权。
 - 新 tag 若可能影响平滑升级（schema、Compose 挂载、配置键、日志出口、镜像契约），回复中先写：

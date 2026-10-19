@@ -1,6 +1,6 @@
 # Docker 部署
 
-本頁適用於 v0.5.2 及後續公開版本，映像檔使用 GHCR。既有實例請先閱讀 [升級說明](./upgrade)。
+本頁適用於 v0.5.3 及後續公開版本，映像檔使用 GHCR。既有實例請先閱讀 [升級說明](./upgrade)。
 
 本頁從一台空的 Linux 主機開始，用 Docker Compose 部署 Ecoku。新部署只需準備：`compose.yaml`、`app/config.yaml` 和 `data/` 目錄。首次啟動會建立管理員帳戶並產生持久金鑰；登入用的臨時密碼由下方的重設命令輸出，不需要寫進設定檔。
 
@@ -46,7 +46,7 @@ sudo chmod 750 data
 ```yaml
 services:
   ecoku:
-    image: "ghcr.io/dejavumoe/ecoku:v0.5.2"
+    image: "ghcr.io/dejavumoe/ecoku:v0.5.3"
     init: true
     restart: unless-stopped
     container_name: ecoku
@@ -115,7 +115,7 @@ sudo docker compose ps
 
 ## 5. 取得管理員臨時密碼 {#temporary-password}
 
-**新部署必須完成這一步。v0.5.2 的啟動日誌不提供初始密碼，也沒有固定預設密碼。** 先完成 [啟動與健康檢查](#start)，再於部署主機終端執行：
+**新部署必須完成這一步。自 v0.5.2 起，啟動日誌不提供初始密碼，也沒有固定預設密碼。** 先完成 [啟動與健康檢查](#start)，再於部署主機終端執行：
 
 ```bash
 (

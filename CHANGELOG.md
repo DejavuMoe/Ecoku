@@ -5,8 +5,15 @@
 
 ## [Unreleased]
 
+## [0.5.3] - 2026-10-19
+
+### 变更
+
+- 管理后台按已批准的 v17 打磨界面，功能不变：桌面顶栏导航居中，切换页面或「已发布 / 已删除」时相邻项不再移动；评论按「2026 年 10 月 18 日」分组，不再显示星期，英文界面显示为 October 18, 2026。删除确认改为评论下方的卡片，可按 Esc 取消；提示框不再带左侧竖线，选中评论时不再显示竖条。逐项列表的删除按钮移入输入框，与其他输入框右缘对齐；单选圆圈加大，选中时不再加粗；人机验证方式改为三张并排的选择卡。
+
 ### 修复
 
+- 英文与繁体中文后台的评论分页按钮不再显示简体中文「上一页 / 下一页」。
 - 更新 Vitest、文档图表依赖 DOMPurify 和 KaTeX，以及设计工具的 esbuild，修复已知依赖漏洞；CI 将低、中危依赖告警纳入阻断，并覆盖两个设计工具的独立锁文件。
 - 逐页校正三语运维和接入文档：冷备份保持停服，恢复保留原文件并等待健康，补全升级与配置生效检查；修正队列设置、Cap CSP、预检响应、列表超限、加载器超时与共享样式说明，并补充 SDK 错误处理和子目录链接规则。
 - 补齐三语 README 与部署文档的首次登录流程：等待初始化健康后单独生成临时密码，明确一次性命令输出与服务日志的区别，并同步后台、CLI、FAQ 和反向代理入口。
@@ -734,4 +741,5 @@
 [0.5.0]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.0
 [0.5.1]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.1
 [0.5.2]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.2
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.5.2...master
+[0.5.3]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.3
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.5.3...master
