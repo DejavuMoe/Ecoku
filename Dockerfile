@@ -20,7 +20,7 @@ FROM frontend-deps AS admin-build
 COPY packages/admin packages/admin
 RUN pnpm --dir packages/admin build
 
-FROM golang:1.27.2-alpine3.24@sha256:85dc1069ac644ea3c527b177303a406eb3358192816cd7f9e5848eb658851673 AS server-build
+FROM golang:1.27.3-alpine3.24@sha256:b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c AS server-build
 WORKDIR /src
 COPY server/go.mod server/go.sum ./
 # Module contents travel with the dependency layer in the exported registry cache.
