@@ -6,10 +6,10 @@ plain-text, no-avatar, threaded comment surface.
 
 ## Install
 
-[ecoku is available on npm](https://www.npmjs.com/package/ecoku). Install version 0.5.3:
+[ecoku is available on npm](https://www.npmjs.com/package/ecoku). Install version 0.5.4:
 
 ```bash
-npm install --save-exact ecoku@0.5.3
+npm install --save-exact ecoku@0.5.4
 ```
 
 SDK versions follow repository release tags. You can also use the SDK served by

@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.5.4] - 2026-10-23
+
 ### 修复
 
 - SDK 刷新时若当前末页已因评论删除而消失，会重新加载仍有效的末页；评论全部删除后将页码恢复为 1，并继续忽略导航或销毁前的旧响应。
@@ -750,4 +752,5 @@
 [0.5.1]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.1
 [0.5.2]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.2
 [0.5.3]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.3
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.5.3...master
+[0.5.4]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.4
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.5.4...master
