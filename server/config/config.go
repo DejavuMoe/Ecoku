@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 	"unicode/utf8"
 
@@ -227,7 +228,7 @@ var (
 	Port                    string
 	LogFilePath             string
 	GlobalConfig            *Config
-	runtimeAdminCredentials *AdminCredentials
+	runtimeAdminCredentials atomic.Pointer[AdminCredentials]
 )
 
 // InitConfigFile loads config.yaml from the process working directory.
@@ -794,19 +795,19 @@ func IsValidSiteID(siteID string) bool {
 }
 
 // SetAdminCredentials installs credentials resolved from SQLite or the legacy
-// environment. It is called once after the database is ready.
+// environment as an immutable snapshot, including after initial setup.
 func SetAdminCredentials(credentials *AdminCredentials) {
 	if credentials == nil {
-		runtimeAdminCredentials = nil
+		runtimeAdminCredentials.Store(nil)
 		return
 	}
 	copy := *credentials
-	runtimeAdminCredentials = &copy
+	runtimeAdminCredentials.Store(&copy)
 }
 
 func GetAdminCredentials() (*AdminCredentials, bool) {
-	if runtimeAdminCredentials != nil {
-		copy := *runtimeAdminCredentials
+	if credentials := runtimeAdminCredentials.Load(); credentials != nil {
+		copy := *credentials
 		return &copy, true
 	}
 	if GlobalConfig == nil {

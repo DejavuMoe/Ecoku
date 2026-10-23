@@ -47,8 +47,8 @@ class Ecoku {
     if (!this.surface || !this.config) {
       throw new Error('Ecoku: init() must be called before setPageKey().')
     }
-    this.config = { ...this.config, pageKey: pageKey.trim(), pageTitle: pageTitle.trim() }
-    await this.surface.setPageKey(pageKey, pageTitle)
+    this.config = resolveConfig({ ...this.config, pageKey, pageTitle })
+    await this.surface.setPageKey(this.config.pageKey, this.config.pageTitle)
   }
 
   destroy(): void {

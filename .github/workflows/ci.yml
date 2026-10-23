@@ -131,3 +131,7 @@ jobs:
       - run: go test -count=1 ./...
       - run: go vet ./...
       - run: go build -trimpath -ldflags="-s -w" -o /tmp/ecoku-server .
+      - name: Verify runtime credential snapshots
+        env:
+          CGO_ENABLED: '1'
+        run: go test -race -count=1 ./adminidentity ./instancekeys ./config

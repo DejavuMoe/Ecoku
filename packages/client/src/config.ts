@@ -154,7 +154,7 @@ export function resolveConfig(options: EcokuConfig): ResolvedEcokuConfig {
   if (!options || typeof options !== 'object') {
     throw new TypeError('Ecoku: configuration is required.')
   }
-  const siteId = options.siteId?.trim()
+  const siteId = typeof options.siteId === 'string' ? options.siteId.trim() : ''
   if (!SITE_ID_PATTERN.test(siteId)) {
     throw new TypeError('Ecoku: siteId is invalid.')
   }

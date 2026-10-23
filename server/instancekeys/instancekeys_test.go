@@ -40,6 +40,23 @@ func TestInitializeGeneratesAndReusesKeys(t *testing.T) {
 	}
 }
 
+func TestReturnedKeysCannotMutatePublishedSnapshot(t *testing.T) {
+	ResetForTests()
+	t.Cleanup(ResetForTests)
+	keys, err := Initialize(filepath.Join(t.TempDir(), "ecoku-secrets.json"), "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := append([]byte(nil), keys.NotificationEncryption...)
+	for range 2 {
+		keys.NotificationEncryption[0] ^= 0xff
+		keys, err = Current()
+		if err != nil || !bytes.Equal(keys.NotificationEncryption, expected) {
+			t.Fatal("caller mutated the published instance keys")
+		}
+	}
+}
+
 func TestAdminKeyRotationPreservesFileOnRenameFailure(t *testing.T) {
 	ResetForTests()
 	path := filepath.Join(t.TempDir(), "ecoku-secrets.json")
