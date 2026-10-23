@@ -2,11 +2,11 @@
 
 Public releases start at v0.3.0. For a new instance use [Docker deployment](./docker); this page covers upgrades.
 
-The current release is **v0.5.3** (released 2026-10-19, schema v12).
+The current release is **v0.5.4** (released 2026-10-23, schema v12).
 
-New images are published to GHCR. Deployments using Forgejo images should change `image` to `ghcr.io/dejavumoe/ecoku:v0.5.3` or the exact target tag for future upgrades, keeping existing data and configuration mounts. No new versions will be published to the Forgejo registry. Switching registries at the same version does not require reinitializing the instance.
+New images are published to GHCR. Deployments using Forgejo images should change `image` to `ghcr.io/dejavumoe/ecoku:v0.5.4` or the exact target tag for future upgrades, keeping existing data and configuration mounts. No new versions will be published to the Forgejo registry. Switching registries at the same version does not require reinitializing the instance.
 
-Before upgrading to v0.5.3, read [this release's compatibility notes](./upgrades/v0.5.3#compatibility). If your current version predates v0.5.0, also check the [notes on origin conflicts and existing data](./upgrades/v0.5.0#compatibility); an overlap between admin origins and stored site origins prevents startup.
+Before upgrading to v0.5.4, read [this release's compatibility notes](./upgrades/v0.5.4#compatibility). If your current version predates v0.5.0, also check the [notes on origin conflicts and existing data](./upgrades/v0.5.0#compatibility); an overlap between admin origins and stored site origins prevents startup.
 
 ## What happens during an upgrade
 
@@ -28,7 +28,7 @@ That makes a backup taken before the upgrade the only way to roll back to an old
 **3. Change the image version.** Edit `~/Ecoku/compose.yaml` and change `image` to the target version, for example:
 
 ```yaml
-    image: "ghcr.io/dejavumoe/ecoku:v0.5.3"
+    image: "ghcr.io/dejavumoe/ecoku:v0.5.4"
 ```
 
 Use an exact version number, not `latest`. If the upgrade notes ask you to change `app/config.yaml` or `ecoku.env`, change them at the same time.
@@ -66,6 +66,7 @@ First check whether the old and new versions have the same schema (see the table
 
 | Version | Release date | Schema | Highlights |
 | --- | --- | --- | --- |
+| [v0.5.4](./upgrades/v0.5.4) | 2026-10-23 | v12 | Fix SDK last-page recovery, navigation titles, missing site validation, and the initial administrator setup data race. No database migration. |
 | [v0.5.3](./upgrades/v0.5.3) | 2026-10-19 | v12 | Admin console polish: centred navigation, full dates, a delete confirmation card. No database migration; server and SDK runtime code unchanged. |
 | [v0.5.2](./upgrades/v0.5.2) | 2026-10-18 | v12 | Stop logging administrator passwords; first sign-in uses a password reset while the service is stopped. No database migration. |
 | [v0.5.1](./upgrades/v0.5.1) | 2026-10-16 | v12 | Remove unused configuration helpers and reduce CI browser downloads; no database migration or SDK runtime changes. |

@@ -1,6 +1,6 @@
 # Docker deployment
 
-This guide covers public releases from v0.5.3 onward, using images from GHCR. For an existing instance, read [upgrading](./upgrade) first.
+This guide covers public releases from v0.5.4 onward, using images from GHCR. For an existing instance, read [upgrading](./upgrade) first.
 
 This guide starts from an empty Linux host and deploys Ecoku with Docker Compose. A new deployment needs only `compose.yaml`, `app/config.yaml` and the `data/` directory. First startup creates the administrator account and persistent keys; the reset command below prints the temporary password used to sign in. You do not write these credentials into a configuration file.
 
@@ -46,7 +46,7 @@ sudo chmod 750 data
 ```yaml
 services:
   ecoku:
-    image: "ghcr.io/dejavumoe/ecoku:v0.5.3"
+    image: "ghcr.io/dejavumoe/ecoku:v0.5.4"
     init: true
     restart: unless-stopped
     container_name: ecoku

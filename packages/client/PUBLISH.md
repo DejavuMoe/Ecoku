@@ -12,7 +12,7 @@
 
 普通 `master` / PR CI 只验证 SDK、检查包内容并生成 tarball，不运行 `npm publish --dry-run`。npm 的发布预演也会查询 registry，并拒绝已发布的同版本；它不适合作为主线构建检查。实际发布仅在 tag 流程或显式触发的恢复流程中执行。
 
-发布 `v0.5.3` 时，SDK 版本为 `0.5.3`，镜像为 `ghcr.io/dejavumoe/ecoku:v0.5.3`。正式 npm 版本使用 `latest`，含预发布后缀的 tag 使用 `next` 并创建 GitHub prerelease；镜像只发布精确版本，不创建 `latest`。
+发布 `v0.5.4` 时，SDK 版本为 `0.5.4`，镜像为 `ghcr.io/dejavumoe/ecoku:v0.5.4`。正式 npm 版本使用 `latest`，含预发布后缀的 tag 使用 `next` 并创建 GitHub prerelease；镜像只发布精确版本，不创建 `latest`。
 
 文档 Demo 在准备 tag 时仍使用上一版已发布的 SDK；确认本版 npm 可读后，再单独更新三语安装示例、文档依赖和锁文件。这类版本同步只记入提交说明，不追加到下一版的 `[Unreleased]`，避免发布说明再次错位。历史说明修订只修改正文，不移动 tag 或替换已发布产物。
 
