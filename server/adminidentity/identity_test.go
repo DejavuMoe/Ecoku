@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -130,6 +131,53 @@ func TestLegacyEnvironmentCredentialsAreImportedWithoutForcedSetup(t *testing.T)
 	account, err := model.GetAdminAccount()
 	if err != nil || account == nil || account.Username != "legacy-admin" || account.MustChangePassword || !account.ManagedByEnvironment {
 		t.Fatalf("legacy account=%#v error=%v", account, err)
+	}
+}
+
+func TestInitialSetupConcurrentReaders(t *testing.T) {
+	setupIdentityTest(t)
+	for _, key := range []string{"ECOKU_ADMIN_USERNAME", "ECOKU_ADMIN_PASSWORD_HASH", "ECOKU_ADMIN_TOKEN_KEY", config.EncryptionKeyEnv} {
+		t.Setenv(key, "")
+	}
+	if err := Initialize(); err != nil {
+		t.Fatal(err)
+	}
+	initialKeys, err := instancekeys.Current()
+	if err != nil {
+		t.Fatal(err)
+	}
+	started, done, stopped := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(stopped)
+		close(started)
+		for {
+			select {
+			case <-done:
+				return
+			default:
+			}
+			credentials, ok := config.GetAdminCredentials()
+			if !ok || !((credentials.Username == "admin" && credentials.MustChangePassword) || (credentials.Username == "owner" && !credentials.MustChangePassword)) {
+				t.Error("reader observed an incomplete administrator snapshot")
+				return
+			}
+			keys, err := instancekeys.Current()
+			if err != nil || keys.AdminTokenKey != initialKeys.AdminTokenKey || !bytes.Equal(keys.NotificationEncryption, initialKeys.NotificationEncryption) {
+				t.Error("initial setup changed the instance keys")
+				return
+			}
+			runtime.Gosched()
+		}
+	}()
+	<-started
+	t.Cleanup(func() { close(done); <-stopped })
+	if err := CompleteInitialSetup("owner", "new-admin-password"); err != nil {
+		t.Fatal(err)
+	}
+	runtime.Gosched()
+	credentials, ok := config.GetAdminCredentials()
+	if !ok || credentials.Username != "owner" || credentials.MustChangePassword || bcrypt.CompareHashAndPassword([]byte(credentials.PasswordHash), []byte("new-admin-password")) != nil {
+		t.Fatal("initial setup did not publish the completed administrator")
 	}
 }
 

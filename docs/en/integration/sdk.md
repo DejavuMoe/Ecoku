@@ -42,7 +42,7 @@ await comments.init()
 
 The constructor does not validate options. `init()` validates the mount element, server URL, option types and ranges, rejecting its Promise on failure. The server enforces the full page-key path rules; successful initialization does not prove that a key is valid for submission.
 
-- `pageTitle` in the constructor options is cut to its first 200 UTF-16 code units. A title passed to `setPageKey()` is not truncated; the server checks it against a limit of 200 Unicode characters.
+- Initialization and `setPageKey()` both trim surrounding whitespace from `pageTitle` and keep its first 200 UTF-16 code units.
 - `cssURL` accepts only an absolute HTTP(S) URL, a path starting with `/`, `none` or the legacy value `-`.
 - The old option `apiBaseUrl` is an alias of `serverURL`. It still works but is deprecated. If both are set and point to different addresses, `init()` throws a `TypeError`.
 
@@ -73,11 +73,11 @@ Switches to another post's comment section. Call it after a route change in a si
 - If the page key is unchanged, the title is still updated and comments are reloaded, while drafts and reply state are preserved.
 - If it differs, in-flight requests are canceled, open reply boxes are closed, the comment box is cleared, and the first page of the new page is loaded.
 - **Pass the new post's title as the second argument.** If you omit it, the title is cleared rather than kept from the previous post; otherwise notifications for new comments would show the wrong post name. Call it after both the route and the title have been updated.
-- The title passed here is not truncated. If it is longer than 200 characters, the server rejects the comment submission.
+- Title length is handled the same way as during initialization; excess text is truncated.
 
 ### `reload()`
 
-Reloads the comments on the current page, keeping the sort order. It must be called after `init()`; otherwise it throws.
+Reloads the comments on the current page, keeping the sort order. If deletions put the current page out of range, it reloads the last valid page; if all comments are deleted, the page resets to 1. It must be called after `init()`; otherwise it throws.
 
 ### `destroy()`
 

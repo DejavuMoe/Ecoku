@@ -202,6 +202,18 @@ describe('approved production comment surface', () => {
     expect(container.querySelector('.ecoku-loading-state')).toBeNull()
   })
 
+  it.each([undefined, null])('BUG-004 rejects a missing JavaScript siteId (%s) before mounting or fetching', async (siteId) => {
+    const fetchMock = vi.fn<typeof fetch>()
+    vi.stubGlobal('fetch', fetchMock)
+    const container = document.createElement('div')
+    const client = new Ecoku({ container, serverURL: 'https://comments.example', siteId: siteId as never, pageKey: '/' })
+    activeClients.push(client)
+    await expect(client.init()).rejects.toThrow('Ecoku: siteId is invalid.')
+    expect(client.isInitialized()).toBe(false)
+    expect(container.childElementCount).toBe(0)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it('skips injected styles when cssURL is none', async () => {
     vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockResolvedValue(listResponse([])))
     const container = document.createElement('div')
@@ -1093,6 +1105,58 @@ describe('approved production comment surface', () => {
     expect(container.textContent).not.toContain('obsolete comment')
   })
 
+  it.each([
+    { remaining: 1, silent: false }, { remaining: 0, silent: false },
+    { remaining: 1, silent: true }, { remaining: 0, silent: true },
+  ])('BUG-001 recovers after the last page disappears (remaining=$remaining, silent=$silent)', async ({ remaining, silent }) => {
+    let total = 4
+    const pages: number[] = []
+    const fetchMock = vi.fn<typeof fetch>(async input => {
+      const page = Number(new URL(String(input)).searchParams.get('page'))
+      pages.push(page)
+      const rows = Array.from({ length: total }, (_, index) => comment(index + 1, 0, `root ${index + 1}`))
+      return listResponse(rows.slice((page - 1) * 3, page * 3), { page, pageCount: Math.ceil(total / 3), total, commentTotal: total })
+    })
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    container.querySelectorAll<HTMLButtonElement>('.ecoku-pager-button')[1]!.click()
+    await vi.waitFor(() => expect(container.textContent).toContain('root 4'))
+    total = remaining
+    if (silent) await client.setPageKey('article-a')
+    else await client.reload()
+    expect(container.querySelectorAll('.ecoku-comment-row')).toHaveLength(remaining)
+    expect(container.querySelector<HTMLElement>('.ecoku-empty-state')!.hidden).toBe(remaining > 0)
+    expect(pages).toEqual(remaining > 0 ? [1, 2, 2, 1] : [1, 2, 2])
+    await client.reload()
+    expect(pages.at(-1)).toBe(1)
+    expect(container.querySelector('.ecoku-pagination-status')!.textContent).toBe('1/1')
+  })
+
+  it.each(['page', 'destroy'])('BUG-001 ignores a recovery response after a %s change', async change => {
+    const recovery = deferred<Response>()
+    const fetchMock = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(listResponse([comment(1, 0, 'first page')], { pageCount: 2, total: 4 }))
+      .mockResolvedValueOnce(listResponse([comment(4, 0, 'last page')], { page: 2, pageCount: 2, total: 4 }))
+      .mockResolvedValueOnce(listResponse([], { page: 2, pageCount: 1, total: 1 }))
+      .mockReturnValueOnce(recovery.promise)
+      .mockResolvedValue(listResponse([comment(5, 0, 'new article', { mark: 'article-b' })]))
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    container.querySelectorAll<HTMLButtonElement>('.ecoku-pager-button')[1]!.click()
+    await vi.waitFor(() => expect(container.textContent).toContain('last page'))
+    const reload = client.reload()
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(4))
+    const signal = fetchMock.mock.calls[3]![1]!.signal!
+    if (change === 'page') await client.setPageKey('article-b')
+    else client.destroy()
+    expect(signal.aborted).toBe(true)
+    recovery.resolve(listResponse([comment(1, 0, 'obsolete recovery')]))
+    await reload
+    expect(container.textContent).not.toContain('obsolete recovery')
+    if (change === 'page') expect(container.textContent).toContain('new article')
+    else expect(container.childElementCount).toBe(0)
+  })
+
   it('keeps the Turnstile slot empty unless the public formConfig includes a sitekey', async () => {
     const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse([])))
     await client.init()
@@ -1302,6 +1366,26 @@ it('updates the article title with the page key and clears an omitted title', as
   await submitForm(fillIdentityAndContent(container))
   await vi.waitFor(() => expect(posts).toHaveLength(2))
   expect(posts[1]).toMatchObject({ mark: 'article-c', pageTitle: '' })
+})
+
+it.each(['a'.repeat(201), '中'.repeat(201), '😀'.repeat(101)])('BUG-003 normalizes navigation titles like initial titles (%#)', async title => {
+  const posts: Record<string, unknown>[] = []
+  const { client, container } = createClient(vi.fn<typeof fetch>(async (input, init) => {
+    if (String(input).includes('/api/comment/submit')) {
+      posts.push(JSON.parse(String(init?.body)))
+      return jsonResponse(201, { id: 41 })
+    }
+    return listResponse([])
+  }))
+  const initialTitle = resolveConfig({ container, serverURL: 'https://comments.example', siteId: 'site-a', pageKey: '/', pageTitle: ` ${title} ` }).pageTitle
+  expect(initialTitle).toBe(title.slice(0, 200))
+  await client.init()
+  for (const pageKey of ['article-a', 'article-b']) {
+    await client.setPageKey(pageKey, ` ${title} `)
+    await submitForm(fillIdentityAndContent(container))
+    await vi.waitFor(() => expect(posts.at(-1)).toMatchObject({ mark: pageKey, pageTitle: initialTitle }))
+    await vi.waitFor(() => expect(container.querySelector<HTMLTextAreaElement>('.ecoku-composer textarea')!.disabled).toBe(false))
+  }
 })
 
 it('removes a reply challenge that resolves after the reply closes', async () => {

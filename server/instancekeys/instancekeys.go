@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 )
 
 const fileVersion = 1
@@ -26,7 +27,7 @@ type file struct {
 	NotificationEncryptionKey string `json:"notification_encryption_key"`
 }
 
-var active Keys
+var active atomic.Pointer[Keys]
 var renameFile = os.Rename
 
 func Initialize(path, legacyAdminTokenKey, legacyNotificationKey string) (Keys, error) {
@@ -95,18 +96,19 @@ func Initialize(path, legacyAdminTokenKey, legacyNotificationKey string) (Keys, 
 			return Keys{}, fmt.Errorf("保存持久密钥: %w", err)
 		}
 	}
-	active = Keys{AdminTokenKey: stored.AdminTokenKey, NotificationEncryption: notificationKey}
-	return active, nil
+	active.Store(&Keys{AdminTokenKey: stored.AdminTokenKey, NotificationEncryption: notificationKey})
+	return Keys{AdminTokenKey: stored.AdminTokenKey, NotificationEncryption: append([]byte(nil), notificationKey...)}, nil
 }
 
 func Current() (Keys, error) {
-	if active.AdminTokenKey == "" || len(active.NotificationEncryption) != 32 {
+	keys := active.Load()
+	if keys == nil || keys.AdminTokenKey == "" || len(keys.NotificationEncryption) != 32 {
 		return Keys{}, fmt.Errorf("持久密钥尚未初始化")
 	}
-	return Keys{AdminTokenKey: active.AdminTokenKey, NotificationEncryption: append([]byte(nil), active.NotificationEncryption...)}, nil
+	return Keys{AdminTokenKey: keys.AdminTokenKey, NotificationEncryption: append([]byte(nil), keys.NotificationEncryption...)}, nil
 }
 
-func ResetForTests() { active = Keys{} }
+func ResetForTests() { active.Store(nil) }
 
 func randomTextKey() (string, error) {
 	data := make([]byte, 32)

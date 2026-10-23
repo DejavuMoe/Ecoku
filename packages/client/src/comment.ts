@@ -579,10 +579,14 @@ export class CommentSurface {
     if (!silent) this.setInitialLoading(this.comments.length === 0)
 
     try {
-      const result = await fetchComments(this.config, Math.max(1, targetPage), this.sort, controller.signal)
+      let result = await fetchComments(this.config, Math.max(1, targetPage), this.sort, controller.signal)
       if (!this.isCurrentRequest(version, revision)) return
+      if (!result.comments.length && result.pageCount > 0 && result.page > result.pageCount) {
+        result = await fetchComments(this.config, result.pageCount, this.sort, controller.signal)
+        if (!this.isCurrentRequest(version, revision)) return
+      }
       this.comments = result.comments
-      this.currentPage = Math.max(1, result.page)
+      this.currentPage = Math.max(1, Math.min(result.page, result.pageCount))
       this.pageCount = result.pageCount
       this.rootTotal = result.rootTotal
       this.commentTotal = result.commentTotal
