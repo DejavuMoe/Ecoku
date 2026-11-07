@@ -8,7 +8,7 @@ allowBuilds:
 # VitePress 1.6.4 still pins Vite 5; use the patched Vite 6 release until
 # VitePress updates its dependency (GHSA-fx2h-pf6j-xcff).
 overrides:
-  'vitepress@1.6.4>vite': 6.4.4
+  'vitepress@1.6.4>vite': 6.4.5
   # Mermaid 11 still requires vulnerable KaTeX 0.16 (GHSA-238p-pmpm-9mq7).
   'mermaid>katex': 0.18.2
   'mermaid>dompurify': 3.4.17
