@@ -5,10 +5,13 @@
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-11-09
+
 ### 修复
 
 - 更新 `golang.org/x/net` 至 v0.62.0 及其必要依赖，修复 Twikoo 导入解析 HTML 时可能触发的文本节点合并二次复杂度漏洞（GO-2026-6860）。
 - 更新测试依赖 Happy DOM 至 21.0.4，修复模块导入别名代码注入、SSRF 与 Cookie 域匹配漏洞；更新文档开发服务器 Vite 至 6.4.5，并更新 SDK 清理工具 rimraf 及其间接依赖 glob、minimatch，修复已知依赖漏洞。
+- CI 将依赖审计拆为独立任务，新公告不再跳过 SDK 构建与测试，发布仍须通过审计；暂无修复版本的 deepmerge 告警（GHSA-gcqx-w48m-w2h4）仅影响管理后台构建时的 Svelte 配置合并，不进入产物，按编号豁免并在 CI 中校验豁免说明。
 
 ## [0.5.4] - 2026-10-23
 
@@ -758,4 +761,5 @@
 [0.5.2]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.2
 [0.5.3]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.3
 [0.5.4]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.4
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.5.4...master
+[0.5.5]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.5
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.5.5...master
