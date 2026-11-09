@@ -44,6 +44,7 @@ LABEL org.opencontainers.image.title="Ecoku" \
       org.opencontainers.image.source="${ECOKU_SOURCE}" \
       org.opencontainers.image.licenses="MIT"
 RUN apk add --no-cache --upgrade ca-certificates tzdata 'libcrypto3>=3.5.8-r0' 'libssl3>=3.5.8-r0' \
+        'musl>=1.2.6-r3' 'musl-utils>=1.2.6-r3' 'zlib>=1.3.2-r1' \
     && addgroup -S -g 10001 ecoku \
     && adduser -S -D -H -u 10001 -G ecoku ecoku \
     && install -d -o ecoku -g ecoku -m 0750 /app /app/admin /app/client /data
