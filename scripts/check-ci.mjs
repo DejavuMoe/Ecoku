@@ -10,7 +10,8 @@ function checkSecurity(source) {
   // Exact standalone steps prevent filters, ignored errors and success masking.
   assert.match(source, /^    env:\n      pnpm_config_verify_deps_before_run: 'false'\n    strategy:\n      fail-fast: false\n      matrix:\n        target: \[client, admin, docs\]\n        include:\n          - target: client\n            filter: \.\/packages\/client\.\.\.\n          - target: admin\n            filter: \.\/packages\/admin\.\.\.\n          - target: docs\n            filter: \.\/docs\.\.\.\n    steps:\n/m)
   assert.equal((source.match(/pnpm_config_verify_deps_before_run/gi) ?? []).length, 1, 'No step may override explicit installation')
-  assert.match(source, /^      - name: Audit JavaScript dependencies\n        if: matrix.target == 'client'\n        run: \|\n          pnpm audit --audit-level=low\n          npm --prefix \.agents\/skills\/baoyu-design\/agents\/gen-pptx audit --audit-level=low\n          npm --prefix \.agents\/skills\/baoyu-design\/agents\/gen-video audit --audit-level=low\n(?=      - )/m)
+  assert.match(source, /^  audit:\n    runs-on: ubuntu-24\.04\n    timeout-minutes: 10\n    steps:\n/m)
+  assert.match(source, /^      - name: Audit JavaScript dependencies\n        run: \|\n          pnpm audit --audit-level=low\n          npm --prefix \.agents\/skills\/baoyu-design\/agents\/gen-pptx audit --audit-level=low\n          npm --prefix \.agents\/skills\/baoyu-design\/agents\/gen-video audit --audit-level=low\n(?=\n  frontend:\n)/m)
   assert.match(source, /^      - name: Check Go vulnerabilities\n        run: go run golang\.org\/x\/vuln\/cmd\/govulncheck@v\d+\.\d+\.\d+ \.\/\.\.\.\n(?=      - )/m)
   assert.match(source, /^      - name: Install target dependencies\n        env:\n          FILTER: \$\{\{ matrix.filter \}\}\n        run: pnpm --filter "\$FILTER" --fail-if-no-match install --frozen-lockfile --prefer-offline\n      - name: Install SDK test browser\n        if: matrix.target == 'client'\n        run: pnpm -C packages\/client exec playwright install --with-deps --only-shell chromium\n(?=      - name: Verify SDK browser behavior\n)/m)
   assert.match(source, /^      - name: Verify SDK browser behavior\n        if: matrix.target == 'client'\n        run: pnpm -C packages\/client run test:browser\n(?=      - )/m)
@@ -34,6 +35,9 @@ for (const [before, after] of [
   ['gen-pptx audit --audit-level=low', 'gen-pptx audit --audit-level=high'],
   ['gen-video audit --audit-level=low', 'gen-video audit --audit-level=low || true'],
   ['pnpm audit', 'pnpm --filter ./packages/client... audit'],
+  ['  audit:\n', '  audit:\n    if: false\n'],
+  ['  audit:\n', '  audit:\n    continue-on-error: true\n'],
+  ['      - name: Audit JavaScript dependencies\n', '      - name: Audit JavaScript dependencies\n        if: false\n'],
   ['target: [client, admin, docs]', 'target: [client, admin]'],
   ['filter: ./packages/client...', 'filter: ecoku'],
   ['filter: ./packages/admin...', 'filter: ./packages/client...'],
@@ -56,6 +60,29 @@ for (const [before, after] of [
   ['  server:\n', '  server:\n    continue-on-error: true\n'],
   ['  server:\n', '  server:\n    if: false\n'],
 ]) assert.throws(() => checkSecurity(ci.replace(before, after)))
+
+// Audit exceptions: only explicit GHSA ids, each with its own justification comment.
+function checkAuditExceptions(source) {
+  assert.doesNotMatch(source, /ignoreCves|ignoreUnfixable|ignore-unfixable|auditLevel|audit-level/i, 'Except advisories by GHSA id only')
+  const block = source.match(/^auditConfig:\n  ignoreGhsas:\n((?: {4}.*\n)+)/m)
+  assert.equal((source.match(/^auditConfig:/gm) ?? []).length, block ? 1 : 0, 'auditConfig may only list ignoreGhsas')
+  if (!block) return
+  const lines = block[1].trimEnd().split('\n')
+  lines.forEach((line, index) => {
+    if (line.startsWith('    #')) return
+    assert.match(line, /^    - GHSA(?:-[23456789cfghjmpqrvwx]{4}){3}$/, `Invalid audit exception: ${line}`)
+    assert.match(lines[index - 1] ?? '', /^    #/, `${line.trim()} needs a justification comment above it`)
+  })
+}
+const workspace = read('pnpm-workspace.yaml')
+checkAuditExceptions(workspace)
+for (const [before, after] of [
+  ['    - GHSA-gcqx-w48m-w2h4', '    - GHSA-*'],
+  ['    - GHSA-gcqx-w48m-w2h4', '    - GHSA-gcqx-w48m-w2h4\n    - GHSA-aaaa-bbbb-cccc'],
+  ['  ignoreGhsas:\n', '  ignoreUnfixable: true\n  ignoreGhsas:\n'],
+  [/(?:^ {4}#.*\n)+(?= {4}- GHSA)/m, ''],
+]) assert.throws(() => checkAuditExceptions(workspace.replace(before, after)))
+checkAuditExceptions('packages:\n  - docs\n')
 
 const release = read('.github/workflows/release.yml')
 const scan = read('scripts/scan-image.sh')
