@@ -291,7 +291,7 @@
       ></rect><rect x="39.1" y="35.4" width="12.6" height="8.9"></rect></g
     ></symbol
   ></svg
->{#if store.sessionReady && !store.authenticated}<main id="main-content" class="auth">
+>{#if store.sessionPhase === 'signedOut'}<main id="main-content" class="auth">
     <section aria-labelledby="login-title" class="auth-sheet">
       <div aria-hidden="true" class="auth-brand">
         <svg class="seal"><use href="#ecoku-seal"></use></svg><span class="wordmark">Ecoku</span>
@@ -342,8 +342,8 @@
         >
       </form>
     </section>
-  </main>{:else if store.sessionReady && store.passwordSetupRequired}<FirstLoginSetupView
-  />{:else if store.sessionReady}<div class="app">
+  </main>{:else if store.sessionPhase === 'setupRequired'}<FirstLoginSetupView
+  />{:else if store.sessionPhase === 'active'}<div class="app">
     <header class="masthead">
       <div class="masthead-inner">
         <div class="masthead-brand">
