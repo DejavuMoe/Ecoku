@@ -34,6 +34,13 @@ function testFailureMessage(error: unknown, channel: 'email' | 'telegram'): stri
 
 const emptyCounts = (): Record<CommentStatus, number> => ({ published: 0, deleted: 0 })
 
+/**
+ * Which top-level screen the admin shows. Derived from `sessionReady`, `authenticated`
+ * and `passwordSetupRequired`; read this instead of combining those flags.
+ * restoring → signedOut | setupRequired | active; setupRequired → active; any → signedOut on clearSession.
+ */
+export type SessionPhase = 'restoring' | 'signedOut' | 'setupRequired' | 'active'
+
 export function createAdminStore() {
   const state = $state({
     authenticated: false,
@@ -85,6 +92,11 @@ export function createAdminStore() {
     captchaSettings: null as CaptchaSettings | null,
     captchaBusy: false,
     captchaMessage: '',
+    get sessionPhase(): SessionPhase {
+      if (!state.sessionReady) return 'restoring'
+      if (!state.authenticated) return 'signedOut'
+      return state.passwordSetupRequired ? 'setupRequired' : 'active'
+    },
     get selectedSite(): SiteSummary | null { return state.sites.find(site => site.id === state.selectedSiteId) ?? null },
   })
   let pendingNavigation: (() => void | Promise<unknown>) | null = null

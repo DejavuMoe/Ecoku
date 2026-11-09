@@ -80,8 +80,8 @@ func enqueue(tx *gorm.DB, eventType string, commentID uint, target string) error
 	now := time.Now().UTC()
 	return tx.Exec(`INSERT INTO notification_outbox
   (event_type, comment_id, target, status, attempts, available_at, locked_at, last_error_code, created_at, updated_at, sent_at)
-  VALUES (?, ?, ?, 'pending', 0, ?, NULL, NULL, ?, ?, NULL)
-  ON CONFLICT(event_type, comment_id, target) DO NOTHING`, eventType, commentID, target, now, now, now).Error
+  VALUES (?, ?, ?, ?, 0, ?, NULL, NULL, ?, ?, NULL)
+  ON CONFLICT(event_type, comment_id, target) DO NOTHING`, eventType, commentID, target, outboxPending, now, now, now).Error
 }
 
 // CancelForDeletedComment runs inside the tombstone transaction. Queued
@@ -94,9 +94,10 @@ func enqueue(tx *gorm.DB, eventType string, commentID uint, target string) error
 func CancelForDeletedComment(tx *gorm.DB, commentID uint) error {
 	now := time.Now().UTC()
 	if err := tx.Exec(`UPDATE notification_outbox
-SET status = 'cancelled', last_error_code = 'comment_deleted', locked_at = NULL, updated_at = ?
-WHERE comment_id = ? AND status IN ('pending', 'failed') AND event_type IN (?, ?, ?)`,
-		now, commentID, EventBloggerEmail, EventBloggerTelegram, EventVisitorReply).Error; err != nil {
+SET status = ?, last_error_code = 'comment_deleted', locked_at = NULL, updated_at = ?
+WHERE comment_id = ? AND status IN (?, ?) AND event_type IN (?, ?, ?)`,
+		outboxCancelled, now, commentID, outboxPending, outboxFailed,
+		EventBloggerEmail, EventBloggerTelegram, EventVisitorReply).Error; err != nil {
 		return err
 	}
 	if err := tx.Exec(`DELETE FROM notification_outbox
@@ -106,26 +107,27 @@ WHERE event_type = ? AND comment_id IN (SELECT id FROM comments WHERE parent_id 
 	}
 	return tx.Exec(`INSERT INTO notification_outbox
   (event_type, comment_id, target, status, attempts, available_at, locked_at, last_error_code, created_at, updated_at, sent_at, provider_message_id)
-SELECT ?, notice.comment_id, notice.target, 'pending', 0, ?, NULL, NULL, ?, ?, NULL, NULL
+SELECT ?, notice.comment_id, notice.target, ?, 0, ?, NULL, NULL, ?, ?, NULL, NULL
 FROM notification_outbox AS notice
 JOIN comments AS comment ON comment.id = notice.comment_id
 JOIN comments AS deleted ON deleted.id = ?
 WHERE (comment.id = deleted.id OR
   (comment.parent_id = deleted.id AND comment.site_id = deleted.site_id AND comment.mark = deleted.mark))
-  AND notice.event_type = ? AND notice.status IN ('sent', 'processing')
+  AND notice.event_type = ? AND notice.status IN (?, ?)
 ON CONFLICT(event_type, comment_id, target) DO UPDATE SET
-  status = 'pending', attempts = 0, available_at = excluded.available_at,
+  status = excluded.status, attempts = 0, available_at = excluded.available_at,
   locked_at = NULL, last_error_code = NULL, updated_at = excluded.updated_at,
   sent_at = NULL, provider_message_id = NULL`,
-		EventBloggerTelegramRetract, now, now, now, commentID, EventBloggerTelegram).Error
+		EventBloggerTelegramRetract, outboxPending, now, now, now, commentID,
+		EventBloggerTelegram, outboxSent, outboxProcessing).Error
 }
 
 func StartWorker(ctx context.Context) (*Worker, error) {
 	now := time.Now().UTC()
 	if err := model.DB.WithContext(ctx).Exec(`UPDATE notification_outbox
-SET status = CASE WHEN attempts >= ? THEN 'exhausted' ELSE 'failed' END,
+SET status = CASE WHEN attempts >= ? THEN ? ELSE ? END,
     locked_at = NULL, last_error_code = 'worker_recovered', available_at = ?, updated_at = ?
-WHERE status = 'processing'`, maxDeliveryAttempts, now, now).Error; err != nil {
+WHERE status = ?`, maxDeliveryAttempts, outboxExhausted, outboxFailed, now, now, outboxProcessing).Error; err != nil {
 		return nil, err
 	}
 	done := make(chan struct{})
@@ -167,7 +169,8 @@ WHERE status = 'processing'`, maxDeliveryAttempts, now, now).Error; err != nil {
 // window. Pending, failed and processing rows are never pruned.
 func pruneOutbox(ctx context.Context, now time.Time) error {
 	return model.DB.WithContext(ctx).Exec(`DELETE FROM notification_outbox
-WHERE status IN ('sent', 'cancelled', 'exhausted') AND updated_at < ?`, now.Add(-outboxRetention)).Error
+WHERE status IN (?, ?, ?) AND updated_at < ?`,
+		outboxSent, outboxCancelled, outboxExhausted, now.Add(-outboxRetention)).Error
 }
 
 func ProcessPendingOnce(ctx context.Context) (bool, error) {
@@ -178,12 +181,12 @@ func ProcessPendingOnce(ctx context.Context) (bool, error) {
 	var event outboxRow
 	err := model.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Table("notification_outbox").
-			Where("status IN ('pending', 'failed') AND attempts < ? AND available_at <= ?", maxDeliveryAttempts, now).
+			Where("status IN (?, ?) AND attempts < ? AND available_at <= ?", outboxPending, outboxFailed, maxDeliveryAttempts, now).
 			Order("available_at ASC, id ASC").First(&event).Error; err != nil {
 			return err
 		}
-		result := tx.Table("notification_outbox").Where("id = ? AND status IN ('pending', 'failed')", event.ID).Updates(map[string]any{
-			"status": "processing", "attempts": gorm.Expr("attempts + 1"),
+		result := tx.Table("notification_outbox").Where("id = ? AND status IN (?, ?)", event.ID, outboxPending, outboxFailed).Updates(map[string]any{
+			"status": outboxProcessing, "attempts": gorm.Expr("attempts + 1"),
 			"locked_at": now, "updated_at": now,
 		})
 		if result.Error != nil {
@@ -210,15 +213,15 @@ func ProcessPendingOnce(ctx context.Context) (bool, error) {
 	permanent := errors.As(deliveryErr, &failure) && failure.permanent
 	switch {
 	case errors.Is(deliveryErr, errDeliveryCancelled):
-		updates["status"] = "cancelled"
+		updates["status"] = outboxCancelled
 	case deliveryErr == nil:
-		updates["status"], updates["last_error_code"], updates["sent_at"] = "sent", nil, finish
+		updates["status"], updates["last_error_code"], updates["sent_at"] = outboxSent, nil, finish
 		if messageID != "" {
 			updates["provider_message_id"] = messageID
 		}
 	case permanent || attempts >= maxDeliveryAttempts:
 		code := outboxErrorCode(deliveryErr)
-		updates["status"], updates["last_error_code"] = "exhausted", code
+		updates["status"], updates["last_error_code"] = outboxExhausted, code
 		log.Printf("notification event=%d code=%s attempts=%d", event.ID, code, attempts)
 	default:
 		code := outboxErrorCode(deliveryErr)
@@ -226,7 +229,7 @@ func ProcessPendingOnce(ctx context.Context) (bool, error) {
 		if failure != nil && failure.retryAfter > delay {
 			delay = failure.retryAfter
 		}
-		updates["status"], updates["last_error_code"] = "failed", code
+		updates["status"], updates["last_error_code"] = outboxFailed, code
 		updates["available_at"] = finish.Add(delay)
 		log.Printf("notification event=%d code=%s attempts=%d", event.ID, code, attempts)
 	}
@@ -236,7 +239,7 @@ func ProcessPendingOnce(ctx context.Context) (bool, error) {
 	// finish our own claim; zero affected rows means newer work already replaced it.
 	for {
 		err = model.DB.WithContext(ctx).Table("notification_outbox").
-			Where("id = ? AND status = 'processing' AND locked_at = ?", event.ID, now).Updates(updates).Error
+			Where("id = ? AND status = ? AND locked_at = ?", event.ID, outboxProcessing, now).Updates(updates).Error
 		if err == nil {
 			return true, nil
 		}
@@ -319,7 +322,7 @@ func deliverEvent(ctx context.Context, event outboxRow) (string, error) {
 		// prevents a tombstone commit between these checks and the actual send.
 		var claimed outboxRow
 		if err := database.Table("notification_outbox").
-			Where("id = ? AND status = 'processing' AND locked_at = ?", event.ID, event.LockedAt).First(&claimed).Error; err != nil {
+			Where("id = ? AND status = ? AND locked_at = ?", event.ID, outboxProcessing, event.LockedAt).First(&claimed).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return errDeliveryCancelled
 			}
@@ -368,10 +371,10 @@ func deliverEvent(ctx context.Context, event outboxRow) (string, error) {
 				}
 				return err
 			}
-			if original.Status == "processing" {
+			if original.Status == outboxProcessing {
 				return &deliveryFailure{code: "retract_waiting"}
 			}
-			if original.Status != "sent" || original.ProviderMessageID == nil || *original.ProviderMessageID == "" {
+			if original.Status != outboxSent || original.ProviderMessageID == nil || *original.ProviderMessageID == "" {
 				return errDeliveryCancelled
 			}
 			message := renderTelegramRetracted(current, site)

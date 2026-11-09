@@ -159,15 +159,15 @@ export function setupEcokuLoader(
     const i18n = parseLocale(shell.dataset.i18n)
     const failureMessages = FAILURE_MESSAGES[i18n ?? pageLocale(documentRef)]
 
-    let loading = false
-    let initialized = false
+    // idle → loading → ready, or loading → failed → (retry) loading. `attempt` invalidates stale loads.
+    let phase: 'idle' | 'loading' | 'ready' | 'failed' = 'idle'
     let timeoutID = 0
     let attempt = 0
     let comments: EcokuInstance | null = null
 
     const showFailure = (failure: LoaderFailure) => {
       windowRef.clearTimeout(timeoutID)
-      loading = false
+      phase = 'failed'
       shell.setAttribute('aria-busy', 'false')
       loader.hidden = false
       status.textContent = failureMessages[failure]
@@ -175,9 +175,9 @@ export function setupEcokuLoader(
     }
 
     const initialize = async () => {
-      if (loading || initialized) return
+      if (phase === 'loading' || phase === 'ready') return
       const generation = ++attempt
-      loading = true
+      phase = 'loading'
       retry.hidden = true
       status.textContent = ''
       loader.hidden = true
@@ -212,8 +212,7 @@ export function setupEcokuLoader(
         await comments.init()
         if (generation !== attempt) return
         windowRef.clearTimeout(timeoutID)
-        loading = false
-        initialized = true
+        phase = 'ready'
         shell.setAttribute('aria-busy', 'false')
         loader.hidden = true
       } catch (error) {

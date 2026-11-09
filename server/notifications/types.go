@@ -19,6 +19,33 @@ const (
 	pruneInterval   = 6 * time.Hour
 )
 
+// Delivery lifecycle of one notification_outbox row (the status column). The
+// latest outbox migration's CHECK constraint lists the same values; migrations
+// keep their own literals because published migrations are never rewritten.
+//
+//	enqueue                         → pending
+//	pending | failed  (worker claim) → processing (attempts+1, locked_at set)
+//	processing        delivered      → sent        (terminal)
+//	processing        retryable      → failed      (available_at backs off)
+//	processing        permanent, or attempts reach maxDeliveryAttempts
+//	                                 → exhausted   (terminal)
+//	processing        comment/target gone → cancelled (terminal)
+//	processing        worker restart → failed | exhausted (worker_recovered)
+//	pending | failed  comment tombstoned → cancelled (comment_deleted)
+//	sent | processing Telegram row, comment tombstoned
+//	                                 → its retract row is (re)queued as pending
+//
+// Only the claim that set locked_at may finish a processing row. Terminal rows
+// are pruned after outboxRetention; non-terminal rows are never pruned.
+const (
+	outboxPending    = "pending"
+	outboxProcessing = "processing"
+	outboxSent       = "sent"
+	outboxFailed     = "failed"
+	outboxExhausted  = "exhausted"
+	outboxCancelled  = "cancelled"
+)
+
 type EmailConfig struct {
 	Enabled     bool     `json:"enabled"`
 	Host        string   `json:"host"`
