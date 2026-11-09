@@ -86,8 +86,9 @@ export function sidebar(prefix: string, t: SidebarCopy): DefaultTheme.SidebarIte
           link: `${p}/self-hosting/upgrade`,
           collapsed: true,
           items: [
+            { text: `${t.versionCurrent}${t.versionLatest}`, link: `${p}/self-hosting/upgrades/v0.5.6` },
             { text: 'v0.5.5', link: `${p}/self-hosting/upgrades/v0.5.5` },
-            { text: `${t.versionCurrent}${t.versionLatest}`, link: `${p}/self-hosting/upgrades/v0.5.4` },
+            { text: 'v0.5.4', link: `${p}/self-hosting/upgrades/v0.5.4` },
             { text: 'v0.5.3', link: `${p}/self-hosting/upgrades/v0.5.3` },
             { text: 'v0.5.2', link: `${p}/self-hosting/upgrades/v0.5.2` },
             { text: 'v0.5.1', link: `${p}/self-hosting/upgrades/v0.5.1` },

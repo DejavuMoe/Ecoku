@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.5.6] - 2026-11-09
+
 ### 修复
 
 - 运行时镜像将 musl、musl-utils 升级至 1.2.6-r3、zlib 至 1.3.2-r1 及以上，修复 CVE-2026-107891 与 CVE-2026-85091；v0.5.5 镜像因这两个高危漏洞未通过发布扫描，未推送版本 tag。
@@ -766,4 +768,5 @@
 [0.5.3]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.3
 [0.5.4]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.4
 [0.5.5]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.5
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.5.5...master
+[0.5.6]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.6
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.5.6...master
