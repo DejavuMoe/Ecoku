@@ -2,11 +2,11 @@
 
 公開版本從 v0.3.0 開始。新部署直接使用 [Docker 部署](./docker)；本頁用於既有實例升級。
 
-目前版本是 **v0.5.6**（2026-11-09 發布，schema v12）。
+目前版本是 **v0.5.7**（2026-11-12 發布，schema v12）。
 
-新映像檔統一發布到 GHCR。使用 Forgejo 映像檔的實例，後續升級請將 `image` 改為 `ghcr.io/dejavumoe/ecoku:v0.5.6` 或目標版本的精確 tag，保留原本的資料與設定掛載；Forgejo registry 不再發布新版本。同版本切換倉庫不必重新初始化實例。
+新映像檔統一發布到 GHCR。使用 Forgejo 映像檔的實例，後續升級請將 `image` 改為 `ghcr.io/dejavumoe/ecoku:v0.5.7` 或目標版本的精確 tag，保留原本的資料與設定掛載；Forgejo registry 不再發布新版本。同版本切換倉庫不必重新初始化實例。
 
-升級至 v0.5.6 前，先閱讀 [本版相容性說明](./upgrades/v0.5.6#compatibility)。若目前版本早於 v0.5.0，還需核對 [來源衝突與歷史資料的相容性說明](./upgrades/v0.5.0#compatibility)；管理來源與已儲存站點來源重疊會阻止啟動。
+升級至 v0.5.7 前，先閱讀 [本版相容性說明](./upgrades/v0.5.7#compatibility)。若目前版本早於 v0.5.0，還需核對 [來源衝突與歷史資料的相容性說明](./upgrades/v0.5.0#compatibility)；管理來源與已儲存站點來源重疊會阻止啟動。
 
 ## 升級時會發生什麼
 
@@ -28,7 +28,7 @@
 **3. 修改映像檔版本**。編輯 `~/Ecoku/compose.yaml`，把 `image` 改成目標版本，例如：
 
 ```yaml
-    image: "ghcr.io/dejavumoe/ecoku:v0.5.6"
+    image: "ghcr.io/dejavumoe/ecoku:v0.5.7"
 ```
 
 請寫明確的版本號，不要用 `latest`。如果升級說明要求修改 `app/config.yaml` 或 `ecoku.env`，請一併修改。
@@ -66,6 +66,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | 版本 | 發布日期 | schema | 重點 |
 | --- | --- | --- | --- |
+| [v0.5.7](./upgrades/v0.5.7) | 2026-11-12 | v12 | 最佳化公開讀取與 SDK 載入；修復回覆草稿、排序和重新整理時序；後台時間跟隨實例時區。無資料庫遷移。 |
 | [v0.5.6](./upgrades/v0.5.6) | 2026-11-09 | v12 | 修復執行時映像檔 musl 與 zlib 漏洞及 `x/net` HTML 解析漏洞（GO-2026-6860），包含 v0.5.5 的全部變更；無資料庫遷移，對外行為不變。 |
 | [v0.5.5](./upgrades/v0.5.5) | 2026-11-09 | v12 | 映像檔發布未完成，請使用 v0.5.6。 |
 | [v0.5.4](./upgrades/v0.5.4) | 2026-10-23 | v12 | 修復 SDK 末頁重新載入、導覽標題和缺少站點的驗證，以及首次管理員設定的資料競爭；無資料庫遷移。 |

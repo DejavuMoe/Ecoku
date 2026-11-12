@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.5.7] - 2026-11-12
+
 ### 变更
 
 - 公开读取改用独立的 SQLite 只读连接池，评论列表、来源校验和站点设置读取不再与写入及其他读取共用唯一连接排队。
@@ -15,7 +17,7 @@
 - SQLite 驱动由 `glebarez/sqlite` 更换为 `libtnb/sqlite` v1.3.0，直接使用上游 `modernc.org/sqlite` v1.62.0 的驱动层；数据库结构、时间列存储格式与 DSN 参数不变，已有数据库无需迁移，回滚改回上一镜像即可。
 - 构建与 CI 工具链升级至 Go 1.27.4、Node.js 26.13.1 LTS、pnpm 11.28.9，基础镜像升级至 Alpine 3.24.4。
 - 更新 Go 依赖：Gin 1.12.0、GORM 1.31.2、modernc.org/sqlite 1.62.0、golang.org/x/crypto 0.59.0 等；mimetype 从已撤回的 v1.4.15 升级至 v1.4.16。
-- 前端开发依赖升级至 TypeScript 7、Vitest 5、Vite 8.3、Playwright 1.65，文档站升级至 mermaid 12 并移除不再需要的 KaTeX、DOMPurify 覆盖；管理后台类型检查改用 `svelte-check --tsgo`。
+- 前端开发依赖升级至 TypeScript 7、Vitest 5、Vite 8.3、Playwright 1.65；管理后台类型检查改用 `svelte-check --tsgo`。
 - 管理后台的评论时间与按日分组改用实例 `TZ`，与评论区和通知一致，不再固定为 UTC+8；`GET /api/admin/login-config` 增加 `timeZone`。部署模板中的 `TZ: Asia/Shanghai` 保持不变，未设置 `TZ` 时仍按 `Asia/Shanghai` 显示。启动时读取该配置失败会在后台按退避间隔重试。
 - 移除服务端未被调用的 `Site.IsBloggerComment()`；历史迁移与 Twikoo 导入的博主标记回填不变。
 - 文档站的固定流程图改用本地 SVG，保留三种语言和明暗主题，移除 Mermaid 运行时及依赖，减少构建与浏览器加载开销；窄屏下可横向滚动查看图表。
@@ -790,4 +792,5 @@
 [0.5.4]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.4
 [0.5.5]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.5
 [0.5.6]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.6
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.5.6...master
+[0.5.7]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.7
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.5.7...master
