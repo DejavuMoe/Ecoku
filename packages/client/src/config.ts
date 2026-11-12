@@ -1,3 +1,5 @@
+import type { EcokuListPrefetch } from './fetch'
+
 export type EcokuTheme = 'auto' | 'light' | 'dark'
 export type EcokuLocale = 'zh-CN' | 'zh-Hant' | 'en'
 export type CaptchaProvider = 'off' | 'turnstile' | 'cap'
@@ -64,6 +66,11 @@ export interface EcokuConfig {
   i18n?: EcokuLocale
   /** When set, skip injecting the default stylesheet. Use `none` to skip without loading a file. */
   cssURL?: string
+  /**
+   * Set by the hosted loader: a first-page list request already in flight.
+   * Other integrations leave it unset.
+   */
+  listPrefetch?: EcokuListPrefetch
 }
 
 export interface ResolvedEcokuConfig {

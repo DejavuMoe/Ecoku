@@ -1,5 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { resolveEcokuSDKURL, setupEcokuLoader } from './loader-core'
+import { fetchComments } from './fetch'
+import { resolveConfig } from './config'
+import { prefetchCommentList, resolveEcokuSDKURL, setupEcokuLoader } from './loader-core'
+
+// The loader prefetches the first page. Keep tests off the network: requests
+// stay pending until aborted.
+function stubPendingFetch() {
+  return vi.spyOn(window, 'fetch').mockImplementation((_input, init) => new Promise<Response>((_resolve, reject) => {
+    init?.signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true })
+  }))
+}
+
+beforeEach(() => { stubPendingFetch() })
+afterEach(() => { vi.restoreAllMocks() })
 
 describe('Ecoku hosted loader', () => {
   beforeEach(() => {
@@ -12,6 +25,76 @@ describe('Ecoku hosted loader', () => {
       'https://ecoku.example/client/ecoku-loader.js',
       'https://ignored.example',
     )).toBe('https://ecoku.example/client/ecoku.umd.js')
+  })
+
+  it('requests the SDK by content hash when the build embeds one', () => {
+    expect(resolveEcokuSDKURL(
+      'https://ecoku.example/client/ecoku-loader.js',
+      'https://ignored.example',
+      '0123456789ab',
+    )).toBe('https://ecoku.example/client/ecoku.umd.js?v=0123456789ab')
+  })
+
+  it('prefetches the exact first-page URL the SDK requests', async () => {
+    const response = new Response(JSON.stringify({ code: 200, message: 'ok', data: { data: [], total: 0, page: 1, pageCount: 0 } }))
+    const fetchSpy = vi.spyOn(window, 'fetch').mockResolvedValue(response)
+    const prefetch = prefetchCommentList(window, 'https://ecoku.example/base//', 'blog', '/posts/测试/', 12)
+    expect(prefetch).toBeDefined()
+    expect(fetchSpy).toHaveBeenCalledOnce()
+    const container = document.createElement('div')
+    const config = resolveConfig({ container, serverURL: 'https://ecoku.example/base//', siteId: 'blog', pageKey: '/posts/测试/', pageSize: 12 })
+    const sdkFetch = vi.fn<typeof fetch>()
+    vi.stubGlobal('fetch', sdkFetch)
+    try {
+      const page = await fetchComments(config, 1, undefined, undefined, prefetch)
+      expect(page.page).toBe(1)
+      expect(sdkFetch).not.toHaveBeenCalled()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('aborts a prefetch the SDK cannot use and fetches on its own', async () => {
+    const abort = vi.fn()
+    const container = document.createElement('div')
+    const config = resolveConfig({ container, serverURL: 'https://ecoku.example', siteId: 'blog', pageKey: '/a/' })
+    const sdkFetch = vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify({ code: 200, message: 'ok', data: { data: [] } })))
+    vi.stubGlobal('fetch', sdkFetch)
+    try {
+      await fetchComments(config, 2, 'oldest', undefined, { url: 'https://ecoku.example/api/comment/list?siteId=blog&key=%2Fa%2F&page=1&pageSize=10', response: new Promise<Response>(() => {}), abort })
+      expect(abort).toHaveBeenCalledOnce()
+      expect(sdkFetch).toHaveBeenCalledOnce()
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('does not prefetch for an invalid server URL', () => {
+    expect(prefetchCommentList(window, 'ftp://ecoku.example', 'blog', '/', 10)).toBeUndefined()
+    expect(prefetchCommentList(window, 'not a url', 'blog', '/', 10)).toBeUndefined()
+  })
+
+  it('hands the prefetch to the SDK and releases it once init settles', async () => {
+    document.body.innerHTML = `
+      <section data-ecoku-comments data-server-url="https://ecoku.example"
+        data-site-id="blog" data-page-key="/posts/prefetch/">
+        <div data-ecoku-loader><span data-ecoku-status></span>
+          <button data-ecoku-retry type="button" hidden></button></div>
+        <div data-ecoku-mount></div>
+      </section>`
+    let received: { listPrefetch?: { url: string, response: Promise<Response> } } = {}
+    const init = vi.fn().mockResolvedValue(undefined)
+    const Constructor = vi.fn(function (this: { init: typeof init }, options: typeof received) {
+      received = options
+      this.init = init
+    })
+    ;(window as Window & { Ecoku?: unknown }).Ecoku = Constructor
+
+    setupEcokuLoader(document, window, 'https://ecoku.example/client/ecoku-loader.js')
+    await vi.waitFor(() => expect(init).toHaveBeenCalledOnce())
+    expect(received.listPrefetch?.url).toBe('https://ecoku.example/api/comment/list?siteId=blog&key=%2Fposts%2Fprefetch%2F&page=1&pageSize=10')
+    // An unadopted request is aborted rather than left open.
+    await expect(received.listPrefetch?.response).rejects.toThrow('aborted')
   })
 
   it('initializes every declared comment mount without embedding credentials', async () => {

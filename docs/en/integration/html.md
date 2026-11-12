@@ -67,7 +67,7 @@ These are for reference only. Look at the generated HTML in your browser and con
 ## Loading process
 
 1. After the page is parsed, the loader reads the attributes on the wrapper. If `data-server-url`, `data-site-id`, or `data-page-key` is missing, or any of the four `data-ecoku-*` child elements is missing, it **skips silently**, and nothing appears on the page.
-2. The loader loads `ecoku.umd.js` from its own directory and initializes the comment section. No "Loading" text is shown while it loads.
+2. The loader loads `ecoku.umd.js` from its own directory while requesting the first page of comments in parallel, then initializes the comment section. No "Loading" text is shown while it loads.
 3. If `ecoku.umd.js` fails to load, initialization fails (for example because of an invalid attribute value), or either script loading or component initialization exceeds its own 12-second timeout, an error message and the **Reload comments** button are shown, and the visitor can click to retry. The error message follows `data-i18n`. Without it, the page's `<html lang>` selects Traditional Chinese (`zh-Hant`, `zh-TW`, `zh-HK`, `zh-MO`) or English (`en`, `en-*`); anything else gives Simplified Chinese.
 4. Once the comment section is mounted, errors from the comment API itself (for example an unregistered origin, rate limiting or a network outage) are shown by the comment section as 「评论暂时不可用」 (Comments are temporarily unavailable) with a 「重新加载」 (Reload) button.
 
@@ -78,6 +78,8 @@ The loader scans wrappers present at startup only; it does not automatically mou
 ## Host the loader yourself
 
 You can put `ecoku-loader.js` on your own CDN and change only `<script src>`. The loader loads `ecoku.umd.js` from the **same directory**, so keep the two files together and update both when you upgrade Ecoku.
+
+The loader requests `ecoku.umd.js?v=<content hash>`. When an Ecoku instance serves the file and the hash matches it, browsers cache the file long-term; two files from the same release always match.
 
 ## CSP on blog pages
 

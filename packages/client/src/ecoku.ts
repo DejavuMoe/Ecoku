@@ -23,7 +23,7 @@ class Ecoku {
     if (mountedContainers.has(config.container)) {
       throw new Error('Ecoku: the selected container already has an active comment instance.')
     }
-    const surface = new CommentSurface(config)
+    const surface = new CommentSurface(config, this.options.listPrefetch)
     this.config = config
     this.surface = surface
     this.initialized = true
@@ -70,6 +70,7 @@ export default Ecoku
 
 export type { CommentFormConfig, EcokuConfig, EcokuTheme, ResolvedEcokuConfig } from './config'
 export type {
+  EcokuListPrefetch,
   CommentData,
   CommentDraft,
   CommentPage,
