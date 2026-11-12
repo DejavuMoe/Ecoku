@@ -25,6 +25,7 @@ func GetLoginConfig(c *gin.Context) {
 		"captcha":          public,
 		"turnstileSitekey": legacySitekey,
 		"locale":           config.GetAdminLocale(),
+		"timeZone":         utils.DisplayTimeZone(),
 	})
 }
 

@@ -41,7 +41,7 @@ Logs go to stdout by default; view them with `docker compose logs`. Docker contr
 
 New deployments need no `ecoku.env`. The two variables below go in the Compose `environment` section; they are not YAML fields:
 
-- `TZ`: the time zone for timestamps in the comments and in notifications. Use an IANA name such as `Asia/Shanghai`.
+- `TZ`: the time zone for timestamps in the comments, the admin console and notifications. Use an IANA name such as `Asia/Shanghai`.
 - `ECOKU_ADMIN_LOCALE`: the admin console language, `zh-CN`, `zh-Hant` or `en`. It is case-insensitive and also accepts common forms such as `zh-TW` and `en-US`. An unrecognized value is reported in the startup log and falls back to `zh-CN`.
 
 Neither variable sets the comment language. Choose it in 「评论区语言」 (Comment language) in the admin site settings (`i18n` in a YAML site seed); the loader's `data-i18n` attribute or the SDK `i18n` option overrides it.

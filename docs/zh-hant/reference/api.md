@@ -292,7 +292,7 @@ Origin: https://blog.example.com
 
 | 方法與路徑 | 說明 |
 | --- | --- |
-| `GET /api/admin/login-config` | 不需登入。回傳登入頁需要的人機驗證設定（`captcha`、`turnstileSitekey`）和後台語言 `locale`（取自 `ECOKU_ADMIN_LOCALE`）。 |
+| `GET /api/admin/login-config` | 不需登入。回傳登入頁需要的人機驗證設定（`captcha`、`turnstileSitekey`）、後台語言 `locale`（取自 `ECOKU_ADMIN_LOCALE`）和顯示時區 `timeZone`（IANA 名稱，取自容器 `TZ`）。 |
 | `POST /api/admin/login` | 請求本文為 `{"username", "password", "captchaToken"}`。成功時回傳 `{"expires_at", "expires_in"}` 並設定 Cookie；以臨時密碼登入時另外回傳 `requires_password_change: true` 和目前的使用者名稱 `username`。受 `rate_limit.admin_login` 速率限制。 |
 | `GET /api/admin/session` | 回傳目前工作階段的 `expires_at`、剩餘秒數 `expires_in` ；需要首次改密時包含 `requires_password_change: true` 與 `username`，否則省略這兩個欄位；不延長工作階段。 |
 | `POST /api/admin/initial-setup` | 只接受首次臨時密碼工作階段。請求本文為 `{"username", "password"}`；成功後撤銷臨時工作階段並設定普通管理員工作階段。 |

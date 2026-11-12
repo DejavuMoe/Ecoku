@@ -243,18 +243,6 @@ func (site Site) SmojiOrigin() string {
 	return parsed.Scheme + "://" + parsed.Host
 }
 
-func (site Site) IsBloggerComment(username string, email *string) bool {
-	// Historical nick+email equality is only used to backfill comments.is_blogger.
-	// Public lists and notification enqueue read the stored flag.
-	nickname := strings.TrimSpace(site.BloggerNickname)
-	configuredEmail := strings.TrimSpace(site.BloggerEmail)
-	if nickname == "" || configuredEmail == "" || email == nil {
-		return false
-	}
-	return strings.TrimSpace(username) == nickname &&
-		strings.EqualFold(strings.TrimSpace(*email), configuredEmail)
-}
-
 func IsPublicOriginAllowedWithContext(ctx context.Context, origin string) (bool, error) {
 	if DB == nil {
 		return false, fmt.Errorf("database unavailable")

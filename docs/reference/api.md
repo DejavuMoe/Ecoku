@@ -292,7 +292,7 @@ Origin: https://blog.example.com
 
 | 方法与路径 | 说明 |
 | --- | --- |
-| `GET /api/admin/login-config` | 无需登录。返回登录页需要的人机验证配置（`captcha`、`turnstileSitekey`）和后台语言 `locale`（取自 `ECOKU_ADMIN_LOCALE`）。 |
+| `GET /api/admin/login-config` | 无需登录。返回登录页需要的人机验证配置（`captcha`、`turnstileSitekey`）、后台语言 `locale`（取自 `ECOKU_ADMIN_LOCALE`）和显示时区 `timeZone`（IANA 名称，取自容器 `TZ`）。 |
 | `POST /api/admin/login` | 请求体 `{"username", "password", "captchaToken"}`。成功返回 `{"expires_at", "expires_in"}` 并设置 Cookie；用临时密码登录时额外返回 `requires_password_change: true` 和当前用户名 `username`。受 `rate_limit.admin_login` 限流。 |
 | `GET /api/admin/session` | 返回当前会话的 `expires_at`、剩余秒数 `expires_in` ；需要首次改密时包含 `requires_password_change: true` 与 `username`，否则省略这两个字段；不延长会话。 |
 | `POST /api/admin/initial-setup` | 只接受首次临时密码会话。请求体为 `{"username", "password"}`，成功后撤销临时会话并设置普通管理员会话。 |

@@ -41,7 +41,7 @@ sudo docker compose logs --tail=100 ecoku
 
 新部署不需要 `ecoku.env`。下面兩項寫在 Compose 的 `environment` 中，不是 YAML 設定欄位：
 
-- `TZ`：評論區與通知的顯示時區，填寫 IANA 時區名稱，例如 `Asia/Shanghai`。
+- `TZ`：評論區、管理後台與通知的顯示時區，填寫 IANA 時區名稱，例如 `Asia/Shanghai`。
 - `ECOKU_ADMIN_LOCALE`：管理後台語言，可選 `zh-CN`、`zh-Hant`、`en`，不區分大小寫，也接受 `zh-TW`、`en-US` 等常見寫法。無法辨識的值會在啟動日誌中提示，並改用 `zh-CN`。
 
 站點評論區語言不受這兩項影響：它在後台站點設定的「评论区语言」中選擇（YAML 站點種子中對應 `i18n`），載入器的 `data-i18n` 或 SDK 的 `i18n` 參數可以覆寫。

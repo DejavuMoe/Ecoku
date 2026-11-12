@@ -218,8 +218,9 @@ func TestAdminStaticStartsWithoutTheTabIcon(t *testing.T) {
 func TestAdminTurnstileSettingsAndLoginChallenge(t *testing.T) {
 	env := setupAdminTest(t)
 	t.Setenv("ECOKU_ADMIN_LOCALE", "en")
+	t.Setenv("TZ", "Europe/Berlin")
 	unauthenticated := requestJSON(t, env.router, http.MethodGet, "/api/admin/login-config", adminTestOrigin, "", nil)
-	if unauthenticated.Code != http.StatusOK || !strings.Contains(unauthenticated.Body.String(), `"turnstileSitekey":""`) || !strings.Contains(unauthenticated.Body.String(), `"locale":"en"`) {
+	if unauthenticated.Code != http.StatusOK || !strings.Contains(unauthenticated.Body.String(), `"turnstileSitekey":""`) || !strings.Contains(unauthenticated.Body.String(), `"locale":"en"`) || !strings.Contains(unauthenticated.Body.String(), `"timeZone":"Europe/Berlin"`) {
 		t.Fatalf("empty login-config=%d %s", unauthenticated.Code, unauthenticated.Body.String())
 	}
 	saved := requestJSON(t, env.router, http.MethodPut, "/api/admin/turnstile", adminTestOrigin, "Bearer "+env.token, map[string]any{

@@ -152,7 +152,7 @@ If you lose the temporary or permanent password, follow the same [administrator 
 
 The Compose file above sets `TZ: Asia/Shanghai` and `ECOKU_ADMIN_LOCALE: zh-CN`:
 
-- `TZ` sets the time zone used for timestamps in the comments and in notifications. Use an IANA name such as `Asia/Shanghai` or `Europe/Berlin`.
+- `TZ` sets the time zone used for timestamps in the comments, the admin console and notifications. Use an IANA name such as `Asia/Shanghai` or `Europe/Berlin`. The admin console shows comment times and groups comments by day in this time zone, not in the browser's time zone; when `TZ` is not set, `Asia/Shanghai` is used.
 - `ECOKU_ADMIN_LOCALE` sets the admin console language: `zh-CN`, `zh-Hant` or `en`. An unrecognized value is reported in the startup log and falls back to `zh-CN`.
 
 After changing either value, run `sudo docker compose up -d` to recreate the container. You do not need a separate `ecoku.env`. The comment language is not set here: it comes from 「评论区语言」 (Comment language) in the admin site settings, and the loader's `data-i18n` attribute or the SDK `i18n` option in your embed code can override it.
