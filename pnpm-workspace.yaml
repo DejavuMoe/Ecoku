@@ -20,4 +20,4 @@ auditConfig:
 
 # This repository's published SDK is used by the documentation demo.
 minimumReleaseAgeExclude:
-  - ecoku@0.5.6
+  - ecoku@0.5.7
