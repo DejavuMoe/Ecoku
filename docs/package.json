@@ -7,11 +7,10 @@
   },
   "scripts": {
     "dev": "vitepress dev",
-    "build": "node .vitepress/inline-spacing.test.mjs && vitepress build",
+    "build": "node .vitepress/inline-spacing.test.mjs && node .vitepress/diagrams.test.mjs && vitepress build",
     "preview": "vitepress preview"
   },
   "devDependencies": {
-    "mermaid": "^12.3.0",
     "vitepress": "^1.6.4"
   }
 }

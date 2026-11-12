@@ -182,9 +182,11 @@
 .vp-doc tr:nth-child(2n) { background: var(--surface); }
 .VPDocFooter .pager-link { border-color: var(--line); border-radius: 4px; }
 .VPDocFooter .pager-link:hover { border-color: var(--accent); }
-.mermaid { display: flex; justify-content: center; margin: 24px 0; padding: 24px; overflow-x: auto; background: var(--surface); border: 1px solid var(--line-soft); border-radius: 4px; }
-.mermaid svg { max-width: 100%; height: auto; }
-.mermaid foreignObject p, .mermaid foreignObject div, .mermaid .nodeLabel { margin: 0 !important; padding: 0 !important; line-height: 1.45 !important; }
+.doc-diagram { margin: 24px 0; padding: 24px; overflow-x: auto; background: var(--surface); border: 1px solid var(--line-soft); border-radius: 4px; }
+.doc-diagram img { width: 100%; min-width: 640px; max-width: none; height: auto; }
+.doc-diagram .diagram-dark, .dark .doc-diagram .diagram-light { display: none; }
+.dark .doc-diagram .diagram-dark { display: block; }
+.doc-diagram:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 @media (min-width: 960px) {
   .VPHero .name { font-size: 56px; line-height: 1.15; }
@@ -203,7 +205,7 @@
   .vp-doc h1 { font-size: 28px; }
   .vp-doc h2 { font-size: 21px; overflow-wrap: anywhere; }
   .vp-doc [class*="language-"] code { font-size: 12px; }
-  .mermaid { padding: 16px; }
+  .doc-diagram { padding: 16px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .VPFeature, .VPButton { transition: none; }

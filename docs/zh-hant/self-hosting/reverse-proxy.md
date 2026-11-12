@@ -9,12 +9,10 @@ Ecoku 容器只在主機的 `127.0.0.1:12123` 上提供 HTTP。要從公開網�
 
 ## 請求經過的路徑
 
-```mermaid
-flowchart LR
-    V["訪客瀏覽器"] -->|HTTPS| P["Caddy / Nginx<br/>（主機）"]
-    V -.->|HTTPS| C["CDN（選用）"] -.-> P
-    P -->|"HTTP 127.0.0.1:12123"| E["Ecoku 容器"]
-```
+<figure class="doc-diagram" tabindex="0" aria-label="請求路徑圖，可橫向捲動">
+  <img class="diagram-light" src="/diagrams/reverse-proxy.zh-Hant.light.svg" width="984" height="91" loading="lazy" decoding="async" alt="訪客透過 HTTPS 直連反向代理或經可選 CDN 回源，再透過 HTTP 127.0.0.1:12123 存取 Ecoku 容器。">
+  <img class="diagram-dark" src="/diagrams/reverse-proxy.zh-Hant.dark.svg" width="984" height="91" loading="lazy" decoding="async" alt="訪客透過 HTTPS 直連反向代理或經可選 CDN 回源，再透過 HTTP 127.0.0.1:12123 存取 Ecoku 容器。">
+</figure>
 
 反向代理連到 `127.0.0.1:12123` 時，Docker 會把連線轉交給容器。容器看到的對端位址不是訪客，而是 Docker 橋接網路的閘道（通常形如 `172.18.0.1`）。因此訪客的真實 IP 只能由反向代理寫進 `X-Forwarded-For` 請求標頭傳過去，而 Ecoku 只有在確認請求確實來自這個閘道時才會讀取它。
 

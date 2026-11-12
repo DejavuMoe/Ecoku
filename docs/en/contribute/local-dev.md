@@ -35,3 +35,11 @@ The client development demo uses the fixed local API URL `http://127.0.0.1:12123
 GitHub Actions runs the full gate. Locally, run only checks directly relevant to the change and not already covered by CI.
 
 The admin development origin (`http://localhost:5174` in the example config) must be listed in the separate `admin.allowed_origins`; the development page reaches the server through the Vite same-origin `/api` proxy. Only explicitly allowed HTTP localhost/loopback origins get a non-Secure cookie; production requires HTTPS.
+
+## Documentation diagrams {#documentation-diagrams}
+
+The diagrams in Introduction and Reverse proxy use local SVGs in `docs/public/diagrams/`. Mermaid runs neither during the build nor in the browser. File names combine the diagram name, locale, and `light` / `dark`; both theme variants share the same nodes, edges, and canvas dimensions, and the page theme controls which is displayed.
+
+To change a diagram, edit or re-export its SVGs and update all three languages, both themes, and the alternative text in Markdown. Keep SVGs self-contained, without external fonts, images, or scripts. Use `pnpm docs:dev` to check labels, edges, theme switching, and horizontal scrolling with the keyboard or touch on narrow screens.
+
+`node docs/.vitepress/diagrams.test.mjs` checks asset references, alternative text, and consistency between theme variants across the six pages. It also rejects leftover Mermaid code blocks. This check is part of the documentation build.

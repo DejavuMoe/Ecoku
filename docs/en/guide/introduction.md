@@ -37,25 +37,10 @@ If these features are essential to your workflow, Ecoku may not be the right fit
 
 ## System architecture {#components}
 
-```mermaid
-flowchart LR
-    subgraph Browser["Visitor browser"]
-        Page["Blog post page<br/>loads ecoku-loader.js"]
-    end
-    subgraph Admin["Admin browser"]
-        Console["/admin/ admin console"]
-    end
-    Proxy["Reverse proxy<br/>Caddy / Nginx, HTTPS"]
-    subgraph Container["Ecoku container"]
-        Server["ecoku-server<br/>API · static assets · notification queue"]
-        DB[("SQLite<br/>data/ecoku.sqlite3")]
-    end
-    Page --> Proxy
-    Console --> Proxy
-    Proxy --> Server
-    Server --> DB
-    Server -.-> Mail["SMTP / Telegram"]
-```
+<figure class="doc-diagram" tabindex="0" aria-label="System diagram, horizontally scrollable">
+  <img class="diagram-light" src="/diagrams/components.en.light.svg" width="1185" height="304" loading="lazy" decoding="async" alt="Visitor and administrator browsers reach Ecoku through a reverse proxy. The service connects to SQLite and sends SMTP or Telegram notifications.">
+  <img class="diagram-dark" src="/diagrams/components.en.dark.svg" width="1185" height="304" loading="lazy" decoding="async" alt="Visitor and administrator browsers reach Ecoku through a reverse proxy. The service connects to SQLite and sends SMTP or Telegram notifications.">
+</figure>
 
 The container runs a single Go binary, `ecoku-server`, which concurrently manages:
 

@@ -37,25 +37,10 @@ Ecoku 不包含以下特性：
 
 ## 系統組成 {#components}
 
-```mermaid
-flowchart LR
-    subgraph Browser["訪客瀏覽器"]
-        Page["部落格文章頁<br/>載入 ecoku-loader.js"]
-    end
-    subgraph Admin["管理員瀏覽器"]
-        Console["/admin/ 管理後台"]
-    end
-    Proxy["反向代理<br/>Caddy / Nginx，HTTPS"]
-    subgraph Container["Ecoku 容器"]
-        Server["ecoku-server<br/>API · 靜態資源 · 通知佇列"]
-        DB[("SQLite<br/>data/ecoku.sqlite3")]
-    end
-    Page --> Proxy
-    Console --> Proxy
-    Proxy --> Server
-    Server --> DB
-    Server -.-> Mail["SMTP / Telegram"]
-```
+<figure class="doc-diagram" tabindex="0" aria-label="系統組成圖，可橫向捲動">
+  <img class="diagram-light" src="/diagrams/components.zh-Hant.light.svg" width="1110" height="304" loading="lazy" decoding="async" alt="訪客和管理員瀏覽器經反向代理存取 Ecoku 服務；服務連接 SQLite 資料庫並傳送 SMTP 或 Telegram 通知。">
+  <img class="diagram-dark" src="/diagrams/components.zh-Hant.dark.svg" width="1110" height="304" loading="lazy" decoding="async" alt="訪客和管理員瀏覽器經反向代理存取 Ecoku 服務；服務連接 SQLite 資料庫並傳送 SMTP 或 Telegram 通知。">
+</figure>
 
 容器內僅執行一個 Go 二進位程式 `ecoku-server`，統一負責：
 

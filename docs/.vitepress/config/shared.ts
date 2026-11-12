@@ -264,20 +264,7 @@ export const shared = defineConfig({
     },
     // TextMate grammar for ```caddyfile fences (Shiki has no built-in Caddyfile).
     languages: [caddyfileGrammar],
-    config(md) {
-      inlineSpacing(md)
-      const defaultFence = md.renderer.rules.fence!
-      md.renderer.rules.fence = (tokens, idx, options, env, self) => {
-        const token = tokens[idx]
-        const info = token.info.trim()
-        if (info === 'mermaid') {
-          const rawCode = token.content.trim()
-          const encodedCode = encodeURIComponent(rawCode)
-          return `<div class="mermaid" data-code="${encodedCode}" v-pre>${md.utils.escapeHtml(rawCode)}</div>`
-        }
-        return defaultFence(tokens, idx, options, env, self)
-      }
-    },
+    config: inlineSpacing,
   },
   themeConfig: {
     logo: { src: '/logo.svg', alt: 'Ecoku' },
