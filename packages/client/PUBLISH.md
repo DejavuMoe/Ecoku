@@ -41,7 +41,7 @@ SDK 的 `repository.url` 设为 `git+https://github.com/DejavuMoe/Ecoku.git`，`
 | Environment | 留空，工作流未声明 environment |
 | Allowed actions | 允许 `npm publish` |
 
-正常发布使用 `id-token: write` 换取短期凭据，不需要 `NPM_TOKEN`。工作流使用 Node 24.19.0 随附的 npm，满足 Trusted Publishing 的 npm 11.5.1+ 要求，并启用 provenance。
+正常发布使用 `id-token: write` 换取短期凭据，不需要 `NPM_TOKEN`。工作流使用 Node 26.13.1 随附的 npm，满足 Trusted Publishing 的 npm 11.5.1+ 要求，并启用 provenance。
 
 若包尚未创建、还不能配置 Trusted Publisher，首次发布可以在仓库 Actions Secrets 添加临时 `NPM_TOKEN`：使用对目标包具有写入权限、允许 CI 发布的 granular token，按 npm 的 2FA 设置启用 Bypass 2FA。确认账户有权使用 `ecoku` 包名；registry 返回 404 不保证包名一定可注册。首次成功后配置 Trusted Publisher，再删除 Actions Secret 并撤销临时 token。不要把 token 写进仓库。
 

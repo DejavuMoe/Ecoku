@@ -3,58 +3,58 @@
 lockfile_version = 1
 
 [[tools.go]]
-version = "1.27.2"
+version = "1.27.4"
 backend = "core:go"
-specifiers = ["1.27.2"]
+specifiers = ["1.27.4"]
 
 [tools.go."platforms.linux-arm64"]
-checksum = "sha256:94f3e30b8e374bc285e7dadc11e0865726b9bc6e85b841ccceaabc0214c6b7c8"
-url = "https://dl.google.com/go/go1.27.2.linux-arm64.tar.gz"
+checksum = "sha256:3392582988a273a87ab5043ee1b2c9c17a2c3c00580bf9326c47a2e0aaaeac92"
+url = "https://dl.google.com/go/go1.27.4.linux-arm64.tar.gz"
 
 [tools.go."platforms.linux-x64"]
-checksum = "sha256:ecbadb99091a3f46e31f5f934b068b1864eafa7995211b39eaddf76996045fe5"
-url = "https://dl.google.com/go/go1.27.2.linux-amd64.tar.gz"
+checksum = "sha256:7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840"
+url = "https://dl.google.com/go/go1.27.4.linux-amd64.tar.gz"
 
 [tools.go."platforms.windows-x64"]
-checksum = "sha256:1314008898bd40df77af4b014f777f08873dbdfbcd3d92308728ee03304fe04f"
-url = "https://dl.google.com/go/go1.27.2.windows-amd64.zip"
+checksum = "sha256:178ab98950ac69ab25069307dc6ade79f3816e414cce95b4da166a115cde1e7e"
+url = "https://dl.google.com/go/go1.27.4.windows-amd64.zip"
 
 [[tools.node]]
-version = "24.19.0"
+version = "26.13.1"
 backend = "core:node"
-specifiers = ["24.19.0"]
+specifiers = ["26.13.1"]
 
 [tools.node."platforms.linux-arm64"]
-checksum = "sha256:d28c8a5bf0a808f0ed434a1dce8c54ae98f0371c0bd86ac58abc613f73e6643f"
-url = "https://nodejs.org/dist/v24.19.0/node-v24.19.0-linux-arm64.tar.gz"
+checksum = "sha256:80a330b35415382878df18d41afbd106ea89bfb3be0087d6608e289a14c5cc7d"
+url = "https://nodejs.org/dist/v26.13.1/node-v26.13.1-linux-arm64.tar.gz"
 
 [tools.node."platforms.linux-x64"]
-checksum = "sha256:f625d97cd707df4ff96254916fbc5ff014f09c09effe5a1e0ca8f6d41a8789d4"
-url = "https://nodejs.org/dist/v24.19.0/node-v24.19.0-linux-x64.tar.gz"
+checksum = "sha256:518674de2b621728a5e4486f5fb3b7d2900bb3cc4aa97969edaa463db99f9778"
+url = "https://nodejs.org/dist/v26.13.1/node-v26.13.1-linux-x64.tar.gz"
 
 [tools.node."platforms.windows-x64"]
-checksum = "sha256:57f71ab3652e797d84acddc79c81cc9ff1c6ddb2a1974cdb83f00fee9bff4c73"
-url = "https://nodejs.org/dist/v24.19.0/node-v24.19.0-win-x64.zip"
+checksum = "sha256:e2edda75bfb089654705cf65a13b58933bfd5f57148e8ebda916f58a2474f1f7"
+url = "https://nodejs.org/dist/v26.13.1/node-v26.13.1-win-x64.zip"
 
 [[tools.pnpm]]
-version = "11.24.0"
+version = "11.28.9"
 backend = "aqua:pnpm/pnpm"
-specifiers = ["11.24.0"]
+specifiers = ["11.28.9"]
 
 [tools.pnpm."platforms.linux-arm64"]
-checksum = "sha256:52f9cd410ef3bbb1cdd79c399b27772fa6d929bc3cf7c80ff3923a81e1c93be3"
-url = "https://github.com/pnpm/pnpm/releases/download/v11.24.0/pnpm-linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/527747053"
+checksum = "sha256:2da5106f94a6b34b8ed59c8a9b8223c0f32621f4494b4d7644b672b8aac1ba4f"
+url = "https://github.com/pnpm/pnpm/releases/download/v11.28.9/pnpm-linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/679944763"
 provenance = "github-attestations"
 
 [tools.pnpm."platforms.linux-x64"]
-checksum = "sha256:0a9b76dedb5fe8cc5e7f3a9fd70854181cfb08a487ebaf0c9cfb044dc860936c"
-url = "https://github.com/pnpm/pnpm/releases/download/v11.24.0/pnpm-linux-x64.tar.gz"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/527747059"
+checksum = "sha256:44588952c6e0e2c25f5b3363c5736d7a176ce8dc6200ae8179bd688e60a212a7"
+url = "https://github.com/pnpm/pnpm/releases/download/v11.28.9/pnpm-linux-x64.tar.gz"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/679944760"
 provenance = "github-attestations"
 
 [tools.pnpm."platforms.windows-x64"]
-checksum = "sha256:c5ca642230551342a9fffafe508c181f346e2c79fcae2b1cae4c37ceb423481a"
-url = "https://github.com/pnpm/pnpm/releases/download/v11.24.0/pnpm-win32-x64.zip"
-url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/527747055"
+checksum = "sha256:d4e81b5e957bd0a46e154eb68c1139eae61a9697e818d9cc138dfa2eed29ab38"
+url = "https://github.com/pnpm/pnpm/releases/download/v11.28.9/pnpm-win32-x64.zip"
+url_api = "https://api.github.com/repos/pnpm/pnpm/releases/assets/679944757"
 provenance = "github-attestations"
