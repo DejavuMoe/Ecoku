@@ -13,6 +13,8 @@ steps:
     image: node:26.13.1-alpine3.24@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5
     environment:
       pnpm_config_verify_deps_before_run: "false"
+      # The 2 GiB runner's default Node heap is too small for VitePress bundling.
+      NODE_OPTIONS: "--max-old-space-size=1536"
     commands:
       - apk add --no-cache git
       - npm install --global pnpm@11.28.9
