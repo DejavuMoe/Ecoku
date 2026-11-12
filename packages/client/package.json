@@ -56,13 +56,13 @@
     "publish:dry": "npm publish --dry-run"
   },
   "devDependencies": {
-    "@playwright/test": "1.63.0",
-    "@types/node": "^25.9.5",
+    "@playwright/test": "1.65.0",
+    "@types/node": "^26.6.6",
     "happy-dom": "^21.0.4",
     "rimraf": "^6.1.4",
-    "typescript": "~6.0.3",
-    "vite": "^8.2.4",
-    "vitest": "^4.1.11"
+    "typescript": "~7.0.2",
+    "vite": "^8.3.7",
+    "vitest": "^5.1.0"
   },
   "publishConfig": {
     "access": "public",
