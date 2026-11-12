@@ -178,6 +178,10 @@ When a page's total comment count exceeds the counting limit, the request fails 
 
 In addition, the list endpoint handles at most 4 requests at a time and returns `503` with `Retry-After: 1` when busy. Database reads are limited to 2 seconds per request, and a timeout returns `503`. The read rate is limited by `rate_limit.comment_list`, 60 per IP per minute by default.
 
+#### Caching and conditional requests {#list-caching}
+
+Successful responses carry `ETag` and `Cache-Control: no-cache`. Send the previous `ETag` in `If-None-Match` on the next request; if the data has not changed, the server returns `304` without a body. Browsers do this automatically. While the database has no new writes, the server reuses the response it already built; after a new comment or an admin change is committed, the next request returns the new data.
+
 #### Level-by-level reads {#cursor}
 
 When you pass `parentId`, the endpoint returns only one level of direct replies, without recursion and without counting totals. This suits custom frontends that expand large discussions on demand.

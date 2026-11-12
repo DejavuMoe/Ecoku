@@ -88,11 +88,26 @@ func GetSite(siteID string) (Site, error) {
 	return GetSiteWithContext(context.Background(), siteID)
 }
 
+var (
+	siteCache         = NewVersionedCache[string, Site](256, 0)
+	publicOriginCache = NewVersionedCache[string, bool](1024, 0)
+	siteOriginCache   = NewVersionedCache[[2]string, bool](1024, 0)
+)
+
 func GetSiteWithContext(ctx context.Context, siteID string) (Site, error) {
 	if DB == nil {
 		return Site{}, fmt.Errorf("database unavailable")
 	}
-	return getSite(DB.WithContext(ctx), siteID)
+	siteID = strings.TrimSpace(siteID)
+	site, err := Cached(ctx, siteCache, siteID, func() (Site, error) {
+		return getSite(ReadDB().WithContext(ctx), siteID)
+	})
+	if err != nil {
+		return Site{}, err
+	}
+	// Cached values are shared; callers may modify their copy.
+	site.AllowedOrigins = append([]string(nil), site.AllowedOrigins...)
+	return site, nil
 }
 
 func getSite(database *gorm.DB, siteID string) (Site, error) {
@@ -244,7 +259,9 @@ func IsPublicOriginAllowedWithContext(ctx context.Context, origin string) (bool,
 	if DB == nil {
 		return false, fmt.Errorf("database unavailable")
 	}
-	return isOriginAllowed(DB.WithContext(ctx), origin)
+	return Cached(ctx, publicOriginCache, origin, func() (bool, error) {
+		return isOriginAllowed(ReadDB().WithContext(ctx), origin)
+	})
 }
 
 func IsSiteOriginAllowedWithContext(ctx context.Context, siteID, normalizedOrigin string) (bool, error) {
@@ -254,7 +271,9 @@ func IsSiteOriginAllowedWithContext(ctx context.Context, siteID, normalizedOrigi
 	if strings.TrimSpace(normalizedOrigin) == "" {
 		return true, nil
 	}
-	return isOriginAllowed(DB.WithContext(ctx).Where("site_id = ?", siteID), normalizedOrigin)
+	return Cached(ctx, siteOriginCache, [2]string{siteID, normalizedOrigin}, func() (bool, error) {
+		return isOriginAllowed(ReadDB().WithContext(ctx).Where("site_id = ?", siteID), normalizedOrigin)
+	})
 }
 
 func isOriginAllowed(database *gorm.DB, origin string) (bool, error) {

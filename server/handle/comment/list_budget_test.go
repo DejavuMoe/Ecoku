@@ -148,7 +148,8 @@ func TestPublicListNodeBudgetBoundsDatabaseMaterialization(t *testing.T) {
 	}
 	defer model.DB.Callback().Query().Remove("test:rows")
 	items, err := loadPublicDescendants(model.DB, "site-a", "/post", []model.Comment{root}, children)
-	if !errors.Is(err, errPublicListBudget) || items != nil || rows != maxPublicListNodes {
+	// The snapshot graph rejects an oversized tree before any row is read.
+	if !errors.Is(err, errPublicListBudget) || items != nil || rows != 0 {
 		t.Fatalf("items=%d err=%v materialized=%d", len(items), err, rows)
 	}
 	if got := listRequest(router, "&pageSize=1"); got.Code != http.StatusUnprocessableEntity {

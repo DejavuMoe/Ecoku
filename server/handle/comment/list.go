@@ -2,10 +2,12 @@ package comment
 
 import (
 	"context"
+	"crypto/sha256"
 	"ecoku-server/captcha"
 	"ecoku-server/config"
 	"ecoku-server/model"
 	"ecoku-server/utils"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -74,9 +76,22 @@ func PublicListBudget(c *gin.Context) {
 // parentId requests use single-level cursor pagination without tree expansion.
 func GetComments(c *gin.Context) {
 	ctx := c.Request.Context()
+	// The site and its Origin binding are checked on every request, cached or
+	// not; the cached body never bypasses that boundary.
 	site, ok := requireRegisteredSite(c, c.Query("siteId"), false)
 	if !ok {
 		return
+	}
+	// Every successful response is a pure function of the query and the
+	// committed database state, so it can be reused until the next commit.
+	cacheKey := publicListCacheKey(c)
+	stamp, cacheable, stampErr := model.CurrentDataStamp(ctx)
+	cacheable = cacheable && stampErr == nil
+	if cacheable {
+		if entry, hit := publicListCache.Get(stamp, cacheKey); hit {
+			writePublicList(c, entry)
+			return
+		}
 	}
 	siteID := site.ID
 	captchaConfig, err := captcha.PublicConfigWithContext(ctx)
@@ -137,7 +152,7 @@ func GetComments(c *gin.Context) {
 	var hasMore bool
 	// Keep the budget probe and reads in one snapshot so concurrent writes
 	// cannot invalidate the bound or make the tree grow during traversal.
-	err = model.DB.WithContext(ctx).Transaction(func(db *gorm.DB) error {
+	err = model.ReadDB().WithContext(ctx).Transaction(func(db *gorm.DB) error {
 		if cursorMode {
 			comments, hasMore, err = loadPublicChildren(db, siteID, key, parentID, afterID, pageSize)
 			return err
@@ -230,7 +245,62 @@ func GetComments(c *gin.Context) {
 		sendPublicListError(c, err)
 		return
 	}
-	c.Data(http.StatusOK, "application/json; charset=utf-8", encoded)
+	entry := newPublicListEntry(encoded)
+	if cacheable {
+		publicListCache.Put(stamp, cacheKey, entry, len(encoded)+len(cacheKey))
+	}
+	writePublicList(c, entry)
+}
+
+type publicListEntry struct {
+	body []byte
+	etag string
+}
+
+// publicListCache holds encoded responses for the current data_version only.
+var publicListCache = model.NewVersionedCache[string, publicListEntry](1024, 32<<20)
+
+func publicListCacheKey(c *gin.Context) string {
+	query := c.Request.URL.Query()
+	var key strings.Builder
+	for _, name := range []string{"siteId", "key", "page", "pageSize", "sort", "parentId", "afterId"} {
+		// Quoting keeps the key unambiguous for any parameter content.
+		key.WriteString(strconv.Quote(name))
+		for _, value := range query[name] {
+			key.WriteByte(' ')
+			key.WriteString(strconv.Quote(value))
+		}
+		key.WriteByte(';')
+	}
+	return key.String()
+}
+
+func newPublicListEntry(body []byte) publicListEntry {
+	sum := sha256.Sum256(body)
+	return publicListEntry{body: body, etag: `"` + hex.EncodeToString(sum[:16]) + `"`}
+}
+
+// writePublicList lets browsers revalidate with If-None-Match instead of
+// downloading an unchanged thread again. no-cache still forces revalidation,
+// so a newly published comment is visible on the next request.
+func writePublicList(c *gin.Context, entry publicListEntry) {
+	c.Header("Cache-Control", "no-cache")
+	c.Header("ETag", entry.etag)
+	if etagMatches(c.GetHeader("If-None-Match"), entry.etag) {
+		c.Status(http.StatusNotModified)
+		return
+	}
+	c.Data(http.StatusOK, "application/json; charset=utf-8", entry.body)
+}
+
+func etagMatches(header, etag string) bool {
+	for _, candidate := range strings.Split(header, ",") {
+		candidate = strings.TrimPrefix(strings.TrimSpace(candidate), "W/")
+		if candidate == etag || candidate == "*" {
+			return true
+		}
+	}
+	return false
 }
 
 func sendPublicListError(c *gin.Context, err error) {
@@ -341,43 +411,80 @@ func loadPublicDescendants(db *gorm.DB, siteID, key string, roots []model.Commen
 	if len(roots) > maxPublicListNodes {
 		return nil, errPublicListBudget
 	}
-	result := append([]model.Comment(nil), roots...)
-	frontier := make([]uint, 0, len(roots))
-	seen := make(map[uint]bool, len(roots))
+	rootIDs := make([]uint, 0, len(roots))
 	for _, root := range roots {
-		frontier = append(frontier, root.ID)
-		seen[root.ID] = true
+		rootIDs = append(rootIDs, root.ID)
 	}
+	// The count graph comes from the same snapshot, so the complete set of
+	// descendants and the budget are known before reading any row. Leaves need
+	// no query, and the whole set is read at once by primary key.
+	var wanted []uint
+	seen := make(map[uint]bool, len(roots))
+	for _, id := range rootIDs {
+		seen[id] = true
+	}
+	frontier := append([]uint(nil), rootIDs...)
 	for depth := 0; len(frontier) > 0; depth++ {
+		if err := db.Statement.Context.Err(); err != nil {
+			return nil, err
+		}
 		var next []uint
-		// Each parent lookup uses the existing sibling-order index. An IN
-		// query could sort an arbitrarily broad level before applying LIMIT.
-		sort.Slice(frontier, func(i, j int) bool { return frontier[i] < frontier[j] })
 		for _, parentID := range frontier {
-			if err := db.Statement.Context.Err(); err != nil {
-				return nil, err
-			}
-			// The count graph comes from the same snapshot, so leaves need no query.
-			if len(childrenByParent[parentID]) == 0 {
+			children := childrenByParent[parentID]
+			if len(children) == 0 {
 				continue
 			}
-			remaining := maxPublicListNodes - len(result)
-			if depth == maxPublicListDepth {
-				remaining = 0
-			}
-			var children []model.Comment
-			if err := db.Where("site_id = ? AND mark = ? AND parent_id = ?", siteID, key, parentID).
-				Order("created_at ASC, id ASC").Limit(remaining + 1).Find(&children).Error; err != nil {
-				return nil, err
-			}
-			if len(children) > remaining {
+			if depth == maxPublicListDepth || len(children) > maxPublicListNodes-len(roots)-len(wanted) {
 				return nil, errPublicListBudget
 			}
-			for _, child := range children {
-				if seen[child.ID] {
+			for _, childID := range children {
+				if seen[childID] {
 					continue
 				}
-				seen[child.ID] = true
+				seen[childID] = true
+				wanted = append(wanted, childID)
+				next = append(next, childID)
+			}
+		}
+		frontier = next
+	}
+	result := append([]model.Comment(nil), roots...)
+	if len(wanted) == 0 {
+		return result, nil
+	}
+	var rows []model.Comment
+	if err := db.Where("site_id = ? AND mark = ? AND id IN ?", siteID, key, wanted).Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	byParent := make(map[uint][]model.Comment)
+	for _, row := range rows {
+		if row.ParentID != nil {
+			byParent[*row.ParentID] = append(byParent[*row.ParentID], row)
+		}
+	}
+	for _, siblings := range byParent {
+		sort.Slice(siblings, func(i, j int) bool {
+			if !siblings[i].CreatedAt.Equal(siblings[j].CreatedAt) {
+				return siblings[i].CreatedAt.Before(siblings[j].CreatedAt)
+			}
+			return siblings[i].ID < siblings[j].ID
+		})
+	}
+	// Emit level by level, parents in ID order and siblings oldest first.
+	emitted := make(map[uint]bool, len(roots)+len(rows))
+	for _, id := range rootIDs {
+		emitted[id] = true
+	}
+	frontier = rootIDs
+	for len(frontier) > 0 {
+		sort.Slice(frontier, func(i, j int) bool { return frontier[i] < frontier[j] })
+		var next []uint
+		for _, parentID := range frontier {
+			for _, child := range byParent[parentID] {
+				if emitted[child.ID] {
+					continue
+				}
+				emitted[child.ID] = true
 				result = append(result, child)
 				next = append(next, child.ID)
 			}

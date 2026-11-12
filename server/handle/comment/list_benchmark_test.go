@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
@@ -73,4 +74,44 @@ func benchmarkPublicList(b *testing.B, router http.Handler, query string) {
 	b.ReportMetric(float64(queries)/float64(b.N), "queries/op")
 	b.ReportMetric(float64(after.WaitDuration-before.WaitDuration)/float64(b.N), "wait-ns/op")
 	b.ReportMetric(float64(first.Body.Len()), "response-bytes")
+}
+
+// BenchmarkPublicListParallel compares concurrent list reads on the single
+// writer connection with the production read pool and response cache.
+// Run with -run '^$' -bench BenchmarkPublicListParallel -benchtime=5000x.
+func BenchmarkPublicListParallel(b *testing.B) {
+	for _, pooled := range []bool{false, true} {
+		name := "writer-only"
+		if pooled {
+			name = "read-pool-cached"
+		}
+		b.Run(name, func(b *testing.B) {
+			_, path := setupCommentTestAt(b)
+			root := seedSiblings(b, nil, 20, "synthetic root")[0]
+			seedSiblings(b, &root.ID, 40, "synthetic reply")
+			if pooled {
+				if err := model.AttachReadPool(model.DB, path); err != nil {
+					b.Fatal(err)
+				}
+				b.Cleanup(func() { _ = model.DetachReadPool() })
+			}
+			router := gin.New()
+			router.Use(func(c *gin.Context) {
+				if ctx, err := model.WithDataStamp(c.Request.Context()); err == nil {
+					c.Request = c.Request.WithContext(ctx)
+				}
+				c.Next()
+			})
+			router.GET("/list", GetComments)
+			b.ResetTimer()
+			b.RunParallel(func(pb *testing.PB) {
+				for pb.Next() {
+					if got := listRequest(router, "&pageSize=20"); got.Code != http.StatusOK {
+						b.Errorf("status=%d", got.Code)
+						return
+					}
+				}
+			})
+		})
+	}
 }
