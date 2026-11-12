@@ -14,8 +14,8 @@ importers:
   docs:
     dependencies:
       ecoku:
-        specifier: 0.5.6
-        version: 0.5.6
+        specifier: 0.5.7
+        version: 0.5.7
     devDependencies:
       vitepress:
         specifier: ^1.6.4
@@ -1023,8 +1023,8 @@ packages:
   devlop@1.1.0:
     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
 
-  ecoku@0.5.6:
-    resolution: {integrity: sha512-SCUZ/Bt0FDOyMEiR4EiK5l8yzj/sP4KyTgal4kjkd+yyg9pC2iRF8yuKv4uV9JpOb59Kp2fZyYHBIsyjGR+1ew==}
+  ecoku@0.5.7:
+    resolution: {integrity: sha512-pL92GFwhZAB0E/RgK1viF0jzkAN3f1+NEHbszEdkobQ1Z/NoOe50hGKPBK1rDO8OKowEqD0rowvd9efEz3DXvg==}
     engines: {node: ^20.19.0 || ^22.12.0 || >=24.0.0}
 
   emoji-regex-xs@1.0.0:
@@ -2342,7 +2342,7 @@ snapshots:
     dependencies:
       dequal: 2.0.3
 
-  ecoku@0.5.6: {}
+  ecoku@0.5.7: {}
 
   emoji-regex-xs@1.0.0: {}
 
