@@ -37,3 +37,11 @@ pnpm docs:dev
 完整验证由 GitHub Actions 执行；本地只运行与当前改动直接相关且 CI 未覆盖的检查。
 
 管理端开发页的来源（示例配置中的 `http://localhost:5174`）必须写在独立的 `admin.allowed_origins` 中，开发页通过 Vite 的同源 `/api` 代理访问服务端。仅 `http://localhost`、回环 IP 的明确允许来源使用非 Secure Cookie，生产必须 HTTPS。
+
+## 文档流程图 {#documentation-diagrams}
+
+「简介」和「反向代理」中的流程图使用 `docs/public/diagrams/` 下的本地 SVG，不在构建时或浏览器中运行 Mermaid。文件名由图名、语言和 `light` / `dark` 组成；两种主题使用相同的节点、连线和画布尺寸，由页面主题切换显示。
+
+修改图表时，编辑或重新导出对应的 SVG，并同步三种语言、明暗版本及 Markdown 中的替代文本。保持 SVG 自包含，不引用外部字体、图片或脚本。通过 `pnpm docs:dev` 检查标签、连线、主题切换，以及窄屏下用键盘或触摸横向滚动的效果。
+
+`node docs/.vitepress/diagrams.test.mjs` 检查六个页面的资源引用、替代文本和明暗版本一致性，也会拒绝遗留的 Mermaid 代码块；该检查包含在文档构建中。

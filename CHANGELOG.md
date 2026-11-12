@@ -18,6 +18,7 @@
 - 前端开发依赖升级至 TypeScript 7、Vitest 5、Vite 8.3、Playwright 1.65，文档站升级至 mermaid 12 并移除不再需要的 KaTeX、DOMPurify 覆盖；管理后台类型检查改用 `svelte-check --tsgo`。
 - 管理后台的评论时间与按日分组改用实例 `TZ`，与评论区和通知一致，不再固定为 UTC+8；`GET /api/admin/login-config` 增加 `timeZone`。部署模板中的 `TZ: Asia/Shanghai` 保持不变，未设置 `TZ` 时仍按 `Asia/Shanghai` 显示。启动时读取该配置失败会在后台按退避间隔重试。
 - 移除服务端未被调用的 `Site.IsBloggerComment()`；历史迁移与 Twikoo 导入的博主标记回填不变。
+- 文档站的固定流程图改用本地 SVG，保留三种语言和明暗主题，移除 Mermaid 运行时及依赖，减少构建与浏览器加载开销；窄屏下可横向滚动查看图表。
 
 ### 修复
 

@@ -9,12 +9,10 @@ This page covers two tasks:
 
 ## Request path
 
-```mermaid
-flowchart LR
-    V["Visitor browser"] -->|HTTPS| P["Caddy / Nginx<br/>(host)"]
-    V -.->|HTTPS| C["CDN (optional)"] -.-> P
-    P -->|"HTTP 127.0.0.1:12123"| E["Ecoku container"]
-```
+<figure class="doc-diagram" tabindex="0" aria-label="Request path, horizontally scrollable">
+  <img class="diagram-light" src="/diagrams/reverse-proxy.en.light.svg" width="984" height="91" loading="lazy" decoding="async" alt="Visitors reach the reverse proxy over HTTPS, directly or through an optional CDN. The proxy forwards requests to the Ecoku container over HTTP at 127.0.0.1:12123.">
+  <img class="diagram-dark" src="/diagrams/reverse-proxy.en.dark.svg" width="984" height="91" loading="lazy" decoding="async" alt="Visitors reach the reverse proxy over HTTPS, directly or through an optional CDN. The proxy forwards requests to the Ecoku container over HTTP at 127.0.0.1:12123.">
+</figure>
 
 When the reverse proxy connects to `127.0.0.1:12123`, Docker hands the connection over to the container. The peer address the container sees is not the visitor but the gateway of the Docker bridge network (usually something like `172.18.0.1`). The visitor's real IP address can therefore only reach Ecoku through the `X-Forwarded-For` request header written by the reverse proxy, and Ecoku reads that header only when it has confirmed that the request really comes from this gateway.
 
