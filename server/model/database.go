@@ -6,7 +6,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/glebarez/sqlite"
+	"github.com/libtnb/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 )
@@ -36,6 +36,10 @@ func InitDatabase() error {
 			}
 			return fmt.Errorf("管理端来源 %q 与已存储的公开站点来源重叠", origin)
 		}
+	}
+	if err := AttachReadPool(database, config.GetSQLitePath()); err != nil {
+		_ = CloseSQLiteDatabase(database)
+		return err
 	}
 	DB = database
 	log.Printf("数据库初始化成功，使用 SQLite3")
@@ -83,11 +87,10 @@ func configureSQLiteConnection(database *gorm.DB) error {
 	if err != nil {
 		return fmt.Errorf("读取 SQLite 连接: %w", err)
 	}
-	// Most SQLite PRAGMA settings are connection-local. Keeping one connection
-	// makes foreign-key enforcement, busy waiting and durability settings
-	// deterministic for every request and import. WAL still lets readers in
-	// other processes proceed while this process writes, without widening the
-	// unmeasured in-process concurrency boundary for RC3.
+	// Most SQLite PRAGMA settings are connection-local. Keeping one writer
+	// connection makes foreign-key enforcement, busy waiting and durability
+	// settings deterministic for every write and import. Public reads use the
+	// separate query_only pool in read_pool.go, which WAL lets run alongside.
 	sqlDatabase.SetMaxOpenConns(1)
 	sqlDatabase.SetMaxIdleConns(1)
 	if err := database.Exec("PRAGMA busy_timeout = 5000").Error; err != nil {
@@ -137,11 +140,13 @@ func CloseDatabase() error {
 		return nil
 	}
 	database := DB
+	// Readers must be gone before the TRUNCATE checkpoint, or it reports busy.
+	readErr := DetachReadPool()
 	if err := CloseSQLiteDatabase(database); err != nil {
 		return err
 	}
 	DB = nil
-	return nil
+	return readErr
 }
 
 // CloseSQLiteDatabase is exported for isolated command paths and tests.

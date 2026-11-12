@@ -34,12 +34,18 @@ func (function commentRoundTripFunc) RoundTrip(request *http.Request) (*http.Res
 }
 
 func setupCommentTest(t testing.TB) *gin.Engine {
+	router, _ := setupCommentTestAt(t)
+	return router
+}
+
+func setupCommentTestAt(t testing.TB) (*gin.Engine, string) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	if err := config.ApplyConfig(&config.Config{}); err != nil {
 		t.Fatal(err)
 	}
-	database, err := model.OpenSQLiteDatabase(t.TempDir() + "/comments.sqlite3")
+	path := t.TempDir() + "/comments.sqlite3"
+	database, err := model.OpenSQLiteDatabase(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +62,7 @@ func setupCommentTest(t testing.TB) *gin.Engine {
 	router := gin.New()
 	router.POST("/submit", PublicSubmitBudget, SubmitComment)
 	router.GET("/list", PublicListBudget, GetComments)
-	return router
+	return router, path
 }
 
 func ptr[T any](value T) *T { return &value }

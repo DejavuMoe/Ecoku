@@ -178,6 +178,10 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&page=1&pageSize=10&sor
 
 此外，清單端點同時最多處理 4 個請求，忙碌時回傳 `503` 和 `Retry-After: 1`；每次請求的資料庫讀取限時 2 秒，逾時回傳 `503`。讀取頻率受 `rate_limit.comment_list` 限制，預設每個 IP 每分鐘 60 次。
 
+#### 快取與條件請求 {#list-caching}
+
+成功的回應帶有 `ETag` 和 `Cache-Control: no-cache`。再次請求時在 `If-None-Match` 中帶上次的 `ETag`，資料沒有變化就回傳 `304`，不帶回應內容；瀏覽器會自動處理。資料庫沒有新的寫入時，伺服器直接重用已產生的回應；新評論或後台修改提交後，下一次請求即回傳新資料。
+
 #### 逐層讀取 {#cursor}
 
 傳入 `parentId` 時，端點改為只回傳一層直接回覆，不遞迴，也不統計總數。適合自訂前端依需要展開大型討論。

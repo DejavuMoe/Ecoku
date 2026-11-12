@@ -10,6 +10,7 @@ import (
 	"ecoku-server/handle/app"
 	"ecoku-server/handle/comment"
 	"ecoku-server/middleware"
+	"ecoku-server/model"
 	"ecoku-server/utils"
 	"encoding/base64"
 	"errors"
@@ -36,6 +37,16 @@ func forCommentPath(path string, handler gin.HandlerFunc) gin.HandlerFunc {
 	}
 }
 
+// withDataStamp reads SQLite's data_version once per public request, after
+// admission and its deadline, so the origin, site and list caches share it.
+// A failed probe only disables caching for this request.
+func withDataStamp(c *gin.Context) {
+	if ctx, err := model.WithDataStamp(c.Request.Context()); err == nil {
+		c.Request = c.Request.WithContext(ctx)
+	}
+	c.Next()
+}
+
 func rejectUnknownPublicAPI(c *gin.Context) {
 	path := c.Request.URL.Path
 	if c.Request.Method != http.MethodOptions && c.FullPath() == "" &&
@@ -56,7 +67,9 @@ func NewRouter() (*gin.Engine, error) {
 	r.Use(middleware.RequestLogger(), middleware.Recovery(), rejectUnknownPublicAPI,
 		forCommentPath("/api/comment/list", middleware.RateLimit("comment_list")),
 		forCommentPath("/api/comment/list", comment.PublicListBudget),
-		forCommentPath("/api/comment/submit", comment.PublicSubmitBudget), middleware.Cors())
+		forCommentPath("/api/comment/submit", comment.PublicSubmitBudget),
+		forCommentPath("/api/comment/list", withDataStamp),
+		forCommentPath("/api/comment/submit", withDataStamp), middleware.Cors())
 	if directory := config.GetClientStaticDir(); directory != "" {
 		if err := registerClientStatic(r, directory); err != nil {
 			return nil, err

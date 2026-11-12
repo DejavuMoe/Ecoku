@@ -178,6 +178,10 @@ GET /api/comment/list?siteId=blog&key=/posts/hello-world/&page=1&pageSize=10&sor
 
 此外，列表接口同时最多处理 4 个请求，繁忙时返回 `503` 和 `Retry-After: 1`；每次请求的数据库读取限时 2 秒，超时返回 `503`。读取频率受 `rate_limit.comment_list` 限制，默认每个 IP 每分钟 60 次。
 
+#### 缓存与条件请求 {#list-caching}
+
+成功的响应带有 `ETag` 和 `Cache-Control: no-cache`。再次请求时在 `If-None-Match` 中带上次的 `ETag`，数据没有变化就返回 `304`，不带响应体；浏览器会自动处理。数据库没有新的写入时，服务端直接复用已生成的响应；新评论或后台修改提交后，下一次请求即返回新数据。
+
 #### 逐层读取 {#cursor}
 
 传入 `parentId` 时，接口改为只返回一层直接回复，不递归，也不统计总数。适合自定义前端按需展开大型讨论。

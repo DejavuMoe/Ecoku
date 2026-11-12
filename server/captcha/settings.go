@@ -98,8 +98,22 @@ func PublicConfig() (config.CaptchaPublicConfig, error) {
 	return PublicConfigWithContext(context.Background())
 }
 
+var publicConfigCache = model.NewVersionedCache[struct{}, config.CaptchaPublicConfig](1, 0)
+
+// PublicConfigWithContext returns the non-secret provider settings that the
+// public comment list exposes. It is cached until the next committed write.
 func PublicConfigWithContext(ctx context.Context) (config.CaptchaPublicConfig, error) {
-	row, err := loadSettingWithContext(ctx)
+	return model.Cached(ctx, publicConfigCache, struct{}{}, func() (config.CaptchaPublicConfig, error) {
+		return loadPublicConfig(ctx)
+	})
+}
+
+func loadPublicConfig(ctx context.Context) (config.CaptchaPublicConfig, error) {
+	if model.DB == nil {
+		return config.CaptchaPublicConfig{}, fmt.Errorf("CAPTCHA database unavailable")
+	}
+	var row settingRow
+	err := model.ReadDB().WithContext(ctx).Table("captcha_settings").Where("id = 1").First(&row).Error
 	if err != nil {
 		return config.CaptchaPublicConfig{}, err
 	}
