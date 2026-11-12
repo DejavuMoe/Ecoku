@@ -14,6 +14,7 @@ import type {
   TelegramNotificationSettings,
   LoginConfig,
 } from './types'
+import { resolveAdminTimeZone } from './timezone.svelte'
 
 interface ResponseEnvelope<T> {
   code: number
@@ -273,7 +274,12 @@ export const adminApi = {
   async getLoginConfig(signal?: AbortSignal): Promise<LoginConfig> {
     const raw = await request<Record<string, unknown>>('/api/admin/login-config', { method: 'GET', signal })
     const legacy = text(raw.turnstileSitekey)
-    return { captcha: mapCaptchaPublic(raw.captcha, legacy), turnstileSitekey: legacy, locale: raw.locale === 'en' || raw.locale === 'zh-Hant' ? raw.locale as EcokuLocale : 'zh-CN' }
+    return {
+      captcha: mapCaptchaPublic(raw.captcha, legacy),
+      turnstileSitekey: legacy,
+      locale: raw.locale === 'en' || raw.locale === 'zh-Hant' ? raw.locale as EcokuLocale : 'zh-CN',
+      timeZone: resolveAdminTimeZone(raw.timeZone),
+    }
   },
 
   async login(username: string, password: string, captchaToken = '', signal?: AbortSignal): Promise<AdminSession> {

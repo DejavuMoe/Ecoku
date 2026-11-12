@@ -2,7 +2,8 @@
   import { tick, onMount, onDestroy, untrack } from 'svelte'
 
   import { useAdminStore } from '../stores/admin.svelte'
-  import { formatDate, safeWebsite } from '../ui'
+  import { formatDate, previousDayKey, safeWebsite } from '../ui'
+  import { adminTimeZone } from '../timezone.svelte'
   import { smojiPlainText } from '../smoji'
   import type { CommentReview, CommentStatus } from '../types'
   import AdminIcon from './AdminIcon.svelte'
@@ -29,10 +30,11 @@
   let groups = $derived.by(() => {
     const result: { key: string; name: string; sub: string; comments: CommentReview[] }[] = []
     const locale = adminLocale.value
-    const today = formatDate(new Date().toISOString()).slice(0, 10)
-    const yesterday = formatDate(new Date(Date.now() - 86400000).toISOString()).slice(0, 10)
+    const timeZone = adminTimeZone.value
+    const today = formatDate(new Date().toISOString(), timeZone).slice(0, 10)
+    const yesterday = previousDayKey(today)
     for (const comment of rows) {
-      const key = formatDate(comment.createdAt).slice(0, 10)
+      const key = formatDate(comment.createdAt, timeZone).slice(0, 10)
       let group = result.at(-1)
       if (!group || group.key !== key) {
         const [year, month, day] = key.split('/')
@@ -41,7 +43,7 @@
         const full = !valid
           ? '时间未知'
           : locale === 'en'
-            ? new Intl.DateTimeFormat(locale, { timeZone: 'Asia/Shanghai', dateStyle: 'long' }).format(date)
+            ? new Intl.DateTimeFormat(locale, { timeZone, dateStyle: 'long' }).format(date)
             : `${Number(year)} 年 ${Number(month)} 月 ${Number(day)} 日`
         const relative = valid && (key === today || key === yesterday)
         group = {

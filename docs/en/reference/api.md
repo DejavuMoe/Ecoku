@@ -292,7 +292,7 @@ Admin endpoints live under `/api/admin/`. When `admin.allowed_origins` below is 
 
 | Method and path | Description |
 | --- | --- |
-| `GET /api/admin/login-config` | No sign-in needed. Returns the CAPTCHA settings the sign-in page needs (`captcha`, `turnstileSitekey`) and the admin language `locale` (from `ECOKU_ADMIN_LOCALE`). |
+| `GET /api/admin/login-config` | No sign-in needed. Returns the CAPTCHA settings the sign-in page needs (`captcha`, `turnstileSitekey`) the admin language `locale` (from `ECOKU_ADMIN_LOCALE`), and the display time zone `timeZone` (an IANA name from the container `TZ`). |
 | `POST /api/admin/login` | Request body `{"username", "password", "captchaToken"}`. On success, returns `{"expires_at", "expires_in"}` and sets the cookie; signing in with a temporary password also returns `requires_password_change: true` and the current `username`. Rate limited by `rate_limit.admin_login`. |
 | `GET /api/admin/session` | Returns `expires_at` and remaining `expires_in`. Includes `requires_password_change: true` and `username` only while a password change is required; otherwise both fields are omitted. It does not extend the session. |
 | `POST /api/admin/initial-setup` | Accepts only a temporary first-login session. The body is `{"username", "password"}`; success revokes the temporary session and sets a normal administrator session. |

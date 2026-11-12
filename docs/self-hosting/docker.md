@@ -152,7 +152,7 @@ sudo docker compose up -d --wait --wait-timeout 120
 
 上面的 Compose 已设置 `TZ: Asia/Shanghai` 和 `ECOKU_ADMIN_LOCALE: zh-CN`：
 
-- `TZ` 决定评论区和通知中的时间显示，填写 IANA 时区名，例如 `Asia/Shanghai`、`Europe/Berlin`。
+- `TZ` 决定评论区、管理后台和通知中的时间显示，填写 IANA 时区名，例如 `Asia/Shanghai`、`Europe/Berlin`。后台按这个时区显示评论时间并按日期分组，不使用浏览器所在时区；未设置时使用 `Asia/Shanghai`。
 - `ECOKU_ADMIN_LOCALE` 决定管理后台语言，可选 `zh-CN`、`zh-Hant` 或 `en`。无法识别的值会在启动日志中提示，并改用 `zh-CN`。
 
 修改后执行 `sudo docker compose up -d` 重建容器，不需要另建 `ecoku.env`。评论区语言不在这里设置：它取自后台站点设置的「评论区语言」，接入代码中加载器的 `data-i18n` 或 SDK 的 `i18n` 参数可以覆盖。

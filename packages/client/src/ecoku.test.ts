@@ -1767,3 +1767,640 @@ describe('verified client regressions', () => {
     expect(textarea.value).toContain('![smoji:Wave]')
   })
 })
+
+describe('state ownership across overlapping requests', () => {
+  type Reply = Response | Promise<Response> | (() => Promise<Response>)
+  function routedFetch(lists: Reply[], posts: Reply[]) {
+    const sent: Record<string, unknown>[] = []
+    const listURLs: URL[] = []
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      if (String(input).includes('/api/comment/submit')) {
+        sent.push(JSON.parse(String(init?.body)))
+        const next = posts.shift()
+        if (!next) throw new Error('unexpected POST')
+        return typeof next === 'function' ? next() : next
+      }
+      listURLs.push(new URL(String(input)))
+      const next = lists.shift()
+      if (!next) throw new Error('unexpected list request')
+      return typeof next === 'function' ? next() : next
+    })
+    return { fetchMock, sent, listURLs }
+  }
+
+  async function openReplyDraft(container: HTMLElement, content: string): Promise<HTMLFormElement> {
+    container.querySelector<HTMLButtonElement>('[data-comment-id="1"] .ecoku-reply-action')!.click()
+    const reply = container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!
+    fillIdentityAndContent(reply, content)
+    await submitForm(reply)
+    return reply
+  }
+
+  it.each([
+    ['setPageKey', 'refresh first'],
+    ['setPageKey', 'POST first'],
+    ['reload', 'refresh first'],
+    ['reload', 'POST first'],
+  ] as const)(
+    'keeps an unconfirmed reply draft through a same-page %s (%s)',
+    async (entry, order) => {
+      const refresh = deferred<Response>()
+      const post = deferred<Response>()
+      const { fetchMock, sent } = routedFetch(
+        [listResponse([comment(1, 0, 'Parent')]), refresh.promise],
+        [post.promise],
+      )
+      const { client, container } = createClient(fetchMock)
+      await client.init()
+      const refreshing = entry === 'reload' ? client.reload() : client.setPageKey('article-a', 'Renamed article')
+      const reply = await openReplyDraft(container, 'Reply that must survive')
+      await vi.waitFor(() => expect(sent).toHaveLength(1))
+
+      const settleRefresh = async () => {
+        refresh.resolve(listResponse([comment(1, 0, 'Parent'), comment(2, 0, 'Arrived meanwhile')]))
+        await refreshing
+      }
+      if (order === 'refresh first') await settleRefresh()
+      post.reject(new TypeError('offline'))
+      await vi.waitFor(() => expect(container.querySelector('.ecoku-comments')?.hasAttribute('aria-busy')).toBe(false))
+      if (order === 'POST first') await settleRefresh()
+
+      expect(reply.isConnected).toBe(true)
+      expect(reply.querySelector('textarea')!.value).toBe('Reply that must survive')
+      expect(reply.querySelector('.ecoku-form-error')!.textContent).toBe(zhCN.submitNetwork)
+      expect(reply.querySelector<HTMLElement>('.ecoku-form-error')!.hidden).toBe(false)
+      expect(sent).toHaveLength(1)
+      expect(sent[0].parent).toBe(1)
+      expect(container.textContent).not.toContain('Arrived meanwhile')
+
+      // Cancelling the reply applies the refresh that was held back and returns focus.
+      reply.querySelector<HTMLButtonElement>('.ecoku-secondary-button:not(.ecoku-preview-trigger)')!.click()
+      expect(container.querySelector('.ecoku-reply-composer')).toBeNull()
+      expect(container.textContent).toContain('Arrived meanwhile')
+      expect(document.activeElement).toBe(container.querySelector('[data-comment-id="1"] .ecoku-reply-action'))
+      expect(sent).toHaveLength(1)
+    },
+  )
+
+  it('replaces the list under an open reply that holds no draft', async () => {
+    const { fetchMock } = routedFetch(
+      [listResponse([comment(1, 0, 'Parent')]), listResponse([comment(1, 0, 'Parent'), comment(2, 0, 'Fresh')])],
+      [],
+    )
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    container.querySelector<HTMLButtonElement>('[data-comment-id="1"] .ecoku-reply-action')!.click()
+    expect(container.querySelector('.ecoku-reply-composer')).not.toBeNull()
+    await client.setPageKey('article-a')
+    expect(container.textContent).toContain('Fresh')
+    expect(container.querySelector('.ecoku-reply-composer')).toBeNull()
+  })
+
+  it('drops a held refresh when the reply is sent, and reloads the list once', async () => {
+    const refresh = deferred<Response>()
+    const post = deferred<Response>()
+    const { fetchMock, listURLs } = routedFetch(
+      [
+        listResponse([comment(1, 0, 'Parent')]),
+        refresh.promise,
+        listResponse([comment(1, 0, 'Parent'), comment(3, 1, 'Sent reply')]),
+      ],
+      [post.promise],
+    )
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    const refreshing = client.setPageKey('article-a')
+    await openReplyDraft(container, 'Sent reply')
+    refresh.resolve(listResponse([comment(1, 0, 'Parent'), comment(2, 0, 'Stale refresh')]))
+    await refreshing
+    post.resolve(jsonResponse(201, { id: 3 }))
+    await vi.waitFor(() => expect(container.textContent).toContain('Sent reply'))
+    expect(container.querySelector('.ecoku-reply-composer')).toBeNull()
+    expect(container.textContent).not.toContain('Stale refresh')
+    expect(listURLs).toHaveLength(3)
+  })
+
+  it('discards a refresh held for a reply after switching pages or destroying the surface', async () => {
+    const refresh = deferred<Response>()
+    const post = deferred<Response>()
+    const { fetchMock } = routedFetch(
+      [listResponse([comment(1, 0, 'Parent')]), refresh.promise, listResponse([comment(5, 0, 'Other page', { mark: 'article-b' })])],
+      [post.promise],
+    )
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    const refreshing = client.setPageKey('article-a')
+    const reply = await openReplyDraft(container, 'Reply on page A')
+    refresh.resolve(listResponse([comment(1, 0, 'Parent'), comment(2, 0, 'Page A refresh')]))
+    await refreshing
+    await client.setPageKey('article-b')
+    expect(reply.isConnected).toBe(false)
+    expect(container.textContent).toContain('Other page')
+    post.reject(new TypeError('offline'))
+    await Promise.resolve()
+    expect(container.textContent).not.toContain('Page A refresh')
+    expect(container.textContent).not.toContain('Reply on page A')
+    client.destroy()
+    expect(container.childElementCount).toBe(0)
+  })
+
+  it.each(['page change', 'accepted submission'] as const)('resets an open root preview after a %s clears the draft', async (cause) => {
+    const { fetchMock } = routedFetch(
+      [listResponse([]), listResponse([])],
+      [jsonResponse(201, { id: 9 })],
+    )
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    const form = fillIdentityAndContent(container, 'Belongs to the first draft')
+    form.querySelector<HTMLButtonElement>('.ecoku-preview-trigger')!.click()
+    const preview = form.querySelector<HTMLElement>('.ecoku-composer-preview')!
+    expect(preview.textContent).toBe('Belongs to the first draft')
+    if (cause === 'page change') await client.setPageKey('article-b')
+    else {
+      await submitForm(form)
+      await vi.waitFor(() => expect(form.querySelector('textarea')!.value).toBe(''))
+    }
+    expect(form.querySelector('textarea')!.value).toBe('')
+    expect(preview.textContent).toBe(zhCN.noPreview)
+    expect(form.querySelector('.ecoku-character-count')!.textContent).toBe('0/1000')
+  })
+
+  it('reverts a failed sort choice and lets the same choice retry', async () => {
+    const newestFirst = [comment(2, 0, 'Newer root'), comment(1, 0, 'Older root')]
+    const { fetchMock, listURLs } = routedFetch(
+      [
+        listResponse(newestFirst),
+        () => Promise.reject(new TypeError('offline')),
+        listResponse([...newestFirst].reverse()),
+      ],
+      [],
+    )
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    const trigger = container.querySelector<HTMLButtonElement>('.ecoku-sort-trigger')!
+    const oldest = container.querySelector<HTMLButtonElement>('[data-sort="oldest"]')!
+    const order = () => Array.from(container.querySelectorAll('.ecoku-comment-copy')).map((node) => node.textContent)
+
+    trigger.click()
+    oldest.click()
+    expect(trigger.textContent).toContain(zhCN.sortOldest)
+    await vi.waitFor(() => expect(container.querySelector('.ecoku-status-line')!.textContent).toBe(zhCN.listFailure))
+    expect(trigger.textContent).toContain(zhCN.sortNewest)
+    expect(trigger.getAttribute('aria-label')).toContain(zhCN.sortNewest)
+    expect(oldest.getAttribute('aria-selected')).toBe('false')
+    expect(order()).toEqual(['Newer root', 'Older root'])
+    expect(document.activeElement).toBe(trigger)
+
+    trigger.click()
+    oldest.click()
+    await vi.waitFor(() => expect(order()).toEqual(['Older root', 'Newer root']))
+    expect(listURLs).toHaveLength(3)
+    expect(listURLs[2].searchParams.get('sort')).toBe('oldest')
+    expect(trigger.textContent).toContain(zhCN.sortOldest)
+    expect(oldest.getAttribute('aria-selected')).toBe('true')
+  })
+
+  it('lets a same-page refresh started during a sort change load the chosen order', async () => {
+    const sortRequest = deferred<Response>()
+    const newestFirst = [comment(2, 0, 'Newer root'), comment(1, 0, 'Older root')]
+    const { fetchMock, listURLs } = routedFetch(
+      [listResponse(newestFirst), sortRequest.promise, listResponse([...newestFirst].reverse())],
+      [],
+    )
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    const trigger = container.querySelector<HTMLButtonElement>('.ecoku-sort-trigger')!
+    trigger.click()
+    container.querySelector<HTMLButtonElement>('[data-sort="oldest"]')!.click()
+    await vi.waitFor(() => expect(listURLs).toHaveLength(2))
+    await client.setPageKey('article-a', 'Renamed article')
+    sortRequest.resolve(listResponse(newestFirst))
+    await Promise.resolve()
+    expect(listURLs[2].searchParams.get('sort')).toBe('oldest')
+    expect(trigger.textContent).toContain(zhCN.sortOldest)
+    expect(Array.from(container.querySelectorAll('.ecoku-comment-copy')).map((node) => node.textContent))
+      .toEqual(['Older root', 'Newer root'])
+  })
+
+  it.each(['sort request', 'refresh that replaced it'] as const)(
+    'keeps a reply opened while a sort change is loading, then shows the new order (%s returns)',
+    async (path) => {
+      const sortRequest = deferred<Response>()
+      const refresh = deferred<Response>()
+      const post = deferred<Response>()
+      const newestFirst = [comment(2, 0, 'Newer root'), comment(1, 0, 'Parent')]
+      const oldestFirst = [...newestFirst].reverse()
+      const lists: Reply[] = [listResponse(newestFirst), sortRequest.promise]
+      if (path === 'refresh that replaced it') lists.push(refresh.promise)
+      const { fetchMock, sent, listURLs } = routedFetch(lists, [post.promise])
+      const { client, container } = createClient(fetchMock)
+      await client.init()
+      const trigger = container.querySelector<HTMLButtonElement>('.ecoku-sort-trigger')!
+      trigger.click()
+      container.querySelector<HTMLButtonElement>('[data-sort="oldest"]')!.click()
+      await vi.waitFor(() => expect(listURLs).toHaveLength(2))
+      const refreshing = path === 'refresh that replaced it' ? client.setPageKey('article-a', 'Renamed article') : null
+      if (refreshing) await vi.waitFor(() => expect(listURLs).toHaveLength(3))
+
+      const reply = await openReplyDraft(container, 'Reply opened after the order was chosen')
+      await vi.waitFor(() => expect(sent).toHaveLength(1))
+      if (refreshing) {
+        refresh.resolve(listResponse(oldestFirst))
+        await refreshing
+        sortRequest.resolve(listResponse(newestFirst))
+      } else {
+        sortRequest.resolve(listResponse(oldestFirst))
+      }
+      post.reject(new TypeError('offline'))
+      await vi.waitFor(() => expect(container.querySelector('.ecoku-comments')?.hasAttribute('aria-busy')).toBe(false))
+      await vi.waitFor(() => expect(reply.querySelector<HTMLElement>('.ecoku-form-error')!.hidden).toBe(false))
+
+      expect(reply.isConnected).toBe(true)
+      expect(reply.querySelector('textarea')!.value).toBe('Reply opened after the order was chosen')
+      expect(reply.querySelector('.ecoku-form-error')!.textContent).toBe(zhCN.submitNetwork)
+      expect(sent).toHaveLength(1)
+      // The list on screen keeps its order; the chosen order is still the one requested.
+      expect(Array.from(container.querySelectorAll('.ecoku-comment-copy')).map((node) => node.textContent))
+        .toEqual(['Newer root', 'Parent'])
+      expect(trigger.textContent).toContain(zhCN.sortOldest)
+
+      reply.querySelector<HTMLButtonElement>('.ecoku-secondary-button:not(.ecoku-preview-trigger)')!.click()
+      expect(container.querySelector('.ecoku-reply-composer')).toBeNull()
+      expect(Array.from(container.querySelectorAll('.ecoku-comment-copy')).map((node) => node.textContent))
+        .toEqual(['Parent', 'Newer root'])
+      expect(trigger.textContent).toContain(zhCN.sortOldest)
+      expect(listURLs.at(-1)!.searchParams.get('sort')).toBe('oldest')
+      expect(document.activeElement).toBe(container.querySelector('[data-comment-id="1"] .ecoku-reply-action'))
+    },
+  )
+
+  it('still shows a new order chosen while a reply draft was already open', async () => {
+    const newestFirst = [comment(2, 0, 'Newer root'), comment(1, 0, 'Parent')]
+    const { fetchMock } = routedFetch(
+      [listResponse(newestFirst), listResponse([...newestFirst].reverse())],
+      [],
+    )
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    container.querySelector<HTMLButtonElement>('[data-comment-id="1"] .ecoku-reply-action')!.click()
+    fillIdentityAndContent(container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!, 'Draft')
+    const trigger = container.querySelector<HTMLButtonElement>('.ecoku-sort-trigger')!
+    trigger.click()
+    container.querySelector<HTMLButtonElement>('[data-sort="oldest"]')!.click()
+    await vi.waitFor(() => expect(container.querySelector('.ecoku-comment-copy')?.textContent).toBe('Parent'))
+    expect(trigger.textContent).toContain(zhCN.sortOldest)
+  })
+
+  it.each([false, true])(
+    'keeps a reply written and sent in an already open form while a sort change loads (prior draft: %s)',
+    async (priorDraft) => {
+      const sortRequest = deferred<Response>()
+      const post = deferred<Response>()
+      const newestFirst = [comment(2, 0, 'Newer root'), comment(1, 0, 'Parent')]
+      const { fetchMock, sent, listURLs } = routedFetch(
+        [listResponse(newestFirst), sortRequest.promise],
+        [post.promise],
+      )
+      const { client, container } = createClient(fetchMock)
+      await client.init()
+      container.querySelector<HTMLButtonElement>('[data-comment-id="1"] .ecoku-reply-action')!.click()
+      const reply = container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!
+      if (priorDraft) fillIdentityAndContent(reply, 'Written before the order was chosen')
+      const trigger = container.querySelector<HTMLButtonElement>('.ecoku-sort-trigger')!
+      trigger.click()
+      container.querySelector<HTMLButtonElement>('[data-sort="oldest"]')!.click()
+      await vi.waitFor(() => expect(listURLs).toHaveLength(2))
+      fillIdentityAndContent(reply, 'Written after the order was chosen')
+      await submitForm(reply)
+      await vi.waitFor(() => expect(sent).toHaveLength(1))
+      sortRequest.resolve(listResponse([...newestFirst].reverse()))
+      post.reject(new TypeError('offline'))
+      await vi.waitFor(() => expect(reply.querySelector<HTMLElement>('.ecoku-form-error')!.hidden).toBe(false))
+
+      expect(reply.isConnected).toBe(true)
+      expect(reply.querySelector('textarea')!.value).toBe('Written after the order was chosen')
+      expect(reply.querySelector('.ecoku-form-error')!.textContent).toBe(zhCN.submitNetwork)
+      expect(Array.from(container.querySelectorAll('.ecoku-comment-copy')).map((node) => node.textContent))
+        .toEqual(['Newer root', 'Parent'])
+      expect(trigger.textContent).toContain(zhCN.sortOldest)
+      reply.querySelector<HTMLButtonElement>('.ecoku-secondary-button:not(.ecoku-preview-trigger)')!.click()
+      expect(Array.from(container.querySelectorAll('.ecoku-comment-copy')).map((node) => node.textContent))
+        .toEqual(['Parent', 'Newer root'])
+    },
+  )
+
+  it('does not bring back a held order the visitor has since replaced', async () => {
+    const sortRequest = deferred<Response>()
+    const newestFirst = [comment(2, 0, 'Newer root'), comment(1, 0, 'Parent')]
+    const { fetchMock, listURLs } = routedFetch(
+      [listResponse(newestFirst), sortRequest.promise, () => Promise.reject(new TypeError('offline'))],
+      [],
+    )
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    const trigger = container.querySelector<HTMLButtonElement>('.ecoku-sort-trigger')!
+    trigger.click()
+    container.querySelector<HTMLButtonElement>('[data-sort="oldest"]')!.click()
+    await vi.waitFor(() => expect(listURLs).toHaveLength(2))
+    container.querySelector<HTMLButtonElement>('[data-comment-id="1"] .ecoku-reply-action')!.click()
+    const reply = container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!
+    fillIdentityAndContent(reply, 'Draft')
+    sortRequest.resolve(listResponse([...newestFirst].reverse()))
+    await vi.waitFor(() => expect(trigger.disabled).toBe(false))
+    expect(trigger.textContent).toContain(zhCN.sortOldest)
+
+    trigger.click()
+    container.querySelector<HTMLButtonElement>('[data-sort="newest"]')!.click()
+    await vi.waitFor(() => expect(container.querySelector('.ecoku-status-line')!.textContent).toBe(zhCN.listFailure))
+    expect(trigger.textContent).toContain(zhCN.sortNewest)
+    reply.querySelector<HTMLButtonElement>('.ecoku-secondary-button:not(.ecoku-preview-trigger)')!.click()
+    expect(trigger.textContent).toContain(zhCN.sortNewest)
+    expect(Array.from(container.querySelectorAll('.ecoku-comment-copy')).map((node) => node.textContent))
+      .toEqual(['Newer root', 'Parent'])
+  })
+
+  it('reloads after an accepted reply even when a sort request was still loading', async () => {
+    const sortRequest = deferred<Response>()
+    const post = deferred<Response>()
+    const newestFirst = [comment(2, 0, 'Newer root'), comment(1, 0, 'Parent')]
+    const { fetchMock, listURLs } = routedFetch(
+      [
+        listResponse(newestFirst),
+        sortRequest.promise,
+        listResponse([comment(1, 0, 'Parent'), comment(3, 1, 'Accepted reply'), comment(2, 0, 'Newer root')]),
+      ],
+      [post.promise],
+    )
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    const trigger = container.querySelector<HTMLButtonElement>('.ecoku-sort-trigger')!
+    trigger.click()
+    container.querySelector<HTMLButtonElement>('[data-sort="oldest"]')!.click()
+    await vi.waitFor(() => expect(listURLs).toHaveLength(2))
+    await openReplyDraft(container, 'Accepted reply')
+    post.resolve(jsonResponse(201, { id: 3 }))
+    await vi.waitFor(() => expect(container.textContent).toContain('Accepted reply'))
+    // The stale order request arrives late and is ignored.
+    sortRequest.resolve(listResponse([...newestFirst].reverse()))
+    await Promise.resolve()
+    expect(listURLs).toHaveLength(3)
+    expect(listURLs[2].searchParams.get('sort')).toBe('oldest')
+    expect(container.textContent).toContain('Accepted reply')
+    expect(trigger.textContent).toContain(zhCN.sortOldest)
+  })
+
+  const pageOne = (extra: RawComment[] = []) =>
+    listResponse([comment(1, 0, 'Parent'), ...extra], { page: 1, pageCount: 2, total: 2 + extra.length })
+  const pageTwo = (extra: RawComment[] = []) =>
+    listResponse([comment(5, 0, 'Second page root'), ...extra], { page: 2, pageCount: 2, total: 2 + extra.length })
+  const rootForm = (container: HTMLElement) =>
+    container.querySelector<HTMLFormElement>('.ecoku-composer:not(.ecoku-reply-composer)')!
+  const cancelReply = (reply: HTMLFormElement) =>
+    reply.querySelector<HTMLButtonElement>('.ecoku-secondary-button:not(.ecoku-preview-trigger)')!.click()
+  const nextPage = (container: HTMLElement) =>
+    container.querySelectorAll<HTMLButtonElement>('.ecoku-pager-button')[1]!.click()
+
+  it.each(['reload', 'sort change before the reply was opened', 'page change before the reply was opened'] as const)(
+    'keeps another reply draft when a root comment is accepted during a %s',
+    async (pending) => {
+      const inFlight = deferred<Response>()
+      const post = deferred<Response>()
+      const { fetchMock, listURLs } = routedFetch(
+        [
+          pageOne(),
+          inFlight.promise,
+          pending === 'page change before the reply was opened'
+            ? pageTwo([comment(9, 0, 'New root')])
+            : pageOne([comment(9, 0, 'New root')]),
+        ],
+        [post.promise],
+      )
+      const { client, container } = createClient(fetchMock)
+      await client.init()
+      if (pending === 'page change before the reply was opened') nextPage(container)
+      if (pending === 'sort change before the reply was opened') {
+        container.querySelector<HTMLButtonElement>('.ecoku-sort-trigger')!.click()
+        container.querySelector<HTMLButtonElement>('[data-sort="oldest"]')!.click()
+      }
+      container.querySelector<HTMLButtonElement>('[data-comment-id="1"] .ecoku-reply-action')!.click()
+      const reply = fillIdentityAndContent(container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!, 'Reply draft')
+      if (pending === 'reload') void client.reload()
+      await vi.waitFor(() => expect(listURLs).toHaveLength(2))
+
+      const root = rootForm(container)
+      fillIdentityAndContent(root, 'New root')
+      await submitForm(root)
+      post.resolve(jsonResponse(201, { id: 9 }, 'submitted'))
+      await vi.waitFor(() => expect(listURLs).toHaveLength(3))
+      await vi.waitFor(() => expect(container.querySelector('.ecoku-comments')?.hasAttribute('aria-busy')).toBe(false))
+      inFlight.resolve(pageOne([comment(8, 0, 'Stale list')]))
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      const targetPage = pending === 'page change before the reply was opened' ? '2' : '1'
+      expect(listURLs[2].searchParams.get('page')).toBe(targetPage)
+      expect(listURLs[2].searchParams.get('sort'))
+        .toBe(pending === 'sort change before the reply was opened' ? 'oldest' : 'newest')
+      expect(reply.isConnected).toBe(true)
+      expect(reply.querySelector('textarea')!.value).toBe('Reply draft')
+      expect(container.textContent).not.toContain('New root')
+      cancelReply(reply)
+      expect(container.textContent).toContain('New root')
+      expect(container.textContent).not.toContain('Stale list')
+      expect(container.querySelector('.ecoku-pagination-status')?.textContent)
+        .toBe(`${targetPage}/2`)
+    },
+  )
+
+  it.each([
+    ['reply', 'GET first'],
+    ['reply', 'POST first'],
+    ['root comment', 'GET first'],
+    ['root comment', 'POST first'],
+  ] as const)(
+    'keeps a page change when a %s is accepted (%s)',
+    async (sentFrom, order) => {
+      const pageRequest = deferred<Response>()
+      const post = deferred<Response>()
+      const { fetchMock, listURLs } = routedFetch(
+        [pageOne(), pageRequest.promise, pageTwo([comment(9, 0, 'After acceptance')])],
+        [post.promise],
+      )
+      const { client, container } = createClient(fetchMock)
+      await client.init()
+      nextPage(container)
+      await vi.waitFor(() => expect(listURLs).toHaveLength(2))
+      container.querySelector<HTMLButtonElement>('[data-comment-id="1"] .ecoku-reply-action')!.click()
+      const reply = fillIdentityAndContent(container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!, 'Reply')
+      const form = sentFrom === 'reply' ? reply : fillIdentityAndContent(rootForm(container), 'Root')
+      await submitForm(form)
+      if (order === 'GET first') {
+        pageRequest.resolve(pageTwo())
+        // Drain response/JSON continuations so this covers a held result, not an in-flight GET.
+        await new Promise(resolve => setTimeout(resolve, 0))
+      }
+      expect(container.querySelector('.ecoku-pagination-status')?.textContent).toBe('1/2')
+      post.resolve(jsonResponse(201, { id: 9 }, 'submitted'))
+      await vi.waitFor(() => expect(listURLs).toHaveLength(3))
+      await vi.waitFor(() => expect(container.querySelector('.ecoku-comments')?.hasAttribute('aria-busy')).toBe(false))
+      if (order === 'POST first') {
+        pageRequest.resolve(pageTwo([comment(8, 0, 'Stale page')]))
+        await new Promise(resolve => setTimeout(resolve, 0))
+      }
+
+      expect(listURLs[2].searchParams.get('page')).toBe('2')
+      if (sentFrom === 'root comment') {
+        expect(reply.isConnected).toBe(true)
+        cancelReply(reply)
+      }
+      await vi.waitFor(() => expect(container.textContent).toContain('After acceptance'))
+      expect(container.querySelector('.ecoku-pagination-status')?.textContent).toBe('2/2')
+      expect(container.textContent).not.toContain('Stale page')
+    },
+  )
+
+  it.each([
+    ['loading', true],
+    ['loading', false],
+    ['held', true],
+    ['held', false],
+  ] as const)('keeps pagination intent through a same-key refresh (%s, succeeds: %s)', async (stage, succeeds) => {
+    const pageRequest = deferred<Response>()
+    const refresh = deferred<Response>()
+    const { fetchMock, listURLs } = routedFetch([pageOne(), pageRequest.promise, refresh.promise], [])
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    nextPage(container)
+    container.querySelector<HTMLButtonElement>('[data-comment-id="1"] .ecoku-reply-action')!.click()
+    const reply = fillIdentityAndContent(container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!, 'Draft')
+    if (stage === 'held') {
+      pageRequest.resolve(pageTwo([comment(7, 0, 'Held page')]))
+      await vi.waitFor(() => expect(container.querySelector<HTMLButtonElement>('.ecoku-sort-trigger')!.disabled).toBe(false))
+    }
+
+    const refreshing = client.setPageKey('article-a', 'Updated title')
+    expect(listURLs[2].searchParams.get('page')).toBe('2')
+    if (succeeds) refresh.resolve(pageTwo([comment(9, 0, 'Newer page')]))
+    else refresh.reject(new TypeError('offline'))
+    await refreshing
+    if (stage === 'loading') {
+      pageRequest.resolve(pageTwo([comment(8, 0, 'Stale page')]))
+      await new Promise(resolve => setTimeout(resolve, 0))
+    }
+    expect(reply.isConnected).toBe(true)
+    expect(reply.querySelector('textarea')!.value).toBe('Draft')
+    if (!succeeds) expect(container.querySelector('.ecoku-status-line')!.textContent).toBe(zhCN.listFailure)
+    cancelReply(reply)
+    expect(container.querySelector('.ecoku-pagination-status')?.textContent)
+      .toBe(succeeds || stage === 'held' ? '2/2' : '1/2')
+    if (succeeds) expect(container.textContent).toContain('Newer page')
+    else if (stage === 'held') expect(container.textContent).toContain('Held page')
+    expect(container.textContent).not.toContain('Stale page')
+  })
+
+  it('reports and reverts a sort change when the refresh that replaced it fails', async () => {
+    const sortRequest = deferred<Response>()
+    const newestFirst = [comment(2, 0, 'Newer root'), comment(1, 0, 'Older root')]
+    const { fetchMock } = routedFetch(
+      [listResponse(newestFirst), sortRequest.promise, () => Promise.reject(new TypeError('offline'))],
+      [],
+    )
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    const trigger = container.querySelector<HTMLButtonElement>('.ecoku-sort-trigger')!
+    trigger.click()
+    container.querySelector<HTMLButtonElement>('[data-sort="oldest"]')!.click()
+    await client.setPageKey('article-a')
+    await vi.waitFor(() => expect(container.querySelector('.ecoku-status-line')!.textContent).toBe(zhCN.listFailure))
+    expect(trigger.textContent).toContain(zhCN.sortNewest)
+    expect(container.querySelector('.ecoku-comment-copy')?.textContent).toBe('Newer root')
+  })
+
+  it('applies a held refresh when folding the thread closes its reply, and keeps the fold', async () => {
+    const refresh = deferred<Response>()
+    const thread = [comment(1, 0, 'Parent'), comment(3, 1, 'Child')]
+    const { fetchMock } = routedFetch(
+      [listResponse(thread), refresh.promise, listResponse([...thread, comment(4, 0, 'Should not load')])],
+      [],
+    )
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    container.querySelector<HTMLButtonElement>('[data-comment-id="1"] > .ecoku-comment-row .ecoku-reply-action')!.click()
+    fillIdentityAndContent(container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!, 'Unsent reply')
+    const refreshing = client.setPageKey('article-a')
+    refresh.resolve(listResponse([...thread, comment(2, 0, 'New root')], { commentTotal: 3 }))
+    await refreshing
+    expect(container.textContent).not.toContain('New root')
+
+    container.querySelector<HTMLButtonElement>('[data-comment-id="1"] > .ecoku-comment-row .ecoku-collapse-button')!.click()
+    expect(container.querySelector('.ecoku-reply-composer')).toBeNull()
+    expect(container.textContent).toContain('New root')
+    expect(container.querySelector('.ecoku-section-title')!.textContent).toBe(zhCN.commentCount(3))
+    const fold = container.querySelector<HTMLButtonElement>('[data-comment-id="1"] > .ecoku-comment-row .ecoku-collapse-button')!
+    expect(fold.getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(fold)
+    expect(container.querySelector<HTMLElement>('[data-comment-id="1"] > .ecoku-children')!.hidden).toBe(true)
+  })
+
+  it('keeps a reply that is being sent when its thread is folded', async () => {
+    const post = deferred<Response>()
+    const { fetchMock } = routedFetch(
+      [listResponse([comment(1, 0, 'Parent'), comment(3, 1, 'Child')])],
+      [post.promise],
+    )
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    container.querySelector<HTMLButtonElement>('[data-comment-id="1"] > .ecoku-comment-row .ecoku-reply-action')!.click()
+    const reply = container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!
+    fillIdentityAndContent(reply, 'Reply in flight')
+    await submitForm(reply)
+    container.querySelector<HTMLButtonElement>('[data-comment-id="1"] > .ecoku-comment-row .ecoku-collapse-button')!.click()
+    post.reject(new TypeError('offline'))
+    await vi.waitFor(() => expect(reply.querySelector('.ecoku-form-error')!.textContent).toBe(zhCN.submitNetwork))
+    expect(reply.isConnected).toBe(true)
+    container.querySelector<HTMLButtonElement>('[data-comment-id="1"] > .ecoku-comment-row .ecoku-collapse-button')!.click()
+    expect(reply.querySelector('textarea')!.value).toBe('Reply in flight')
+  })
+
+  it('applies a held refresh before opening a different reply', async () => {
+    const refresh = deferred<Response>()
+    const { fetchMock } = routedFetch(
+      [listResponse([comment(1, 0, 'First'), comment(2, 0, 'Second')]), refresh.promise],
+      [],
+    )
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    container.querySelector<HTMLButtonElement>('[data-comment-id="1"] .ecoku-reply-action')!.click()
+    fillIdentityAndContent(container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!, 'Draft to discard')
+    const refreshing = client.setPageKey('article-a')
+    refresh.resolve(listResponse([comment(1, 0, 'First'), comment(2, 0, 'Second'), comment(5, 0, 'Fresh root')]))
+    await refreshing
+    const confirm = vi.fn(() => true)
+    vi.stubGlobal('confirm', confirm)
+    container.querySelector<HTMLButtonElement>('[data-comment-id="2"] .ecoku-reply-action')!.click()
+    expect(confirm).toHaveBeenCalledTimes(1)
+    expect(container.textContent).toContain('Fresh root')
+    const reply = container.querySelector<HTMLFormElement>('.ecoku-reply-composer')!
+    expect(reply.closest('[data-comment-id]')?.getAttribute('data-comment-id')).toBe('2')
+    expect(reply.isConnected).toBe(true)
+  })
+
+  it('keeps the newer sort when an older list response arrives late', async () => {
+    const stale = deferred<Response>()
+    const newestFirst = [comment(2, 0, 'Newer root'), comment(1, 0, 'Older root')]
+    const { fetchMock } = routedFetch(
+      [listResponse(newestFirst), stale.promise, listResponse([...newestFirst].reverse())],
+      [],
+    )
+    const { client, container } = createClient(fetchMock)
+    await client.init()
+    const refreshing = client.setPageKey('article-a')
+    const trigger = container.querySelector<HTMLButtonElement>('.ecoku-sort-trigger')!
+    trigger.click()
+    container.querySelector<HTMLButtonElement>('[data-sort="oldest"]')!.click()
+    await vi.waitFor(() => expect(container.querySelector('.ecoku-comment-copy')?.textContent).toBe('Older root'))
+    stale.resolve(listResponse(newestFirst))
+    await refreshing
+    expect(container.querySelector('.ecoku-comment-copy')?.textContent).toBe('Older root')
+    expect(trigger.textContent).toContain(zhCN.sortOldest)
+  })
+})

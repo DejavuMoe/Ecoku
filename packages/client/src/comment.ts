@@ -12,6 +12,7 @@ import {
   submitComment,
   type CommentData,
   type CommentDraft,
+  type CommentPage,
   type CommentSort,
   type EcokuListPrefetch,
 } from './fetch'
@@ -103,6 +104,19 @@ export class CommentSurface {
   private listController: AbortController | null = null
   private submitController: AbortController | null = null
   private activeReply: ActiveReply | null = null
+  // A same-page refresh that arrived while the open reply held a draft. The list is not
+  // re-rendered under that draft; the result is applied once the reply is cancelled or sent.
+  private deferredList: {
+    page: CommentPage
+    revision: number
+    sort: CommentSort | undefined
+    target: number
+    refresh: boolean
+  } | null = null
+  private refreshRootPreview: () => void = () => {}
+  private pendingSort: CommentSort | undefined
+  // Threads the visitor folded; kept across refreshes of the same page, cleared on navigation.
+  private readonly collapsedThreads = new Set<number>()
   private rootWidget: ChallengeWidget | null = null
   private captchaGeneration = 0
   private requestVersion = 0
@@ -110,6 +124,12 @@ export class CommentSurface {
   private identityRevision = 0
   private identitySaveTail = Promise.resolve()
   private listBusy = false
+  // Page the visitor navigated to that is not on screen yet (loading, or held for a reply).
+  // Like `pendingSort`, any later request for the current view asks for it instead.
+  private pendingPage: number | undefined
+  // Counts edits and submissions in the open reply, so a list request can tell whether the
+  // visitor has written or sent anything since it began.
+  private replyActivity = 0
   private submissionBusy = false
   private destroyed = false
   private readonly handleDocumentPointerDown = (event: PointerEvent): void => {
@@ -140,17 +160,19 @@ export class CommentSurface {
   }
 
   async reload(): Promise<void> {
-    await this.loadPage(Math.max(1, this.currentPage))
+    await this.loadPage(this.viewTarget(), { refresh: true })
   }
 
   async setPageKey(value: string, pageTitle = ''): Promise<void> {
     const pageKey = normalizePageKey(value)
     this.config = { ...this.config, pageTitle: pageTitle.trim() }
     if (pageKey === this.config.pageKey) {
-      await this.loadPage(Math.max(1, this.currentPage), true)
+      await this.loadPage(this.viewTarget(), { silent: true, refresh: true })
       return
     }
     this.pageRevision += 1
+    this.deferredList = null
+    this.pendingPage = undefined
     this.abortRequests()
     this.smojiManifestController?.abort()
     this.smojiManifestController = null
@@ -162,8 +184,7 @@ export class CommentSurface {
     this.pageCount = 0
     this.rootTotal = 0
     this.commentTotal = 0
-    this.rootContent.value = ''
-    this.updateRootFormState()
+    this.clearRootContent()
     this.statusLine.textContent = ''
     await this.loadPage(1)
   }
@@ -318,18 +339,28 @@ export class CommentSurface {
     this.sortOptions[nextIndex]?.focus()
   }
 
+  // `pendingSort` is the order the visitor asked for and is still loading; any list request,
+  // including a background refresh, uses it. `this.sort` describes the list on screen and only
+  // changes when a list in that order arrives. A failed request drops the pending choice.
   private chooseSort(nextSort: CommentSort): void {
-    this.sortTriggerLabel.textContent = nextSort === 'oldest' ? this.messages.sortOldest : this.messages.sortNewest
-    this.sortTrigger.setAttribute('aria-label', `${this.messages.ariaSort}: ${this.sortTriggerLabel.textContent}`)
-    for (const option of this.sortOptions) {
-      option.setAttribute('aria-selected', String(option.dataset.sort === nextSort))
-    }
     this.toggleSortMenu(false)
     this.sortTrigger.focus()
-    if (nextSort === this.sort) return
-    this.sort = nextSort
-    this.closeReply(false)
+    if (nextSort === this.requestedSort() || this.listBusy) {
+      this.syncSortUI()
+      return
+    }
+    this.pendingSort = nextSort
+    this.syncSortUI()
     void this.loadPage(1)
+  }
+
+  // The page the current view is heading to: a pending navigation, else the page on screen.
+  private viewTarget(): number {
+    return this.pendingPage ?? Math.max(1, this.currentPage)
+  }
+
+  private requestedSort(): CommentSort {
+    return this.pendingSort ?? this.sort ?? this.formConfig.defaultSort
   }
 
   private setSortDisabled(disabled: boolean): void {
@@ -369,6 +400,7 @@ export class CommentSurface {
     this.rootContent.setAttribute('aria-describedby', this.rootError.id)
     const end = createElement('div', 'ecoku-composer-end')
     const previewControl = this.createPreviewControl(this.rootContent)
+    this.refreshRootPreview = previewControl.refresh
     this.rootSubmit.type = 'submit'
     this.rootSubmit.disabled = true
     end.append(this.createSmojiControl(this.rootContent), previewControl.button, this.rootSubmit)
@@ -569,48 +601,108 @@ export class CommentSurface {
     }
   }
 
-  private syncSortUI(): void {
-    const sort = this.sort ?? this.formConfig.defaultSort
+  private syncSortUI(sort = this.requestedSort()): void {
     this.sortTriggerLabel.textContent = sort === 'oldest' ? this.messages.sortOldest : this.messages.sortNewest
     this.sortTrigger.setAttribute('aria-label', `${this.messages.ariaSort}: ${this.sortTriggerLabel.textContent}`)
     for (const option of this.sortOptions) option.setAttribute('aria-selected', String(option.dataset.sort === sort))
   }
 
-  private async loadPage(targetPage: number, silent = false): Promise<void> {
-    if (this.destroyed || (this.listBusy && !silent)) return
+  // `silent` keeps the current view and controls while loading. `refresh` marks a reload of the
+  // page already on screen (as opposed to navigating to another page, order or key): it keeps
+  // collapsed threads. `force` replaces a list request still in flight instead of yielding to it.
+  // A refresh asks for the pending page and order (see `viewTarget`), so it carries on any
+  // navigation it replaces rather than undoing it.
+  //
+  // An open reply with a draft is replaced only by a navigation the visitor chose while that
+  // same draft was already there and has not changed since. Any other result (a refresh, or a
+  // result arriving after the reply was opened, edited or sent) waits until the reply closes.
+  // A new navigation supersedes a navigation held this way; a held refresh of the view on
+  // screen stays.
+  private async loadPage(
+    targetPage: number,
+    options: { silent?: boolean; refresh?: boolean; force?: boolean } = {},
+  ): Promise<void> {
+    const silent = options.silent ?? false
+    const refresh = options.refresh ?? false
+    if (this.destroyed || (this.listBusy && !silent && !options.force)) return
+    const target = Math.max(1, targetPage)
+    if (!refresh) {
+      this.pendingPage = target
+      if (this.deferredList && !this.deferredList.refresh) this.deferredList = null
+    }
     const controller = this.beginListRequest(silent)
     const version = this.requestVersion
     const revision = this.pageRevision
+    const sort = this.pendingSort ?? this.sort
+    const replyAtStart = this.activeReply
+    const activityAtStart = this.replyActivity
+    let received = false
     if (!silent) this.setInitialLoading(this.comments.length === 0)
 
     try {
       const prefetch = this.listPrefetch
       this.listPrefetch = null
-      let result = await fetchComments(this.config, Math.max(1, targetPage), this.sort, controller.signal, prefetch)
+      let result = await fetchComments(this.config, target, sort, controller.signal, prefetch)
       if (!this.isCurrentRequest(version, revision)) return
       if (!result.comments.length && result.pageCount > 0 && result.page > result.pageCount) {
-        result = await fetchComments(this.config, result.pageCount, this.sort, controller.signal)
+        result = await fetchComments(this.config, result.pageCount, sort, controller.signal)
         if (!this.isCurrentRequest(version, revision)) return
       }
-      this.comments = result.comments
-      this.currentPage = Math.max(1, Math.min(result.page, result.pageCount))
-      this.pageCount = result.pageCount
-      this.rootTotal = result.rootTotal
-      this.commentTotal = result.commentTotal
-      this.applyTimeZone(result.timeZone)
-      this.applyFormConfig(result.formConfig)
-      this.hideServiceError()
-      this.renderComments()
+      received = true
+      const keepsPlace = refresh && sort === this.sort && target === this.currentPage
+      const reply = this.activeReply
+      if (reply && this.replyHasUnsavedInput(reply)
+        && (refresh || reply !== replyAtStart || this.replyActivity !== activityAtStart)) {
+        // `this.sort` keeps describing the list on screen; a pending order stays pending.
+        this.deferredList = { page: result, revision, sort, target, refresh: keepsPlace }
+        return
+      }
+      this.sort = sort
+      if (this.pendingSort === sort) this.pendingSort = undefined
+      if (this.pendingPage === target) this.pendingPage = undefined
+      this.applyListPage(result, keepsPlace)
     } catch (error) {
-      if ((silent && this.currentPage > 0) || isAbortError(error) || !this.isCurrentRequest(version, revision)) return
+      if (isAbortError(error) || !this.isCurrentRequest(version, revision)) return
+      if (silent && this.currentPage > 0 && sort === this.sort && target === this.currentPage) return
       this.showListFailure(error, this.comments.length === 0)
     } finally {
       if (version === this.requestVersion) {
+        // A failed request drops its pending page and order, unless a list for them is already
+        // held for a reply.
+        if (!received && this.deferredList?.sort !== this.pendingSort) this.pendingSort = undefined
+        if (!received && this.deferredList?.target !== this.pendingPage) this.pendingPage = undefined
         this.listBusy = false
         this.setSortDisabled(this.submissionBusy)
         this.updatePagination()
+        this.syncSortUI()
       }
     }
+  }
+
+  private applyListPage(result: CommentPage, refresh: boolean): void {
+    this.deferredList = null
+    if (!refresh) this.collapsedThreads.clear()
+    this.comments = result.comments
+    this.currentPage = Math.max(1, Math.min(result.page, result.pageCount))
+    this.pageCount = result.pageCount
+    this.rootTotal = result.rootTotal
+    this.commentTotal = result.commentTotal
+    this.applyTimeZone(result.timeZone)
+    this.applyFormConfig(result.formConfig)
+    this.hideServiceError()
+    this.renderComments()
+  }
+
+  // Applies a list held back for a reply draft once that reply has closed.
+  private flushDeferredList(): void {
+    const deferred = this.deferredList
+    this.deferredList = null
+    if (!deferred || this.destroyed || this.activeReply || deferred.revision !== this.pageRevision) return
+    this.sort = deferred.sort
+    if (this.pendingSort === deferred.sort) this.pendingSort = undefined
+    if (this.pendingPage === deferred.target) this.pendingPage = undefined
+    this.applyListPage(deferred.page, deferred.refresh)
+    if (!this.listBusy) this.syncSortUI()
   }
 
   private async goToPage(targetPage: number): Promise<void> {
@@ -814,22 +906,35 @@ export class CommentSurface {
     if (childrenContainer.childElementCount > 0) article.append(childrenContainer)
 
     if (collapse) {
+      const toggle = collapse
       const descendantCount = childrenContainer.querySelectorAll('.ecoku-comment-node').length
-      collapse.addEventListener('click', () => {
-        const collapsing = collapse?.getAttribute('aria-expanded') === 'true'
-        collapse?.setAttribute('aria-expanded', String(!collapsing))
-        if (collapse) {
-          collapse.textContent = collapsing ? '[+]' : '[-]'
-          collapse.title = collapsing ? this.messages.expand : this.messages.collapse
-          collapse.setAttribute('aria-label', collapse.title)
-        }
+      const setCollapsed = (collapsing: boolean): void => {
+        toggle.setAttribute('aria-expanded', String(!collapsing))
+        toggle.textContent = collapsing ? '[+]' : '[-]'
+        toggle.title = collapsing ? this.messages.expand : this.messages.collapse
+        toggle.setAttribute('aria-label', toggle.title)
         contentShell.hidden = collapsing
         childrenContainer.hidden = collapsing
         foldedSummary.hidden = !collapsing
         foldedSummary.textContent = collapsing ? this.messages.collapsed(descendantCount) : ''
         if (replyButton) replyButton.hidden = collapsing
         if (replyContext) replyContext.hidden = collapsing
-        if (collapsing && this.activeReply?.parentId === comment.id) this.closeReply(false)
+      }
+      // A refresh of the same page keeps threads the visitor folded.
+      if (this.collapsedThreads.has(comment.id)) setCollapsed(true)
+      toggle.addEventListener('click', () => {
+        const collapsing = toggle.getAttribute('aria-expanded') === 'true'
+        if (collapsing) this.collapsedThreads.add(comment.id)
+        else this.collapsedThreads.delete(comment.id)
+        setCollapsed(collapsing)
+        // A reply that is still being sent stays (hidden) so its outcome has somewhere to appear.
+        if (!collapsing || this.activeReply?.parentId !== comment.id || this.submissionBusy) return
+        this.closeReply(false, false)
+        if (!this.deferredList) return
+        // The held refresh no longer has a draft to wait for; the new render keeps this fold.
+        this.flushDeferredList()
+        this.root.querySelector<HTMLButtonElement>(`[data-comment-id="${comment.id}"] > .ecoku-comment-row .ecoku-collapse-button`)
+          ?.focus({ preventScroll: true })
       })
     }
     return article
@@ -846,7 +951,19 @@ export class CommentSurface {
     }
     if (this.activeReply && this.replyHasUnsavedInput(this.activeReply)
       && !window.confirm(this.messages.discardReplyDraft)) return
-    this.closeReply(false)
+    this.closeReply(false, false)
+    // The new reply holds no draft yet, so a refresh held for the previous reply is applied
+    // first and the new reply opens in the refreshed list.
+    if (this.deferredList) {
+      this.flushDeferredList()
+      const row = this.root.querySelector<HTMLElement>(`[data-comment-id="${comment.id}"] > .ecoku-comment-row`)
+      const freshTrigger = row?.querySelector<HTMLButtonElement>('.ecoku-reply-action')
+      const freshSlot = row?.querySelector<HTMLElement>('.ecoku-reply-slot')
+      const freshComment = this.comments.find((item) => item.id === comment.id)
+      if (!freshTrigger || !freshSlot || !freshComment || freshComment.deleted) return
+      this.openReply(freshComment, freshTrigger, freshSlot)
+      return
+    }
     const form = createElement('form', 'ecoku-composer ecoku-reply-composer')
     form.noValidate = true
     const nickname = createElement('input', 'ecoku-input')
@@ -912,6 +1029,7 @@ export class CommentSurface {
       smojiControl,
     }
     this.activeReply = reply
+    form.addEventListener('input', () => { this.replyActivity += 1 })
     void this.syncReplyCaptcha(reply)
     this.updateReplyIdentityMode(reply)
     for (const control of [nickname, email, website]) {
@@ -935,14 +1053,21 @@ export class CommentSurface {
     else (this.firstInvalidIdentityControl(reply) ?? nickname).focus()
   }
 
-  private closeReply(restoreFocus: boolean): void {
+  // `applyDeferred` is false where the caller still holds nodes from the current render,
+  // such as opening another reply or collapsing a thread.
+  private closeReply(restoreFocus: boolean, applyDeferred = true): void {
     if (!this.activeReply) return
-    const { form, trigger, widget, smojiControl } = this.activeReply
+    const { form, trigger, widget, smojiControl, parentId } = this.activeReply
     widget?.remove()
     this.smojiControls.delete(smojiControl)
     this.activeReply = null
     form.remove()
-    if (restoreFocus && trigger.isConnected) trigger.focus()
+    if (applyDeferred && this.deferredList) this.flushDeferredList()
+    if (!restoreFocus) return
+    const target = trigger.isConnected
+      ? trigger
+      : this.root.querySelector<HTMLButtonElement>(`[data-comment-id="${parentId}"] > .ecoku-comment-row .ecoku-reply-action`)
+    target?.focus()
   }
 
   private createSmojiControl(textarea: HTMLTextAreaElement): HTMLElement {
@@ -1072,7 +1197,13 @@ export class CommentSurface {
     trigger.setAttribute('aria-expanded', 'false')
   }
 
-  private createPreviewControl(textarea: HTMLTextAreaElement): { button: HTMLButtonElement; preview: HTMLElement } {
+  private clearRootContent(): void {
+    this.rootContent.value = ''
+    this.updateRootFormState()
+    this.refreshRootPreview()
+  }
+
+  private createPreviewControl(textarea: HTMLTextAreaElement): { button: HTMLButtonElement; preview: HTMLElement; refresh: () => void } {
     const button = createElement('button', 'ecoku-secondary-button ecoku-preview-trigger', this.messages.preview)
     const preview = createElement('div', 'ecoku-composer-preview')
     button.type = 'button'
@@ -1095,10 +1226,11 @@ export class CommentSurface {
       button.setAttribute('aria-pressed', String(opening))
       if (opening) render()
     })
-    textarea.addEventListener('input', () => {
+    const refresh = (): void => {
       if (!preview.hidden) render()
-    })
-    return { button, preview }
+    }
+    textarea.addEventListener('input', refresh)
+    return { button, preview, refresh }
   }
 
   private async handleRootSubmit(event: SubmitEvent): Promise<void> {
@@ -1159,6 +1291,7 @@ export class CommentSurface {
   ): Promise<void> {
     if (this.submissionBusy) return
     this.submissionBusy = true
+    if (reply) this.replyActivity += 1
     const revision = this.pageRevision
     this.submitController?.abort()
     const controller = new AbortController()
@@ -1197,13 +1330,18 @@ export class CommentSurface {
           await saveVisitorIdentity(serverURL, siteId, savedIdentity)
         }).catch(() => {})
       }
-      if (reply) this.closeReply(false)
-      else {
-        this.rootContent.value = ''
-        this.updateRootFormState()
+      if (reply) {
+        // The reload below replaces any list that was held back for this reply.
+        this.deferredList = null
+        this.closeReply(false)
+      } else {
+        this.clearRootContent()
       }
       this.announce(reply ? this.messages.replySubmitted : this.messages.submitted)
-      await this.reload()
+      // The new comment must appear even if a list request started before it was accepted:
+      // that request is replaced by a refresh of the same pending page and order, which
+      // includes it and, like any refresh, waits for an open reply draft.
+      await this.loadPage(this.viewTarget(), { refresh: true, force: true })
       if (isCurrent()) {
         if (reply) {
           const refreshedTrigger = this.root.querySelector<HTMLButtonElement>(`[data-comment-id="${draft.parent}"] .ecoku-text-action`)

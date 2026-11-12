@@ -1,15 +1,25 @@
 import type { CaptchaSettings, EmailNotificationSettings, TelegramNotificationSettings } from './types'
+import { adminTimeZone } from './timezone.svelte'
 
-export function formatDate(value: string): string {
+export function formatDate(value: string, timeZone = adminTimeZone.value): string {
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return '时间未知'
   const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Shanghai',
+    timeZone,
     year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit', hour12: false,
   }).formatToParts(parsed)
   const part = (type: string) => parts.find((item) => item.type === type)?.value ?? ''
   return `${part('year')}/${part('month')}/${part('day')} ${part('hour')}:${part('minute')}`
+}
+
+// `YYYY/MM/DD` of the calendar day before `key`, independent of daylight-saving day lengths.
+export function previousDayKey(key: string): string {
+  const [year, month, day] = key.split('/').map(Number)
+  if (!year || !month || !day) return ''
+  const previous = new Date(Date.UTC(year, month - 1, day - 1))
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${previous.getUTCFullYear()}/${pad(previous.getUTCMonth() + 1)}/${pad(previous.getUTCDate())}`
 }
 
 export function safeWebsite(value?: string): string {

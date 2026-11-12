@@ -16,7 +16,8 @@ import { adminApi, ApiError } from './api'
 import * as captcha from './captcha'
 import { messages } from './messages'
 import { createAdminStore } from './stores/admin.svelte'
-import { formatDate } from './ui'
+import { formatDate, previousDayKey } from './ui'
+import { setAdminTimeZone } from './timezone.svelte'
 import type { CommentPage, CommentReview, NotificationSettings, SiteSummary } from './types'
 import { smojiPlainText, tokenizeAdminSmoji } from './smoji'
 import { installAdminTranslations, setAdminLocale } from './i18n.svelte'
@@ -69,7 +70,7 @@ function response(status: number, data: unknown): Response {
 }
 
 beforeEach(() => { testStore = createAdminStore() })
-afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); document.body.innerHTML = '' })
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); setAdminTimeZone(undefined); document.body.innerHTML = '' })
 
 it('keeps each mounted admin context independent when replacing the Pinia store', () => {
   const first = createAdminStore()
@@ -659,6 +660,39 @@ describe('approved production surface', () => {
     expect(formatDate('not-a-date')).toBe('时间未知')
   })
 
+  it('formats administrator timestamps in the instance time zone from the login configuration', async () => {
+    const timestamp = '2026-11-11T20:30:00Z'
+    vi.stubGlobal('fetch', vi.fn(async () => response(200, { captcha: { provider: 'off' }, locale: 'zh-CN', timeZone: 'UTC' })))
+    const config = await adminApi.getLoginConfig()
+    expect(config.timeZone).toBe('UTC')
+    setAdminTimeZone(config.timeZone)
+    expect(formatDate(timestamp)).toBe('2026/11/11 20:30')
+    setAdminTimeZone('America/New_York')
+    expect(formatDate('2026-03-08T06:59:00Z')).toBe('2026/03/08 01:59')
+    expect(formatDate('2026-03-08T07:00:00Z')).toBe('2026/03/08 03:00')
+    expect(previousDayKey('2026/03/08')).toBe('2026/03/07')
+    expect(previousDayKey('2026/03/01')).toBe('2026/02/28')
+    expect(previousDayKey('2026/01/01')).toBe('2025/12/31')
+    setAdminTimeZone('Not/AZone')
+    expect(formatDate(timestamp)).toBe('2026/11/12 04:30')
+    vi.stubGlobal('fetch', vi.fn(async () => response(200, { captcha: { provider: 'off' }, locale: 'zh-CN' })))
+    expect((await adminApi.getLoginConfig()).timeZone).toBe('Asia/Shanghai')
+  })
+
+  it('groups comments by the calendar day of the instance time zone', () => {
+    setAdminTimeZone('UTC')
+    const store = useAdminStore()
+    store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
+    // In UTC+8 these two would fall on different days.
+    store.comments = [comment({ id: 9, createdAt: '2026-08-12T20:30:00Z' }), comment({ id: 8, createdAt: '2026-08-12T15:00:00Z' })]
+    const wrapper = mount(CommentManagementView, {})
+    const days = wrapper.findAll('.day-label')
+    expect(days).toHaveLength(1)
+    expect(days[0]!.get('.day-name').text()).toBe('2026 年 8 月 12 日')
+    expect(wrapper.get('#c-9 .entry-time').text()).toBe('20:30')
+    wrapper.unmount()
+  })
+
   it('renders published/deleted management only, escapes comments, and links to the original page', () => {
     const store = useAdminStore()
     store.authenticated = true; store.sessionReady = true; store.sites = [site()]; store.selectedSiteId = 'site-a'; store.comments = [comment(), comment({ id: 8, createdAt: 'not-a-date' })]; store.selectedComment = comment(); store.counts = { published: 2, deleted: 0 }; store.total = 2; store.pageCount = 1
@@ -1058,6 +1092,29 @@ it.each(['listSites', 'getLoginConfig'] as const)('times out while reading the %
     await vi.advanceTimersByTimeAsync(30000)
     await assertion
   } finally { vi.useRealTimers() }
+})
+
+describe('display configuration for a restored session', () => {
+  it('retries the instance time zone after a failed startup request and re-renders the times', async () => {
+    const store = createAdminStore()
+    const config = vi.spyOn(adminApi, 'getLoginConfig')
+      .mockRejectedValueOnce(new ApiError(503, 'temporary failure'))
+      .mockResolvedValue({ captcha: { provider: 'off', sitekey: '', instanceUrl: '' }, turnstileSitekey: '', locale: 'zh-CN', timeZone: 'UTC' })
+    vi.spyOn(adminApi, 'getSession').mockResolvedValue({ expiresAt: new Date(Date.now() + 3600000).toISOString(), expiresIn: 3600, requiresPasswordChange: false })
+    vi.spyOn(adminApi, 'listSites').mockResolvedValue([site()])
+    vi.spyOn(adminApi, 'listComments').mockResolvedValue({
+      data: [comment({ id: 7, createdAt: '2026-08-12T20:30:00Z', updatedAt: '2026-08-12T20:30:00Z' })],
+      counts: { published: 1, deleted: 0 }, total: 1, page: 1, pageSize: 20, pageCount: 1,
+    })
+    const wrapper = render(App, { context: new Map([['admin', store]]) })
+    await vi.waitFor(() => expect(wrapper.findAll('.entry-time')).toHaveLength(1))
+    expect(store.authenticated).toBe(true)
+    await vi.waitFor(() => expect(config).toHaveBeenCalledTimes(2), { timeout: 3000 })
+    await vi.waitFor(() => expect(wrapper.get('.entry-time').text()).toBe('20:30'))
+    expect(wrapper.get('.day-name').text()).toBe('2026 年 8 月 12 日')
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(config).toHaveBeenCalledTimes(2)
+  })
 })
 
 describe('login verification startup', () => {

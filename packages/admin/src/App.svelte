@@ -9,6 +9,7 @@
   import FirstLoginSetupView from './components/FirstLoginSetupView.svelte'
   import { useAdminStore } from './stores/admin.svelte'
   import { adminApi } from './api'
+  import { setAdminTimeZone } from './timezone.svelte'
   import type { CaptchaPublicConfig, LoginConfig, MainView } from './types'
   import { mountChallenge, type ChallengeWidget } from './captcha'
   import { messages } from './messages'
@@ -45,8 +46,32 @@
   let visibleToast = $state('')
   let toastTimer: ReturnType<typeof setTimeout> | undefined
   let stopAdminTranslations: (() => void) | undefined
-  // The login configuration carries the admin locale, which a restored session needs too.
+  // The login configuration carries the admin locale and display time zone, which a restored
+  // session needs too. If it cannot be read, it is retried in the background with backoff until it
+  // arrives, so a failed request does not leave times shown in the fallback zone.
   let startupLoginConfig: Promise<LoginConfig> | null = null
+  let displayConfigTimer: ReturnType<typeof setTimeout> | undefined
+  let displayConfigDelay = 1000
+  let displayConfigLoaded = false
+
+  function applyDisplayConfig(config: LoginConfig) {
+    if (loginController.signal.aborted) return
+    displayConfigLoaded = true
+    if (displayConfigTimer !== undefined) clearTimeout(displayConfigTimer)
+    displayConfigTimer = undefined
+    setAdminLocale(config.locale)
+    setAdminTimeZone(config.timeZone)
+  }
+
+  function retryDisplayConfig() {
+    if (loginController.signal.aborted || displayConfigLoaded || displayConfigTimer !== undefined) return
+    const delay = displayConfigDelay
+    displayConfigDelay = Math.min(delay * 2, 60000)
+    displayConfigTimer = setTimeout(() => {
+      displayConfigTimer = undefined
+      adminApi.getLoginConfig(loginController.signal).then(applyDisplayConfig, retryDisplayConfig)
+    }, delay)
+  }
   // Focus moves to the page heading only after a sign-in the user just submitted; a restored
   // session leaves focus alone, so the browser draws no focus ring on page load.
   let focusAfterSignIn = false
@@ -172,12 +197,7 @@
   onMount(async () => {
     stopAdminTranslations = installAdminTranslations(document.body)
     startupLoginConfig = adminApi.getLoginConfig(loginController.signal)
-    startupLoginConfig.then(
-      (config) => {
-        if (!loginController.signal.aborted) setAdminLocale(config.locale)
-      },
-      () => undefined
-    )
+    startupLoginConfig.then(applyDisplayConfig, retryDisplayConfig)
     const expired = takeSessionNotice()
     window.addEventListener('beforeunload', beforeUnload)
     await store.restoreSession()
@@ -192,6 +212,7 @@
     loginController.abort()
     window.removeEventListener('beforeunload', beforeUnload)
     if (toastTimer !== undefined) clearTimeout(toastTimer)
+    if (displayConfigTimer !== undefined) clearTimeout(displayConfigTimer)
     loginWidget?.remove()
     loginWidget = null
     stopAdminTranslations?.()
@@ -208,7 +229,7 @@
       startupLoginConfig = null
       const config = await pending
       if (loginController.signal.aborted) return
-      setAdminLocale(config.locale)
+      applyDisplayConfig(config)
       loginCaptcha = config.captcha
       await tick()
       if (loginCaptcha.provider !== 'off') {

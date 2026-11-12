@@ -10,7 +10,7 @@ import (
 
 const DefaultDisplayTimeZone = "Asia/Shanghai"
 
-// DisplayTimeZone returns the container TZ for public comment timestamps.
+// DisplayTimeZone returns the container TZ used for comment, admin and notification timestamps.
 func DisplayTimeZone() string {
 	if tz := strings.TrimSpace(os.Getenv("TZ")); tz != "" {
 		if _, err := time.LoadLocation(tz); err == nil {

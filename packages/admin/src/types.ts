@@ -123,4 +123,5 @@ export interface LoginConfig {
   captcha: CaptchaPublicConfig
   turnstileSitekey: string
   locale: EcokuLocale
+  timeZone: string
 }
