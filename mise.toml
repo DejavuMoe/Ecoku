@@ -1,6 +1,6 @@
 # Project toolchain pins. App/container version stays in VERSION.
 
 [tools]
-go = "1.27.3"
-node = "24.19.0"
-pnpm = "11.24.0"
+go = "1.27.4"
+node = "26.13.1"
+pnpm = "11.28.9"

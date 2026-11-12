@@ -19,7 +19,7 @@ function checkSecurity(source) {
   assert.match(source, /^      - name: Verify frontend\n        if: matrix.target != 'docs'\n        env:\n          TARGET: \$\{\{ matrix.target \}\}\n        run: pnpm "verify:\$TARGET"\n(?=      - )/m)
   assert.match(source, /^      - name: Build and verify documentation\n        if: matrix.target == 'docs'\n        run: \|\n          pnpm docs:build\n          sh scripts\/verify-docs-output.sh docs\/\.vitepress\/dist\n(?=      - )/m)
   assert.match(source, /^      - run: go test -count=1 \.\/\.\.\.\n      - run: go vet \.\/\.\.\.\n      - run: go build -trimpath -ldflags="-s -w" -o \/tmp\/ecoku-server \.\n/m)
-  assert.match(source, /^      - name: Verify runtime credential snapshots\n        env:\n          CGO_ENABLED: '1'\n        run: go test -race -count=1 \.\/adminidentity \.\/instancekeys \.\/config\n/m)
+  assert.match(source, /^      - name: Race-check shared runtime state\n        env:\n          CGO_ENABLED: '1'\n        run: go test -race -count=1 \.\/adminidentity \.\/instancekeys \.\/config \.\/model \.\/handle\/comment\n/m)
   assert.doesNotMatch(source, /^\s+continue-on-error:/m, 'CI failures must block release')
   assert.doesNotMatch(source, /^    if:/m, 'Required CI jobs must not be conditional')
 }

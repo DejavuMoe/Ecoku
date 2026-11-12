@@ -4,9 +4,9 @@ ARG ECOKU_VERSION=development
 ARG ECOKU_REVISION=unknown
 ARG ECOKU_SOURCE=""
 
-FROM node:24.19.0-alpine3.24@sha256:d32cdf619f63fe0471182d08996dd516c6275bb5fd31ae06e55a570bd9e1ad43 AS frontend-deps
+FROM node:26.13.1-alpine3.24@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS frontend-deps
 WORKDIR /src
-RUN npm install --global pnpm@11.24.0
+RUN npm install --global pnpm@11.28.9
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/admin/package.json packages/admin/package.json
 COPY packages/client/package.json packages/client/package.json
@@ -20,7 +20,7 @@ FROM frontend-deps AS admin-build
 COPY packages/admin packages/admin
 RUN pnpm --dir packages/admin build
 
-FROM golang:1.27.3-alpine3.24@sha256:b8c9b82affbbb82a020bbcf998dad2ba9516944ac7e883524642a481a9505e9c AS server-build
+FROM golang:1.27.4-alpine3.24@sha256:0a5f7fe796599ff487605987432e7619ae45beeb2fba4c2ce0b907879932aebf AS server-build
 WORKDIR /src
 COPY server/go.mod server/go.sum ./
 # Module contents travel with the dependency layer in the exported registry cache.
@@ -30,7 +30,7 @@ COPY server ./
 RUN --mount=type=cache,id=ecoku-go-build,target=/root/.cache/go-build \
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/ecoku-server .
 
-FROM alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b AS runtime
+FROM alpine:3.24.4@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf AS runtime
 ARG ECOKU_VERSION
 ARG ECOKU_REVISION
 ARG ECOKU_SOURCE
