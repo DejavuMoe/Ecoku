@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# svelte-check --tsgo overlay
+.svelte-check

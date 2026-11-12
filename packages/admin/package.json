@@ -8,16 +8,17 @@
     "build": "pnpm run type-check && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "type-check": "svelte-check --tsconfig ./tsconfig.app.json && tsc --noEmit -p tsconfig.node.json"
+    "type-check": "svelte-check --tsgo --tsconfig ./tsconfig.app.json && svelte-check --tsgo --tsconfig ./tsconfig.node.json"
   },
   "devDependencies": {
-    "@types/node": "^24.13.3",
+    "@types/node": "^26.6.6",
     "@sveltejs/vite-plugin-svelte": "7.3.1",
-    "svelte": "5.57.1",
-    "svelte-check": "4.7.6",
+    "svelte": "5.57.3",
+    "svelte-check": "4.7.8",
     "happy-dom": "^21.0.4",
     "typescript": "~6.0.3",
-    "vite": "^8.2.4",
-    "vitest": "^4.1.11"
+    "vite": "^8.3.7",
+    "vitest": "^5.1.0",
+    "@typescript/native": "npm:typescript@~7.0.2"
   }
 }
