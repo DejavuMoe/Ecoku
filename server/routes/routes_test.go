@@ -2,10 +2,12 @@ package routes
 
 import (
 	"context"
+	"crypto/sha256"
 	"ecoku-server/config"
 	"ecoku-server/internal/testsite"
 	"ecoku-server/middleware"
 	"ecoku-server/model"
+	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -164,6 +166,41 @@ func TestClientStaticAssetsAreServedWithCrossOriginSafeHeaders(t *testing.T) {
 		router.ServeHTTP(headRecorder, head)
 		if headRecorder.Code != http.StatusOK || headRecorder.Body.Len() != 0 {
 			t.Fatalf("HEAD %s status=%d body=%d", name, headRecorder.Code, headRecorder.Body.Len())
+		}
+	}
+}
+
+func TestClientStaticAssetsAreImmutableOnlyForTheirContentHash(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	configureRoutesTest(t)
+	directory := t.TempDir()
+	sdk := "globalThis.Ecoku = function () {};"
+	for name, body := range map[string]string{
+		"ecoku.umd.js":       sdk,
+		"ecoku-loader.js":    "void 0;",
+		"ecoku.css":          ".ecoku-comments{}",
+		"ecoku.unstyled.css": ".ecoku-comments{}",
+	} {
+		if err := os.WriteFile(filepath.Join(directory, name), []byte(body), 0o600); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+	}
+	config.GlobalConfig.Paths.ClientStaticDir = directory
+	router, err := NewRouter()
+	if err != nil {
+		t.Fatalf("new router: %v", err)
+	}
+	sum := sha256.Sum256([]byte(sdk))
+	hash := hex.EncodeToString(sum[:])[:12]
+	for query, want := range map[string]string{
+		"?v=" + hash:      "public, max-age=31536000, immutable",
+		"?v=0123456789ab": "public, max-age=3600",
+		"":                "public, max-age=3600",
+	} {
+		recorder := httptest.NewRecorder()
+		router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/client/ecoku.umd.js"+query, nil))
+		if recorder.Code != http.StatusOK || recorder.Header().Get("Cache-Control") != want {
+			t.Fatalf("query %q: status=%d cache=%q", query, recorder.Code, recorder.Header().Get("Cache-Control"))
 		}
 	}
 }

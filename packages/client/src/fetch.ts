@@ -210,12 +210,24 @@ function apiURL(config: ResolvedEcokuConfig, path: string): URL {
   return new URL(path.replace(/^\/+/, ''), config.serverURL)
 }
 
+/**
+ * A first-page list request the hosted loader starts while the SDK script is
+ * still downloading. The SDK adopts it only when it would request the same URL.
+ */
+export interface EcokuListPrefetch {
+  url: string
+  response: Promise<Response>
+  abort(): void
+}
+
 async function requestJSON<T>(
   url: URL,
   init: RequestInit,
   signal?: AbortSignal,
+  prefetch?: EcokuListPrefetch,
 ): Promise<ResponseEnvelope<T>> {
   const controller = new AbortController()
+  if (prefetch) controller.signal.addEventListener('abort', () => prefetch.abort(), { once: true })
   let timedOut = false
   const abortFromCaller = () => controller.abort()
   if (signal?.aborted) controller.abort()
@@ -226,7 +238,7 @@ async function requestJSON<T>(
   }, 10_000)
 
   try {
-    const response = await fetch(url, { ...init, signal: controller.signal })
+    const response = await (prefetch?.response ?? fetch(url, { ...init, signal: controller.signal }))
     let raw: unknown
     try {
       raw = await response.json()
@@ -260,6 +272,7 @@ export async function fetchComments(
   page: number,
   sort: CommentSort | undefined,
   signal?: AbortSignal,
+  prefetch?: EcokuListPrefetch | null,
 ): Promise<CommentPage> {
   const url = apiURL(config, 'api/comment/list')
   url.searchParams.set('siteId', config.siteId)
@@ -267,7 +280,12 @@ export async function fetchComments(
   url.searchParams.set('page', String(page))
   url.searchParams.set('pageSize', String(config.pageSize))
   if (sort) url.searchParams.set('sort', sort)
-  const envelope = await requestJSON<RawCommentListPayload>(url, { method: 'GET' }, signal)
+  let adopted: EcokuListPrefetch | undefined
+  if (prefetch) {
+    if (prefetch.url === url.toString()) adopted = prefetch
+    else prefetch.abort()
+  }
+  const envelope = await requestJSON<RawCommentListPayload>(url, { method: 'GET' }, signal, adopted)
   const payload = envelope.data && typeof envelope.data === 'object' ? envelope.data : {}
   const rawComments = Array.isArray(payload.data) ? payload.data : []
   const comments = rawComments

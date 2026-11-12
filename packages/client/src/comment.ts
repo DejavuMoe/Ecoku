@@ -13,6 +13,7 @@ import {
   type CommentData,
   type CommentDraft,
   type CommentSort,
+  type EcokuListPrefetch,
 } from './fetch'
 import {
   loadVisitorIdentity,
@@ -122,8 +123,12 @@ export class CommentSurface {
   private smojiManifestPromise: Promise<SmojiManifest> | null = null
   private smojiManifestController: AbortController | null = null
 
-  constructor(config: ResolvedEcokuConfig) {
+  // Adopted by the first list request only; later pages always fetch.
+  private listPrefetch: EcokuListPrefetch | null
+
+  constructor(config: ResolvedEcokuConfig, listPrefetch?: EcokuListPrefetch) {
     this.config = config
+    this.listPrefetch = listPrefetch ?? null
     this.messages = getMessages(config.i18n ?? 'zh-CN')
     this.buildSurface()
   }
@@ -579,7 +584,9 @@ export class CommentSurface {
     if (!silent) this.setInitialLoading(this.comments.length === 0)
 
     try {
-      let result = await fetchComments(this.config, Math.max(1, targetPage), this.sort, controller.signal)
+      const prefetch = this.listPrefetch
+      this.listPrefetch = null
+      let result = await fetchComments(this.config, Math.max(1, targetPage), this.sort, controller.signal, prefetch)
       if (!this.isCurrentRequest(version, revision)) return
       if (!result.comments.length && result.pageCount > 0 && result.page > result.pageCount) {
         result = await fetchComments(this.config, result.pageCount, this.sort, controller.signal)

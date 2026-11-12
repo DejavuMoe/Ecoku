@@ -1,4 +1,11 @@
 import type { EcokuLocale } from './config'
+import type { EcokuListPrefetch } from './fetch'
+
+declare const __ECOKU_SDK_HASH__: string | undefined
+
+// The loader build embeds the SDK's content hash. Requesting the SDK with it
+// lets the server cache that exact file for a year.
+const SDK_HASH = typeof __ECOKU_SDK_HASH__ === 'string' ? __ECOKU_SDK_HASH__ : ''
 
 interface EcokuInstance {
   init(): Promise<void>
@@ -16,6 +23,7 @@ interface EcokuConstructor {
     theme?: 'auto' | 'light' | 'dark'
     cssURL?: string
     i18n?: EcokuLocale
+    listPrefetch?: EcokuListPrefetch
   }): EcokuInstance
 }
 
@@ -55,9 +63,46 @@ class LoaderFailureError extends Error {
 
 let sdkPromise: Promise<EcokuConstructor> | null = null
 
-export function resolveEcokuSDKURL(loaderURL: string, serverURL: string): string {
+export function resolveEcokuSDKURL(loaderURL: string, serverURL: string, sdkHash = SDK_HASH): string {
   const base = loaderURL.trim() || `${serverURL.replace(/\/+$/, '')}/client/ecoku-loader.js`
-  return new URL('ecoku.umd.js', base).toString()
+  const url = new URL('ecoku.umd.js', base)
+  if (sdkHash) url.searchParams.set('v', sdkHash)
+  return url.toString()
+}
+
+/**
+ * Starts the first-page list request in parallel with the SDK download. The
+ * URL must match what the SDK builds for page one without an explicit sort;
+ * when it does not, the SDK aborts this request and fetches on its own.
+ */
+export function prefetchCommentList(
+  windowRef: Window,
+  serverURL: string,
+  siteId: string,
+  pageKey: string,
+  pageSize: number,
+): EcokuListPrefetch | undefined {
+  if (typeof windowRef.fetch !== 'function' || typeof AbortController !== 'function') return undefined
+  let base: URL
+  try {
+    base = new URL(serverURL)
+  } catch {
+    return undefined
+  }
+  if (!['http:', 'https:'].includes(base.protocol) || base.username || base.password || base.search || base.hash) {
+    return undefined
+  }
+  base.pathname = `${base.pathname.replace(/\/+$/, '')}/`
+  const url = new URL('api/comment/list', base)
+  url.searchParams.set('siteId', siteId)
+  url.searchParams.set('key', pageKey)
+  url.searchParams.set('page', '1')
+  url.searchParams.set('pageSize', String(pageSize))
+  const controller = new AbortController()
+  const response = windowRef.fetch(url, { method: 'GET', signal: controller.signal })
+  // The SDK may never adopt it; an unobserved rejection must not surface.
+  response.catch(() => {})
+  return { url: url.toString(), response, abort: () => controller.abort() }
 }
 
 function loadSDK(documentRef: Document, windowRef: EcokuWindow, sdkURL: string): Promise<EcokuConstructor> {
@@ -183,6 +228,8 @@ export function setupEcokuLoader(
       loader.hidden = true
       shell.setAttribute('aria-busy', 'true')
 
+      const pageSize = parsePageSize(shell.dataset.pageSize)
+      const listPrefetch = prefetchCommentList(windowRef, serverURL, siteId, pageKey, pageSize)
       try {
         const cssURL = parseCssURL(shell.dataset.cssUrl)
         if (cssURL) ensureHostStylesheet(documentRef, cssURL)
@@ -198,10 +245,11 @@ export function setupEcokuLoader(
           siteId,
           pageKey,
           pageTitle: shell.dataset.pageTitle?.trim(),
-          pageSize: parsePageSize(shell.dataset.pageSize),
+          pageSize,
           theme: parseTheme(shell.dataset.theme),
           cssURL,
           ...(i18n ? { i18n } : {}),
+          ...(listPrefetch ? { listPrefetch } : {}),
         })
         timeoutID = windowRef.setTimeout(() => {
           ++attempt
@@ -220,6 +268,9 @@ export function setupEcokuLoader(
         comments?.destroy()
         comments = null
         showFailure(error instanceof LoaderFailureError ? error.failure : 'init')
+      } finally {
+        // Once init settles the SDK has read the response, or never will.
+        listPrefetch?.abort()
       }
     }
 

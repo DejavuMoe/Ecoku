@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"ecoku-server/captcha"
 	"ecoku-server/config"
 	adminhandler "ecoku-server/handle/admin"
@@ -13,6 +14,7 @@ import (
 	"ecoku-server/model"
 	"ecoku-server/utils"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -198,7 +200,6 @@ func registerClientStatic(router *gin.Engine, directory string) error {
 
 	clientStatic := router.Group("/client")
 	clientStatic.Use(func(c *gin.Context) {
-		c.Header("Cache-Control", "public, max-age=3600")
 		c.Header("Cross-Origin-Resource-Policy", "cross-origin")
 		c.Header("Referrer-Policy", "no-referrer")
 		c.Header("X-Content-Type-Options", "nosniff")
@@ -206,14 +207,35 @@ func registerClientStatic(router *gin.Engine, directory string) error {
 	})
 	for name, path := range assetPaths {
 		assetPath := path
-		clientStatic.GET("/"+name, func(c *gin.Context) {
+		contentHash, err := clientAssetHash(assetPath)
+		if err != nil {
+			return fmt.Errorf("读取浏览器资源 %s: %w", assetPath, err)
+		}
+		serve := func(c *gin.Context) {
+			// The loader requests the SDK with ?v=<content hash>. Only a URL
+			// naming the exact bytes served here may be cached as immutable.
+			if c.Query("v") == contentHash {
+				c.Header("Cache-Control", "public, max-age=31536000, immutable")
+			} else {
+				c.Header("Cache-Control", "public, max-age=3600")
+			}
 			c.File(assetPath)
-		})
-		clientStatic.HEAD("/"+name, func(c *gin.Context) {
-			c.File(assetPath)
-		})
+		}
+		clientStatic.GET("/"+name, serve)
+		clientStatic.HEAD("/"+name, serve)
 	}
 	return nil
+}
+
+// clientAssetHash matches the hash the loader build embeds for ecoku.umd.js:
+// the first 12 hex digits of the file's SHA-256.
+func clientAssetHash(path string) (string, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	sum := sha256.Sum256(content)
+	return hex.EncodeToString(sum[:])[:12], nil
 }
 
 func registerAdminStatic(router *gin.Engine, directory string) error {

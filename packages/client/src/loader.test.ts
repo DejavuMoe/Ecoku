@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 describe('EC-05 loader entrypoint', () => {
   beforeEach(() => {
+    // Keep the loader's list prefetch off the network.
+    vi.spyOn(window, 'fetch').mockImplementation(() => new Promise<Response>(() => {}))
     vi.resetModules()
     vi.useFakeTimers()
     delete (window as Window & { Ecoku?: unknown }).Ecoku
