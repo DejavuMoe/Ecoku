@@ -15,6 +15,10 @@
 
 流水线固定调度到 `role=netcup-nano`、`server=netcup-nano` 的 agent，同一时间只运行一个发布任务。发布容器通过 trusted volume 只挂载站点目录 `/var/www/<DOCS_DOMAIN>:/deploy`。
 
+`build-docs` 在这台 2 GiB 内存的 runner 上设置 `NODE_OPTIONS=--max-old-space-size=1536`，避免 VitePress 打包时触及 Node 的默认堆上限。1536 MiB 是 V8 老生代堆上限，不是整个构建进程的内存上限；主机仍需为其他内存分配、子进程、agent 和系统留出空间。
+
+agent 的 Compose `deploy.resources.limits.memory` 只限制 agent 容器。Docker backend 的构建步骤运行在独立容器中，步骤限额由 `WOODPECKER_BACKEND_DOCKER_LIMIT_MEM` 配置；提高 agent 的限额不能解决构建进程的堆溢出。调整构建预算前，应核对主机可用内存、swap 和步骤容器限额。
+
 ## 目录布局
 
 ```text
