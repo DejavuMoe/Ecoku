@@ -175,6 +175,8 @@
 - 镜像以 `GIN_MODE=release`、`ECOKU_RUNTIME=container` 运行；监听端口默认为 12123，容器内浏览器资源、后台、数据库默认分别位于 `/app/client`、`/app/admin`、`/data/ecoku.sqlite3`，源码运行数据库默认位于工作目录下 `./data/ecoku.bin`；支持配置模板列出的覆盖项，修改容器端口需同步端口映射和健康检查，修改数据路径不会自动搬迁数据。部署模板只要求 `notifications.instance_public_url`，
   新部署不需要 `ecoku.env`；管理员账户、会话签名密钥和通知加密主密钥由程序写入 `data/`。旧 `ecoku.env` 在迁移期继续兼容。
 - 应用默认将日志写入 stdout，供 `docker compose logs` 跟随，轮转和保留由 Docker 日志设置决定；可选 `site.log_path` 启用按大小轮转的文件日志。Compose 不挂载 `app/logs`，也不覆盖 daemon 的日志策略。访问日志只记录路由模板，未匹配路由使用固定值；不写入实际路径参数。日志仍不得包含 IP、UA、凭据、token 或评论正文。
+- 自 v0.6.0 起最终运行镜像使用固定多架构 digest 的 distroless Debian 13 static（`gcr.io/distroless/static-debian13:nonroot`）；数值 UID/GID 保持 `10001:10001`（非 distroless 默认的 65532），程序二进制与前端静态资源归 root，数据目录归运行用户。服务端保持 CGO_ENABLED=0 静态编译，构建阶段仍使用 Alpine。保留只读根文件系统、受限 tmpfs、全部删除 capabilities 和 no-new-privileges，不提供 shell、wget、包管理器或 root 启动修权限流程。保留现有 `/data` 卷与 `/app/config.yaml:ro` 只读挂载、配置参数及持久化密钥；已有 10001 正确权限的用户数据无需权限迁移，不自动 chown 用户数据，也不 chmod 777。该迁移不改变数据库 schema（保持 v12）。官方镜像使用 OCI media types，要求宿主 Docker / 容器运行时支持拉取 OCI 镜像，无需宿主升级到 Debian 13。默认日志继续输出至 stdout/stderr，可选文件日志配置保持生效；维护直接通过 `exec` 执行二进制命令。
+- `healthcheck [--port=12123]` 内置探针不读取配置、打开数据库或初始化密钥；仅请求 `127.0.0.1` 的 `/api/health`，2 秒超时，不使用代理、不跟随重定向，端口范围为 1～65535，仅 HTTP 200 成功并静默退出（exit 0）。自定义服务端口须同步探针 `--port` 参数；它不验证数据库内容。从旧版升级时旧 Compose 的 wget 探针必须由操作者替换；回滚至 v0.5.7 时须同时恢复旧探针（或删除 Compose 中的覆盖以使用旧镜像自带探针）。
 - 浏览器 SDK 的 npm 包名为 `ecoku`，版本由 `packages/client/package.json` 声明，并与根 `VERSION` 一致，提供 ESM、CommonJS、UMD 和 TypeScript 声明；
   根工作区为 private。master/PR 的 CI 只验证并保存构件；经授权推送 `v*` tag 后，Release 复用完整验证，发布 GHCR 双架构镜像和 npm SDK，再创建 GitHub Release。自动化不创建 Git tag，也不部署评论服务。
 - 旧持久开发验收实例已经退役；其专用域名、IP、同步脚本、部署模板和登录指引不再属于当前

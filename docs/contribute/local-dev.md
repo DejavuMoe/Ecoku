@@ -38,6 +38,22 @@ pnpm docs:dev
 
 管理端开发页的来源（示例配置中的 `http://localhost:5174`）必须写在独立的 `admin.allowed_origins` 中，开发页通过 Vite 的同源 `/api` 代理访问服务端。仅 `http://localhost`、回环 IP 的明确允许来源使用非 Secure Cookie，生产必须 HTTPS。
 
+## 镜像迁移验证 {#image-migration}
+
+以下验证命令在 Linux 环境中执行，需要 Go 工具链、Docker 和 Python 3。
+
+以下命令只构建本地候选镜像，使用临时卷或临时宿主目录验证，不发布镜像、不访问生产数据：
+
+```bash
+docker build -t ecoku:distroless-migration .
+sh scripts/verify-image.sh ecoku:distroless-migration
+previous=ghcr.io/dejavumoe/ecoku:v0.5.7@sha256:81962c68bf134c0d9fcbc9b5bc0c189b6c886f0f2e5a81fc5fed91b0f8bac847
+docker pull "$previous"
+sh scripts/verify-image.sh ecoku:distroless-migration "$previous"
+```
+
+脚本检查非 root、只读根文件系统、证书、时区、静态资源、管理员登录及安全停止；第二次运行在 v0.5.7 中生成临时评论和加密通知凭据，升级后新增评论，再回滚并比对原数据、schema 和持久密钥。退出时删除自建容器、卷和临时目录。根 Compose 已更新至 v0.6.0 并使用内置二进制 healthcheck 探针；本地构建候选镜像验证时同样使用新探针。
+
 ## 文档流程图 {#documentation-diagrams}
 
 「简介」和「反向代理」中的流程图使用 `docs/public/diagrams/` 下的本地 SVG，不在构建时或浏览器中运行 Mermaid。文件名由图名、语言和 `light` / `dark` 组成；两种主题使用相同的节点、连线和画布尺寸，由页面主题切换显示。

@@ -36,6 +36,22 @@ pnpm docs:dev
 
 開發後台的來源（範例設定中的 `http://localhost:5174`）必須寫在獨立的 `admin.allowed_origins` 中，開發頁透過 Vite 同源 `/api` 代理存取伺服器。只有明確允許的 HTTP localhost/回環來源可用非 Secure Cookie，正式環境必須 HTTPS。
 
+## 映像檔遷移驗證 {#image-migration}
+
+以下驗證指令在 Linux 環境中執行，需要 Go 工具鏈、Docker 和 Python 3。
+
+以下指令只建置本地候選映像檔，使用臨時卷或臨時主機目錄驗證，不發布映像檔、不存取生產資料：
+
+```bash
+docker build -t ecoku:distroless-migration .
+sh scripts/verify-image.sh ecoku:distroless-migration
+previous=ghcr.io/dejavumoe/ecoku:v0.5.7@sha256:81962c68bf134c0d9fcbc9b5bc0c189b6c886f0f2e5a81fc5fed91b0f8bac847
+docker pull "$previous"
+sh scripts/verify-image.sh ecoku:distroless-migration "$previous"
+```
+
+腳本檢查非 root、唯讀根檔案系統、憑證、時區、靜態資源、管理員登入及安全停止；第二次執行在 v0.5.7 中產生臨時評論與加密通知憑據，升級後新增評論，再回滾並比對原資料、schema 和持久金鑰。結束時刪除自建容器、卷和臨時目錄。根 Compose 已更新至 v0.6.0 並使用內建二進位 healthcheck 探針；本地建置候選映像檔驗證時同樣使用新探針。
+
 ## 文件流程圖 {#documentation-diagrams}
 
 「簡介」和「反向代理」中的流程圖使用 `docs/public/diagrams/` 下的本地 SVG，不在建置時或瀏覽器中執行 Mermaid。檔名由圖名、語言和 `light` / `dark` 組成；兩種主題使用相同的節點、連線和畫布尺寸，由頁面主題切換顯示。

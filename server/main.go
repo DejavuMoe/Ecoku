@@ -26,6 +26,12 @@ import (
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
+		case "healthcheck":
+			if err := runHealthcheck(os.Args[2:]); err != nil {
+				log.Printf("健康检查失败: %v", err)
+				os.Exit(1)
+			}
+			return
 		case "import-twikoo":
 			if err := runTwikooImport(os.Args[2:]); err != nil {
 				log.Fatalf("Twikoo 导入失败: %v", err)
