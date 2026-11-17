@@ -9,9 +9,21 @@ cd ~/Ecoku
 sudo docker compose run --rm --no-deps ecoku <subcommand> [arguments]
 ```
 
-Except for `hash-password`, every subcommand reads `app/config.yaml` and opens the database. Stop the service with `sudo docker compose stop ecoku` before running a subcommand that writes (`admin reset-password`, `captcha disable`, `import-twikoo`), so it does not write to the database at the same time as the running instance; `captcha status` only reads the settings and can run while the service is up.
+Except for `hash-password` and `healthcheck`, every subcommand reads `app/config.yaml` and opens the database. Stop the service with `sudo docker compose stop ecoku` before running a subcommand that writes (`admin reset-password`, `captcha disable`, `import-twikoo`), so it does not write to the database at the same time as the running instance; `captcha status` only reads the settings and can run while the service is up.
 
 Opening the database first initializes or migrates its schema and performs the same [origin-conflict check](./configuration#reload) as service startup. Consequently, neither `captcha status` nor `import-twikoo --dry-run` is unconditionally read-only. If the database has not yet been upgraded, stop the service and make a cold backup first. Correct origin conflicts in the configuration; these subcommands do not bypass the check.
+
+## healthcheck {#healthcheck}
+
+Built-in container healthcheck probe starting in v0.6.0 (not supported in v0.5.7 or earlier Alpine images). Run inside the running service container:
+
+```bash
+sudo docker compose exec -T ecoku /app/ecoku-server healthcheck
+```
+
+The default URL is `http://127.0.0.1:12123/api/health`. For a different container port, use `healthcheck --port=12124`; valid ports are 1–65535. The request has a total timeout of 2 seconds, uses no proxy and follows no redirects. HTTP 200 exits with code 0; other statuses, connection failures, timeouts and invalid arguments exit with code 1. Success produces no output.
+
+This command does not read configuration, access SQLite or initialize keys. It only checks the running HTTP service. Do not use `docker compose run` to start a separate probe container: its loopback address has no running service. A successful probe does not verify database contents or external notification services.
 
 ## admin reset-password {#admin-reset-password}
 
@@ -112,7 +124,7 @@ Reads one line of password from standard input and prints a bcrypt hash (cost 10
 
 ```bash
 read -rsp 'Admin password: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i ghcr.io/dejavumoe/ecoku:v0.5.7 hash-password
+printf '%s\n' "$P" | sudo docker run --rm -i ghcr.io/dejavumoe/ecoku:v0.6.0 hash-password
 unset P
 ```
 

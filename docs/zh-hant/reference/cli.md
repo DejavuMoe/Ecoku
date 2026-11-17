@@ -9,9 +9,21 @@ cd ~/Ecoku
 sudo docker compose run --rm --no-deps ecoku <子命令> [参数]
 ```
 
-除了 `hash-password` 之外，子指令都會讀取 `app/config.yaml` 並開啟資料庫。寫入資料庫的子指令（`admin reset-password`、`captcha disable`、`import-twikoo`）請先用 `sudo docker compose stop ecoku` 停止服務再執行，避免與正在執行的實例同時寫入資料庫；只讀取設定的 `captcha status` 可以在服務執行時使用。
+除了 `hash-password` 和 `healthcheck` 之外，子指令都會讀取 `app/config.yaml` 並開啟資料庫。寫入資料庫的子指令（`admin reset-password`、`captcha disable`、`import-twikoo`）請先用 `sudo docker compose stop ecoku` 停止服務再執行，避免與正在執行的實例同時寫入資料庫；只讀取設定的 `captcha status` 可以在服務執行時使用。
 
 開啟資料庫時會先初始化或遷移 schema，並執行與服務啟動相同的 [來源衝突檢查](./configuration#reload)。因此 `captcha status` 和 `import-twikoo --dry-run` 也不能一概視為唯讀；資料庫尚未升級時，先停服冷備份，再執行。來源衝突時先修正設定，不能靠這些子指令繞過檢查。
+
+## healthcheck {#healthcheck}
+
+用於容器內健康檢查，自 v0.6.0 起內建（v0.5.7 及更早基於 Alpine 的映像檔不支援）。在正在執行的服務容器中執行：
+
+```bash
+sudo docker compose exec -T ecoku /app/ecoku-server healthcheck
+```
+
+預設請求 `http://127.0.0.1:12123/api/health`；容器內連接埠不同時使用 `healthcheck --port=12124`。連接埠範圍為 1～65535。請求總逾時為 2 秒，不使用代理、不跟隨重新導向；HTTP 200 傳回結束碼 0，其他狀態、連線失敗、逾時或參數錯誤傳回 1。成功時不輸出本文。
+
+此指令不讀取設定、不存取資料庫、不初始化金鑰，只檢查正在執行的 HTTP 服務。請勿用 `docker compose run` 建立一次性容器執行探針：它的回環位址沒有正在執行的服務。健康檢查通過不代表資料庫內容或外部通知服務已驗證。
 
 ## admin reset-password {#admin-reset-password}
 
@@ -112,7 +124,7 @@ Twikoo 导入完成：评论=128 根评论=90 回复=38 页面=24 邮箱=110 网
 
 ```bash
 read -rsp '管理员密码: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i ghcr.io/dejavumoe/ecoku:v0.5.7 hash-password
+printf '%s\n' "$P" | sudo docker run --rm -i ghcr.io/dejavumoe/ecoku:v0.6.0 hash-password
 unset P
 ```
 

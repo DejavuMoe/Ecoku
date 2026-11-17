@@ -19,6 +19,8 @@
 - 單一實例可服務多個網站，各站點資料與設定互相隔離
 - 可選的電子郵件／Telegram 通知，以及 Cloudflare Turnstile 或自託管 Cap 人機驗證
 
+自 v0.6.0 起，執行映像檔使用 distroless Debian 13 static，並內建二進位健康探針。從 v0.5.7 或更早版本升級時，需要一次性更換探針，見 [distroless 遷移](https://ecoku.zsh.moe/zh-hant/self-hosting/upgrade#distroless)。
+
 ## 快速上手
 
 依 [Docker 部署](https://ecoku.zsh.moe/zh-hant/self-hosting/docker) 完成以下步驟：

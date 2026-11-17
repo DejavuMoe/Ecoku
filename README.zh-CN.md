@@ -19,6 +19,8 @@
 - 单实例可服务多个网站，各站点数据与配置互相隔离
 - 可选邮件 / Telegram 通知，以及 Cloudflare Turnstile 或自托管 Cap 人机验证
 
+自 v0.6.0 起，运行镜像使用 distroless Debian 13 static，并内置二进制健康探针。从 v0.5.7 或更早版本升级时，需要一次性更换探针，见 [distroless 迁移](https://ecoku.zsh.moe/self-hosting/upgrade#distroless)。
+
 ## 快速开始
 
 按 [Docker 部署](https://ecoku.zsh.moe/self-hosting/docker) 完成以下步骤：

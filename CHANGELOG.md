@@ -5,6 +5,14 @@
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-11-17
+
+### 变更
+
+- 最终运行镜像迁移至固定 digest 的 distroless Debian 13 static，继续使用 UID/GID `10001:10001`、原有挂载及 schema v12。镜像不再包含 shell、wget 或包管理器；构建阶段仍使用 Alpine。
+- 新增 `healthcheck [--port=12123]` 子命令，只请求回环健康接口，不读取配置或打开数据库。首次迁移时须将 Compose 的 `wget` 健康检查替换为 `/app/ecoku-server healthcheck`；自定义监听端口时同步指定 `--port`，回滚旧镜像时同时恢复旧探针。
+- PR/master CI 在 amd64、arm64 上验证候选镜像的新建实例，以及 v0.5.7 临时数据升级、写入和回滚；保留权限、静态资源、持久密钥和安全停止检查。
+
 ## [0.5.7] - 2026-11-12
 
 ### 变更
@@ -793,4 +801,5 @@
 [0.5.5]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.5
 [0.5.6]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.6
 [0.5.7]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.7
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.5.7...master
+[0.6.0]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.6.0
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.6.0...master

@@ -2,11 +2,11 @@
 
 Public releases start at v0.3.0. For a new instance use [Docker deployment](./docker); this page covers upgrades.
 
-The current release is **v0.5.7** (released 2026-11-12, schema v12).
+The current release is **v0.6.0** (released 2026-11-17, schema v12).
 
-New images are published to GHCR. Deployments using Forgejo images should change `image` to `ghcr.io/dejavumoe/ecoku:v0.5.7` or the exact target tag for future upgrades, keeping existing data and configuration mounts. No new versions will be published to the Forgejo registry. Switching registries at the same version does not require reinitializing the instance.
+New images are published to GHCR. Deployments using Forgejo images should change `image` to `ghcr.io/dejavumoe/ecoku:v0.6.0` or the exact target tag for future upgrades, keeping existing data and configuration mounts. No new versions will be published to the Forgejo registry. Switching registries at the same version does not require reinitializing the instance.
 
-Before upgrading to v0.5.7, read [this release's compatibility notes](./upgrades/v0.5.7#compatibility). If your current version predates v0.5.0, also check the [notes on origin conflicts and existing data](./upgrades/v0.5.0#compatibility); an overlap between admin origins and stored site origins prevents startup.
+Before upgrading to v0.6.0, read [this release's compatibility notes](./upgrades/v0.6.0#compatibility). Upgrading for the first time requires replacing the Compose wget probe with the binary probe; see [distroless migration](#distroless). If your current version predates v0.5.0, also check the [notes on origin conflicts and existing data](./upgrades/v0.5.0#compatibility); an overlap between admin origins and stored site origins prevents startup.
 
 ## What happens during an upgrade
 
@@ -19,6 +19,31 @@ Upgrading means changing the image in `compose.yaml` to the new version and star
 
 That makes a backup taken before the upgrade the only way to roll back to an older schema.
 
+## Migrating to distroless {#distroless}
+
+Starting in v0.6.0, the runtime image migrated from Alpine to distroless Debian 13 static. When upgrading from v0.5.7 or earlier, you must replace the Compose healthcheck probe; do not use the new probe with v0.5.7 or earlier images.
+
+The new image uses Debian 13 static and preserves UID/GID `10001:10001`, `/app/config.yaml`, `/data` and schema v12. The host does not need Debian 13. Existing working data directories do not need an ownership change; keep custom data paths and mounts. Compose must support `up --wait --wait-timeout` (available since v2.17.0). Use maintained Docker Engine and host OS versions; no minimum Engine or kernel version has been certified.
+
+Follow the [upgrade steps](#steps) to stop the service and make a cold backup, select the exact target image tag, and replace `healthcheck.test` in Compose with:
+
+```yaml
+    healthcheck:
+      test: ["CMD", "/app/ecoku-server", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+```
+
+For a custom container port, add `--port=YOUR_PORT`; host port mappings do not affect the probe. The old wget command in Compose overrides the image's default probe and must be replaced; changing only the image is insufficient. Continue with pulling, recreating and checking the container. Keep `read_only`, `cap_drop`, `security_opt` and `tmpfs`. A single instance has a short outage; pulling the target image in advance reduces download time during that outage.
+
+Verify admin login, existing and new comments, and any configured notifications or CAPTCHA. The health endpoint only checks that the process responds, not data contents. Back up the database and persistent keys together; do not delete and regenerate the keys.
+
+When rolling back to v0.5.7, also restore its wget probe in Compose (or remove the `healthcheck` override to use the old image's built-in probe); the old image does not support the new subcommand. A base-image-only migration that retains schema v12 can keep post-upgrade data. For a rollback across schemas, follow [backup restoration](./backup#restore).
+
+The image has no shell, wget or package manager. Troubleshoot from the host with `docker compose logs`, `docker inspect` and `docker cp`, and invoke the [Ecoku CLI](../reference/cli) directly for maintenance. Update custom scripts that depend on `docker exec … sh`.
+
 ## Upgrade steps {#steps}
 
 **1. Read the upgrade notes.** Find the target version in the [version list](#versions) below, and check whether it has config changes or a schema migration.
@@ -28,10 +53,10 @@ That makes a backup taken before the upgrade the only way to roll back to an old
 **3. Change the image version.** Edit `~/Ecoku/compose.yaml` and change `image` to the target version, for example:
 
 ```yaml
-    image: "ghcr.io/dejavumoe/ecoku:v0.5.7"
+    image: "ghcr.io/dejavumoe/ecoku:v0.6.0"
 ```
 
-Use an exact version number, not `latest`. If the upgrade notes ask you to change `app/config.yaml` or `ecoku.env`, change them at the same time.
+Use an exact version number, not `latest`. When upgrading to v0.6.0 for the first time, you must also update `healthcheck.test` in Compose to `["CMD", "/app/ecoku-server", "healthcheck"]` (see [distroless migration](#distroless)). If the upgrade notes ask you to change `app/config.yaml` or `ecoku.env`, change them at the same time.
 
 **4. Pull and start.**
 
@@ -59,13 +84,14 @@ Once the container status is `healthy` and the log shows no errors, open a blog 
 
 First check whether the old and new versions have the same schema (see the table below):
 
-- **Same schema**: stop the service, change the image in `compose.yaml` back to the old version, then pull and start. You do not need to touch the database, and comments posted after the upgrade are kept. If you omitted fields during the upgrade because the new version has defaults for them, add back the configuration the old version requires. If you added a key for the new version that the old version does not recognize, remove it first; otherwise the old version refuses to start because of the unknown field.
+- **Same schema**: stop the service, change the image in `compose.yaml` back to the old version. When rolling back from v0.6.0 to v0.5.7 or earlier, also restore the old `wget` healthcheck in Compose (or remove the `healthcheck` override), then pull and recreate the container. You do not need to touch the database, and comments posted after the upgrade are kept. If you omitted fields during the upgrade because the new version has defaults for them, add back the configuration the old version requires. If you added a key for the new version that the old version does not recognize, remove it first; otherwise the old version refuses to start because of the unknown field.
 - **Different schema**: changing the image version back is not enough, because the old version cannot open the migrated database. You need to [restore](./backup#restore) from the cold backup taken before the upgrade. Comments and settings changes made after the backup are lost.
 
 ## Version list {#versions}
 
 | Version | Release date | Schema | Highlights |
 | --- | --- | --- | --- |
+| [v0.6.0](./upgrades/v0.6.0) | 2026-11-17 | v12 | Migrate runtime image to distroless Debian 13 static without shell/wget; add built-in binary healthcheck probe; older Compose files must update probe. No database migration. |
 | [v0.5.7](./upgrades/v0.5.7) | 2026-11-12 | v12 | Optimize public reads and SDK loading; fix reply drafts, sorting and refresh races; use the instance time zone in admin. No database migration. |
 | [v0.5.6](./upgrades/v0.5.6) | 2026-11-09 | v12 | Fix musl and zlib vulnerabilities in the runtime image and the `x/net` HTML parsing vulnerability (GO-2026-6860); includes every v0.5.5 change. No database migration; external behavior unchanged. |
 | [v0.5.5](./upgrades/v0.5.5) | 2026-11-09 | v12 | Image publication did not complete; use v0.5.6. |

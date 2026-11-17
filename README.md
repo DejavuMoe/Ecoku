@@ -19,6 +19,8 @@ English · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-Hant.md)
 - One instance can serve multiple sites, each with fully isolated data and settings
 - Optional email / Telegram notifications, plus Cloudflare Turnstile or self-hosted Cap CAPTCHA
 
+Starting in v0.6.0, the runtime image migrated to distroless Debian 13 static and uses a built-in binary healthcheck probe. Upgrading from v0.5.7 or earlier requires a one-time probe change; see [distroless migration](https://ecoku.zsh.moe/en/self-hosting/upgrade#distroless).
+
 ## Quick start
 
 Follow [Docker deployment](https://ecoku.zsh.moe/en/self-hosting/docker) to complete these steps:

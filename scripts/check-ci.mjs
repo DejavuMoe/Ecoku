@@ -24,6 +24,20 @@ function checkSecurity(source) {
   assert.doesNotMatch(source, /^    if:/m, 'Required CI jobs must not be conditional')
 }
 checkSecurity(ci)
+function checkCandidateImage(source) {
+  const job = source.match(/^  image:\n[\s\S]*/m)?.[0] ?? ''
+  assert.match(job, /arch: amd64\n            runner: ubuntu-24.04\n          - arch: arm64\n            runner: ubuntu-24.04-arm/)
+  assert.match(job, /load: true/)
+  assert.doesNotMatch(job, /push: true|push=true/)
+  assert.match(job, /PREVIOUS_IMAGE: ghcr.io\/dejavumoe\/ecoku:v0.5.7@sha256:[a-f0-9]{64}/)
+  assert.match(job, /sh scripts\/verify-image.sh ecoku:ci\n          docker pull "\$PREVIOUS_IMAGE"\n          sh scripts\/verify-image.sh ecoku:ci "\$PREVIOUS_IMAGE"\n/)
+}
+checkCandidateImage(ci)
+for (const [before, after] of [
+  ['runner: ubuntu-24.04-arm', 'runner: ubuntu-24.04'],
+  ['load: true', 'push: true'],
+  ['sh scripts/verify-image.sh ecoku:ci "$PREVIOUS_IMAGE"', ': skip-upgrade'],
+]) assert.throws(() => checkCandidateImage(ci.replace(before, after)))
 // Exercise the guards in memory; never run scanners or alter workflow fixtures.
 for (const [before, after] of [
   ['--audit-level=low', '--audit-level=high'],

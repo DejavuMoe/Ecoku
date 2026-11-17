@@ -12,7 +12,7 @@
 
 普通 `master` / PR CI 只验证 SDK、检查包内容并生成 tarball，不运行 `npm publish --dry-run`。npm 的发布预演也会查询 registry，并拒绝已发布的同版本；它不适合作为主线构建检查。实际发布仅在 tag 流程或显式触发的恢复流程中执行。
 
-发布 `v0.5.7` 时，SDK 版本为 `0.5.7`，镜像为 `ghcr.io/dejavumoe/ecoku:v0.5.7`。正式 npm 版本使用 `latest`，含预发布后缀的 tag 使用 `next` 并创建 GitHub prerelease；镜像只发布精确版本，不创建 `latest`。
+发布 `v0.6.0` 时，SDK 版本为 `0.6.0`，镜像为 `ghcr.io/dejavumoe/ecoku:v0.6.0`。正式 npm 版本使用 `latest`，含预发布后缀的 tag 使用 `next` 并创建 GitHub prerelease；镜像只发布精确版本，不创建 `latest`。
 
 文档 Demo 在准备 tag 时仍使用上一版已发布的 SDK；确认本版 npm 可读后，再单独更新三语安装示例、文档依赖和锁文件。这类版本同步只记入提交说明，不追加到下一版的 `[Unreleased]`，避免发布说明再次错位。历史说明修订只修改正文，不移动 tag 或替换已发布产物。
 
@@ -47,9 +47,11 @@ SDK 的 `repository.url` 设为 `git+https://github.com/DejavuMoe/Ecoku.git`，`
 
 ## 基础镜像更新与发布门禁
 
-更新 `Dockerfile` 中 Node、Go 或 Alpine 基础镜像时，同时更新精确版本 tag 与多架构 index 的 `sha256` digest，并核对该 index 包含 `linux/amd64`、`linux/arm64`；不要用单一架构的 manifest digest 替代。Dockerfile frontend 也保持 digest 固定。基础镜像固定不等于最终镜像已经通过检查，每次升级仍须通过发布流程中的双架构门禁。
+更新 `Dockerfile` 中 Node、Go 构建镜像或 distroless 运行基础镜像时，同时更新精确版本 tag 与多架构 index 的 `sha256` digest，并核对该 index 包含 `linux/amd64`、`linux/arm64`；不要用单一架构的 manifest digest 替代。Dockerfile 构建阶段使用 Alpine（`node:26.13.1-alpine3.24` 与 `golang:1.27.4-alpine3.24`），最终运行镜像使用固定多架构 digest 的 `gcr.io/distroless/static-debian13:nonroot`。基础镜像固定不等于最终镜像已经通过检查，每次升级仍须通过发布流程中的双架构门禁。
 
-每个架构针对已拉取的最终镜像 digest 运行 `scripts/verify-image.sh`，检查非 root 用户、只读根文件系统、临时数据目录、静态资源、健康检查和 SIGTERM 退出，再运行 `scripts/scan-image.sh`。扫描固定使用 Trivy `0.75.0`，下载对应架构的工具包并在解压执行前校验 SHA-256；升级扫描器时同时更新版本、两个架构的校验和及 `scripts/check-ci.mjs` 中的契约校验。
+PR/master CI 与 Release 的 `verify` 阶段在 amd64、arm64 原生 runner 上构建候选镜像，并运行 `scripts/verify-image.sh`：检查 UID/GID `10001:10001`、只读根文件系统、受限 tmpfs、无 shell/wget/包管理器、静态资源可读性与 HTTP 可用性、二进制健康探针和 SIGTERM 退出。脚本另以固定 digest 的 v0.5.7 为基线，在隔离的临时数据中验证升级、新评论写入及回滚，并比对 schema、旧评论、管理员账户、站点、通知凭据和持久密钥。
+
+Release 的 `image` 阶段针对每个架构已推送并拉取的最终镜像 digest，再次运行新建实例检查，然后执行 `scripts/scan-image.sh`。扫描固定使用 Trivy `0.75.0`，下载对应架构的工具包并在解压执行前校验 SHA-256；升级扫描器时同时更新版本、两个架构的校验和及 `scripts/check-ci.mjs` 中的契约校验。
 
 扫描输出 CycloneDX SBOM 与 JSON 漏洞报告，对 `HIGH,CRITICAL` 使用 `--exit-code 1 --ignorefile /dev/null`。运行时检查失败、下载或校验失败、扫描不可用、命中上述漏洞级别，均阻止该架构导出 digest，进而阻止多架构 tag 与 GitHub Release。失败时仍尝试保存已经生成的 `image-checks-amd64` / `image-checks-arm64` 产物，含镜像 digest、架构和扫描器版本；提前失败可能没有完整报告。npm 发布独立并行，镜像门禁失败不会撤回已发布的 npm 包。
 

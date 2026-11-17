@@ -83,6 +83,10 @@ jobs:
           cache-to: type=registry,ref=${{ needs.check.outputs.image }}:buildcache-${{ matrix.arch }},mode=max
           provenance: mode=max
           pull: true
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: server/go.mod
+          cache-dependency-path: server/go.sum
       - name: Verify final image runtime and vulnerabilities
         env:
           IMAGE: ${{ needs.check.outputs.image }}@${{ steps.build.outputs.digest }}
