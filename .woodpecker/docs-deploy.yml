@@ -16,7 +16,8 @@ steps:
       # The 2 GiB runner's default Node heap is too small for VitePress bundling.
       NODE_OPTIONS: "--max-old-space-size=1536"
     commands:
-      - apk add --no-cache git
+      - apk add --no-cache coreutils git util-linux
+      - sh scripts/test-publish-docs.sh
       - npm install --global pnpm@11.28.9
       - pnpm --filter ./docs... --fail-if-no-match install --frozen-lockfile --prefer-offline
       - pnpm docs:build

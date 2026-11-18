@@ -10,7 +10,7 @@
 
 `.woodpecker/docs-deploy.yml` 在 `master` 分支 push 时运行，与完整测试流程互相独立：
 
-1. `build-docs`：安装依赖，执行 `pnpm docs:build`，再用 `scripts/verify-docs-output.sh` 检查产物边界。
+1. `build-docs` 先在临时目录运行 `scripts/test-publish-docs.sh`，测试通过后安装文档依赖，执行 `pnpm docs:build` 并检查产物边界。GitHub Actions 的文档作业也会运行同一套发布测试。
 2. `publish-docs`：执行 `scripts/publish-docs.sh`，把产物发布到文档服务器。
 
 流水线固定调度到 `role=netcup-nano`、`server=netcup-nano` 的 agent，同一时间只运行一个发布任务。发布容器通过 trusted volume 只挂载站点目录 `/var/www/<DOCS_DOMAIN>:/deploy`。
