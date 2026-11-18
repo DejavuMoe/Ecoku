@@ -78,6 +78,8 @@ sudo docker compose up -d --wait --wait-timeout 120 ecoku
 
 檔案必須是單一 JSON 陣列，整個檔案不超過 64 MiB（包含結尾空白）；陣列後的其他內容會導致失敗。HTML 會轉換成純文字，具體保留規則見 [從 Twikoo 遷移](../self-hosting/twikoo)。
 
+包含 `isSpam: true` 記錄時，預先檢查和正式匯入都會停止並回報數量，不保存匯入評論。
+
 先加 `--dry-run` 預檢：
 
 ```bash
