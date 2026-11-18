@@ -3,6 +3,7 @@ package comment
 import (
 	"context"
 	"crypto/sha256"
+	"database/sql"
 	"ecoku-server/captcha"
 	"ecoku-server/config"
 	"ecoku-server/model"
@@ -348,29 +349,39 @@ func parseChildCursor(c *gin.Context) (uint64, uint64, bool, error) {
 // Read only bounded IDs/edges, never a recursive SQL queue or an unbounded
 // COUNT. Iterative reachability preserves exact totals, including tombstones.
 func countPublicComments(db *gorm.DB, siteID, key string) (int64, int64, map[uint][]uint, error) {
-	var nodes []struct {
-		ID       uint
-		ParentID *uint
-	}
-	if err := db.Model(&model.Comment{}).Select("id, parent_id").
+	rows, err := db.Model(&model.Comment{}).Select("id, parent_id").
 		Where("site_id = ? AND mark = ?", siteID, key).
-		Limit(maxPublicCountNodes + 1).Find(&nodes).Error; err != nil {
+		Limit(maxPublicCountNodes + 1).Rows()
+	if err != nil {
 		return 0, 0, nil, err
 	}
-	if len(nodes) > maxPublicCountNodes {
-		return 0, 0, nil, errPublicListBudget
-	}
+	defer rows.Close()
+
 	children := make(map[uint][]uint)
 	var queue []uint
-	for _, node := range nodes {
-		if node.ParentID == nil {
-			queue = append(queue, node.ID)
+	var id uint
+	var parent sql.Null[uint]
+	nodeCount := 0
+	for rows.Next() {
+		nodeCount++
+		if nodeCount > maxPublicCountNodes {
+			return 0, 0, nil, errPublicListBudget
+		}
+		if err := rows.Scan(&id, &parent); err != nil {
+			return 0, 0, nil, err
+		}
+		if parent.Valid {
+			children[parent.V] = append(children[parent.V], id)
 		} else {
-			children[*node.ParentID] = append(children[*node.ParentID], node.ID)
+			queue = append(queue, id)
 		}
 	}
+	if err := rows.Err(); err != nil {
+		return 0, 0, nil, err
+	}
+
 	roots := int64(len(queue))
-	seen := make(map[uint]bool, len(nodes))
+	seen := make(map[uint]bool, nodeCount)
 	for i := 0; i < len(queue); i++ {
 		if err := db.Statement.Context.Err(); err != nil {
 			return 0, 0, nil, err

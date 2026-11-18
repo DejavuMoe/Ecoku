@@ -45,10 +45,15 @@ func benchmarkPublicList(b *testing.B, router http.Handler, query string) {
 		b.Logf("response_sha256=%x", want)
 	}
 	var queries int64
-	if err := model.DB.Callback().Query().After("gorm:query").Register("benchmark:queries", func(*gorm.DB) { queries++ }); err != nil {
+	observe := func(*gorm.DB) { queries++ }
+	if err := model.DB.Callback().Query().After("gorm:query").Register("benchmark:queries", observe); err != nil {
 		b.Fatal(err)
 	}
 	b.Cleanup(func() { model.DB.Callback().Query().Remove("benchmark:queries") })
+	if err := model.DB.Callback().Row().After("gorm:row").Register("benchmark:queries", observe); err != nil {
+		b.Fatal(err)
+	}
+	b.Cleanup(func() { model.DB.Callback().Row().Remove("benchmark:queries") })
 	sqlDB, err := model.DB.DB()
 	if err != nil {
 		b.Fatal(err)

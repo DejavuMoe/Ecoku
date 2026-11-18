@@ -66,14 +66,19 @@ func TestPublicListReusesScopedGraphToSkipLeafQueries(t *testing.T) {
 				t.Fatalf("scoped graph: total=%d roots=%d parents=%d children=%d", total, rootTotal, len(children), len(children[roots[0].ID]))
 			}
 			queries := 0
-			if err := model.DB.Callback().Query().After("gorm:query").Register("test:leaf-queries", func(tx *gorm.DB) {
+			observe := func(tx *gorm.DB) {
 				if tx.Statement.Table == "comments" {
 					queries++
 				}
-			}); err != nil {
+			}
+			if err := model.DB.Callback().Query().After("gorm:query").Register("test:leaf-queries", observe); err != nil {
 				t.Fatal(err)
 			}
 			defer model.DB.Callback().Query().Remove("test:leaf-queries")
+			if err := model.DB.Callback().Row().After("gorm:row").Register("test:leaf-queries", observe); err != nil {
+				t.Fatal(err)
+			}
+			defer model.DB.Callback().Row().Remove("test:leaf-queries")
 			got := listRequest(router, "&pageSize=100")
 			var envelope commentListEnvelope
 			if err := json.Unmarshal(got.Body.Bytes(), &envelope); err != nil {
@@ -165,18 +170,19 @@ func TestPublicCountBudgetAndCursorEscapeHatch(t *testing.T) {
 		t.Fatalf("total=%d roots=%d err=%v", total, roots, err)
 	}
 	seedSiblings(t, nil, 20, "excess")
-	var rows int64
-	if err := model.DB.Callback().Query().After("gorm:query").Register("test:count", func(tx *gorm.DB) {
+	var countQueries []string
+	if err := model.DB.Callback().Row().After("gorm:row").Register("test:count", func(tx *gorm.DB) {
 		if tx.Statement.Table == "comments" {
-			rows += tx.RowsAffected
+			countQueries = append(countQueries, tx.Statement.SQL.String())
 		}
 	}); err != nil {
 		t.Fatal(err)
 	}
-	defer model.DB.Callback().Query().Remove("test:count")
+	defer model.DB.Callback().Row().Remove("test:count")
 	_, _, _, err = countPublicComments(model.DB, "site-a", "/post")
-	if !errors.Is(err, errPublicListBudget) || rows != maxPublicCountNodes+1 {
-		t.Fatalf("err=%v materialized=%d", err, rows)
+	if !errors.Is(err, errPublicListBudget) || len(countQueries) != 1 ||
+		!strings.HasSuffix(countQueries[0], fmt.Sprintf(" LIMIT %d", maxPublicCountNodes+1)) {
+		t.Fatalf("err=%v count queries=%q", err, countQueries)
 	}
 	if got := listRequest(router, "&pageSize=1"); got.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status=%d", got.Code)
@@ -360,8 +366,9 @@ func TestPublicListUsesOneSnapshotAcrossCountAndDescendants(t *testing.T) {
 	defer func() { sqlDB, _ := writer.DB(); _ = sqlDB.Close() }()
 	written := false
 	var writeErr error
-	if err := model.DB.Callback().Query().After("gorm:query").Register("test:snapshot", func(tx *gorm.DB) {
-		if written || tx.Statement.Table != "comments" || len(tx.Statement.Selects) != 1 || tx.Statement.Selects[0] != "id, parent_id" {
+	// Insert after the ID scan, before the first comment page query.
+	if err := model.DB.Callback().Query().Before("gorm:query").Register("test:snapshot", func(tx *gorm.DB) {
+		if written || tx.Statement.Table != "comments" || len(tx.Statement.Selects) != 0 {
 			return
 		}
 		written = true

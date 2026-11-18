@@ -40,10 +40,15 @@ func countReaderQueries(t *testing.T) *int {
 	if reader == model.DB {
 		t.Fatal("read pool not attached")
 	}
-	if err := reader.Callback().Query().After("gorm:query").Register("test:reader-queries", func(*gorm.DB) { queries++ }); err != nil {
+	observe := func(*gorm.DB) { queries++ }
+	if err := reader.Callback().Query().After("gorm:query").Register("test:reader-queries", observe); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { reader.Callback().Query().Remove("test:reader-queries") })
+	if err := reader.Callback().Row().After("gorm:row").Register("test:reader-queries", observe); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { reader.Callback().Row().Remove("test:reader-queries") })
 	return &queries
 }
 
