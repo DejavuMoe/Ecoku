@@ -1,0 +1,82 @@
+AUD-006 browser acceptance, 2026-11-18 (Asia/Taipei)
+Debian WSL2, linux/amd64, one Chromium worker, zero retries.
+Selected runner and Playwright lines are trimmed of surrounding whitespace.
+Exit codes come from the callers. Each digest covers the complete original log.
+Service startup output and machine-specific paths have been omitted.
+
+probe=4419880b512dc65555b6abc88da3094665076df8
+probe_blob=8cc9cbbb6854904e398e0bb1677544a45ab660d6
+case=AUD-006 encoded short URL search survives editing and stats refresh zh/dark/1280
+replay_script_sha256=869F6D2FCD927529FF5DD2585CE7556D9A692728CEC2F81F0AC8AB4AFF48A46D
+
+1. Returned candidate | producer | exit 1
+candidate=0205f32afb6dc340bb35ef69b19e6a7d061756ce
+raw_log_sha256=BDE33606B642384196ABCADA7BBA232B772086C51A52E39F4BEE0CCCAA80F6EF
+go version go1.27.3 linux/amd64
+v24.21.0
+12.5.1
+Version 1.63.0
+✘  1 [chromium] › e2e/acceptance-replay.spec.ts:278:3 › AUD-006 encoded short URL search survives editing and stats refresh zh/dark/1280 (6.1s)
+Error: expect(locator).toBeVisible() failed
+Locator: locator('[data-link="1"]')
+Expected: visible
+Timeout: 5000ms
+Error: element(s) not found
+> 289 |     await expect(row).toBeVisible();
+1 failed
+
+1. Returned candidate | independent reviewer | exit 1
+candidate=0205f32afb6dc340bb35ef69b19e6a7d061756ce
+raw_log_sha256=B87256533BE4F7B1A1FF3F815E83F28EB6D1205F3E7F0AB92951600C3B5EAC14
+go version go1.27.3 linux/amd64
+v24.21.0
+12.5.1
+Version 1.63.0
+✘  1 [chromium] › e2e/acceptance-replay.spec.ts:278:3 › AUD-006 encoded short URL search survives editing and stats refresh zh/dark/1280 (6.2s)
+Error: expect(locator).toBeVisible() failed
+Locator: locator('[data-link="1"]')
+Expected: visible
+Timeout: 5000ms
+Error: element(s) not found
+> 289 |     await expect(row).toBeVisible();
+1 failed
+
+2. Upstream repair | producer | exit 0
+candidate=4419880b512dc65555b6abc88da3094665076df8
+raw_log_sha256=9B57B9D0854C4B69293FAF1218DD6584E05D12A011D21CE030CFFE35D6D4204E
+go version go1.27.3 linux/amd64
+v24.21.0
+12.5.1
+Version 1.63.0
+✓  1 [chromium] › e2e/acceptance-replay.spec.ts:278:3 › AUD-006 encoded short URL search survives editing and stats refresh zh/dark/1280 (1.4s)
+1 passed (2.4s)
+
+2. Upstream repair | independent reviewer | exit 0
+candidate=4419880b512dc65555b6abc88da3094665076df8
+raw_log_sha256=CB0CA07EAFBA9C58BBA2BA40750AA2F3BE7369C79E6EB637E8E75C75165F4DE0
+go version go1.27.3 linux/amd64
+v24.21.0
+12.5.1
+Version 1.63.0
+✓  1 [chromium] › e2e/acceptance-replay.spec.ts:278:3 › AUD-006 encoded short URL search survives editing and stats refresh zh/dark/1280 (1.3s)
+1 passed (2.3s)
+
+3. Tagged v2.0.0 | producer | exit 0
+candidate=ebbbd385729a459df1a8a3ad737b0275b478436d
+raw_log_sha256=6BCD4CCBFA659921A8EC5A9E1A1534C7086CA137D5A7663B7892C6F234A95E0A
+go version go1.27.4 linux/amd64
+v26.13.1
+12.21.0
+Version 1.65.1
+✓  1 [chromium] › e2e/acceptance-replay.spec.ts:278:3 › AUD-006 encoded short URL search survives editing and stats refresh zh/dark/1280 (1.3s)
+1 passed (2.3s)
+
+3. Tagged v2.0.0 | independent reviewer | exit 0
+candidate=ebbbd385729a459df1a8a3ad737b0275b478436d
+raw_log_sha256=D85704895C94BAF74C02508C239F64C45F9F2311B25EB41F1434741BBFA490F0
+go version go1.27.4 linux/amd64
+v26.13.1
+12.21.0
+Version 1.65.1
+✓  1 [chromium] › e2e/acceptance-replay.spec.ts:278:3 › AUD-006 encoded short URL search survives editing and stats refresh zh/dark/1280 (1.3s)
+1 passed (2.2s)
