@@ -78,6 +78,8 @@ sudo docker compose up -d --wait --wait-timeout 120 ecoku
 
 文件必须是单个 JSON 数组，整个文件不超过 64 MiB（含末尾空白）；数组后的其他内容会导致失败。HTML 会转换成纯文本，具体保留规则见 [从 Twikoo 迁移](../self-hosting/twikoo)。
 
+包含 `isSpam: true` 记录时，预检和正式导入都会停止并报告数量，不保存导入评论。
+
 先加 `--dry-run` 预检：
 
 ```bash

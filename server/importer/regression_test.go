@@ -83,6 +83,11 @@ func TestEC07ParentFallbackAndPageBoundary(t *testing.T) {
 			map[string]string{"a": "", "b": "a", "c": "b"}, 0,
 		},
 		{
+			"rid-without-pid",
+			`[{"_id":"a","url":"/"},{"_id":"b","rid":"a","url":"/"},{"_id":"c","pid":"b","rid":"a","url":"/"}]`,
+			map[string]string{"a": "", "b": "a", "c": "b"}, 0,
+		},
+		{
 			"direct-orphan-before-rid",
 			`[{"_id":"a","pid":"missing","url":"/"},{"_id":"b","url":"/"},{"_id":"c","pid":"a","rid":"b","url":"/"}]`,
 			map[string]string{"a": "", "b": "", "c": "a"}, 1,

@@ -104,6 +104,43 @@ func TestImportTwikooRequiresEmptySiteAndDryRunRollsBack(t *testing.T) {
 	}
 }
 
+func TestImportTwikooRejectsSpamBeforeWritingComments(t *testing.T) {
+	twikooTestDatabase(t)
+	const clean = `[{"_id":"visible","url":"/","isSpam":false},{"_id":"legacy","url":"/"}`
+	mixed := clean + `,{"_id":"hidden-1","url":"/","isSpam":true},{"_id":"hidden-2","url":"/","isSpam":true}]`
+	for _, dryRun := range []bool{true, false} {
+		result, err := ImportTwikoo(context.Background(), model.DB, strings.NewReader(mixed), TwikooImportOptions{SiteID: "blog", DryRun: dryRun})
+		if err == nil || !strings.Contains(err.Error(), "2 comments with isSpam=true") || result.Imported != 0 {
+			t.Errorf("dryRun=%t result=%+v err=%v; want rejection reporting both hidden comments", dryRun, result, err)
+		}
+		var count int64
+		if err := model.DB.Model(&model.Comment{}).Count(&count).Error; err != nil || count != 0 {
+			t.Fatalf("dryRun=%t count=%d err=%v; want empty site", dryRun, count, err)
+		}
+	}
+	result, err := ImportTwikoo(context.Background(), model.DB, strings.NewReader(clean+"]"), TwikooImportOptions{SiteID: "blog"})
+	if err != nil || result.Imported != 2 {
+		t.Fatalf("filtered import: result=%+v err=%v", result, err)
+	}
+}
+
+func TestImportTwikooNormalizesHomepageURLs(t *testing.T) {
+	twikooTestDatabase(t)
+	const fixture = `[{"url":"https://blog.example.test/"},{"url":"https://blog.example.test"},{"url":"http://blog.example.test?src=x#section"}]`
+	const emptyURL = `[{"url":""}]`
+	if _, err := ImportTwikoo(context.Background(), model.DB, strings.NewReader(emptyURL), TwikooImportOptions{SiteID: "blog"}); err == nil || !strings.Contains(err.Error(), "page key is empty") {
+		t.Fatalf("empty url: err=%v", err)
+	}
+	result, err := ImportTwikoo(context.Background(), model.DB, strings.NewReader(fixture), TwikooImportOptions{SiteID: "blog"})
+	if err != nil || result.DistinctPages != 1 || result.Imported != 3 {
+		t.Fatalf("homepage import: result=%+v err=%v", result, err)
+	}
+	var count int64
+	if err := model.DB.Model(&model.Comment{}).Where("mark = ?", "/").Count(&count).Error; err != nil || count != 3 {
+		t.Fatalf("homepage comments: count=%d err=%v", count, err)
+	}
+}
+
 func TestImportTwikooKeepsOrphanAsRoot(t *testing.T) {
 	twikooTestDatabase(t)
 	fixture := `[{"_id":"orphan","pid":"missing","rid":"missing","url":"/lost/","nick":"Alice","comment":"<p>Still here</p>","created":1710000000000}]`

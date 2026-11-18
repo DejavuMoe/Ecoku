@@ -324,6 +324,8 @@ Origin: https://blog.example.com
 | `DELETE /api/admin/sites/:siteId/comments/:commentId` | 墓碑删除。已删除的评论再次删除时返回成功，`unchanged` 为 `true`。 |
 | `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent` | 彻底删除。只能用于没有回复的墓碑，否则返回 `409`。 |
 
+每次列表响应的状态计数、分页数据和 `has_children` 来自同一个 SQLite 快照。
+
 两个删除接口都受 `rate_limit.comment_delete` 限流。
 
 墓碑删除响应中的 `data.comment.has_children` 表示是否仍有直接回复，包括已删除的回复；首次删除和重复删除都返回当前状态。
