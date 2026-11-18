@@ -93,6 +93,9 @@ jobs:
         env:
           TARGET: ${{ matrix.target }}
         run: pnpm "verify:$TARGET"
+      - name: Verify documentation publisher
+        if: matrix.target == 'docs'
+        run: sh scripts/test-publish-docs.sh
       - name: Build and verify documentation
         if: matrix.target == 'docs'
         run: |

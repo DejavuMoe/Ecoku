@@ -18,6 +18,7 @@ function checkSecurity(source) {
   assert.match(source, /^      - name: Verify API smoke script\n        if: matrix.target == 'client'\n        run: pwsh -NoProfile -File scripts\/real-api-smoke.test.ps1\n(?=      - )/m)
   assert.match(source, /^      - name: Verify frontend\n        if: matrix.target != 'docs'\n        env:\n          TARGET: \$\{\{ matrix.target \}\}\n        run: pnpm "verify:\$TARGET"\n(?=      - )/m)
   assert.match(source, /^      - name: Build and verify documentation\n        if: matrix.target == 'docs'\n        run: \|\n          pnpm docs:build\n          sh scripts\/verify-docs-output.sh docs\/\.vitepress\/dist\n(?=      - )/m)
+  assert.match(source, /^      - name: Verify documentation publisher\n        if: matrix.target == 'docs'\n        run: sh scripts\/test-publish-docs\.sh\n      - name: Build and verify documentation$/m)
   assert.match(source, /^      - run: go test -count=1 \.\/\.\.\.\n      - run: go vet \.\/\.\.\.\n      - run: go build -trimpath -ldflags="-s -w" -o \/tmp\/ecoku-server \.\n/m)
   assert.match(source, /^      - name: Race-check shared runtime state\n        env:\n          CGO_ENABLED: '1'\n        run: go test -race -count=1 \.\/adminidentity \.\/instancekeys \.\/config \.\/model \.\/handle\/comment\n/m)
   assert.doesNotMatch(source, /^\s+continue-on-error:/m, 'CI failures must block release')
@@ -69,6 +70,7 @@ for (const [before, after] of [
   ['-File scripts/real-api-smoke.test.ps1', '-Command exit 0'],
   ["if: matrix.target != 'docs'", 'if: false'],
   ['pnpm docs:build', 'pnpm docs:build || true'],
+  ['run: sh scripts/test-publish-docs.sh', 'run: sh scripts/test-publish-docs.sh || true'],
   ['go test -count=1 ./...', 'go test -count=1 ./... || true'],
   ['go test -race -count=1 ./adminidentity ./instancekeys ./config', 'go test -count=1 ./adminidentity ./instancekeys ./config'],
   ['  server:\n', '  server:\n    continue-on-error: true\n'],
@@ -203,6 +205,9 @@ assert.ok(recovery.indexOf('appendFileSync(process.env.GITHUB_OUTPUT') < recover
 assert.ok(recovery.indexOf('uses: actions/checkout@') < recovery.indexOf('node scripts/check-release.mjs'))
 assert.doesNotMatch(recovery, /ref: \$\{\{ inputs.tag \}\}/)
 const docsDeploy = read('.woodpecker/docs-deploy.yml')
+const docsBuild = docsDeploy.split(/^  - name: publish-docs$/m)[0]
+assert.match(docsBuild, /^      - sh scripts\/test-publish-docs\.sh$/m)
+assert.doesNotMatch(docsBuild, /^    volumes:/m)
 assert.match(docsDeploy, /pnpm --filter \.\/docs\.\.\. --fail-if-no-match install --frozen-lockfile --prefer-offline/)
 assert.match(docsDeploy, /pnpm_config_verify_deps_before_run: "false"/)
 console.log('CI checks passed: filtered installs, dependency/image security gates, release reuse, packaging without publishing, pinned actions, matching Node/pnpm and release provenance.')
