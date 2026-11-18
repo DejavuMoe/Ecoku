@@ -9,6 +9,7 @@
     "docs:dev": "pnpm -C docs dev",
     "docs:build": "pnpm -C docs build",
     "docs:preview": "pnpm -C docs preview",
+    "test:docs:browser": "node docs/.vitepress/theme-browser.test.mjs",
     "verify:client": "pnpm -C packages/client run test && pnpm -C packages/client run type-check && pnpm -C packages/client run build && pnpm -C packages/client run test:package && pnpm -C packages/client run validate",
     "verify:admin": "pnpm -C packages/admin run test && pnpm -C packages/admin run build"
   }

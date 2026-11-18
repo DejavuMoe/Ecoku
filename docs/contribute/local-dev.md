@@ -36,6 +36,14 @@ pnpm docs:dev
 
 完整验证由 GitHub Actions 执行；本地只运行与当前改动直接相关且 CI 未覆盖的检查。
 
+修改文档评论区主题或导航时，可在仓库根目录执行浏览器检查。先安装文档与 SDK 的依赖以及 Chromium，再运行测试。测试会启动并关闭自己的本地文档服务，评论 API 使用测试数据。
+
+```bash
+pnpm --filter './docs...' --filter './packages/client...' install --frozen-lockfile
+pnpm -C packages/client exec playwright install --only-shell chromium
+pnpm test:docs:browser
+```
+
 管理端开发页的来源（示例配置中的 `http://localhost:5174`）必须写在独立的 `admin.allowed_origins` 中，开发页通过 Vite 的同源 `/api` 代理访问服务端。仅 `http://localhost`、回环 IP 的明确允许来源使用非 Secure Cookie，生产必须 HTTPS。
 
 ## 镜像迁移验证 {#image-migration}
