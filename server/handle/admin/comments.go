@@ -73,27 +73,34 @@ func ListComments(c *gin.Context) {
 		return
 	}
 
-	ctx := c.Request.Context()
-	counts, err := commentManagementCounts(ctx, siteID)
-	if err != nil {
-		utils.SendError(c, http.StatusInternalServerError, "统计管理评论失败")
-		return
-	}
-	total := counts[status]
-	query := model.DB.WithContext(ctx).Model(&model.Comment{}).Where("site_id = ?", siteID)
-	if status == "deleted" {
-		query = query.Where("deleted_at IS NOT NULL")
-	} else {
-		query = query.Where("deleted_at IS NULL")
-	}
+	var counts map[string]int64
 	var comments []model.Comment
-	if err := query.Order(orderClause).Limit(pageSize).Offset((page - 1) * pageSize).Find(&comments).Error; err != nil {
-		utils.SendError(c, http.StatusInternalServerError, "查询管理评论失败")
-		return
-	}
-	childCounts, err := reviewChildCounts(ctx, comments)
+	var childCounts map[uint]int64
+	failureMessage := "查询管理评论失败"
+	err = model.ReadDB().WithContext(c.Request.Context()).Transaction(func(tx *gorm.DB) error {
+		var err error
+		counts, err = commentManagementCounts(tx, siteID)
+		if err != nil {
+			failureMessage = "统计管理评论失败"
+			return err
+		}
+		query := tx.Model(&model.Comment{}).Where("site_id = ?", siteID)
+		if status == "deleted" {
+			query = query.Where("deleted_at IS NOT NULL")
+		} else {
+			query = query.Where("deleted_at IS NULL")
+		}
+		if err := query.Order(orderClause).Limit(pageSize).Offset((page - 1) * pageSize).Find(&comments).Error; err != nil {
+			return err
+		}
+		childCounts, err = reviewChildCounts(tx, comments)
+		if err != nil {
+			failureMessage = "查询评论后代失败"
+		}
+		return err
+	})
 	if err != nil {
-		utils.SendError(c, http.StatusInternalServerError, "查询评论后代失败")
+		utils.SendError(c, http.StatusInternalServerError, failureMessage)
 		return
 	}
 	dtos := make([]CommentReviewDTO, 0, len(comments))
@@ -101,6 +108,7 @@ func ListComments(c *gin.Context) {
 		dtos = append(dtos, commentReviewDTO(comment, childCounts[comment.ID] > 0))
 	}
 	pageCount := int64(0)
+	total := counts[status]
 	if total > 0 {
 		pageCount = (total + int64(pageSize) - 1) / int64(pageSize)
 	}
@@ -110,14 +118,14 @@ func ListComments(c *gin.Context) {
 	})
 }
 
-func commentManagementCounts(ctx context.Context, siteID string) (map[string]int64, error) {
+func commentManagementCounts(db *gorm.DB, siteID string) (map[string]int64, error) {
 	result := map[string]int64{"published": 0, "deleted": 0}
 	type row struct {
 		Deleted bool  `gorm:"column:deleted"`
 		Total   int64 `gorm:"column:total"`
 	}
 	var rows []row
-	err := model.DB.WithContext(ctx).Raw(`SELECT deleted_at IS NOT NULL AS deleted, COUNT(*) AS total
+	err := db.Raw(`SELECT deleted_at IS NOT NULL AS deleted, COUNT(*) AS total
 FROM comments WHERE site_id = ? GROUP BY deleted_at IS NOT NULL`, siteID).Scan(&rows).Error
 	if err != nil {
 		return nil, err
@@ -212,7 +220,7 @@ func directChildCount(ctx context.Context, commentID uint) (int64, error) {
 	return count, err
 }
 
-func reviewChildCounts(ctx context.Context, comments []model.Comment) (map[uint]int64, error) {
+func reviewChildCounts(db *gorm.DB, comments []model.Comment) (map[uint]int64, error) {
 	result := make(map[uint]int64, len(comments))
 	if len(comments) == 0 {
 		return result, nil
@@ -226,7 +234,7 @@ func reviewChildCounts(ctx context.Context, comments []model.Comment) (map[uint]
 		Total    int64 `gorm:"column:total"`
 	}
 	var rows []row
-	if err := model.DB.WithContext(ctx).Model(&model.Comment{}).Select("parent_id, COUNT(*) AS total").Where("parent_id IN ?", ids).Group("parent_id").Scan(&rows).Error; err != nil {
+	if err := db.Model(&model.Comment{}).Select("parent_id, COUNT(*) AS total").Where("parent_id IN ?", ids).Group("parent_id").Scan(&rows).Error; err != nil {
 		return nil, err
 	}
 	for _, item := range rows {
