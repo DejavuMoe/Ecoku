@@ -39,6 +39,7 @@ func main() {
 	seed := flag.Bool("seed", false, "create migration fixtures")
 	count := flag.Int("comments", 0, "expected persisted comments")
 	add := flag.Bool("add", false, "write another comment")
+	firstLogin := flag.Bool("first-login", false, "read the password reset command output from stdin")
 	flag.Parse()
 	check(os.Getuid() == 10001 && os.Getgid() == 10001, "runtime uid/gid changed")
 	addresses, err := net.LookupIP("localhost")
@@ -110,7 +111,24 @@ func main() {
 		}
 		request("GET", path, "", nil, 200)
 	}
-	request("POST", "/api/admin/login", base, map[string]string{"username": "imagecheck", "password": password}, 200)
+	username, loginPassword := "imagecheck", password
+	if *firstLogin {
+		output, err := io.ReadAll(io.LimitReader(os.Stdin, 4096))
+		must(err)
+		temporaryPassword, found := strings.CutPrefix(strings.TrimSpace(string(output)), "管理员临时密码：")
+		check(found && temporaryPassword != "" && !strings.ContainsAny(temporaryPassword, "\r\n"), "missing temporary password in CLI output")
+		username, loginPassword = "admin", temporaryPassword
+	}
+	login := request("POST", "/api/admin/login", base, map[string]string{"username": username, "password": loginPassword}, 200)
+	if *firstLogin {
+		var session struct {
+			Data struct {
+				RequiresPasswordChange bool `json:"requires_password_change"`
+			} `json:"data"`
+		}
+		check(json.Unmarshal(login, &session) == nil && session.Data.RequiresPasswordChange, "fresh login must require a password change")
+		fmt.Println("Fresh installation login passed: HTTP 200, password change required.")
+	}
 	if *seed {
 		request("PUT", "/api/admin/notifications/telegram", base, map[string]any{"enabled": false, "token": "fixture-token-never-sent", "targets": []string{"123456"}}, 200)
 	}
