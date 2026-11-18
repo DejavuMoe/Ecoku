@@ -49,6 +49,7 @@ type twikooComment struct {
 	Content  string `json:"comment"`
 	Created  int64  `json:"created"`
 	Updated  int64  `json:"updated"`
+	IsSpam   bool   `json:"isSpam"`
 }
 
 type preparedTwikooComment struct {
@@ -84,6 +85,15 @@ func ImportTwikoo(ctx context.Context, database *gorm.DB, reader io.Reader, opti
 	}
 	if len(source) == 0 {
 		return result, fmt.Errorf("Twikoo export contains no comments")
+	}
+	spamCount := 0
+	for _, row := range source {
+		if row.IsSpam {
+			spamCount++
+		}
+	}
+	if spamCount > 0 {
+		return result, fmt.Errorf("Twikoo export contains %d comments with isSpam=true", spamCount)
 	}
 
 	prepared, result, err := prepareTwikooComments(siteID, source)
@@ -260,6 +270,10 @@ func prepareTwikooComments(siteID string, source []twikooComment) ([]preparedTwi
 			updatedAt = createdAt
 		}
 		parentKey := strings.TrimSpace(row.ParentID)
+		rootKey := strings.TrimSpace(row.RootID)
+		if parentKey == "" {
+			parentKey = rootKey
+		}
 		if parentKey == "" {
 			result.Roots++
 		} else {
@@ -268,7 +282,7 @@ func prepareTwikooComments(siteID string, source []twikooComment) ([]preparedTwi
 		prepared = append(prepared, preparedTwikooComment{
 			sourceID:  sourceID,
 			parentKey: parentKey,
-			rootKey:   strings.TrimSpace(row.RootID),
+			rootKey:   rootKey,
 			comment: model.Comment{
 				SiteID: siteID, Mark: mark, PageTitle: "", Username: nickname,
 				Email: email, URL: website, Content: content,
@@ -285,6 +299,9 @@ func normalizePageKey(raw string) (string, error) {
 	if parsed, err := url.Parse(value); err == nil {
 		if parsed.EscapedPath() != "" || parsed.IsAbs() {
 			value = parsed.EscapedPath()
+			if value == "" && parsed.Hostname() != "" && (parsed.Scheme == "http" || parsed.Scheme == "https") {
+				return "/", nil
+			}
 		} else if idx := strings.IndexAny(value, "?#"); idx >= 0 {
 			value = value[:idx]
 		}

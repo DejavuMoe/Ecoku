@@ -78,6 +78,8 @@ Imports a Twikoo JSON export into a site that has no comments.
 
 The file must be a single JSON array, with the entire file no larger than 64 MiB, including trailing whitespace. Any other content after the array causes failure. HTML is converted to plain text; see [migrating from Twikoo](../self-hosting/twikoo) for conversion rules.
 
+If the file contains records marked `isSpam: true`, both the dry run and the import stop before saving comments and report the count.
+
 First run a dry run with `--dry-run`:
 
 ```bash

@@ -6,8 +6,8 @@ The `import-twikoo` command imports comments exported from Twikoo into one Ecoku
 
 | Twikoo field | After import |
 | --- | --- |
-| `_id` / `id`, `pid`, `rid` | Reply relationships are rebuilt, preferring the direct parent comment. If the direct parent is not in the export file, the comment is attached under the root comment that `rid` points to. If neither can be found, the parent is on a different page, or forms a cycle, the comment becomes a root comment and is counted as a "missing parent". Valid descendants on the same page keep their reply relationships. |
-| `url` | The path part becomes the page key, with the query string and `#` fragment removed. |
+| `_id` / `id`, `pid`, `rid` | Reply relationships are rebuilt using the direct parent identified by `pid`. If `pid` is empty or the record is absent from the export, Ecoku tries the root comment identified by `rid`. If the referenced parent cannot be found, is on a different page, or forms a cycle, the comment becomes a root comment and is counted as a "missing parent". Valid descendants on the same page keep their reply relationships. |
+| `url` | The path part becomes the page key, with the query string and `#` fragment removed. An HTTP(S) homepage URL with no path, such as `https://blog.example`, uses `/`. |
 | `comment` | HTML is converted to plain text: `<br>` and block-level elements become line breaks; tags are removed while preserving indentation, tabs, and internal blank lines in the text inside `<pre>`; images become their alt text or `[图片]` ("image"); and `<script>` and `<style>` are dropped. Markdown is not parsed. |
 | `nick` | Nickname. If empty, it is recorded as "访客" ("Visitor"). |
 | `mail` | Private email address, used for later reply notifications. Addresses longer than 254 characters are not imported. |
@@ -52,6 +52,8 @@ Twikoo 导入预检通过：评论=128 根评论=90 回复=38 页面=24 邮箱=1
 ```
 
 Check that these numbers match what you have in Twikoo. If "missing parents" (缺失父记录) is not 0, some replies will become root comments; they are not skipped.
+
+If the export contains records marked `isSpam: true`, both the dry run and the import stop before saving any comments and report the count, for example `Twikoo export contains 2 comments with isSpam=true`. Keep the original file, remove those records from a copy, and check whether any related replies should also be excluded. Run the dry run again with the filtered copy.
 
 If the JSON is malformed, the file exceeds 64 MiB, the export is an empty array, there are duplicate IDs, a body exceeds 10000 characters, a nickname exceeds 80 characters, a page key is empty or exceeds 512 characters, or the target site does not exist or already has comments, the command exits with an error and saves no imported comments.
 
