@@ -119,25 +119,16 @@ func ListComments(c *gin.Context) {
 }
 
 func commentManagementCounts(db *gorm.DB, siteID string) (map[string]int64, error) {
-	result := map[string]int64{"published": 0, "deleted": 0}
-	type row struct {
-		Deleted bool  `gorm:"column:deleted"`
-		Total   int64 `gorm:"column:total"`
+	var totals struct {
+		Published int64
+		Deleted   int64
 	}
-	var rows []row
-	err := db.Raw(`SELECT deleted_at IS NOT NULL AS deleted, COUNT(*) AS total
-FROM comments WHERE site_id = ? GROUP BY deleted_at IS NOT NULL`, siteID).Scan(&rows).Error
+	err := db.Raw(`SELECT COUNT(*) - COUNT(deleted_at) AS published, COUNT(deleted_at) AS deleted
+FROM comments WHERE site_id = ?`, siteID).Scan(&totals).Error
 	if err != nil {
 		return nil, err
 	}
-	for _, item := range rows {
-		if item.Deleted {
-			result["deleted"] += item.Total
-		} else {
-			result["published"] += item.Total
-		}
-	}
-	return result, nil
+	return map[string]int64{"published": totals.Published, "deleted": totals.Deleted}, nil
 }
 
 func GetComment(c *gin.Context) {

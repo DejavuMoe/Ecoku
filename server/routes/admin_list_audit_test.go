@@ -98,18 +98,18 @@ func TestAdminListAuditCountsPaginationAndCancellation(t *testing.T) {
 	t.Run("counts-and-pages", func(t *testing.T) {
 		type contextKey struct{}
 		ctx := context.WithValue(context.Background(), contextKey{}, t.Name())
-		queries, grouped, standalone := 0, 0, 0
+		queries, stateCounts, extraCounts := 0, 0, 0
 		observe := func(tx *gorm.DB) {
 			sql := tx.Statement.SQL.String()
 			if tx.Statement.Table != "comments" && !strings.Contains(sql, "FROM comments WHERE site_id") {
 				return
 			}
 			queries++
-			if strings.Contains(sql, "GROUP BY deleted_at IS NOT NULL") {
-				grouped++
-			}
-			if strings.Contains(strings.ToLower(sql), "count(*)") && !strings.Contains(strings.ToUpper(sql), "GROUP BY") {
-				standalone++
+			hasGroup := strings.Contains(strings.ToUpper(sql), "GROUP BY")
+			if !hasGroup && strings.Contains(sql, "COUNT(*) - COUNT(deleted_at) AS published, COUNT(deleted_at) AS deleted") {
+				stateCounts++
+			} else if !hasGroup && strings.Contains(strings.ToLower(sql), "count(*)") {
+				extraCounts++
 			}
 			if tx.Statement.Context.Value(contextKey{}) != t.Name() {
 				t.Error("comment query discarded the request context")
@@ -136,7 +136,7 @@ func TestAdminListAuditCountsPaginationAndCancellation(t *testing.T) {
 			{"deleted", 2, 1, 2, []uint{5}},
 			{"deleted", 3, 1, 2, nil},
 		} {
-			queries, grouped, standalone = 0, 0, 0
+			queries, stateCounts, extraCounts = 0, 0, 0
 			req := request(fmt.Sprintf("/api/admin/sites/site-a/comments?status=%s&page=%d&pageSize=%d&sort=oldest", tc.status, tc.page, tc.size)).WithContext(ctx)
 			recorder := httptest.NewRecorder()
 			env.router.ServeHTTP(recorder, req)
@@ -162,12 +162,12 @@ func TestAdminListAuditCountsPaginationAndCancellation(t *testing.T) {
 					t.Fatalf("unexpected review row: %+v", item)
 				}
 			}
-			wantQueries := 3 // One grouped count, one page, one child-count group.
+			wantQueries := 3 // One count for both states, one page, one child-count group.
 			if len(tc.ids) == 0 {
 				wantQueries = 2
 			}
-			if queries != wantQueries || grouped != 1 || standalone != 0 {
-				t.Fatalf("queries=%d want=%d grouped=%d standalone=%d", queries, wantQueries, grouped, standalone)
+			if queries != wantQueries || stateCounts != 1 || extraCounts != 0 {
+				t.Fatalf("queries=%d want=%d stateCounts=%d extraCounts=%d", queries, wantQueries, stateCounts, extraCounts)
 			}
 		}
 	})
