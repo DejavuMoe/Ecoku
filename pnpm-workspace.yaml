@@ -8,7 +8,7 @@ allowBuilds:
 # VitePress 1.6.4 still pins Vite 5; use the patched Vite 6 release until
 # VitePress updates its dependency (GHSA-fx2h-pf6j-xcff).
 overrides:
-  'vitepress@1.6.4>vite': 6.4.5
+  'vitepress@1.6.4>vite': 6.4.6
 
 # Advisories without a patched release. Each entry describes the affected paths
 # and why it is not reachable; remove it as soon as a fixed version exists.

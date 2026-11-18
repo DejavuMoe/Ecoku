@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  vitepress@1.6.4>vite: 6.4.5
+  vitepress@1.6.4>vite: 6.4.6
 
 importers:
 
@@ -1430,8 +1430,8 @@ packages:
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
-  vite@6.4.5:
-    resolution: {integrity: sha512-4enwjFfi4IwtEh0w+jPzpLVOFQiPHmmzPxcHXQOyEur47o6u0jE573DmGpjA+7irXoMLYRZD5ZaFUEneS3abPg==}
+  vite@6.4.6:
+    resolution: {integrity: sha512-RtsraAwEG68idOA6iUOoIpOlcSKROnf815aIq9qHTSrDNpLoBrBa12suyfcEd8qn0xwOVQI1Yhm1GbmTjF600A==}
     engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
     hasBin: true
     peerDependencies:
@@ -2156,9 +2156,9 @@ snapshots:
 
   '@ungap/structured-clone@1.3.3': {}
 
-  '@vitejs/plugin-vue@5.2.4(vite@6.4.5(@types/node@26.6.6)(lightningcss@1.33.0))(vue@3.5.42(typescript@7.0.2))':
+  '@vitejs/plugin-vue@5.2.4(vite@6.4.6(@types/node@26.6.6)(lightningcss@1.33.0))(vue@3.5.42(typescript@7.0.2))':
     dependencies:
-      vite: 6.4.5(@types/node@26.6.6)(lightningcss@1.33.0)
+      vite: 6.4.6(@types/node@26.6.6)(lightningcss@1.33.0)
       vue: 3.5.42(typescript@7.0.2)
 
   '@vitest/mocker@5.1.0(vite@8.3.7(@types/node@26.6.6))':
@@ -2396,6 +2396,10 @@ snapshots:
   fdir@6.5.0(picomatch@4.0.5):
     optionalDependencies:
       picomatch: 4.0.5
+
+  fdir@6.5.0(picomatch@4.0.7):
+    optionalDependencies:
+      picomatch: 4.0.7
 
   focus-trap@7.8.0:
     dependencies:
@@ -2819,12 +2823,12 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vite@6.4.5(@types/node@26.6.6)(lightningcss@1.33.0):
+  vite@6.4.6(@types/node@26.6.6)(lightningcss@1.33.0):
     dependencies:
       esbuild: 0.25.12
-      fdir: 6.5.0(picomatch@4.0.5)
-      picomatch: 4.0.5
-      postcss: 8.5.26
+      fdir: 6.5.0(picomatch@4.0.7)
+      picomatch: 4.0.7
+      postcss: 8.5.32
       rollup: 4.62.4
       tinyglobby: 0.2.17
     optionalDependencies:
@@ -2856,7 +2860,7 @@ snapshots:
       '@shikijs/transformers': 2.5.0
       '@shikijs/types': 2.5.0
       '@types/markdown-it': 14.1.2
-      '@vitejs/plugin-vue': 5.2.4(vite@6.4.5(@types/node@26.6.6)(lightningcss@1.33.0))(vue@3.5.42(typescript@7.0.2))
+      '@vitejs/plugin-vue': 5.2.4(vite@6.4.6(@types/node@26.6.6)(lightningcss@1.33.0))(vue@3.5.42(typescript@7.0.2))
       '@vue/devtools-api': 7.7.10
       '@vue/shared': 3.5.42
       '@vueuse/core': 12.8.2(typescript@7.0.2)
@@ -2865,7 +2869,7 @@ snapshots:
       mark.js: 8.11.1
       minisearch: 7.2.0
       shiki: 2.5.0
-      vite: 6.4.5(@types/node@26.6.6)(lightningcss@1.33.0)
+      vite: 6.4.6(@types/node@26.6.6)(lightningcss@1.33.0)
       vue: 3.5.42(typescript@7.0.2)
     optionalDependencies:
       postcss: 8.5.26
