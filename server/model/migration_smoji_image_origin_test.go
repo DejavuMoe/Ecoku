@@ -3,6 +3,7 @@ package model
 import (
 	"ecoku-server/internal/testsite"
 	"reflect"
+	"strings"
 	"testing"
 
 	"gorm.io/gorm"
@@ -39,6 +40,21 @@ func TestV10ToV11PreservesSmojiAndRollsBackOnFailure(t *testing.T) {
 		t.Fatalf("failed migration left column: %d, %v", column, err)
 	}
 	if err := database.Exec("DROP TRIGGER fail_v11").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := database.Exec(`CREATE TRIGGER fail_v12 BEFORE INSERT ON schema_migrations WHEN NEW.version = 12 BEGIN SELECT RAISE(ABORT,'locale fixture'); END`).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := PrepareDatabaseForStartup(database); err == nil || !strings.Contains(err.Error(), "locale fixture") {
+		t.Fatalf("expected v12 history write to fail: %v", err)
+	}
+	if err := database.Raw("SELECT COUNT(*) FROM pragma_table_info('sites') WHERE name = 'i18n_locale'").Scan(&column).Error; err != nil || column != 0 {
+		t.Fatalf("failed v12 migration left column: %d, %v", column, err)
+	}
+	if version, err := validateKnownSchemaHistory(database); err != nil || version != 11 {
+		t.Fatalf("failed v12 migration left schema version %d: %v", version, err)
+	}
+	if err := database.Exec("DROP TRIGGER fail_v12").Error; err != nil {
 		t.Fatal(err)
 	}
 	for range 2 {
