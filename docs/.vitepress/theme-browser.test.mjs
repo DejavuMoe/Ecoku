@@ -1,15 +1,21 @@
-// Run against `pnpm docs:dev`; requires playwright-core and an installed Chromium.
+// Run with `pnpm test:docs:browser` after installing Chromium for the client tests.
 // Optional: DOCS_URL, CHROMIUM_EXECUTABLE_PATH and SCREENSHOT_DIR.
-const assert = require('node:assert/strict')
-const { mkdirSync } = require('node:fs')
-const { join } = require('node:path')
-const { chromium } = require('playwright-core')
+import assert from 'node:assert/strict'
+import { mkdirSync } from 'node:fs'
+import { createRequire } from 'node:module'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { createServer } from 'vitepress'
 
-async function main() {
+const requireClient = createRequire(new URL('../../packages/client/package.json', import.meta.url))
+const { chromium } = requireClient('@playwright/test')
+
+async function testTheme(docsURL) {
   const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_EXECUTABLE_PATH })
   try {
     for (const system of ['light', 'dark']) {
       const page = await browser.newPage({ colorScheme: system, viewport: { width: 1440, height: 1000 } })
+      page.setDefaultTimeout(10_000)
       const errors = []
       let requests = 0
       let pageKey = ''
@@ -26,7 +32,7 @@ async function main() {
         } } })
       })
       for (const prefix of ['', '/en', '/zh-hant']) {
-        await page.goto(`${process.env.DOCS_URL || 'http://127.0.0.1:7621'}${prefix}/integration/sdk`)
+        await page.goto(`${docsURL}${prefix}/integration/sdk`)
         const root = page.locator('.ecoku-doc-comments .ecoku-comments')
         await root.locator('.ecoku-textarea').fill('Keep this draft')
         await root.locator('.ecoku-reply-action').click()
@@ -87,4 +93,22 @@ async function main() {
     await browser.close()
   }
 }
+
+async function main() {
+  if (process.env.DOCS_URL) {
+    await testTheme(process.env.DOCS_URL)
+    return
+  }
+  const root = fileURLToPath(new URL('../', import.meta.url))
+  const server = await createServer(root, { host: '127.0.0.1', hmr: false })
+  try {
+    await server.listen(0)
+    const address = server.httpServer?.address()
+    assert.ok(address && typeof address === 'object', 'Missing documentation server listener')
+    await testTheme(`http://127.0.0.1:${address.port}`)
+  } finally {
+    await server.close()
+  }
+}
+
 main().catch(error => { console.error(error); process.exitCode = 1 })
