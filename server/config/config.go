@@ -619,7 +619,11 @@ func validateTrustedProxies(proxies []string) error {
 		if err != nil {
 			return fmt.Errorf("site.trusted_proxies[%d] 必须是明确的 IP 或 CIDR", i)
 		}
-		ones, _ := network.Mask.Size()
+		ones, bits := network.Mask.Size()
+		// IPNet.Contains uses only the IPv4 portion of a mapped network's mask.
+		if bits == net.IPv6len*8 && network.IP.To4() != nil {
+			ones -= (net.IPv6len - net.IPv4len) * 8
+		}
 		if ones == 0 {
 			return fmt.Errorf("site.trusted_proxies[%d] 禁止任意信任（含 0.0.0.0/0 与 ::/0）", i)
 		}

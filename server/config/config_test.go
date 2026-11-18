@@ -1,6 +1,7 @@
 package config
 
 import (
+	"net/netip"
 	"os"
 	"path/filepath"
 	"strings"
@@ -125,13 +126,19 @@ func TestTrustedProxyMustBeExactIPOrCIDR(t *testing.T) {
 }
 
 func TestTrustedProxyRejectsArbitraryNetworks(t *testing.T) {
-	for _, network := range []string{"0.0.0.0/0", "::/0"} {
+	mapped := func(prefix netip.Prefix) string {
+		address := netip.AddrFrom16(prefix.Addr().As16())
+		return netip.PrefixFrom(address, address.BitLen()-prefix.Addr().BitLen()+prefix.Bits()).String()
+	}
+	for _, network := range []string{"0.0.0.0/0", "::/0", mapped(netip.MustParsePrefix("0.0.0.0/0"))} {
 		if err := ApplyConfig(&Config{Site: SiteConfig{TrustedProxies: []string{network}}}); err == nil {
-			t.Fatalf("arbitrary trusted proxy %q was accepted", network)
+			t.Fatal("unrestricted trusted proxy was accepted")
 		}
 	}
-	if err := ApplyConfig(&Config{Site: SiteConfig{TrustedProxies: []string{"172.17.0.1/32"}}}); err != nil {
-		t.Fatalf("docker gateway proxy rejected: %v", err)
+	for _, proxy := range []string{"192.0.2.1", "172.17.0.1/32", "2001:db8::/64", mapped(netip.MustParsePrefix("192.0.2.0/24"))} {
+		if err := ApplyConfig(&Config{Site: SiteConfig{TrustedProxies: []string{proxy}}}); err != nil {
+			t.Fatalf("limited trusted proxy %q rejected: %v", proxy, err)
+		}
 	}
 }
 
