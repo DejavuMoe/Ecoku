@@ -14,9 +14,6 @@ overrides:
 # and why it is not reachable; remove it as soon as a fixed version exists.
 auditConfig:
   ignoreGhsas:
-    # deepmerge <=4.3.1 has no fix. Only @sveltejs/vite-plugin-svelte 7.3.1 uses it,
-    # at build time, to merge the admin's own Svelte config; it is not bundled.
-    - GHSA-gcqx-w48m-w2h4
     # picomatch <=4.0.7 has no fix. Vite, VitePress, Vitest and svelte-check
     # bring it in for builds and tests. The production graph has no picomatch
     # path, and output inspection found no matcher in the SDK, admin or docs.

@@ -90,14 +90,19 @@ function checkAuditExceptions(source) {
     assert.match(lines[index - 1] ?? '', /^    #/, `${line.trim()} needs a justification comment above it`)
   })
 }
-const workspace = read('pnpm-workspace.yaml')
-checkAuditExceptions(workspace)
+checkAuditExceptions(read('pnpm-workspace.yaml'))
+const auditFixture = `auditConfig:
+  ignoreGhsas:
+    # Example of a justified exception.
+    - GHSA-2222-3333-4444
+`
+checkAuditExceptions(auditFixture)
 for (const [before, after] of [
-  ['    - GHSA-gcqx-w48m-w2h4', '    - GHSA-*'],
-  ['    - GHSA-gcqx-w48m-w2h4', '    - GHSA-gcqx-w48m-w2h4\n    - GHSA-aaaa-bbbb-cccc'],
+  ['    - GHSA-2222-3333-4444', '    - GHSA-*'],
+  ['    - GHSA-2222-3333-4444', '    - GHSA-2222-3333-4444\n    - GHSA-5555-6666-7777'],
   ['  ignoreGhsas:\n', '  ignoreUnfixable: true\n  ignoreGhsas:\n'],
   [/(?:^ {4}#.*\n)+(?= {4}- GHSA)/m, ''],
-]) assert.throws(() => checkAuditExceptions(workspace.replace(before, after)))
+]) assert.throws(() => checkAuditExceptions(auditFixture.replace(before, after)))
 checkAuditExceptions('packages:\n  - docs\n')
 
 const release = read('.github/workflows/release.yml')
