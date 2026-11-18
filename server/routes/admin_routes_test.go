@@ -29,8 +29,9 @@ const (
 )
 
 type adminEnvironment struct {
-	router *gin.Engine
-	token  string
+	router       *gin.Engine
+	token        string
+	databasePath string
 }
 
 type adminRoundTripFunc func(*http.Request) (*http.Response, error)
@@ -70,7 +71,8 @@ func setupAdminTest(t *testing.T) adminEnvironment {
 	if err := config.ValidateAdmin(); err != nil {
 		t.Fatal(err)
 	}
-	database, err := model.OpenSQLiteDatabase(t.TempDir() + "/admin.sqlite3")
+	databasePath := filepath.Join(t.TempDir(), "admin.sqlite3")
+	database, err := model.OpenSQLiteDatabase(databasePath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +98,7 @@ func setupAdminTest(t *testing.T) adminEnvironment {
 	if len(cookies) != 1 || cookies[0].Value == "" || strings.Contains(login.Body.String(), `"token"`) {
 		t.Fatalf("invalid session response: %s", login.Body.String())
 	}
-	return adminEnvironment{router: router, token: cookies[0].Value}
+	return adminEnvironment{router: router, token: cookies[0].Value, databasePath: databasePath}
 }
 
 func TestInitialSetupSessionIsRestrictedAndRotated(t *testing.T) {

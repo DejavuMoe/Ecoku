@@ -324,6 +324,8 @@ Creating a site whose ID already exists, or whose `allowed_origins` duplicates `
 | `DELETE /api/admin/sites/:siteId/comments/:commentId` | Tombstone delete. Deleting an already deleted comment again returns success, with `unchanged` set to `true`. |
 | `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent` | Permanent delete. Only works on a tombstone with no replies; otherwise returns `409`. |
 
+The status counts, page of comments, and `has_children` values in each list response come from the same SQLite snapshot.
+
 Both delete endpoints are rate limited by `rate_limit.comment_delete`.
 
 In a tombstone deletion response, `data.comment.has_children` reports whether direct replies still exist, including deleted replies. Both the first and repeated deletion return the current state.

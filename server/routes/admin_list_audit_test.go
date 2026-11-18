@@ -15,6 +15,62 @@ import (
 	"gorm.io/gorm"
 )
 
+func TestAdminListUsesOneSnapshotDuringConcurrentWrite(t *testing.T) {
+	env := setupAdminTest(t)
+	if err := model.AttachReadPool(model.DB, env.databasePath); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := model.DetachReadPool(); err != nil {
+			t.Error(err)
+		}
+	})
+	root := model.Comment{SiteID: "site-a", Mark: "/post", Username: "Guest", Content: "root"}
+	if err := model.DB.Create(&root).Error; err != nil {
+		t.Fatal(err)
+	}
+	inserted := false
+	// Commit a reply immediately before the page query, after the list has counted comments.
+	for _, db := range []*gorm.DB{model.DB, model.ReadDB()} {
+		if err := db.Callback().Query().Before("gorm:query").Register("test:insert-reply", func(tx *gorm.DB) {
+			if inserted || tx.Statement.Table != "comments" {
+				return
+			}
+			reply := model.Comment{SiteID: root.SiteID, Mark: root.Mark, ParentID: &root.ID, Username: "Guest", Content: "reply"}
+			if err := model.DB.WithContext(tx.Statement.Context).Create(&reply).Error; err != nil {
+				_ = tx.AddError(err)
+				return
+			}
+			inserted = true
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, want := range []int{1, 2} {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		req := httptest.NewRequest(http.MethodGet, "/api/admin/sites/site-a/comments?pageSize=1&sort=oldest", nil).WithContext(ctx)
+		req.Header.Set("Authorization", "Bearer "+env.token)
+		recorder := httptest.NewRecorder()
+		env.router.ServeHTTP(recorder, req)
+		var envelope struct {
+			Data struct {
+				Data      []adminhandler.CommentReviewDTO
+				Counts    map[string]int
+				Total     int
+				PageCount int
+			}
+		}
+		if err := json.Unmarshal(recorder.Body.Bytes(), &envelope); err != nil {
+			t.Fatal(err)
+		}
+		data := envelope.Data
+		if recorder.Code != http.StatusOK || !inserted || data.Counts["published"] != want || data.Total != want || data.PageCount != want || len(data.Data) != 1 || data.Data[0].ID != root.ID || data.Data[0].HasChildren != (want == 2) {
+			t.Errorf("status=%d inserted=%t data=%+v; want %d comment(s) and has_children=%t", recorder.Code, inserted, data, want, want == 2)
+		}
+	}
+}
+
 func TestAdminListAuditCountsPaginationAndCancellation(t *testing.T) {
 	env := setupAdminTest(t)
 	now := time.Now().UTC()
@@ -116,8 +172,34 @@ func TestAdminListAuditCountsPaginationAndCancellation(t *testing.T) {
 		}
 	})
 	t.Run("canceled-page-query", func(t *testing.T) {
-		// Reuse the bounded sole-connection fixture after authentication and
-		// aggregation have completed; no auth query can mask the handler check.
-		assertAuditPoolCancellation(t, env.router, request("/api/admin/sites/site-a/comments"), "comments", 1)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		var pageQuery *gorm.DB
+		if err := model.DB.Callback().Query().Before("gorm:query").Register("test:cancel-admin-page", func(tx *gorm.DB) {
+			if tx.Statement.Table == "comments" {
+				pageQuery = tx
+				cancel()
+			}
+		}); err != nil {
+			t.Fatal(err)
+		}
+		defer model.DB.Callback().Query().Remove("test:cancel-admin-page")
+
+		recorder := httptest.NewRecorder()
+		env.router.ServeHTTP(recorder, request("/api/admin/sites/site-a/comments").WithContext(ctx))
+		if pageQuery == nil || pageQuery.Statement.Context.Err() == nil || pageQuery.Error == nil || recorder.Code != http.StatusInternalServerError {
+			t.Fatalf("expected the page query to fail after cancellation: status=%d body=%s", recorder.Code, recorder.Body)
+		}
+		sqlDB, err := model.DB.DB()
+		if err != nil {
+			t.Fatal(err)
+		}
+		wait, stop := context.WithTimeout(context.Background(), time.Second)
+		defer stop()
+		conn, err := sqlDB.Conn(wait)
+		if err != nil {
+			t.Fatalf("canceled read did not release its connection: %v", err)
+		}
+		_ = conn.Close()
 	})
 }
