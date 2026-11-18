@@ -46,12 +46,10 @@ sites:
 YAML
 chmod 0644 "$scratch/config.yaml"
 chmod 0755 "$scratch/imagecheck"
-# Dummy credentials only; no host credentials or published ports enter this fixture.
-password_hash=$(printf '%s\n' image-check-fixture-password | docker run --rm -i --network=none --read-only --cap-drop=ALL --security-opt=no-new-privileges "$image" hash-password)
-
 start() {
   current=$1
   probe=$2
+  shift 2
   container=$(docker create --pull=never --network=none --read-only \
     --cap-drop=ALL --security-opt=no-new-privileges --pids-limit=64 \
     --cpus=1 --memory=384m --memory-swap=384m --ulimit fsize=67108864:67108864 \
@@ -60,10 +58,7 @@ start() {
     --mount "$data_mount" \
     --mount "type=bind,src=$scratch/config.yaml,dst=/app/config.yaml,readonly" \
     --mount "type=bind,src=$scratch/imagecheck,dst=/imagecheck,readonly" \
-    --env TZ=Asia/Shanghai --env ECOKU_ADMIN_USERNAME=imagecheck \
-    --env "ECOKU_ADMIN_PASSWORD_HASH=$password_hash" \
-    --env ECOKU_ADMIN_TOKEN_KEY=image-check-fixture-token-key-32bytes \
-    "$current")
+    --env TZ=Asia/Shanghai "$@" "$current")
   docker start "$container" >/dev/null
   ready=false
   for attempt in $(seq 1 30); do
@@ -82,6 +77,12 @@ start() {
   fi
 }
 
+start_with_legacy_credentials() {
+  start "$@" --env ECOKU_ADMIN_USERNAME=imagecheck \
+    --env "ECOKU_ADMIN_PASSWORD_HASH=$password_hash" \
+    --env ECOKU_ADMIN_TOKEN_KEY=image-check-fixture-token-key-32bytes
+}
+
 stop() {
   docker stop --signal SIGTERM --timeout 25 "$container" >/dev/null
   test "$(docker inspect --format '{{.State.ExitCode}}' "$container")" = 0
@@ -93,26 +94,39 @@ stop() {
 }
 
 if [ -n "$previous" ]; then
+  # Only the upgrade fixture has legacy credentials.
+  password_hash=$(printf '%s\n' image-check-fixture-password | docker run --rm -i --network=none --read-only --cap-drop=ALL --security-opt=no-new-privileges "$image" hash-password)
   test "$(docker image inspect --format '{{.Architecture}}' "$previous")" = "$arch"
-  start "$previous" legacy
+  start_with_legacy_credentials "$previous" legacy
   docker exec "$container" /imagecheck -seed
   stop
   cp "$scratch/secrets.json" "$scratch/previous-secrets.json"
   cp "$scratch/database.sqlite3" "$scratch/previous.sqlite3"
 fi
 
-start "$image" native
 if [ -n "$previous" ]; then
+  start_with_legacy_credentials "$image" native
   docker exec "$container" /imagecheck -distroless -comments=2 -add
 else
-  docker exec "$container" /imagecheck -distroless
+  start "$image" native
+  stop
+  # Keep the CLI output out of Docker arguments and test logs.
+  if ! reset_output=$(docker run --rm --network=none --read-only --cap-drop=ALL \
+    --security-opt=no-new-privileges --mount "$data_mount" \
+    --mount "type=bind,src=$scratch/config.yaml,dst=/app/config.yaml,readonly" \
+    "$image" admin reset-password 2>/dev/null); then
+    echo 'Fresh installation password reset command failed' >&2
+    exit 1
+  fi
+  start "$image" native
+  printf '%s\n' "$reset_output" | docker exec -i "$container" /imagecheck -distroless -first-login
 fi
 docker exec "$container" /app/ecoku-server captcha status
 stop
 
 if [ -n "$previous" ]; then
   cmp "$scratch/previous-secrets.json" "$scratch/secrets.json"
-  start "$previous" legacy
+  start_with_legacy_credentials "$previous" legacy
   docker exec "$container" /imagecheck -comments=3
   stop
   cmp "$scratch/previous-secrets.json" "$scratch/secrets.json"
