@@ -183,15 +183,45 @@ assert.doesNotMatch(ci, /npm\s+publish\b/)
 assert.match(ci, /npm pack --ignore-scripts --pack-destination/)
 assert.match(ci, /pnpm "verify:\$TARGET"/)
 assert.match(ci, /CGO_ENABLED: '0'/)
-const node = read('mise.toml').match(/^node = "([^"]+)"/m)[1]
-const pnpm = read('mise.toml').match(/^pnpm = "([^"]+)"/m)[1]
-assert.match(ci, new RegExp(`version: ${pnpm.replaceAll('.', '\\.')}`))
+const mise = read('mise.toml')
+const [go, node, pnpm] = ['go', 'node', 'pnpm'].map(tool => {
+  const pin = mise.match(new RegExp(`^${tool} = "(\\d+\\.\\d+\\.\\d+)"$`, 'm'))
+  assert.ok(pin, `mise.toml: expected an exact ${tool} version`)
+  return pin[1]
+})
+
+function assertToolPins(source, pattern, expected, label) {
+  const actual = Array.from(source.matchAll(pattern), match => match[1])
+  assert.deepEqual(actual, expected, `${label}: expected ${expected.join(', ')}, found ${actual.join(', ') || 'no pin'}`)
+}
+
+const pnpmSetup = /^      - uses: pnpm\/action-setup@[^\n]+\n        with:\n          version: (\S+)$/gm
+assertToolPins(ci, pnpmSetup, [pnpm, pnpm], '.github/workflows/ci.yml: pnpm')
+assert.throws(() => assertToolPins(ci.replace(`version: ${pnpm}`, 'version: 0.0.0'), pnpmSetup,
+  [pnpm, pnpm], '.github/workflows/ci.yml: pnpm'), /found 0\.0\.0/)
+
+const nodeSetup = /^ +node-version: (\d\S*)$/gm
+assertToolPins(ci, nodeSetup, [node, node], '.github/workflows/ci.yml: Node build toolchain')
+const goVersionFile = /^ +go-version-file: (\S+)$/gm
+assertToolPins(ci, goVersionFile, ['server/go.mod', 'server/go.mod'], '.github/workflows/ci.yml: Go version file')
+assertToolPins(release, goVersionFile, ['server/go.mod'], '.github/workflows/release.yml: Go version file')
+assertToolPins(read('server/go.mod'), /^toolchain go(\S+)$/gm, [go], 'server/go.mod: Go toolchain')
+
+const dockerfile = read('Dockerfile')
+assertToolPins(dockerfile, /^FROM --platform=\$BUILDPLATFORM node:([^\s@-]+)/gm, [node], 'Dockerfile: Node')
+assertToolPins(dockerfile, /^FROM --platform=\$BUILDPLATFORM golang:([^\s@-]+)/gm, [go], 'Dockerfile: Go')
+assertToolPins(dockerfile, /^RUN npm install --global pnpm@(\S+)$/gm, [pnpm], 'Dockerfile: pnpm')
+const miseLock = read('mise.lock')
+for (const [tool, version] of Object.entries({ go, node, pnpm })) {
+  assertToolPins(miseLock, new RegExp(`^\\[\\[tools\\.${tool}\\]\\]\\nversion = "([^"]+)"$`, 'gm'), [version], `mise.lock: ${tool}`)
+}
+
 for (const file of readdirSync(new URL('../.github/workflows/', import.meta.url))) {
   const source = read(`.github/workflows/${file}`)
   for (const [, action] of source.matchAll(/uses:\s*(\S+)/g)) {
     assert.ok(action.startsWith('./') || /^[\w-]+\/[\w-]+@[a-f0-9]{40}$/.test(action), `${file}: action must use a full commit SHA`)
   }
-  for (const [, version] of source.matchAll(/node-version:\s*([\d.]+)/g)) assert.equal(version, node, `${file}: Node differs from mise.toml`)
+  for (const [, version] of source.matchAll(nodeSetup)) assert.equal(version, node, `${file}: Node differs from mise.toml`)
 }
 for (const file of ['.github/workflows/release.yml', '.github/workflows/recover-npm.yml']) {
   assert.match(read(file), /npm publish \.\/artifact\/\*\.tgz --ignore-scripts --access public --provenance/)
@@ -206,8 +236,10 @@ assert.ok(recovery.indexOf('uses: actions/checkout@') < recovery.indexOf('node s
 assert.doesNotMatch(recovery, /ref: \$\{\{ inputs.tag \}\}/)
 const docsDeploy = read('.woodpecker/docs-deploy.yml')
 const docsBuild = docsDeploy.split(/^  - name: publish-docs$/m)[0]
+assertToolPins(docsBuild, /^    image: node:([^\s@-]+)/gm, [node], '.woodpecker/docs-deploy.yml: Node')
+assertToolPins(docsBuild, /^      - npm install --global pnpm@(\S+)$/gm, [pnpm], '.woodpecker/docs-deploy.yml: pnpm')
 assert.match(docsBuild, /^      - sh scripts\/test-publish-docs\.sh$/m)
 assert.doesNotMatch(docsBuild, /^    volumes:/m)
 assert.match(docsDeploy, /pnpm --filter \.\/docs\.\.\. --fail-if-no-match install --frozen-lockfile --prefer-offline/)
 assert.match(docsDeploy, /pnpm_config_verify_deps_before_run: "false"/)
-console.log('CI checks passed: filtered installs, dependency/image security gates, release reuse, packaging without publishing, pinned actions, matching Node/pnpm and release provenance.')
+console.log('CI checks passed: filtered installs, dependency/image security gates, release reuse, packaging without publishing, pinned actions, matching toolchain versions and release provenance.')
