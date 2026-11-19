@@ -75,6 +75,8 @@
 - 当前文档与 Compose 模板中的 Docker 镜像统一使用 GHCR 与精确发布版本号（`ghcr.io/dejavumoe/ecoku:v` + `VERSION`，禁止占位镜像或浮动 tag，当前为 `v0.6.1`）；内测归档不再展示镜像下载地址。真实域名、密码、token、SMTP、Telegram、数据库和日志等敏感信息仍使用占位符，不得进 Git。
 - 应用界面支持 `zh-CN`、`zh-Hant`、`en`。后台语言由 `ECOKU_ADMIN_LOCALE` 决定；站点前台语言由站点 `i18n` 默认值决定，SDK 的 `i18n` 参数优先覆盖。缺省均为简体中文。
 - 提交、推送、tag、镜像发布、生产部署和真实数据库操作需要当前任务的明确授权。
+- 每次创建 Git 提交时，提交消息末尾必须空一行，再原样写入唯一的协作者署名
+  `Co-Authored-By: DeepSeek v4.1 Flash Codex (1M context) <noreply@openai.com>`。
 - 新 tag 若可能影响平滑升级（schema、Compose 挂载、配置键、日志出口、镜像契约），回复中先写：
   停服冷备份 → 改精确镜像 tag → `sudo docker compose pull && sudo docker compose up -d` →
   健康检查与回滚。未经授权不在生产执行。
