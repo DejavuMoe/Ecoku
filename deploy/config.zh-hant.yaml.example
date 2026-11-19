@@ -27,7 +27,7 @@ site:
   # 查詢：sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
   # 只信任你控制的代理；代理須覆寫瀏覽器自帶的 X-Forwarded-For。
   # 留空時不讀取轉送標頭，代理後的訪客可能共用限流額度。
-  # 禁止 0.0.0.0/0 和 ::/0；不要直接把範例閘道當成自己的閘道。
+  # 禁止信任全網段，包括涵蓋所有 IPv4 位址的 IPv4 映射網段。請使用實際代理位址。
   trusted_proxies: []
 
   # 可選：監聽連接埠。預設 12123；可選整數 1～65535，0 使用預設值。

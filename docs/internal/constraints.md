@@ -164,7 +164,7 @@
 - 限流与反代有三种拓扑：
   1. 本机 Caddy → 发布的 `127.0.0.1:12123`（推荐生产）：`trusted_proxies` 填 Docker 网关 `/32`；Caddy **覆盖** `X-Forwarded-For` 为 `{remote_host}`，不要追加浏览器自带值。
   2. CDN → Caddy → Compose：Ecoku 仍只信任 Docker 网关；Caddy 覆盖为 CDN 的 Connecting-IP，并把 Caddy 限制为只接受该 CDN。
-  3. `trusted_proxies` 为空：所有访客共用一个限流桶。不要填 `0.0.0.0/0`。
+  3. `trusted_proxies` 为空：所有访客共用一个限流桶。配置校验拒绝覆盖全部 IPv4 或 IPv6 地址的网段，包括覆盖全部 IPv4 地址的 IPv4 映射网段。
 - Count 模块不属于产品范围；当前全新 schema 不创建其表或运行入口。
 - P2 起仅支持 SQLite3，不再支持 MySQL；旧普通用户 SMTP 入口已经删除，当前 SMTP 仅用于新的
   实例级通知渠道。配置文件中出现旧 MySQL、普通用户或 `drop_table` 字段会明确失败。

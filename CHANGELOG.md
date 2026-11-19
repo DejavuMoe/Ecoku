@@ -5,10 +5,21 @@
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-11-19
+
 ### 修复
 
 - Twikoo 预检和导入拒绝含 `isSpam: true` 的导出文件并报告数量。修复只有 `rid` 的回复无法挂到根评论，以及无路径的 HTTP(S) 首页地址无法导入的问题。
 - 后台评论列表在同一个 SQLite 快照中读取状态计数、分页数据和回复存在标记，避免并发写入导致单次响应中的数据不一致。
+- `site.trusted_proxies` 会拒绝实际覆盖全部 IPv4 地址的 IPv4 映射网段。升级前应改为实际受信代理的 IP 或有限网段。
+
+### 性能
+
+- 公开评论列表逐行读取评论 ID 与父评论关系，减少冷请求的内存分配。后台评论列表在一次聚合查询中统计已发布与已删除的评论。
+
+### 构建与发布
+
+- CI 在 Node.js 20、22、24 上验证 SDK 安装包的导入与类型声明，核对构建环境的工具链版本，并移除已撤回的 `deepmerge` 和 `picomatch` 审计豁免。
 
 ## [0.6.0] - 2026-11-17
 
@@ -807,4 +818,5 @@
 [0.5.6]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.6
 [0.5.7]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.7
 [0.6.0]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.6.0
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.6.0...master
+[0.6.1]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.6.1
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.6.1...master

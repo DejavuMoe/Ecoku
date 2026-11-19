@@ -2,11 +2,11 @@
 
 Public releases start at v0.3.0. For a new instance use [Docker deployment](./docker); this page covers upgrades.
 
-The current release is **v0.6.0** (released 2026-11-17, schema v12).
+The current release is **v0.6.1** (released 2026-11-19, schema v12).
 
-New images are published to GHCR. Deployments using Forgejo images should change `image` to `ghcr.io/dejavumoe/ecoku:v0.6.0` or the exact target tag for future upgrades, keeping existing data and configuration mounts. No new versions will be published to the Forgejo registry. Switching registries at the same version does not require reinitializing the instance.
+New images are published to GHCR. Deployments using Forgejo images should change `image` to `ghcr.io/dejavumoe/ecoku:v0.6.1` or the exact target tag for future upgrades, keeping existing data and configuration mounts. No new versions will be published to the Forgejo registry. Switching registries at the same version does not require reinitializing the instance.
 
-Before upgrading to v0.6.0, read [this release's compatibility notes](./upgrades/v0.6.0#compatibility). Upgrading for the first time requires replacing the Compose wget probe with the binary probe; see [distroless migration](#distroless). If your current version predates v0.5.0, also check the [notes on origin conflicts and existing data](./upgrades/v0.5.0#compatibility); an overlap between admin origins and stored site origins prevents startup.
+Before upgrading to v0.6.1, read [this release's compatibility notes](./upgrades/v0.6.1#compatibility). Upgrading from v0.5.7 or earlier requires replacing the Compose wget probe with the binary probe; see [distroless migration](#distroless). If your current version predates v0.5.0, also check the [notes on origin conflicts and existing data](./upgrades/v0.5.0#compatibility); an overlap between admin origins and stored site origins prevents startup.
 
 ## What happens during an upgrade
 
@@ -53,10 +53,10 @@ The image has no shell, wget or package manager. Troubleshoot from the host with
 **3. Change the image version.** Edit `~/Ecoku/compose.yaml` and change `image` to the target version, for example:
 
 ```yaml
-    image: "ghcr.io/dejavumoe/ecoku:v0.6.0"
+    image: "ghcr.io/dejavumoe/ecoku:v0.6.1"
 ```
 
-Use an exact version number, not `latest`. When upgrading to v0.6.0 for the first time, you must also update `healthcheck.test` in Compose to `["CMD", "/app/ecoku-server", "healthcheck"]` (see [distroless migration](#distroless)). If the upgrade notes ask you to change `app/config.yaml` or `ecoku.env`, change them at the same time.
+Use an exact version number, not `latest`. When upgrading from v0.5.7 or earlier, you must also update `healthcheck.test` in Compose to `["CMD", "/app/ecoku-server", "healthcheck"]` (see [distroless migration](#distroless)). If the upgrade notes ask you to change `app/config.yaml` or `ecoku.env`, change them at the same time.
 
 **4. Pull and start.**
 
@@ -84,13 +84,14 @@ Once the container status is `healthy` and the log shows no errors, open a blog 
 
 First check whether the old and new versions have the same schema (see the table below):
 
-- **Same schema**: stop the service, change the image in `compose.yaml` back to the old version. When rolling back from v0.6.0 to v0.5.7 or earlier, also restore the old `wget` healthcheck in Compose (or remove the `healthcheck` override), then pull and recreate the container. You do not need to touch the database, and comments posted after the upgrade are kept. If you omitted fields during the upgrade because the new version has defaults for them, add back the configuration the old version requires. If you added a key for the new version that the old version does not recognize, remove it first; otherwise the old version refuses to start because of the unknown field.
+- **Same schema**: stop the service, change the image in `compose.yaml` back to the old version. When rolling back from a distroless release to v0.5.7 or earlier, also restore the old `wget` healthcheck in Compose (or remove the `healthcheck` override), then pull and recreate the container. You do not need to touch the database, and comments posted after the upgrade are kept. If you omitted fields during the upgrade because the new version has defaults for them, add back the configuration the old version requires. If you added a key for the new version that the old version does not recognize, remove it first; otherwise the old version refuses to start because of the unknown field.
 - **Different schema**: changing the image version back is not enough, because the old version cannot open the migrated database. You need to [restore](./backup#restore) from the cold backup taken before the upgrade. Comments and settings changes made after the backup are lost.
 
 ## Version list {#versions}
 
 | Version | Release date | Schema | Highlights |
 | --- | --- | --- | --- |
+| [v0.6.1](./upgrades/v0.6.1) | 2026-11-19 | v12 | Fix Twikoo import, admin comment list consistency and trusted proxy validation. Improve comment list reads. No database migration. |
 | [v0.6.0](./upgrades/v0.6.0) | 2026-11-17 | v12 | Migrate runtime image to distroless Debian 13 static without shell/wget; add built-in binary healthcheck probe; older Compose files must update probe. No database migration. |
 | [v0.5.7](./upgrades/v0.5.7) | 2026-11-12 | v12 | Optimize public reads and SDK loading; fix reply drafts, sorting and refresh races; use the instance time zone in admin. No database migration. |
 | [v0.5.6](./upgrades/v0.5.6) | 2026-11-09 | v12 | Fix musl and zlib vulnerabilities in the runtime image and the `x/net` HTML parsing vulnerability (GO-2026-6860); includes every v0.5.5 change. No database migration; external behavior unchanged. |

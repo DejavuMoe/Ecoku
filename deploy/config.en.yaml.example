@@ -27,7 +27,7 @@ site:
   # Query: sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
   # Trust only proxies you control; the proxy must overwrite client-supplied X-Forwarded-For.
   # Empty ignores forwarding headers; visitors behind a proxy may share one rate-limit allowance.
-  # 0.0.0.0/0 and ::/0 are forbidden. Do not assume the example gateway is your gateway.
+  # Trusting all addresses is forbidden, including through an IPv4-mapped range. Use the actual proxy address.
   trusted_proxies: []
 
   # Optional: listen port. Default 12123; integer 1–65535; 0 selects the default.

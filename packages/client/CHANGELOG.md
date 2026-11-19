@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.6.1 - 2026-11-19
+
+- SDK 版本随 Ecoku v0.6.1 发布，运行时代码与 0.6.0 相同。安装包在 Node.js 20、22 和 24 上验证 ESM、CommonJS 和类型声明入口。
+
 ## 0.6.0 - 2026-11-17
 
 - SDK 版本随 Ecoku v0.6.0 对齐发布，接口与对外行为延续 0.5.7，无新的 API 或行为变更；本版变更为服务端运行镜像迁移至 distroless Debian 13 static。

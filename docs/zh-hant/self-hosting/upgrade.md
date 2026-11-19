@@ -2,11 +2,11 @@
 
 公開版本從 v0.3.0 開始。新部署直接使用 [Docker 部署](./docker)；本頁用於既有實例升級。
 
-目前版本是 **v0.6.0**（2026-11-17 發布，schema v12）。
+目前版本是 **v0.6.1**（2026-11-19 發布，schema v12）。
 
-新映像檔統一發布到 GHCR。使用 Forgejo 映像檔的實例，後續升級請將 `image` 改為 `ghcr.io/dejavumoe/ecoku:v0.6.0` 或目標版本的精確 tag，保留原本的資料與設定掛載；Forgejo registry 不再發布新版本。同版本切換倉庫不必重新初始化實例。
+新映像檔統一發布到 GHCR。使用 Forgejo 映像檔的實例，後續升級請將 `image` 改為 `ghcr.io/dejavumoe/ecoku:v0.6.1` 或目標版本的精確 tag，保留原本的資料與設定掛載；Forgejo registry 不再發布新版本。同版本切換倉庫不必重新初始化實例。
 
-升級至 v0.6.0 前，先閱讀 [本版相容性說明](./upgrades/v0.6.0#compatibility)。首次升級須將 Compose 中的 wget 健康檢查替換為二進位探針，見 [distroless 遷移](#distroless)。若目前版本早於 v0.5.0，還需核對 [來源衝突與歷史資料的相容性說明](./upgrades/v0.5.0#compatibility)；管理來源與已儲存站點來源重疊會阻止啟動。
+升級至 v0.6.1 前，先閱讀 [本版相容性說明](./upgrades/v0.6.1#compatibility)。從 v0.5.7 或更早版本升級時，須將 Compose 中的 wget 健康檢查替換為二進位探針，見 [distroless 遷移](#distroless)。若目前版本早於 v0.5.0，還需核對 [來源衝突與歷史資料的相容性說明](./upgrades/v0.5.0#compatibility)；管理來源與已儲存站點來源重疊會阻止啟動。
 
 ## 升級時會發生什麼
 
@@ -53,10 +53,10 @@
 **3. 修改映像檔版本**。編輯 `~/Ecoku/compose.yaml`，把 `image` 改成目標版本，例如：
 
 ```yaml
-    image: "ghcr.io/dejavumoe/ecoku:v0.6.0"
+    image: "ghcr.io/dejavumoe/ecoku:v0.6.1"
 ```
 
-請寫明確的版本號，不要用 `latest`。從舊版本首次升級至 v0.6.0 時，必須同時將 Compose 中的 `healthcheck.test` 改為 `["CMD", "/app/ecoku-server", "healthcheck"]`（詳見 [distroless 遷移](#distroless)）。如果升級說明要求修改 `app/config.yaml` 或 `ecoku.env`，請一併修改。
+請寫明確的版本號，不要用 `latest`。從 v0.5.7 或更早版本升級時，必須同時將 Compose 中的 `healthcheck.test` 改為 `["CMD", "/app/ecoku-server", "healthcheck"]`（詳見 [distroless 遷移](#distroless)）。如果升級說明要求修改 `app/config.yaml` 或 `ecoku.env`，請一併修改。
 
 **4. 拉取並啟動。**
 
@@ -84,13 +84,14 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 先看新旧兩個版本的 schema 是否相同（見下表）：
 
-- **schema 相同**：停止服務，把 `compose.yaml` 中的映像檔改回舊版本號。若從 v0.6.0 回滾至 v0.5.7 或更早版本，同時恢復舊 Compose 的 `wget` 健康檢查（或刪除 `healthcheck` 覆蓋），再拉取並重建容器。資料庫不用動，升級後產生的新評論也會保留。如果升級時依新版本的預設值省略了某些欄位，先補回舊版本要求的設定；如果為新版本加入過舊版本不認得的設定項目，先刪掉，否則舊版本會因未知欄位拒絕啟動。
+- **schema 相同**：停止服務，把 `compose.yaml` 中的映像檔改回舊版本號。若從 distroless 版本回滾至 v0.5.7 或更早版本，同時恢復舊 Compose 的 `wget` 健康檢查（或刪除 `healthcheck` 覆蓋），再拉取並重建容器。資料庫不用動，升級後產生的新評論也會保留。如果升級時依新版本的預設值省略了某些欄位，先補回舊版本要求的設定；如果為新版本加入過舊版本不認得的設定項目，先刪掉，否則舊版本會因未知欄位拒絕啟動。
 - **schema 不同**：只改回映像檔版本號是不夠的，舊版本無法開啟已遷移的資料庫。需要用升級前的冷備份 [還原](./backup#restore)。備份之後產生的評論和設定修改會遺失。
 
 ## 版本清單 {#versions}
 
 | 版本 | 發布日期 | schema | 重點 |
 | --- | --- | --- | --- |
+| [v0.6.1](./upgrades/v0.6.1) | 2026-11-19 | v12 | 修復 Twikoo 匯入、後台評論清單一致性與信任代理驗證，改善評論清單讀取。無資料庫遷移。 |
 | [v0.6.0](./upgrades/v0.6.0) | 2026-11-17 | v12 | 執行映像檔遷移至 distroless Debian 13 static，映像檔不含 shell/wget；新增二進位 healthcheck 探針，舊 Compose 須替換探針。無資料庫遷移。 |
 | [v0.5.7](./upgrades/v0.5.7) | 2026-11-12 | v12 | 最佳化公開讀取與 SDK 載入；修復回覆草稿、排序和重新整理時序；後台時間跟隨實例時區。無資料庫遷移。 |
 | [v0.5.6](./upgrades/v0.5.6) | 2026-11-09 | v12 | 修復執行時映像檔 musl 與 zlib 漏洞及 `x/net` HTML 解析漏洞（GO-2026-6860），包含 v0.5.5 的全部變更；無資料庫遷移，對外行為不變。 |
