@@ -71,4 +71,29 @@ describe('browser runtime privacy boundary', () => {
     expect(styles).toMatch(/:where\(\.ecoku-comments\) :is\(button, input, textarea\)/)
     expect(block('.ecoku-blogger-badge')).toContain('var(--ecoku-accent)')
   })
+
+  it('draws reply tree connectors from levels two to four only', () => {
+    const styleName = 'style.css'
+    const styles = readFileSync(fileURLToPath(new URL(styleName, import.meta.url)), 'utf8')
+    const defaults = styles.slice(styles.indexOf(':where(.ecoku-comments) {'), styles.indexOf('}', styles.indexOf(':where(.ecoku-comments) {')))
+    for (const token of ['--ecoku-thread-indent', '--ecoku-thread-line', '--ecoku-thread-line-width', '--ecoku-thread-x', '--ecoku-thread-gap', '--ecoku-thread-radius']) {
+      expect(defaults).toContain(`${token}:`)
+    }
+    const levels = '.ecoku-children > .ecoku-comment-node:is([data-depth="2"], [data-depth="3"], [data-depth="4"])'
+    // lastIndexOf skips the shared `::before, ::after` rule and finds each own block.
+    const rule = (selector: string): string => {
+      const start = styles.lastIndexOf(`${selector} {`)
+      return start < 0 ? '' : styles.slice(start, styles.indexOf('}', start))
+    }
+    const elbow = rule(`${levels}::before`)
+    const trunk = rule(`${levels}:not(:last-child)::after`)
+    expect(elbow).toContain('border-end-start-radius: var(--ecoku-thread-radius)')
+    expect(elbow).toContain('border-bottom:')
+    // The trunk only continues while a later sibling follows.
+    expect(trunk).toContain('top: 0')
+    expect(trunk).toContain('bottom: 0')
+    expect(styles).not.toContain('--ecoku-guide-offset')
+    expect(styles).not.toMatch(/data-depth="5"/)
+    expect(styles).toContain('calc(var(--ecoku-depth, 0) * var(--ecoku-thread-indent))')
+  })
 })

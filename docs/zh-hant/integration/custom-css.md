@@ -42,8 +42,8 @@
 | `--ecoku-primary` | `var(--primary, #1e1c19)` | 標題、暱稱、輸入文字、主按鈕底色、聚焦底線 |
 | `--ecoku-secondary` | `var(--secondary, #6b655b)` | 時間、字數、欄位標籤、文字按鈕 |
 | `--ecoku-content` | `var(--content, #35312b)` | 評論內文與內文輸入框 |
-| `--ecoku-border` | `var(--border, #cbc3b5)` | 身分欄位底線、次要按鈕邊框、「回覆」底線 |
-| `--ecoku-border-soft` | `var(--border-soft, rgb(30 28 25 / 0.12))` | 卡片描邊、討論串分隔線、回覆引導線 |
+| `--ecoku-border` | `var(--border, #cbc3b5)` | 身分欄位底線、次要按鈕邊框、「回覆」底線；回覆連線預設色的基礎 |
+| `--ecoku-border-soft` | `var(--border-soft, rgb(30 28 25 / 0.12))` | 卡片描邊、討論串分隔線 |
 | `--ecoku-surface-muted` | `var(--surface-muted, #efebe3)` | 貼圖格滑過時的底色 |
 | `--ecoku-code-bg` | `var(--code-bg, #ece7de)` | 預設樣式未使用，保留給自訂樣式 |
 | `--ecoku-accent` | 朱砂色 `#c8553a` 與 `--ecoku-primary` 混合 | 部落客標誌、連結滑過 |
@@ -56,6 +56,14 @@
 | `--ecoku-font-size` | `15px` | 內文與輸入框 |
 | `--ecoku-font-size-small` | `13px` | 中繼資訊、標籤、按鈕 |
 | `--ecoku-font-size-title` | `22px`（窄螢幕 `20px`） | 「N 則評論」標題 |
+| `--ecoku-thread-indent` | `22px`（窄螢幕 `14px`） | 每級回覆的縮排，第四級之後不再增加 |
+| `--ecoku-thread-line` | `--ecoku-border` 與 `--ecoku-theme` 混合的不透明色 | 回覆連線顏色 |
+| `--ecoku-thread-line-width` | `2px` | 回覆連線粗細 |
+| `--ecoku-thread-x` | `6px`（窄螢幕 `4px`） | 豎線距父評論作者列起點的距離 |
+| `--ecoku-thread-gap` | `5px`（窄螢幕 `3px`） | 轉角末端與回覆作者名之間的空隙 |
+| `--ecoku-thread-radius` | `8px`（窄螢幕 `6px`） | 轉角圓角 |
+
+回覆連線只出現在第二至第四級回覆與父評論之間：每則回覆由一個圓角轉角連到自己的作者列，後面還有同級回覆時豎線才繼續向下。更深的回覆與第四級對齊，不畫連線，用「@暱稱」標明回覆對象。
 
 等寬字型只使用頁面已經載入的 Maple Mono，Ecoku 不會下載字型；沒有時依序後備到 `ui-monospace`、`SFMono-Regular`、`Menlo`、`Consolas`。
 

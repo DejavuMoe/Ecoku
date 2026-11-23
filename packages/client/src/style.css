@@ -1,4 +1,4 @@
-/* Ecoku default comment surface: paper and ink (design revision 17).
+/* Ecoku default comment surface: paper and ink (design revision 18).
    Default tokens sit at zero specificity, so any host rule on `.ecoku-comments` wins.
    Colours fall back from the PaperMod names; `auto` inherits the host colour scheme. */
 
@@ -23,6 +23,13 @@
   --ecoku-font-size: 15px;
   --ecoku-font-size-small: 13px;
   --ecoku-font-size-title: 22px;
+  /* Reply tree: one indent step, and the elbow that joins a reply to its parent. */
+  --ecoku-thread-indent: 22px;
+  --ecoku-thread-line: color-mix(in oklab, var(--ecoku-border) 62%, var(--ecoku-theme));
+  --ecoku-thread-line-width: 2px;
+  --ecoku-thread-x: 6px;
+  --ecoku-thread-gap: 5px;
+  --ecoku-thread-radius: 8px;
 }
 
 :where(.ecoku-comments[data-theme="light"]) {
@@ -69,6 +76,10 @@
 @media (max-width: 620px) {
   :where(.ecoku-comments) {
     --ecoku-font-size-title: 20px;
+    --ecoku-thread-indent: 14px;
+    --ecoku-thread-x: 4px;
+    --ecoku-thread-gap: 3px;
+    --ecoku-thread-radius: 6px;
   }
 }
 
@@ -609,7 +620,7 @@
   line-height: 1.6;
 }
 
-/* Threads: hairlines between root discussions, whitespace and a margin rule inside. */
+/* Threads: hairlines between root discussions; replies hang off a tree inside. */
 .ecoku-thread-list {
   border-top: 1px solid var(--ecoku-border-soft);
 }
@@ -625,29 +636,53 @@
 .ecoku-comment-row {
   position: relative;
   min-width: 0;
-  padding: 12px 0 12px calc(var(--ecoku-depth, 0) * 22px);
+  /* --ecoku-depth stops at 3: levels five and deeper share level four and name
+     their parent with "@昵称". */
+  padding: 12px 0 12px calc(var(--ecoku-depth, 0) * var(--ecoku-thread-indent));
 }
 
-.ecoku-comment-node:not([data-depth="1"]) > .ecoku-comment-row::before {
+/* Reply tree. Each reply at levels two to four is joined to its parent by a rounded
+   elbow that turns into its author line. The trunk continues past a reply only while
+   a later sibling follows, so the last reply ends on its elbow. Lines exist only
+   between a parent and its direct replies. */
+.ecoku-children > .ecoku-comment-node {
+  position: relative;
+}
+
+.ecoku-children > .ecoku-comment-node[data-depth="2"] {
+  --ecoku-thread-step: 0;
+}
+
+.ecoku-children > .ecoku-comment-node[data-depth="3"] {
+  --ecoku-thread-step: 1;
+}
+
+.ecoku-children > .ecoku-comment-node[data-depth="4"] {
+  --ecoku-thread-step: 2;
+}
+
+.ecoku-children > .ecoku-comment-node:is([data-depth="2"], [data-depth="3"], [data-depth="4"])::before,
+.ecoku-children > .ecoku-comment-node:is([data-depth="2"], [data-depth="3"], [data-depth="4"]):not(:last-child)::after {
   position: absolute;
-  top: 12px;
-  bottom: 12px;
-  left: var(--ecoku-guide-offset);
-  border-inline-start: 1px solid var(--ecoku-border-soft);
+  inset-inline-start: calc(var(--ecoku-thread-step) * var(--ecoku-thread-indent) + var(--ecoku-thread-x));
+  border-inline-start: var(--ecoku-thread-line-width) solid var(--ecoku-thread-line);
   content: "";
   pointer-events: none;
 }
 
-.ecoku-comment-node[data-depth="2"] > .ecoku-comment-row {
-  --ecoku-guide-offset: 8px;
+/* The elbow starts a little inside the parent's bottom padding and lands on the
+   centre of the 22px author line (12px row padding + 11px). */
+.ecoku-children > .ecoku-comment-node:is([data-depth="2"], [data-depth="3"], [data-depth="4"])::before {
+  top: -6px;
+  width: calc(var(--ecoku-thread-indent) - var(--ecoku-thread-x) - var(--ecoku-thread-gap));
+  height: calc(6px + 23px + var(--ecoku-thread-line-width) / 2);
+  border-bottom: var(--ecoku-thread-line-width) solid var(--ecoku-thread-line);
+  border-end-start-radius: var(--ecoku-thread-radius);
 }
 
-.ecoku-comment-node[data-depth="3"] > .ecoku-comment-row {
-  --ecoku-guide-offset: 30px;
-}
-
-.ecoku-comment-node:not([data-depth="1"], [data-depth="2"], [data-depth="3"]) > .ecoku-comment-row {
-  --ecoku-guide-offset: 52px;
+.ecoku-children > .ecoku-comment-node:is([data-depth="2"], [data-depth="3"], [data-depth="4"]):not(:last-child)::after {
+  top: 0;
+  bottom: 0;
 }
 
 .ecoku-comment-meta {
@@ -868,22 +903,6 @@ a.ecoku-reply-context:hover {
 
   .ecoku-identity-grid {
     grid-template-columns: 1fr;
-  }
-
-  .ecoku-comment-row {
-    padding-left: calc(var(--ecoku-depth, 0) * 14px);
-  }
-
-  .ecoku-comment-node[data-depth="2"] > .ecoku-comment-row {
-    --ecoku-guide-offset: 5px;
-  }
-
-  .ecoku-comment-node[data-depth="3"] > .ecoku-comment-row {
-    --ecoku-guide-offset: 19px;
-  }
-
-  .ecoku-comment-node:not([data-depth="1"], [data-depth="2"], [data-depth="3"]) > .ecoku-comment-row {
-    --ecoku-guide-offset: 33px;
   }
 }
 

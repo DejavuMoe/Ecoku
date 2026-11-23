@@ -2,7 +2,7 @@
 
 面向实现与 Agent 的边界说明，不进入 VitePress 站点导航。公开运维文档见 `docs/self-hosting/`。
 
-> 状态：P0～P4 历史阶段已验收；评论区 index-v17、管理端 index-v16、服务端邮件 v7 与 Telegram v6 通知模板均已批准实施。
+> 状态：P0～P4 历史阶段已验收；评论区 index-v18、管理端 index-v16、服务端邮件 v7 与 Telegram v6 通知模板均已批准实施。
 > 历史验收记录只描述当时版本，不约束当前直接发布模型。
 - 评论区、管理后台与通知的时间统一按可选的 `TZ` 环境变量显示；新部署可在 Compose `environment` 中设置，旧实例迁移期仍可从 `ecoku.env` 读取。
 - 管理后台不提供全局快捷键或快捷键提示；保留按钮、表单、列表输入与下拉菜单的基本键盘操作。
@@ -173,7 +173,7 @@
 - 当前全新 schema 不创建 `users`、`email_verification_codes` 或 `counts` 遗留表。
 - P4 的默认交付拓扑是单个非 root 运行容器：Go 进程同时提供 API 和 `/admin/` 静态管理端，SQLite 数据与配置从容器外持久化；
   容器内管理端静态文件缺失时，服务必须启动失败；源码运行只提供 API，页面由 Vite 开发服务器提供。
-- 管理端使用 Svelte 5 与 Vite 构建静态资源，沿用后台 v16 及已批准补充原型；评论区 SDK 继续使用无框架 TypeScript，并保持评论区 v17 基线。框架替换不改变 `/admin/`、API、会话协议、配置、数据库格式或镜像内资源目录，不要求部署额外前端服务。
+- 管理端使用 Svelte 5 与 Vite 构建静态资源，沿用后台 v16 及已批准补充原型；评论区 SDK 继续使用无框架 TypeScript，并保持评论区 v18 基线。框架替换不改变 `/admin/`、API、会话协议、配置、数据库格式或镜像内资源目录，不要求部署额外前端服务。
 - 镜像以 `GIN_MODE=release`、`ECOKU_RUNTIME=container` 运行；监听端口默认为 12123，容器内浏览器资源、后台、数据库默认分别位于 `/app/client`、`/app/admin`、`/data/ecoku.sqlite3`，源码运行数据库默认位于工作目录下 `./data/ecoku.bin`；支持配置模板列出的覆盖项，修改容器端口需同步端口映射和健康检查，修改数据路径不会自动搬迁数据。部署模板只要求 `notifications.instance_public_url`，
   新部署不需要 `ecoku.env`；管理员账户、会话签名密钥和通知加密主密钥由程序写入 `data/`。旧 `ecoku.env` 在迁移期继续兼容。
 - 应用默认将日志写入 stdout，供 `docker compose logs` 跟随，轮转和保留由 Docker 日志设置决定；可选 `site.log_path` 启用按大小轮转的文件日志。Compose 不挂载 `app/logs`，也不覆盖 daemon 的日志策略。访问日志只记录路由模板，未匹配路由使用固定值；不写入实际路径参数。日志仍不得包含 IP、UA、凭据、token 或评论正文。

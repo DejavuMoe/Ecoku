@@ -1,7 +1,8 @@
 # Plain thread comments prototype
 
 Approved design history for Ecoku's no-avatar, plain-text comment surface.
-`index-v17.html` is the current approved production baseline: it keeps v16's
+`index-v18.html` is the current approved production baseline: it keeps v17 and
+replaces the reply margin guide with tree connectors. `index-v17.html` keeps v16's
 behavior (including the off / Turnstile / self-hosted Cap choice) and restyles the
 default surface in the paper-and-ink language of the Hugo blog, with overridable
 tokens and a colour scheme inherited from the host. `index-v16.html` remains the
@@ -251,6 +252,36 @@ Run its checks with:
 node designs/plain-thread-comments/prototype-v17.test.mjs
 ```
 
+Revision 18 is the approved production baseline on top of revision 17. Only the
+reply tree changes; copy, density, the paper-and-ink tokens and every interaction stay
+as in revision 17:
+
+- replies nest inside their parent like the production `.ecoku-children` group
+  (`prototype-v18-tree.js` moves the v13 flat rendering into that shape after each
+  render and restores keyboard focus);
+- each reply at levels two to four hangs off a rounded elbow that starts under the
+  parent's author line and turns into the reply's own author line;
+- the vertical trunk continues past a reply only while a later sibling follows, so the
+  last reply ends on its elbow and no line runs on into empty space;
+- lines exist only between a parent and its direct replies; levels five and deeper
+  share level four's column, draw no connector, and keep the `@昵称` parent label;
+- the v17 full-height margin guide is removed; indentation stays 22px (14px at
+  620px and below);
+- new overridable tokens: `--ecoku-thread-indent`, `--ecoku-thread-line` (an opaque
+  mix of border and paper, so overlapping segments never darken),
+  `--ecoku-thread-line-width` (2px), `--ecoku-thread-x`, `--ecoku-thread-gap` and
+  `--ecoku-thread-radius` (8px, 6px on narrow screens);
+- a deleted comment's muted text no longer leaks into its nested replies.
+
+Production needs only stylesheet changes: the SDK already renders the nested
+`.ecoku-children` structure.
+
+Run its checks with:
+
+```text
+node designs/plain-thread-comments/prototype-v18.test.mjs
+```
+
 ## Review states
 
 - Light and dark themes.
@@ -262,7 +293,7 @@ node designs/plain-thread-comments/prototype-v17.test.mjs
 - Service unavailable and retry recovery.
 - Desktop at 1280x900 and mobile at 390x844.
 
-Status: `index-v17.html` is the approved production comment baseline and is bound
+Status: `index-v18.html` is the approved production comment baseline and is bound
 to `packages/client/src/style.css`. Preview-only
 provider/failure toggles must not enter the SDK; production reads the provider from
 the server's public form configuration.

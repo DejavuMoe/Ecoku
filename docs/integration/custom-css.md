@@ -42,8 +42,8 @@
 | `--ecoku-primary` | `var(--primary, #1e1c19)` | 标题、昵称、输入文字、主按钮底色、聚焦下划线 |
 | `--ecoku-secondary` | `var(--secondary, #6b655b)` | 时间、字数、字段标签、文字按钮 |
 | `--ecoku-content` | `var(--content, #35312b)` | 评论正文与正文输入框 |
-| `--ecoku-border` | `var(--border, #cbc3b5)` | 身份字段下划线、次要按钮边框、「回复」下划线 |
-| `--ecoku-border-soft` | `var(--border-soft, rgb(30 28 25 / 0.12))` | 卡片描边、讨论串分隔线、回复引导线 |
+| `--ecoku-border` | `var(--border, #cbc3b5)` | 身份字段下划线、次要按钮边框、「回复」下划线；回复连线默认色的基础 |
+| `--ecoku-border-soft` | `var(--border-soft, rgb(30 28 25 / 0.12))` | 卡片描边、讨论串分隔线 |
 | `--ecoku-surface-muted` | `var(--surface-muted, #efebe3)` | 表情格悬停底色 |
 | `--ecoku-code-bg` | `var(--code-bg, #ece7de)` | 默认样式未使用，留给自定义样式 |
 | `--ecoku-accent` | 朱砂色 `#c8553a` 与 `--ecoku-primary` 混合 | 博主标志、链接悬停 |
@@ -56,6 +56,14 @@
 | `--ecoku-font-size` | `15px` | 正文与输入框 |
 | `--ecoku-font-size-small` | `13px` | 元信息、标签、按钮 |
 | `--ecoku-font-size-title` | `22px`（窄屏 `20px`） | 「N 条评论」标题 |
+| `--ecoku-thread-indent` | `22px`（窄屏 `14px`） | 每级回复的缩进，第四级之后不再增加 |
+| `--ecoku-thread-line` | `--ecoku-border` 与 `--ecoku-theme` 混合的不透明色 | 回复连线颜色 |
+| `--ecoku-thread-line-width` | `2px` | 回复连线粗细 |
+| `--ecoku-thread-x` | `6px`（窄屏 `4px`） | 竖线距父评论作者行起点的距离 |
+| `--ecoku-thread-gap` | `5px`（窄屏 `3px`） | 拐角末端与回复作者名之间的空隙 |
+| `--ecoku-thread-radius` | `8px`（窄屏 `6px`） | 拐角圆角 |
+
+回复连线只出现在第二至第四级回复与父评论之间：每条回复由一个圆角拐角连到自己的作者行，后面还有同级回复时竖线才继续向下。更深的回复与第四级对齐，不画连线，用「@昵称」标明回复对象。
 
 等宽字体只使用页面已经加载的 Maple Mono，Ecoku 不会下载字体；没有时依次回退到 `ui-monospace`、`SFMono-Regular`、`Menlo`、`Consolas`。
 

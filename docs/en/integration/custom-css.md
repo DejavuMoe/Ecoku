@@ -42,8 +42,8 @@ The fallback names of the color variables match the PaperMod theme, so in PaperM
 | `--ecoku-primary` | `var(--primary, #1e1c19)` | Headings, nicknames, input text, primary button background, focus underline |
 | `--ecoku-secondary` | `var(--secondary, #6b655b)` | Times, character counts, field labels, text buttons |
 | `--ecoku-content` | `var(--content, #35312b)` | Comment body and body input |
-| `--ecoku-border` | `var(--border, #cbc3b5)` | Identity field underline, secondary button border, "Reply" (回复) underline |
-| `--ecoku-border-soft` | `var(--border-soft, rgb(30 28 25 / 0.12))` | Card outline, thread dividers, reply guide lines |
+| `--ecoku-border` | `var(--border, #cbc3b5)` | Identity field underline, secondary button border, "Reply" (回复) underline; base of the default reply connector colour |
+| `--ecoku-border-soft` | `var(--border-soft, rgb(30 28 25 / 0.12))` | Card outline, thread dividers |
 | `--ecoku-surface-muted` | `var(--surface-muted, #efebe3)` | Sticker cell hover background |
 | `--ecoku-code-bg` | `var(--code-bg, #ece7de)` | Not used by the default styles; reserved for custom styles |
 | `--ecoku-accent` | Vermilion `#c8553a` mixed with `--ecoku-primary` | Blogger badge, link hover |
@@ -56,6 +56,14 @@ The fallback names of the color variables match the PaperMod theme, so in PaperM
 | `--ecoku-font-size` | `15px` | Body text and inputs |
 | `--ecoku-font-size-small` | `13px` | Metadata, labels, buttons |
 | `--ecoku-font-size-title` | `22px` (`20px` on narrow screens) | The "N comments" (N 条评论) heading |
+| `--ecoku-thread-indent` | `22px` (`14px` on narrow screens) | Indent per reply level; it stops growing after level four |
+| `--ecoku-thread-line` | An opaque mix of `--ecoku-border` and `--ecoku-theme` | Reply connector colour |
+| `--ecoku-thread-line-width` | `2px` | Reply connector width |
+| `--ecoku-thread-x` | `6px` (`4px` on narrow screens) | Distance from the start of the parent's author line to the vertical line |
+| `--ecoku-thread-gap` | `5px` (`3px` on narrow screens) | Gap between the end of the elbow and the reply's author name |
+| `--ecoku-thread-radius` | `8px` (`6px` on narrow screens) | Elbow corner radius |
+
+Reply connectors appear only between a parent and its replies at levels two to four: each reply hangs off a rounded elbow that turns into its author line, and the vertical line continues only while a later sibling reply follows. Deeper replies align with level four, draw no connector, and name the comment they answer with "@nickname".
 
 The monospace font uses Maple Mono only if the page has already loaded it; Ecoku does not download fonts. Without it, the font falls back to `ui-monospace`, `SFMono-Regular`, `Menlo`, and `Consolas`, in that order.
 

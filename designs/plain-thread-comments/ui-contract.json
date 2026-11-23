@@ -9,7 +9,7 @@
     {
       "id": "article-plain-thread-comments",
       "prototype": {
-        "entry": "index-v17.html",
+        "entry": "index-v18.html",
         "states": [
           "light",
           "dark",
@@ -77,7 +77,7 @@
           "text-sort-trigger",
           "accent-blogger-badge",
           "mono-meta",
-          "hairline-thread-guides",
+          "tree-reply-connectors",
           "quoted-preview",
           "smoji-picker",
           "touch-16px-inputs"
@@ -100,7 +100,7 @@
     {
       "id": "article-comment-form-configuration",
       "prototype": {
-        "entry": "index-v17.html",
+        "entry": "index-v18.html",
         "states": [
           "email-required",
           "email-optional",
@@ -148,7 +148,7 @@
     {
       "id": "article-comment-captcha",
       "prototype": {
-        "entry": "index-v17.html",
+        "entry": "index-v18.html",
         "states": [
           "turnstile-auto",
           "turnstile-interact",
