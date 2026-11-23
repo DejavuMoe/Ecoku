@@ -2,11 +2,11 @@
 
 公开版本从 v0.3.0 开始。新部署直接使用 [Docker 部署](./docker)；本页用于已有实例升级。
 
-当前版本是 **v0.6.1**（2026-11-19 发布，schema v12）。
+当前版本是 **v0.6.2**（2026-11-23 发布，schema v12）。
 
-新镜像统一发布到 GHCR。使用 Forgejo 镜像的实例，后续升级请将 `image` 改为 `ghcr.io/dejavumoe/ecoku:v0.6.1` 或目标版本的精确 tag，保留原来的数据与配置挂载；Forgejo registry 不再发布新版本。同版本切换仓库不需要重新初始化实例。
+新镜像统一发布到 GHCR。使用 Forgejo 镜像的实例，后续升级请将 `image` 改为 `ghcr.io/dejavumoe/ecoku:v0.6.2` 或目标版本的精确 tag，保留原来的数据与配置挂载；Forgejo registry 不再发布新版本。同版本切换仓库不需要重新初始化实例。
 
-升级到 v0.6.1 前，先阅读 [本版兼容性说明](./upgrades/v0.6.1#compatibility)。从 v0.5.7 或更早版本升级时，须将 Compose 中的 wget 健康检查替换为二进制探针，见 [distroless 迁移](#distroless)。若当前版本早于 v0.5.0，还需核对 [来源冲突与历史数据的兼容性说明](./upgrades/v0.5.0#compatibility)；管理来源与已存储站点来源重叠会阻止启动。
+升级到 v0.6.2 前，先阅读 [本版兼容性说明](./upgrades/v0.6.2#compatibility)。从 v0.5.7 或更早版本升级时，须将 Compose 中的 wget 健康检查替换为二进制探针，见 [distroless 迁移](#distroless)。若当前版本早于 v0.5.0，还需核对 [来源冲突与历史数据的兼容性说明](./upgrades/v0.5.0#compatibility)；管理来源与已存储站点来源重叠会阻止启动。
 
 ## 升级时会发生什么
 
@@ -53,7 +53,7 @@
 **3. 修改镜像版本**。编辑 `~/Ecoku/compose.yaml`，把 `image` 改成目标版本，例如：
 
 ```yaml
-    image: "ghcr.io/dejavumoe/ecoku:v0.6.1"
+    image: "ghcr.io/dejavumoe/ecoku:v0.6.2"
 ```
 
 请写精确的版本号，不要用 `latest`。从 v0.5.7 或更早版本升级时，必须同时将 Compose 中的 `healthcheck.test` 改为 `["CMD", "/app/ecoku-server", "healthcheck"]`（详见 [distroless 迁移](#distroless)）。如果升级说明要求修改 `app/config.yaml` 或 `ecoku.env`，一并修改。
@@ -91,6 +91,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 
 | 版本 | 发布日期 | schema | 要点 |
 | --- | --- | --- | --- |
+| [v0.6.2](./upgrades/v0.6.2) | 2026-11-23 | v12 | 评论区默认样式的回复改为树形连线，新增 `--ecoku-thread-*` 变量。无数据库迁移。 |
 | [v0.6.1](./upgrades/v0.6.1) | 2026-11-19 | v12 | 修复 Twikoo 导入、后台评论列表一致性与可信代理校验，优化评论列表读取。无数据库迁移。 |
 | [v0.6.0](./upgrades/v0.6.0) | 2026-11-17 | v12 | 运行镜像迁移至 distroless Debian 13 static，镜像不含 shell/wget；新增二进制 healthcheck 探针，旧 Compose 须替换探针。无数据库迁移。 |
 | [v0.5.7](./upgrades/v0.5.7) | 2026-11-12 | v12 | 优化公开读取与 SDK 加载；修复回复草稿、排序和刷新时序；后台时间跟随实例时区。无数据库迁移。 |

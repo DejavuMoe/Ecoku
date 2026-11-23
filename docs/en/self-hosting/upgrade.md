@@ -2,11 +2,11 @@
 
 Public releases start at v0.3.0. For a new instance use [Docker deployment](./docker); this page covers upgrades.
 
-The current release is **v0.6.1** (released 2026-11-19, schema v12).
+The current release is **v0.6.2** (released 2026-11-23, schema v12).
 
-New images are published to GHCR. Deployments using Forgejo images should change `image` to `ghcr.io/dejavumoe/ecoku:v0.6.1` or the exact target tag for future upgrades, keeping existing data and configuration mounts. No new versions will be published to the Forgejo registry. Switching registries at the same version does not require reinitializing the instance.
+New images are published to GHCR. Deployments using Forgejo images should change `image` to `ghcr.io/dejavumoe/ecoku:v0.6.2` or the exact target tag for future upgrades, keeping existing data and configuration mounts. No new versions will be published to the Forgejo registry. Switching registries at the same version does not require reinitializing the instance.
 
-Before upgrading to v0.6.1, read [this release's compatibility notes](./upgrades/v0.6.1#compatibility). Upgrading from v0.5.7 or earlier requires replacing the Compose wget probe with the binary probe; see [distroless migration](#distroless). If your current version predates v0.5.0, also check the [notes on origin conflicts and existing data](./upgrades/v0.5.0#compatibility); an overlap between admin origins and stored site origins prevents startup.
+Before upgrading to v0.6.2, read [this release's compatibility notes](./upgrades/v0.6.2#compatibility). Upgrading from v0.5.7 or earlier requires replacing the Compose wget probe with the binary probe; see [distroless migration](#distroless). If your current version predates v0.5.0, also check the [notes on origin conflicts and existing data](./upgrades/v0.5.0#compatibility); an overlap between admin origins and stored site origins prevents startup.
 
 ## What happens during an upgrade
 
@@ -53,7 +53,7 @@ The image has no shell, wget or package manager. Troubleshoot from the host with
 **3. Change the image version.** Edit `~/Ecoku/compose.yaml` and change `image` to the target version, for example:
 
 ```yaml
-    image: "ghcr.io/dejavumoe/ecoku:v0.6.1"
+    image: "ghcr.io/dejavumoe/ecoku:v0.6.2"
 ```
 
 Use an exact version number, not `latest`. When upgrading from v0.5.7 or earlier, you must also update `healthcheck.test` in Compose to `["CMD", "/app/ecoku-server", "healthcheck"]` (see [distroless migration](#distroless)). If the upgrade notes ask you to change `app/config.yaml` or `ecoku.env`, change them at the same time.
@@ -91,6 +91,7 @@ First check whether the old and new versions have the same schema (see the table
 
 | Version | Release date | Schema | Highlights |
 | --- | --- | --- | --- |
+| [v0.6.2](./upgrades/v0.6.2) | 2026-11-23 | v12 | Replies in the default comment style hang off tree connectors; new `--ecoku-thread-*` variables. No database migration. |
 | [v0.6.1](./upgrades/v0.6.1) | 2026-11-19 | v12 | Fix Twikoo import, admin comment list consistency and trusted proxy validation. Improve comment list reads. No database migration. |
 | [v0.6.0](./upgrades/v0.6.0) | 2026-11-17 | v12 | Migrate runtime image to distroless Debian 13 static without shell/wget; add built-in binary healthcheck probe; older Compose files must update probe. No database migration. |
 | [v0.5.7](./upgrades/v0.5.7) | 2026-11-12 | v12 | Optimize public reads and SDK loading; fix reply drafts, sorting and refresh races; use the instance time zone in admin. No database migration. |

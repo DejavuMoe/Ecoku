@@ -50,7 +50,7 @@ docker pull "$previous"
 sh scripts/verify-image.sh ecoku:distroless-migration "$previous"
 ```
 
-The script checks the non-root identity, read-only root, certificates, time zones, assets, admin login and graceful shutdown. The second run creates temporary comments and encrypted notification credentials in v0.5.7, adds a comment after upgrading, rolls back and compares existing data, schema and persistent keys. It removes its containers, volumes and temporary directories on exit. The root Compose file has been updated to v0.6.1 and uses the built-in binary healthcheck probe; local candidate validations use the new probe as well.
+The script checks the non-root identity, read-only root, certificates, time zones, assets, admin login and graceful shutdown. The second run creates temporary comments and encrypted notification credentials in v0.5.7, adds a comment after upgrading, rolls back and compares existing data, schema and persistent keys. It removes its containers, volumes and temporary directories on exit. The root Compose file has been updated to v0.6.2 and uses the built-in binary healthcheck probe; local candidate validations use the new probe as well.
 
 ## Documentation diagrams {#documentation-diagrams}
 

@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-11-23
+
 ### 变更
 
 - 默认样式的回复改为树形连线：第二至第四级回复各由一个圆角拐角从父评论连到自己的作者行，后面还有同级回复时竖线才继续向下，最后一条回复以拐角收尾。更深的回复仍与第四级对齐、以「@昵称」标明回复对象，不画连线。原先贯穿整条回复的竖向引导线已移除。
@@ -824,4 +826,5 @@
 [0.5.7]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.5.7
 [0.6.0]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.6.0
 [0.6.1]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.6.1
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.6.1...master
+[0.6.2]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.6.2
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.6.2...master
