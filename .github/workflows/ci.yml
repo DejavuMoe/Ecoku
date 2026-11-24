@@ -85,6 +85,8 @@ jobs:
           node scripts/check-ci.mjs
           node scripts/check-release.mjs --self-test
           node scripts/check-release.mjs
+          node scripts/pin-docs-sdk.mjs --self-test
+          node scripts/pin-docs-sdk.mjs --check
       - name: Verify API smoke script
         if: matrix.target == 'client'
         run: pwsh -NoProfile -File scripts/real-api-smoke.test.ps1

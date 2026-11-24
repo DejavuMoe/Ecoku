@@ -14,7 +14,7 @@
 
 发布 `v0.6.0` 时，SDK 版本为 `0.6.0`，镜像为 `ghcr.io/dejavumoe/ecoku:v0.6.0`。正式 npm 版本使用 `latest`，含预发布后缀的 tag 使用 `next` 并创建 GitHub prerelease；镜像只发布精确版本，不创建 `latest`。
 
-文档 Demo 在准备 tag 时仍使用上一版已发布的 SDK；确认本版 npm 可读后，再单独更新三语安装示例、文档依赖和锁文件。这类版本同步只记入提交说明，不追加到下一版的 `[Unreleased]`，避免发布说明再次错位。历史说明修订只修改正文，不移动 tag 或替换已发布产物。
+文档 Demo 在准备 tag 时仍使用上一版已发布的 SDK。Release 成功后运行 `node scripts/pin-docs-sdk.mjs`：脚本等待 npm `latest` 指向本版，并实际下载 `ecoku-<版本>.tgz`、核对 sha512 与 registry 元数据一致，再统一更新三语安装示例、文档依赖、`minimumReleaseAgeExclude` 和锁文件。npm 元数据先于 tarball 在各 CDN 节点可用，只看 `npm view` 不足以保证文档构建能下载；脚本成功前不要推送这类提交。这类版本同步只记入提交说明，不追加到下一版的 `[Unreleased]`，避免发布说明再次错位。历史说明修订只修改正文，不移动 tag 或替换已发布产物。
 
 SDK 的 `repository.url` 设为 `git+https://github.com/DejavuMoe/Ecoku.git`，`directory` 为 `packages/client`。如果实际 GitHub 仓库名称不同，首次发布前同步修改此字段和 npm Trusted Publisher；流水线会拒绝来源仓库不一致的包。
 
@@ -84,6 +84,8 @@ Woodpecker 仅启用 `docs-deploy.yml`，负责现有文档站点的构建与部
 node scripts/check-ci.mjs
 node scripts/check-release.mjs --self-test
 node scripts/check-release.mjs
+node scripts/pin-docs-sdk.mjs --self-test
+node scripts/pin-docs-sdk.mjs --check
 ```
 
-以上命令从仓库根目录运行，检查 CI 的打包／发布边界、Actions 固定方式、工具链版本及发布版本契约。完整验证由 `ci.yml` 执行，不代表实际 npm、GHCR 或 GitHub Release 已发布成功。
+以上命令从仓库根目录运行，检查 CI 的打包／发布边界、Actions 固定方式、工具链版本、发布版本契约，以及文档各处 SDK 版本是否一致。完整验证由 `ci.yml` 执行，不代表实际 npm、GHCR 或 GitHub Release 已发布成功。

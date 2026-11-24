@@ -19,7 +19,8 @@ steps:
       - apk add --no-cache coreutils git util-linux
       - sh scripts/test-publish-docs.sh
       - npm install --global pnpm@11.28.9
-      - pnpm --filter ./docs... --fail-if-no-match install --frozen-lockfile --prefer-offline
+      # A just-published SDK tarball can 404 on some registry edges for a few minutes.
+      - pnpm --filter ./docs... --fail-if-no-match install --frozen-lockfile --prefer-offline || (echo 'retrying docs install in 60s' && sleep 60 && pnpm --filter ./docs... --fail-if-no-match install --frozen-lockfile --prefer-offline) || (echo 'retrying docs install in 120s' && sleep 120 && pnpm --filter ./docs... --fail-if-no-match install --frozen-lockfile --prefer-offline)
       - pnpm docs:build
       - sh scripts/verify-docs-output.sh docs/.vitepress/dist
 

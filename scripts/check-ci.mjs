@@ -246,5 +246,8 @@ assertToolPins(docsBuild, /^      - npm install --global pnpm@(\S+)$/gm, [pnpm],
 assert.match(docsBuild, /^      - sh scripts\/test-publish-docs\.sh$/m)
 assert.doesNotMatch(docsBuild, /^    volumes:/m)
 assert.match(docsDeploy, /pnpm --filter \.\/docs\.\.\. --fail-if-no-match install --frozen-lockfile --prefer-offline/)
+// A docs pin pushed right after an npm release can briefly 404 on the build host's registry edge.
+assert.equal(docsBuild.match(/sleep \d+ && pnpm --filter \.\/docs\.\.\. --fail-if-no-match install --frozen-lockfile --prefer-offline\)/g)?.length, 2, 'docs install must retry twice')
+assert.match(ci, /^          node scripts\/pin-docs-sdk\.mjs --self-test\n          node scripts\/pin-docs-sdk\.mjs --check$/m)
 assert.match(docsDeploy, /pnpm_config_verify_deps_before_run: "false"/)
 console.log('CI checks passed: filtered installs, dependency/image security gates, release reuse, packaging without publishing, pinned actions, matching toolchain versions and release provenance.')
