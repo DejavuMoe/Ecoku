@@ -1082,6 +1082,40 @@ describe('approved production comment surface', () => {
     expect(new URL(String(fetchMock.mock.calls[2]?.[0])).searchParams.get('page')).toBe('1')
   })
 
+  it('credits Ecoku at the bottom right after the list renders, with or without more pages', async () => {
+    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse([comment(1, 0, 'only root')])))
+    const credit = () => container.querySelector<HTMLElement>('.ecoku-powered-by')!
+    expect(credit().hidden).toBe(true)
+    await client.init()
+
+    expect(credit().hidden).toBe(false)
+    expect(container.querySelector<HTMLElement>('.ecoku-pagination')?.hidden).toBe(true)
+    expect(credit().previousElementSibling?.classList.contains('ecoku-pagination')).toBe(true)
+    expect(credit().textContent).toBe('Powered by Ecoku')
+    const link = credit().querySelector('a')!
+    expect(link.textContent).toBe('Ecoku')
+    expect(link.getAttribute('href')).toBe('https://ecoku.zsh.moe/')
+    expect(link.target).toBe('_blank')
+    expect(link.rel).toBe('noopener')
+  })
+
+  it.each([
+    ['en', 'https://ecoku.zsh.moe/en/'],
+    ['zh-Hant', 'https://ecoku.zsh.moe/zh-hant/'],
+  ] as const)('links the credit to the %s documentation', async (i18n, href) => {
+    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse([])), 'article-a', { i18n })
+    await client.init()
+    expect(container.querySelector<HTMLElement>('.ecoku-powered-by')?.hidden).toBe(false)
+    expect(container.querySelector('.ecoku-powered-by a')?.getAttribute('href')).toBe(href)
+  })
+
+  it('keeps the credit off a failed first load', async () => {
+    const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(jsonResponse(500, null)))
+    await client.init().catch(() => undefined)
+    await vi.waitFor(() => expect(container.querySelector<HTMLElement>('.ecoku-service-error')?.hidden).toBe(false))
+    expect(container.querySelector<HTMLElement>('.ecoku-core')?.hidden).toBe(true)
+  })
+
   it('does not let an obsolete page request overwrite a newer page key', async () => {
     let resolveOld: ((response: Response) => void) | undefined
     let resolveNew: ((response: Response) => void) | undefined

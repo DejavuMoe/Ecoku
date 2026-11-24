@@ -9,7 +9,7 @@
     {
       "id": "article-plain-thread-comments",
       "prototype": {
-        "entry": "index-v18.html",
+        "entry": "index-v19.html",
         "states": [
           "light",
           "dark",
@@ -80,7 +80,8 @@
           "tree-reply-connectors",
           "quoted-preview",
           "smoji-picker",
-          "touch-16px-inputs"
+          "touch-16px-inputs",
+          "powered-by-credit"
         ]
       },
       "production": {

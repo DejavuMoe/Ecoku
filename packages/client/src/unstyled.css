@@ -56,6 +56,10 @@
   gap: 12px;
 }
 
+.ecoku-powered-by {
+  text-align: end;
+}
+
 .ecoku-composer-end,
 .ecoku-smoji-tabs {
   display: flex;

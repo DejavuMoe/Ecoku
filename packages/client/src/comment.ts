@@ -93,6 +93,8 @@ export class CommentSurface {
   private readonly previousPageButton = createElement('button', 'ecoku-pager-button')
   private readonly paginationStatus = createElement('span', 'ecoku-pagination-status', '1/1')
   private readonly nextPageButton = createElement('button', 'ecoku-pager-button')
+  private readonly poweredBy = createElement('p', 'ecoku-powered-by')
+  private readonly poweredByLink = createElement('a', '', 'Ecoku')
   private comments: CommentData[] = []
   private currentPage = 0
   private pageCount = 0
@@ -282,6 +284,13 @@ export class CommentSurface {
       this.nextPageButton,
     )
 
+    // The credit appears once the list has rendered, whether or not there are more pages.
+    this.poweredBy.hidden = true
+    this.poweredByLink.href = this.docsHome()
+    this.poweredByLink.target = '_blank'
+    this.poweredByLink.rel = 'noopener'
+    this.poweredBy.append('Powered by ', this.poweredByLink)
+
     this.core.append(
       this.rootForm,
       heading,
@@ -289,6 +298,7 @@ export class CommentSurface {
       this.emptyState,
       this.threadList,
       this.pagination,
+      this.poweredBy,
     )
     section.append(this.serviceError, this.core)
     this.root.append(section)
@@ -534,8 +544,17 @@ export class CommentSurface {
       : value
   }
 
+  // Documentation home in the comment area's language.
+  private docsHome(): string {
+    const locale = this.locale()
+    if (locale === 'en') return 'https://ecoku.zsh.moe/en/'
+    if (locale === 'zh-Hant') return 'https://ecoku.zsh.moe/zh-hant/'
+    return 'https://ecoku.zsh.moe/'
+  }
+
   private applyLocale(): void {
     this.root.setAttribute('lang', this.locale())
+    this.poweredByLink.href = this.docsHome()
     this.root.querySelector<HTMLElement>('.ecoku-comment-section')?.setAttribute('aria-label', this.messages.ariaComments)
     this.retryButton.textContent = this.messages.retry
     this.previousPageButton.textContent = this.messages.previousPage
@@ -737,6 +756,7 @@ export class CommentSurface {
     this.emptyState.hidden = true
     this.threadList.hidden = true
     this.pagination.hidden = true
+    this.poweredBy.hidden = true
   }
 
   private hideServiceError(): void {
@@ -790,6 +810,7 @@ export class CommentSurface {
     const empty = rendered.size === 0
     this.emptyState.hidden = !empty
     this.threadList.hidden = empty
+    this.poweredBy.hidden = false
     this.updatePagination(empty)
     this.root.dataset.rootTotal = String(this.rootTotal)
   }

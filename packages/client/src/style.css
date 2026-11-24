@@ -1,4 +1,4 @@
-/* Ecoku default comment surface: paper and ink (design revision 18).
+/* Ecoku default comment surface: paper and ink (design revision 19).
    Default tokens sit at zero specificity, so any host rule on `.ecoku-comments` wins.
    Colours fall back from the PaperMod names; `auto` inherits the host colour scheme. */
 
@@ -874,6 +874,33 @@ a.ecoku-reply-context:hover {
 
 .ecoku-pagination-separator {
   color: var(--ecoku-border);
+}
+
+/* A quiet credit at the bottom right of the comment area. "Powered by" sits a step lighter than
+   meta text and the name a step darker; both stay below body text. */
+.ecoku-powered-by {
+  margin: 8px 0 0;
+  color: color-mix(in srgb, var(--ecoku-secondary) 70%, transparent);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-align: end;
+}
+
+.ecoku-pagination:not([hidden]) + .ecoku-powered-by {
+  margin-top: 0;
+}
+
+.ecoku-powered-by a {
+  color: color-mix(in srgb, var(--ecoku-secondary) 65%, var(--ecoku-primary));
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.ecoku-powered-by a:hover {
+  color: var(--ecoku-accent);
+  text-decoration-color: currentColor;
 }
 
 .ecoku-visually-hidden {

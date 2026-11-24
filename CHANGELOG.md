@@ -7,6 +7,7 @@
 
 ### 新增
 
+- 默认评论区右下角显示「Powered by Ecoku」，Ecoku 按评论区语言链接到文档站首页。署名在评论列表加载完成后出现，有分页时位于分页下方；首次加载失败时不显示。「Powered by」比时间等次要文字更淡，「Ecoku」略深，都低于正文对比度，颜色随 `--ecoku-secondary`、`--ecoku-primary` 变化，可用 `.ecoku-powered-by` 自定义样式。
 - 管理后台登录后每个页面底部居中显示「Powered by Ecoku」与当前版本号，Ecoku 链接到文档站，版本号链接到 GitHub 上对应的 Release。版本号由镜像构建时写入，只在登录后的会话响应中返回（`version` 字段），登录页不显示；非发布构建显示 `dev`。
 
 ## [0.6.2] - 2026-11-23

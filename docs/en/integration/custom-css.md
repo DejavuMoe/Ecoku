@@ -65,6 +65,8 @@ These variable names match the Hugo PaperMod theme, so in PaperMod you usually d
 
 Reply connectors are drawn only between a parent and its replies at levels two to four: each reply connects to its own author line with a rounded elbow, and the vertical line continues down only while a later sibling reply follows. Deeper replies draw no line and name the comment they answer with "@name".
 
+"Powered by Ecoku" appears at the bottom right of the comment section once the comment list has loaded; its class is `.ecoku-powered-by`. "Powered by" is lighter than the time and other meta text and "Ecoku" slightly darker; both are derived from `--ecoku-secondary` and `--ecoku-primary` and stay below body-text contrast.
+
 The monospace font uses Maple Mono only if the page has already loaded it; Ecoku doesn't download fonts. On touch devices, input font size is at least 16px, so iOS doesn't zoom the page on focus.
 
 ## Structural styles

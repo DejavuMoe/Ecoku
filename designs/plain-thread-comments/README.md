@@ -1,8 +1,9 @@
 # Plain thread comments prototype
 
 Approved design history for Ecoku's no-avatar, plain-text comment surface.
-`index-v18.html` is the current approved production baseline: it keeps v17 and
-replaces the reply margin guide with tree connectors. `index-v17.html` keeps v16's
+`index-v19.html` is the current approved production baseline: it keeps v18 and adds
+a quiet "Powered by Ecoku" credit at the bottom right of the comment area.
+`index-v18.html` keeps v17 and replaces the reply margin guide with tree connectors. `index-v17.html` keeps v16's
 behavior (including the off / Turnstile / self-hosted Cap choice) and restyles the
 default surface in the paper-and-ink language of the Hugo blog, with overridable
 tokens and a colour scheme inherited from the host. `index-v16.html` remains the
@@ -282,6 +283,26 @@ Run its checks with:
 node designs/plain-thread-comments/prototype-v18.test.mjs
 ```
 
+Revision 19 (approved 2026-11-24) adds one line to revision 18 and changes nothing
+else:
+
+- "Powered by Ecoku" sits at the bottom right of the comment area, under the pager
+  when there are more pages and directly under the list otherwise;
+- "Powered by" is a step lighter than meta text (`--ecoku-secondary` at 70%
+  opacity) and "Ecoku" a step darker (`--ecoku-secondary` mixed 65/35 with
+  `--ecoku-primary`); both stay below body-text contrast and follow host tokens;
+- "Ecoku" links to the documentation home in the comment area's language
+  (`/`, `/zh-hant/`, `/en/`) in a new tab with `rel="noopener"`, and turns to the
+  accent colour on hover;
+- the credit appears once the list has rendered; a failed first load and the
+  unconfigured host state do not show it. There is no option to turn it off.
+
+Run its checks with:
+
+```text
+node designs/plain-thread-comments/prototype-v19.test.mjs
+```
+
 ## Review states
 
 - Light and dark themes.
@@ -293,7 +314,7 @@ node designs/plain-thread-comments/prototype-v18.test.mjs
 - Service unavailable and retry recovery.
 - Desktop at 1280x900 and mobile at 390x844.
 
-Status: `index-v18.html` is the approved production comment baseline and is bound
+Status: `index-v19.html` is the approved production comment baseline and is bound
 to `packages/client/src/style.css`. Preview-only
 provider/failure toggles must not enter the SDK; production reads the provider from
 the server's public form configuration.
