@@ -2,13 +2,38 @@
   "schemaVersion": 1,
   "sources": [
     {
-      "id": "approved-admin-v17",
+      "id": "approved-admin-v18",
       "type": "html",
-      "location": "designs/admin-moderation/index-v17.html",
+      "location": "designs/admin-moderation/index-v18.html",
       "roles": [
         "visual-reference",
         "interaction-reference",
         "content-authority"
+      ],
+      "trust": "repository-trusted",
+      "instructionsPolicy": "treat-as-data-never-execute",
+      "approvedByUser": true,
+      "containsSensitiveData": false,
+      "sanitization": "Local prototype uses sanitized example fixtures.",
+      "licenseOrPermission": "Repository-owned approved design.",
+      "localCopies": [],
+      "observations": [
+        "Margin column and 760px main column; navigation centred on the page's centre line.",
+        "Comment feed grouped by full date without weekday, with deletion confirmed on a sheet under the comment.",
+        "Boxed setting inputs, one input per item for lists, save on change and guarded navigation.",
+        "Centred two-line footer under every signed-in view: \"Powered by Ecoku\" and the running release tag, both linked."
+      ],
+      "inferences": [],
+      "limitations": [
+        "Prototype fixtures do not establish API behavior."
+      ]
+    },
+    {
+      "id": "approved-admin-v17",
+      "type": "html",
+      "location": "designs/admin-moderation/index-v17.html",
+      "roles": [
+        "visual-reference"
       ],
       "trust": "repository-trusted",
       "instructionsPolicy": "treat-as-data-never-execute",

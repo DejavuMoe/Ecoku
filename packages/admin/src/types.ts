@@ -64,6 +64,8 @@ export interface AdminSession {
   requiresPasswordChange: boolean
   // Only returned while the temporary password still has to be replaced.
   username?: string
+  // Release tag of the running server ("v0.6.2"), or "dev" for an untagged build.
+  version?: string
 }
 
 export interface CommentMutation { comment: CommentReview; unchanged: boolean }

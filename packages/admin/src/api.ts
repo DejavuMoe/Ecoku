@@ -61,6 +61,7 @@ function mapSession(raw: Record<string, unknown>): AdminSession {
   const session: AdminSession = { expiresAt, expiresIn: number(raw.expires_in), requiresPasswordChange: raw.requires_password_change === true }
   const username = text(raw.username).trim()
   if (username) session.username = username
+  session.version = typeof raw.version === 'string' && /^v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(raw.version) ? raw.version : 'dev'
   return session
 }
 

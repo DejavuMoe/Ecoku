@@ -217,6 +217,22 @@ func TestAdminStaticStartsWithoutTheTabIcon(t *testing.T) {
 	}
 }
 
+func TestAdminVersionIsOnlyInSignedInSession(t *testing.T) {
+	env := setupAdminTest(t)
+	session := requestJSON(t, env.router, http.MethodGet, "/api/admin/session", "", "Bearer "+env.token, nil)
+	if session.Code != http.StatusOK || !strings.Contains(session.Body.String(), `"version":"dev"`) {
+		t.Fatalf("session=%d %s", session.Code, session.Body.String())
+	}
+	loginConfig := requestJSON(t, env.router, http.MethodGet, "/api/admin/login-config", adminTestOrigin, "", nil)
+	if loginConfig.Code != http.StatusOK || strings.Contains(loginConfig.Body.String(), `"version"`) {
+		t.Fatalf("login-config exposes version: %d %s", loginConfig.Code, loginConfig.Body.String())
+	}
+	anonymous := requestJSON(t, env.router, http.MethodGet, "/api/admin/session", "", "", nil)
+	if anonymous.Code != http.StatusUnauthorized || strings.Contains(anonymous.Body.String(), `"version"`) {
+		t.Fatalf("anonymous session=%d %s", anonymous.Code, anonymous.Body.String())
+	}
+}
+
 func TestAdminTurnstileSettingsAndLoginChallenge(t *testing.T) {
 	env := setupAdminTest(t)
 	t.Setenv("ECOKU_ADMIN_LOCALE", "en")

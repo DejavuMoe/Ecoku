@@ -2,6 +2,7 @@ package admin
 
 import (
 	"ecoku-server/adminidentity"
+	"ecoku-server/buildinfo"
 	"ecoku-server/captcha"
 	"ecoku-server/config"
 	"ecoku-server/middleware"
@@ -39,6 +40,9 @@ type loginResponse struct {
 	// Username is only returned to a setup-only session so the setup form can
 	// keep the account name after admin reset-password.
 	Username string `json:"username,omitempty"`
+	// Version is the release tag of the running server, or "dev". Only signed-in
+	// sessions receive it; the admin footer links it to the release notes.
+	Version string `json:"version"`
 }
 
 type initialSetupRequest struct {
@@ -107,6 +111,7 @@ func Login(c *gin.Context) {
 		ExpiresAt:              expiresAt.UTC().Format(time.RFC3339Nano),
 		ExpiresIn:              int64(credentials.TokenTTL.Seconds()),
 		RequiresPasswordChange: credentials.MustChangePassword,
+		Version:                buildinfo.Version(),
 	}
 	if credentials.MustChangePassword {
 		response.Username = credentials.Username
@@ -128,6 +133,7 @@ func Session(c *gin.Context) {
 		ExpiresAt:              claims.ExpiresAt.UTC().Format(time.RFC3339Nano),
 		ExpiresIn:              int64(time.Until(claims.ExpiresAt).Seconds()),
 		RequiresPasswordChange: claims.SetupOnly,
+		Version:                buildinfo.Version(),
 	}
 	if claims.SetupOnly {
 		if credentials, ok := config.GetAdminCredentials(); ok {
@@ -161,6 +167,7 @@ func InitialSetup(c *gin.Context) {
 	utils.SendResponse(c, http.StatusOK, "管理员账户设置成功", loginResponse{
 		ExpiresAt: expiresAt.UTC().Format(time.RFC3339Nano),
 		ExpiresIn: int64(time.Until(expiresAt).Seconds()),
+		Version:   buildinfo.Version(),
 	})
 }
 

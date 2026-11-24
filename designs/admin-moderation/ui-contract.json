@@ -7,8 +7,12 @@
   },
   "sourceReferences": [
     {
+      "path": "designs/admin-moderation/index-v18.html",
+      "role": "current approved admin baseline: v17 plus a centred footer under every signed-in view — \"Powered by Ecoku\" linking to the documentation and the running release tag linking to its GitHub release"
+    },
+    {
       "path": "designs/admin-moderation/index-v17.html",
-      "role": "current approved admin baseline: v16 polished — centred navigation, full dates without weekday, delete confirmation as a sheet under the comment, notices without a left rule"
+      "role": "previous approved admin baseline: v16 polished — centred navigation, full dates without weekday, delete confirmation as a sheet under the comment, notices without a left rule, superseded by v18"
     },
     {
       "path": "designs/admin-moderation/index-v16.html",
@@ -154,15 +158,15 @@
       "contentProfile": "operational-strict"
     },
     {
-      "id": "admin-v17-workspace",
+      "id": "admin-v18-workspace",
       "contentProfile": "operational-strict",
       "prototype": {
-        "entry": "index-v17.html",
-        "assetPath": "index-v17.html",
+        "entry": "index-v18.html",
+        "assetPath": "index-v18.html",
         "files": [
-          "index-v17.html",
-          "styles-v17.css",
-          "prototype-v17.js"
+          "index-v18.html",
+          "styles-v18.css",
+          "prototype-v18.js"
         ],
         "states": [
           "login-off",
@@ -199,14 +203,16 @@
           "full-date-groups",
           "site-save-failure-retains-draft",
           "notification-settings-load-error-retry",
-          "security-settings-load-error-retry"
+          "security-settings-load-error-retry",
+          "footer-powered-by-and-version"
         ],
         "stableIds": [
           "view-comments",
           "view-sites",
           "view-notifications",
           "view-security",
-          "confirm-dialog"
+          "confirm-dialog",
+          "app-foot"
         ]
       },
       "production": {
@@ -227,7 +233,12 @@
           "packages/admin/src/i18n.svelte.ts",
           "packages/admin/src/components/AdminIcon.svelte",
           "packages/admin/index.html",
-          "packages/admin/public/favicon.svg"
+          "packages/admin/public/favicon.svg",
+          "packages/admin/src/api.ts",
+          "packages/admin/src/types.ts",
+          "server/handle/admin/auth.go",
+          "server/buildinfo/buildinfo.go",
+          "Dockerfile"
         ],
         "interfaces": [
           "adminApi.listComments",
@@ -237,12 +248,15 @@
           "adminApi.updateSite",
           "adminApi.saveEmail",
           "adminApi.saveTelegram",
-          "adminApi.saveCaptcha"
+          "adminApi.saveCaptcha",
+          "adminApi.getSession"
         ],
         "tests": [
           "packages/admin/src/admin.test.ts",
           "packages/admin/src/i18n.test.ts",
-          "designs/admin-moderation/index-v17.test.mjs"
+          "designs/admin-moderation/index-v18.test.mjs",
+          "server/buildinfo/buildinfo_test.go",
+          "server/routes/admin_routes_test.go"
         ]
       },
       "status": "implemented"
@@ -308,8 +322,8 @@
     "defaultProfile": "operational-strict",
     "inventory": "content-inventory.json",
     "approvedCopySources": [
-      "index-v17.html",
-      "prototype-v17.js",
+      "index-v18.html",
+      "prototype-v18.js",
       "email-notification-v7.html",
       "first-login-v1.html"
     ]

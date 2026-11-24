@@ -1117,6 +1117,51 @@ describe('display configuration for a restored session', () => {
   })
 })
 
+describe('version footer', () => {
+  const signedIn = (version?: string) => {
+    vi.spyOn(adminApi, 'getLoginConfig').mockResolvedValue({ captcha: { provider: 'off', sitekey: '', instanceUrl: '' }, turnstileSitekey: '', locale: 'en', timeZone: 'UTC' })
+    vi.spyOn(adminApi, 'getSession').mockResolvedValue({ expiresAt: new Date(Date.now() + 3600000).toISOString(), expiresIn: 3600, requiresPasswordChange: false, version })
+    vi.spyOn(adminApi, 'listSites').mockResolvedValue([site()])
+    vi.spyOn(adminApi, 'listComments').mockResolvedValue({ data: [], counts: { published: 0, deleted: 0 }, total: 0, page: 1, pageSize: 20, pageCount: 0 })
+  }
+
+  it('links the project and the running release tag under the signed-in views', async () => {
+    signedIn('v0.6.2')
+    const store = createAdminStore()
+    const wrapper = render(App, { context: new Map([['admin', store]]) })
+    await vi.waitFor(() => expect(wrapper.findAll('.app-foot a')).toHaveLength(2))
+    const [project, release] = wrapper.findAll('.app-foot a')
+    expect(wrapper.get('.app-foot-text').text()).toMatch(/^Powered by Ecoku\s*v0\.6\.2$/)
+    await vi.waitFor(() => expect(project.attributes('href')).toBe('https://ecoku.zsh.moe/en/'))
+    expect(release.text()).toBe('v0.6.2')
+    expect(release.attributes('href')).toBe('https://github.com/DejavuMoe/Ecoku/releases/tag/v0.6.2')
+    for (const link of [project, release]) {
+      expect(link.attributes('target')).toBe('_blank')
+      expect(link.attributes('rel')).toBe('noopener')
+    }
+  })
+
+  it('shows an untagged build as dev without a release link', async () => {
+    signedIn('dev')
+    const store = createAdminStore()
+    const wrapper = render(App, { context: new Map([['admin', store]]) })
+    await vi.waitFor(() => expect(wrapper.find('.app-foot').exists()).toBe(true))
+    await vi.waitFor(() => expect(wrapper.get('.app-foot-text').text()).toMatch(/dev$/))
+    expect(wrapper.findAll('.app-foot a')).toHaveLength(1)
+  })
+
+  it('keeps the version off the sign-in page', async () => {
+    vi.spyOn(adminApi, 'getLoginConfig').mockResolvedValue({ captcha: { provider: 'off', sitekey: '', instanceUrl: '' }, turnstileSitekey: '', locale: 'zh-CN', timeZone: 'UTC' })
+    vi.spyOn(adminApi, 'getSession').mockRejectedValue(new ApiError(401, 'unauthorized'))
+    const store = createAdminStore()
+    const wrapper = render(App, { context: new Map([['admin', store]]) })
+    await vi.waitFor(() => expect(store.sessionReady).toBe(true))
+    await flushPromises()
+    expect(wrapper.find('.app-foot').exists()).toBe(false)
+    expect(store.serverVersion).toBe('')
+  })
+})
+
 describe('login verification startup', () => {
   const capConfig = { provider: 'cap', sitekey: 'cap-public', instanceUrl: 'https://cap.example.test' }
   const widget = () => ({ waitForToken: vi.fn().mockResolvedValue('verified-token'), reset: vi.fn(), remove: vi.fn() })

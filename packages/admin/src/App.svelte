@@ -30,6 +30,15 @@
     { id: 'security' as const, label: adminText('security') }
   ])
 
+  // The footer links to the documentation in the admin language.
+  let docsHome = $derived(
+    adminLocale.value === 'en'
+      ? 'https://ecoku.zsh.moe/en/'
+      : adminLocale.value === 'zh-Hant'
+        ? 'https://ecoku.zsh.moe/zh-hant/'
+        : 'https://ecoku.zsh.moe/'
+  )
+
   let username = $state('')
   let password = $state('')
   let usernameInput = $state<HTMLInputElement | null>(null)
@@ -408,6 +417,20 @@
       {#if store.view === 'comments'}<CommentManagementView />{:else if store.view === 'sites'}<SiteManagementView
         />{:else if store.view === 'notifications'}<NotificationSettingsView />{:else}<SecurityView />{/if}
     </main>
+    <footer aria-label={adminText('versionInfo')} class="app-foot layout">
+      <p class="app-foot-text">
+        <span class="app-foot-line"
+          >Powered by <a href={docsHome} target="_blank" rel="noopener">Ecoku</a></span
+        >{#if store.serverVersion}<span class="app-foot-line"
+            >{#if store.serverVersion === 'dev'}<span class="mono">dev</span>{:else}<a
+                class="mono"
+                href={`https://github.com/DejavuMoe/Ecoku/releases/tag/${store.serverVersion}`}
+                target="_blank"
+                rel="noopener">{store.serverVersion}</a
+              >{/if}</span
+          >{/if}
+      </p>
+    </footer>
     <nav aria-label="主导航（底部）" class="tabbar">
       {#each views as item (item.id)}<button
           type="button"

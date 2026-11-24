@@ -48,6 +48,8 @@ export function createAdminStore() {
     logoutBusy: false,
     logoutMessage: '',
     expiresAt: '',
+    // Release tag shown in the footer; only known after sign-in.
+    serverVersion: '',
     loginBusy: false,
     loginMessage: '',
     passwordSetupRequired: false,
@@ -113,7 +115,7 @@ export function createAdminStore() {
     ++queueGeneration; ++detailGeneration
     state.queueBusy = false; state.queueQuiet = false; state.detailBusy = false
     cancelAdminRequests()
-    state.authenticated = false; state.expiresAt = ''; state.sites = []; state.selectedSiteId = ''
+    state.authenticated = false; state.expiresAt = ''; state.serverVersion = ''; state.sites = []; state.selectedSiteId = ''
     state.passwordSetupRequired = false; state.setupUsername = ''; state.passwordSetupMessage = ''
     state.comments = []; state.selectedComment = null; state.counts = emptyCounts()
     state.notificationSettings = null; state.captchaSettings = null
@@ -139,7 +141,7 @@ export function createAdminStore() {
     state.loginBusy = true; state.loginMessage = ''
     try {
       const session = await adminApi.login(username, password, captchaToken)
-      state.authenticated = true; state.expiresAt = session.expiresAt; state.passwordSetupRequired = session.requiresPasswordChange; armExpiry(session.expiresAt)
+      state.authenticated = true; state.expiresAt = session.expiresAt; state.serverVersion = session.version ?? ''; state.passwordSetupRequired = session.requiresPasswordChange; armExpiry(session.expiresAt)
       state.setupUsername = session.requiresPasswordChange ? session.username ?? username.trim() : ''
       if (!state.passwordSetupRequired) await loadSites(true)
       return state.authenticated
@@ -150,7 +152,7 @@ export function createAdminStore() {
     if (state.authenticated) { state.sessionReady = true; return }
     try {
       const session = await adminApi.getSession()
-      state.authenticated = true; state.expiresAt = session.expiresAt; state.passwordSetupRequired = session.requiresPasswordChange; armExpiry(session.expiresAt)
+      state.authenticated = true; state.expiresAt = session.expiresAt; state.serverVersion = session.version ?? ''; state.passwordSetupRequired = session.requiresPasswordChange; armExpiry(session.expiresAt)
       state.setupUsername = session.requiresPasswordChange ? session.username ?? '' : ''
       state.sessionReady = true
       if (state.authenticated && !state.passwordSetupRequired) await loadSites(true)
@@ -163,7 +165,7 @@ export function createAdminStore() {
     state.passwordSetupBusy = true; state.passwordSetupMessage = ''
     try {
       const session = await adminApi.initialSetup(username, password)
-      state.passwordSetupRequired = false; state.setupUsername = ''; state.expiresAt = session.expiresAt; armExpiry(session.expiresAt)
+      state.passwordSetupRequired = false; state.setupUsername = ''; state.expiresAt = session.expiresAt; state.serverVersion = session.version ?? state.serverVersion; armExpiry(session.expiresAt)
       state.view = 'sites'; state.createSiteRequest += 1
       await loadSites(true)
       return true

@@ -10,6 +10,7 @@ const catalog = {
     skip: '跳到主要内容', loginTitle: '管理员登录', username: '用户名', password: '密码', login: '登录', loggingIn: '登录中…',
     logout: '退出登录', discardTitle: '放弃未保存的修改？', discardCopy: '离开后，本页的修改不会保存。', continue: '继续编辑', discard: '放弃修改',
     locale: '后台语言', simple: '简体中文', traditional: '繁體中文', english: 'English',
+    versionInfo: '版本信息',
   },
   'zh-Hant': {
     loading: '載入中…', retry: '重試',
@@ -17,6 +18,7 @@ const catalog = {
     skip: '跳到主要內容', loginTitle: '管理員登入', username: '使用者名稱', password: '密碼', login: '登入', loggingIn: '登入中…',
     logout: '登出', discardTitle: '放棄尚未儲存的修改？', discardCopy: '離開後，本頁的修改不會儲存。', continue: '繼續編輯', discard: '放棄修改',
     locale: '後台語言', simple: '简体中文', traditional: '繁體中文', english: 'English',
+    versionInfo: '版本資訊',
   },
   en: {
     loading: 'Loading…', retry: 'Retry',
@@ -24,6 +26,7 @@ const catalog = {
     skip: 'Skip to main content', loginTitle: 'Admin sign in', username: 'Username', password: 'Password', login: 'Sign in', loggingIn: 'Signing in…',
     logout: 'Sign out', discardTitle: 'Discard unsaved changes?', discardCopy: 'Leaving this page will discard its changes.', continue: 'Keep editing', discard: 'Discard changes',
     locale: 'Admin language', simple: '简体中文', traditional: '繁體中文', english: 'English',
+    versionInfo: 'Version information',
   },
 } as const
 
@@ -37,7 +40,7 @@ export function adminText(key: AdminKey): string { return catalog[adminLocale.va
 const translations: Record<AdminKey, Record<EcokuLocale, string>> = {
   loading: { 'zh-CN': '加载中…', 'zh-Hant': '載入中…', en: 'Loading…' }, retry: { 'zh-CN': '重试', 'zh-Hant': '重試', en: 'Retry' },
   comments: { 'zh-CN': '评论', 'zh-Hant': '評論', en: 'Comments' }, sites: { 'zh-CN': '站点', 'zh-Hant': '站點', en: 'Sites' }, notifications: { 'zh-CN': '通知', 'zh-Hant': '通知', en: 'Notifications' }, security: { 'zh-CN': '安全', 'zh-Hant': '安全', en: 'Security' },
-  skip: { 'zh-CN': '跳到主要内容', 'zh-Hant': '跳到主要內容', en: 'Skip to main content' }, loginTitle: { 'zh-CN': '管理员登录', 'zh-Hant': '管理員登入', en: 'Admin sign in' }, username: { 'zh-CN': '用户名', 'zh-Hant': '使用者名稱', en: 'Username' }, password: { 'zh-CN': '密码', 'zh-Hant': '密碼', en: 'Password' }, login: { 'zh-CN': '登录', 'zh-Hant': '登入', en: 'Sign in' }, loggingIn: { 'zh-CN': '登录中…', 'zh-Hant': '登入中…', en: 'Signing in…' }, logout: { 'zh-CN': '退出登录', 'zh-Hant': '登出', en: 'Sign out' }, discardTitle: { 'zh-CN': '放弃未保存的修改？', 'zh-Hant': '放棄尚未儲存的修改？', en: 'Discard unsaved changes?' }, discardCopy: { 'zh-CN': '离开后，本页的修改不会保存。', 'zh-Hant': '離開後，本頁的修改不會儲存。', en: 'Leaving this page will discard its changes.' }, continue: { 'zh-CN': '继续编辑', 'zh-Hant': '繼續編輯', en: 'Keep editing' }, discard: { 'zh-CN': '放弃修改', 'zh-Hant': '放棄修改', en: 'Discard changes' }, locale: { 'zh-CN': '后台语言', 'zh-Hant': '後台語言', en: 'Admin language' }, simple: { 'zh-CN': '简体中文', 'zh-Hant': '简体中文', en: '简体中文' }, traditional: { 'zh-CN': '繁體中文', 'zh-Hant': '繁體中文', en: '繁體中文' }, english: { 'zh-CN': 'English', 'zh-Hant': 'English', en: 'English' },
+  skip: { 'zh-CN': '跳到主要内容', 'zh-Hant': '跳到主要內容', en: 'Skip to main content' }, loginTitle: { 'zh-CN': '管理员登录', 'zh-Hant': '管理員登入', en: 'Admin sign in' }, username: { 'zh-CN': '用户名', 'zh-Hant': '使用者名稱', en: 'Username' }, password: { 'zh-CN': '密码', 'zh-Hant': '密碼', en: 'Password' }, login: { 'zh-CN': '登录', 'zh-Hant': '登入', en: 'Sign in' }, loggingIn: { 'zh-CN': '登录中…', 'zh-Hant': '登入中…', en: 'Signing in…' }, logout: { 'zh-CN': '退出登录', 'zh-Hant': '登出', en: 'Sign out' }, discardTitle: { 'zh-CN': '放弃未保存的修改？', 'zh-Hant': '放棄尚未儲存的修改？', en: 'Discard unsaved changes?' }, discardCopy: { 'zh-CN': '离开后，本页的修改不会保存。', 'zh-Hant': '離開後，本頁的修改不會儲存。', en: 'Leaving this page will discard its changes.' }, continue: { 'zh-CN': '继续编辑', 'zh-Hant': '繼續編輯', en: 'Keep editing' }, discard: { 'zh-CN': '放弃修改', 'zh-Hant': '放棄修改', en: 'Discard changes' }, locale: { 'zh-CN': '后台语言', 'zh-Hant': '後台語言', en: 'Admin language' }, simple: { 'zh-CN': '简体中文', 'zh-Hant': '简体中文', en: '简体中文' }, traditional: { 'zh-CN': '繁體中文', 'zh-Hant': '繁體中文', en: '繁體中文' }, english: { 'zh-CN': 'English', 'zh-Hant': 'English', en: 'English' }, versionInfo: { 'zh-CN': '版本信息', 'zh-Hant': '版本資訊', en: 'Version information' },
 }
 
 const textCatalog: Record<EcokuLocale, Record<string, string>> = {

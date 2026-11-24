@@ -23,6 +23,7 @@ RUN pnpm --dir packages/admin build
 FROM --platform=$BUILDPLATFORM golang:1.27.4-alpine3.24@sha256:0a5f7fe796599ff487605987432e7619ae45beeb2fba4c2ce0b907879932aebf AS server-build
 ARG TARGETOS
 ARG TARGETARCH
+ARG ECOKU_VERSION
 WORKDIR /src
 COPY server/go.mod server/go.sum ./
 # Module contents travel with the dependency layer in the exported registry cache.
@@ -30,7 +31,7 @@ COPY server/go.mod server/go.sum ./
 RUN go mod download
 COPY server ./
 RUN --mount=type=cache,id=ecoku-go-build,target=/root/.cache/go-build \
-    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /out/ecoku-server .
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w -X ecoku-server/buildinfo.version=${ECOKU_VERSION}" -o /out/ecoku-server .
 RUN mkdir -p /out/data && chown 10001:10001 /out/data && chmod 0750 /out/data
 
 FROM gcr.io/distroless/static-debian13:nonroot@sha256:aafe993665bf6200db38a02c11a9351e782a84b6a45e7f33b6695638c88e3931 AS runtime

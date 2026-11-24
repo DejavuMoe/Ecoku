@@ -464,6 +464,15 @@ a.entry-quote:hover .quote-ref { color: var(--accent); }
 .provider-panel { margin-top: 8px; }
 
 /* ---------- save bar ---------- */
+/* A quiet two-line footer centred at the bottom of every view (admin v18). */
+.app { display: flex; min-height: 100dvh; flex-direction: column; }
+.app > .main { flex: 1 0 auto; }
+.app-foot { padding-block: 40px 96px; }
+.app-foot-text { display: flex; grid-column: 1 / -1; flex-direction: column; align-items: center; gap: 2px; margin: 0; padding-top: 20px; border-top: 1px solid var(--line-soft); color: var(--muted); font-size: 12.5px; line-height: 1.5; text-align: center; }
+.app-foot-text a { color: var(--ink-soft); text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; transition: color 0.15s ease, text-decoration-color 0.15s ease; }
+.app-foot-text a:hover { color: var(--accent); text-decoration-color: currentColor; }
+.app-foot-text .mono { font-size: 12px; font-variant-numeric: tabular-nums; }
+
 .savebar-dock { position: fixed; z-index: 60; right: 0; bottom: var(--savebar-bottom); left: 0; pointer-events: none; }
 .savebar { display: flex; min-height: 52px; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 18px; border: 1px solid var(--line-soft); border-radius: 8px; background: var(--surface); box-shadow: var(--shadow); pointer-events: auto; animation: rise 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
 .savebar-status { display: flex; min-width: 0; align-items: center; gap: 10px; color: var(--ink-soft); font-size: 13px; letter-spacing: 0.02em; }
@@ -506,6 +515,7 @@ body:has(.savebar-dock) .toast { bottom: calc(var(--savebar-bottom) + 66px); }
   .layout { grid-template-columns: minmax(0, 1fr); }
   .in-margin, .in-main { grid-column: 1; }
   body:has(.app) { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .app { min-height: calc(100dvh - 64px - env(safe-area-inset-bottom)); }
 
   .masthead-inner { grid-template-columns: minmax(0, 1fr) auto; }
   .brand .seal { width: 24px; height: 24px; }
