@@ -7,7 +7,7 @@ SDK 只负责在浏览器里显示评论区，你仍然需要一个部署好的 
 ## 安装 {#install}
 
 ```bash
-pnpm add --save-exact ecoku@0.6.2
+pnpm add --save-exact ecoku@0.6.3
 ```
 
 包里有 ESM、CommonJS 和 TypeScript 类型声明。升级 Ecoku 服务端时，把这个依赖也更新到同一版本。
