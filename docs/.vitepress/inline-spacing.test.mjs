@@ -5,9 +5,10 @@ import { inlineSpacing } from './inline-spacing.ts'
 const md = await createMarkdownRenderer(process.cwd(), { config: inlineSpacing })
 try {
   const render = source => md.render(source)
-  assert.match(render('按[配置](./configuration)**完成**后*重启*。'), /按 <a[^>]*>配置<\/a> <strong>完成<\/strong> 后 <em>重启<\/em> 。/)
+  assert.match(render('按[配置](./configuration)**完成**后*重启*。'), /按 <a[^>]*>配置<\/a> <strong>完成<\/strong> 后 <em>重启<\/em>。/)
   assert.match(render('用`a_b*`命令和~~旧值~~结束。'), /用 <code>a_b\*<\/code> 命令和 <s>旧值<\/s> 结束。/)
   assert.match(render('**外层*内层*文字**'), /<strong>外层 <em>内层<\/em> 文字<\/strong>/)
+  assert.match(render('见（[配置](./configuration)）、`port`，「**完成**」：*重启*！'), /见（<a[^>]*>配置<\/a>）、<code>port<\/code>，「<strong>完成<\/strong>」：<em>重启<\/em>！/)
   assert.match(render('**已加空格** 正文'), /<strong>已加空格<\/strong> 正文/)
   assert.doesNotMatch(render('**开头**'), /<p> | <\/p>/)
   assert.match(render('[名称](https://example.com/a_b?q=x&y=z)'), /href="https:\/\/example.com\/a_b\?q=x&amp;y=z"/)

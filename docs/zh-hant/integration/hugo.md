@@ -1,10 +1,12 @@
 # Hugo PaperMod
 
-[PaperMod](https://github.com/adityatelange/hugo-PaperMod) 主題預留了評論區範本，覆寫一個 partial 檔案就能接入 Ecoku。儲存庫的 `examples/hugo-papermod/` 目錄中有完整範例。
+[PaperMod](https://github.com/adityatelange/hugo-PaperMod) 主題給評論區留了一個 partial 範本，覆寫它就能接入 Ecoku。完整範例在倉庫的 `examples/hugo-papermod/` 目錄。
 
-## 1. 新增評論範本
+<div class="steps">
 
-在 Hugo 網站中建立 `layouts/_partials/comments.html`（Hugo 0.146 之前的版本使用 `layouts/partials/comments.html`）：
+### 新增評論範本
+
+在 Hugo 站點中建立 `layouts/_partials/comments.html`（Hugo 0.146 之前的版本使用 `layouts/partials/comments.html`）：
 
 ```html
 {{- $ecoku := site.Params.ecoku -}}
@@ -38,9 +40,9 @@
 {{- end -}}
 ```
 
-範本以 `.RelPermalink` 作為頁面 key（例如 `/posts/my-first-post/`），以 `.Title` 作為文章標題。沒有填寫 `server_url` 或 `site_id` 時，會顯示「評論服務尚未設定。」，方便發現設定遺漏。
+頁面 key 用 `.RelPermalink`（如 `/posts/my-first-post/`），標題用 `.Title`。忘了設定 `server_url` 或 `site_id` 時，頁面上會顯示「評論服務尚未設定。」。
 
-## 2. 新增網站設定
+### 新增站點設定
 
 在 `hugo.yaml` 中加入：
 
@@ -57,7 +59,7 @@ params:
     # css_url: "https://ecoku.example.com/client/ecoku.unstyled.css"
 ```
 
-`params.comments: true` 會為所有文章開啟評論區。某篇文章不需要評論時，在它的 front matter 中寫 `comments: false`：
+`params.comments: true` 給所有文章開啟評論區。個別文章不要評論時，在它的 front matter 裡寫 `comments: false`：
 
 ```yaml
 ---
@@ -66,17 +68,19 @@ comments: false
 ---
 ```
 
-## 3. 登記來源
+### 登記來源
 
-在 Ecoku 後台為這個站點新增允許來源，例如 `https://blog.example.com`。在本機執行 `hugo server` 預覽時，把 `http://localhost:1313` 也加進去。
+在 Ecoku 後台給這個站點加上允許來源，如 `https://blog.example.com`。本機用 `hugo server` 預覽時，把 `http://localhost:1313` 也加上。
 
-Hugo 的 `.RelPermalink` 包含 `baseURL` 中的子目錄。例如 `baseURL: https://example.com/blog/` 會產生 `/blog/posts/…`；Ecoku 的站點 URL 應填寫 `https://example.com`，避免通知與後台連結重複拼接 `/blog`。詳見 [站點 URL 與頁面路徑](../self-hosting/admin#site-url)。
+`.RelPermalink` 包含 `baseURL` 裡的子目錄。例如 `baseURL: https://example.com/blog/` 會產生 `/blog/posts/…`，這時 Ecoku 的站點 URL 填 `https://example.com`，見 [站點 URL 與頁面路徑](../admin/sites#site-url)。
+
+</div>
 
 ## 外觀
 
-預設樣式會讀取 PaperMod 的顏色變數（`--theme`、`--entry`、`--primary`、`--secondary`、`--content`、`--border`），並跟隨主題的明暗切換，通常不需要額外設定。
+Ecoku 的預設樣式直接讀取 PaperMod 的顏色變數（`--theme`、`--entry`、`--primary`、`--secondary`、`--content`、`--border`），明暗切換也會跟著變，一般不用另外設定。
 
-想進一步統一圓角、字級或強調色，可以在 `assets/css/extended/` 下新增一個 CSS 檔案，PaperMod 會自動把它打包進網站樣式：
+想調整圓角、字級或強調色，在 `assets/css/extended/` 下新建一個 CSS 檔案，PaperMod 會自動打包它：
 
 ```css
 .ecoku-comments {
@@ -86,6 +90,6 @@ Hugo 的 `.RelPermalink` 包含 `baseURL` 中的子目錄。例如 `baseURL: htt
 }
 ```
 
-所有可用的變數見 [自訂樣式](./custom-css#variables)。
+所有可用變數見 [自訂樣式](./custom-css#variables)。
 
-範例目錄中的 `assets/css/extended/ecoku.css` 只為外層元素、載入失敗的提示和重試按鈕設定樣式，不影響評論區本身，可以視需要複製。
+範例目錄裡的 `assets/css/extended/ecoku.css` 只給外層元素、載入失敗提示和重試按鈕加了樣式，可以視需要複製。

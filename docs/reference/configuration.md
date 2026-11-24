@@ -1,10 +1,10 @@
 # 配置参考
 
-`app/config.yaml` 的字段、默认值、可选值、用途和示例集中在下面的注释模板中。Docker 部署页引用同一份模板；无需在多个字段表之间查找。
+Ecoku 读取一个 YAML 文件 `app/config.yaml`，再加上 Compose 里的两个环境变量。新部署只需要填 `instance_public_url`，其余保持默认即可。站点、通知、人机验证和表情包都在管理后台设置，不写在这里。
 
-## 完整配置模板 {#template}
+## 完整模板 {#template}
 
-复制模板并替换 `instance_public_url`。未注释的其他值使用默认值；注释中的赋值可按需启用。YAML 中每个顶层段只能出现一次，不能重复追加 `site:` 或 `admin:`。后台始终启用；会话时长是固定约束，不是自由调节项。
+每一项的默认值、可选值和用途都写在注释里。注释掉的行是可选覆盖项，需要时取消注释。每个顶层段（`site:`、`admin:` 等）只能出现一次。
 
 <div class="config-template">
 
@@ -14,7 +14,7 @@
 
 ## 修改后生效 {#reload}
 
-保存文件后，在 Compose 所在目录重建容器并查看日志。单纯修改挂载的 YAML 不会热更新服务：
+配置不会热加载。改完后重建容器，再看日志：
 
 ```bash
 (
@@ -25,33 +25,35 @@ sudo docker compose up -d --force-recreate --wait --wait-timeout 120 ecoku
 sudo docker compose logs --tail=100 ecoku
 ```
 
-配置文件只能有一个 YAML 文档。未知字段、无效值或重复字段会阻止启动；按日志提示修正后重新启动。
+未知字段、无效值或重复字段都会让服务拒绝启动，日志会说明是哪一项。
 
-启动还会将管理来源与数据库中所有站点的允许来源比较；不能只检查 YAML 中的站点种子。两者重叠时，日志会报告「管理端来源 … 与已存储的公开站点来源重叠」，服务拒绝启动。默认端口、端口前导零及等价 IPv6 写法都按同一来源比较。升级前可在现有后台修正站点来源，或调整管理域名、`notifications.instance_public_url` / `admin.allowed_origins` 和反向代理，使管理与公开评论页面使用分开的来源。打开数据库的 CLI 子命令执行同样的检查。
+启动时还会检查一件事：管理后台的来源（`instance_public_url` 或 `admin.allowed_origins`）不能和数据库里任何站点的允许来源重复。重复时日志报「管理端来源 … 与已存储的公开站点来源重叠」，服务不启动。解决办法是让管理后台和博客使用不同的域名：在后台改站点来源，或者调整管理域名和反向代理。打开数据库的命令行子命令也做同样的检查。
 
-## 限流行为 {#rate-limit}
+## 限流 {#rate-limit}
 
-`rate_limit` 的每一项默认值、单位与示例均在模板中。按 IP 分别计数，超限返回 `429` 和 `Retry-After`；进程重启后计数清零。填写 `0` 是恢复默认值，不是关闭限流。反向代理场景同时配置 `site.trusted_proxies`，避免所有访客共用代理地址的额度。
+`rate_limit` 下各项按 IP 分别计数，超限时返回 `429` 和 `Retry-After` 头。计数保存在内存里，重启后清零。填 `0` 表示使用默认值，没有办法关闭限流。
+
+Ecoku 在反向代理后面时，一定要配置 [`site.trusted_proxies`](../self-hosting/reverse-proxy#trusted-proxies)，否则所有访客共用一个额度。
 
 ## 日志 {#logs}
 
-默认日志写到标准输出，用 `docker compose logs` 查看，保留与轮转由 Docker 管理。`site.log_path` 是可选的文件日志路径；设置实际路径时同时写标准输出和文件，并需挂载容器可写的目录。具体值见模板。
+日志默认写到标准输出，用 `docker compose logs` 查看，保留和轮转交给 Docker。设置 `site.log_path` 为文件路径时，同时写标准输出和这个文件，你需要挂载一个容器可写的目录。
 
 ## 环境变量 {#env}
 
-新部署不需要 `ecoku.env`。下面两项写在 Compose 的 `environment` 中，不是 YAML 配置字段：
+这两项写在 `compose.yaml` 的 `environment` 里：
 
-- `TZ`：评论区、管理后台与通知的显示时区，填写 IANA 时区名，例如 `Asia/Shanghai`。
-- `ECOKU_ADMIN_LOCALE`：管理后台语言，可选 `zh-CN`、`zh-Hant`、`en`，不区分大小写，也接受 `zh-TW`、`en-US` 等常见写法。无法识别的值会在启动日志中提示，并改用 `zh-CN`。
+| 变量 | 说明 |
+| --- | --- |
+| `TZ` | 评论区、后台和通知的显示时区，IANA 时区名，例如 `Asia/Shanghai`。 |
+| `ECOKU_ADMIN_LOCALE` | 后台语言：`zh-CN`、`zh-Hant` 或 `en`，不区分大小写，也接受 `zh-TW`、`en-US` 这样的写法。无法识别时使用 `zh-CN`。 |
 
-站点评论区语言不受这两项影响：它在后台站点设置的「评论区语言」中选择（YAML 站点种子中对应 `i18n`），加载器的 `data-i18n` 或 SDK 的 `i18n` 参数可以覆盖。
+评论区的语言不受它们影响，在后台每个站点的「评论区语言」里设置。
 
-模板中的 `*_env` 是程序读取的环境变量名称，不是秘密值；需要自行注入时，在 Compose 的 `environment` 或 `env_file` 中提供对应变量。默认自动创建管理员和持久密钥，无需注入这些凭据。镜像已设置 `GIN_MODE=release` 和 `ECOKU_RUNTIME=container`，不要覆盖。
+模板里以 `_env` 结尾的字段填的是环境变量的名字，不是值。新部署会自动创建管理员和密钥，不需要注入这些变量。镜像已经设置了 `GIN_MODE=release` 和 `ECOKU_RUNTIME=container`，不要覆盖。
 
-新实例自动创建账户，但不在日志中提供密码。完成首次启动后，按 [取得管理员临时密码](../self-hosting/docker#temporary-password) 生成登录凭据。
+## 站点种子与数据库 {#legacy}
 
-## 初始化与持久数据 {#legacy}
+`sites` 段只在创建全新数据库时导入一次，之后修改它不会影响已有站点。新部署直接在后台创建站点即可。
 
-站点种子 `sites` 只在创建全新数据库时导入，不会覆盖已有站点；站点后续编辑、SMTP、Telegram、人机验证与 Smoji 在后台完成。数据库和同目录的 `ecoku-secrets.json` 必须一起备份。修改数据库路径不会自动搬迁数据。
-
-首次初始化会应用种子的 `i18n`；全新数据库的建表、迁移和种子写入在同一事务中完成，其中一步失败则一起回滚。已有站点始终以数据库中的语言为准，修改 YAML 后重启不会覆盖它；需要修改时在后台编辑站点。实例密钥校验失败不会写入本次候选密钥，但升级不会自动修复以前损坏的密钥文件。
+数据库和同目录的 `ecoku-secrets.json` 必须一起备份、一起搬迁。修改数据库路径不会搬迁数据，新路径上会创建一个空数据库。

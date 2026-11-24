@@ -1,62 +1,43 @@
-# 简介
+# 介绍
 
-Ecoku 是为静态博客与个人网站设计的自托管评论系统。通过 Docker 部署单个容器，并在页面模板中嵌入一段 HTML 即可完成接入。
+Ecoku 是一个自托管的评论系统，给 Hugo、Hexo、Astro、VitePress 这类静态网站用。你在自己的服务器上运行一个 Docker 容器，在文章模板里加一段 HTML，文章底部就有了评论区。
 
-设计原则保持克制与精简：
+访客不需要注册，填好昵称和邮箱就能发表评论，评论提交后立即显示。回复在被回复的评论下方展开。本站每一页的底部就是一个 Ecoku 评论区。
 
-- **纯文本讨论**：不解析 HTML 与 Markdown，无富文本编辑器。
-- **提交即公开**：无前置审核队列，违规评论由管理员事后清理。
-- **无需注册**：访客无需账号，填写昵称、邮箱（默认必填，可改为选填）与网址（默认选填）即可发言。
-- **多站点统一服务**：单实例支持多站点，各站点的评论数据与站点设置相互隔离。
-- **单库存储与密钥分离**：业务数据集中于 SQLite，密钥独立持久化；无需外部数据库或 Redis，冷备部署目录即可完整恢复。
-
-## 适用场景
-
-- 使用 Hugo、Hexo、Astro、VitePress、Jekyll 等工具构建静态网站，需要轻量评论区。
-- 希望自主掌控评论数据，不依赖第三方商业评论服务。
-- 维护多个站点，希望由单套服务统一托管。
-
-## 谁在使用 Ecoku？ {#who-is-using}
-
-- [**Dejavu's Blog**](https://blog.dejavu.moe/)：作者个人技术与生活随笔博客，基于 Hugo 构建，使用 Ecoku 承载文章评论与读者交流。
-- [**Ecoku 官方文档**](https://ecoku.zsh.moe/)：本站基于 VitePress 构建，各文档页面底部直接集成 Ecoku 评论区，作为自托管部署与静态站接入的实际范例。
-- [**Sani 文档**](https://sani.zsh.moe/)：自托管短链接、文本与文件分享工具 Sani 的官方文档站，在帮助与指南页面嵌入 Ecoku 收集读者使用反馈与答疑交流。
-- [**vps.gripe**](https://vps.gripe)：VPS 性能基准测试报告平台，收录完整的原始测试脚本输出与结构化统计摘要，在测评详情页嵌入 Ecoku，方便访客就服务器性能与网络表现展开讨论。
-
-## 功能边界
-
-Ecoku 不包含以下特性：
-
-- 富文本、Markdown 渲染与图片上传（[Smoji 表情](../integration/smoji) 是唯一的图片展示形式）；
-- 访客账户体系、第三方社交登录与外部头像；
-- 点赞、踩或表情互动计数；
-- 评论前置审核队列；
-- MySQL、PostgreSQL 等外部数据库。
-
-如果上述功能是你的硬性需求，Ecoku 可能并不适用。
-
-## 系统组成 {#components}
+## 它由什么组成 {#components}
 
 <figure class="doc-diagram" tabindex="0" aria-label="系统组成图，可横向滚动">
   <img class="diagram-light" src="/diagrams/components.zh-CN.light.svg" width="1110" height="304" loading="lazy" decoding="async" alt="访客和管理员浏览器经反向代理访问 Ecoku 服务；服务连接 SQLite 数据库并发送 SMTP 或 Telegram 通知。">
   <img class="diagram-dark" src="/diagrams/components.zh-CN.dark.svg" width="1110" height="304" loading="lazy" decoding="async" alt="访客和管理员浏览器经反向代理访问 Ecoku 服务；服务连接 SQLite 数据库并发送 SMTP 或 Telegram 通知。">
 </figure>
 
-容器内仅运行一个 Go 二进制程序 `ecoku-server`，统一负责：
+| 部分 | 说明 |
+| --- | --- |
+| `ecoku-server` | 容器里唯一的程序。提供评论接口、管理后台 `/admin/`、博客加载的脚本 `/client/`，并在后台发送通知。 |
+| SQLite 数据库 | 存放所有站点、评论和设置。旁边的 `ecoku-secrets.json` 保存密钥，两者一起备份。 |
+| 反向代理 | 你自己的 Caddy 或 Nginx，负责 HTTPS。容器只监听本机 `127.0.0.1:12123`。 |
+| 评论区脚本 | 博客页面加载的 `ecoku-loader.js`，也可以用 npm 包 `ecoku`。 |
 
-- 评论接口 `/api/comment/*` 与管理接口 `/api/admin/*`；
-- 管理后台 `/admin/` 界面；
-- 博客嵌入脚本与样式资源 `/client/`；
-- 异步邮件与 Telegram 通知投递队列。
+不需要 MySQL、Redis 或其他外部服务。
 
-容器以非 root 用户运行，仅监听宿主机回环地址 `127.0.0.1:12123`，由同机反向代理负责终止 HTTPS 并转发。
+## 它不做什么
 
-## 上线步骤
+- 不渲染 Markdown 或 HTML，不能上传图片。[Smoji 表情](../integration/smoji) 是唯一显示为图片的内容。
+- 没有访客账号、第三方登录和头像。
+- 没有点赞和审核队列。评论提交后直接公开，你在后台事后删除。
+- 只支持 SQLite。
 
-1. [Docker 部署](../self-hosting/docker)：准备运行目录与配置，启动时自动初始化管理员账户与持久密钥。
-2. [反向代理](../self-hosting/reverse-proxy)：配置反向代理并绑定 HTTPS 域名。
-3. [管理后台](../self-hosting/admin)：登录后台并注册站点，按需设置博主口令与表单规则。
-4. [嵌入评论区](../integration/html)：将接入代码加入博客模板。
+如果其中某一项是你必须要的，Ecoku 可能不适合你。
 
-后续可按需配置 [通知](../self-hosting/notifications)、[人机验证](../self-hosting/captcha)，或 [从 Twikoo 迁移](../self-hosting/twikoo) 历史评论。
-开始部署前，建议先阅读 [工作方式](./concepts)，了解页面 key、删除语义与隐私模型。
+## 隐私
+
+Ecoku 不保存访客的 IP、User-Agent 和地理位置。访客填的邮箱只用于通知，不会出现在任何公开接口里。评论区不请求第三方头像、统计或 IP 查询服务。详见 [保存和公开的数据](../reference/concepts#data)。
+
+## 从哪里开始
+
+<div class="cards">
+<Card title="快速上手" link="/guide/quick-start" icon="rocket">十几分钟走完部署到嵌入的全过程。</Card>
+<Card title="工作原理" link="/reference/concepts" icon="book">页面 key、回复层级、删除和身份是怎么工作的。</Card>
+<Card title="HTML 接入" link="/integration/html" icon="code">已经有 Ecoku 服务，只想把评论区放进博客。</Card>
+<Card title="从 Twikoo 迁移" link="/self-hosting/twikoo" icon="download">把 Twikoo 的历史评论导入 Ecoku。</Card>
+</div>

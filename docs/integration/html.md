@@ -1,16 +1,12 @@
 # HTML 接入
 
-在文章模板中放一段 HTML 和一个脚本，就能在任意静态网站上显示评论区。脚本 `ecoku-loader.js` 由你的 Ecoku 实例提供，读取 HTML 上的属性后自动加载评论组件。
+在文章模板里加一段 HTML 和一个脚本，就能在任何静态网站上显示评论区。脚本 `ecoku-loader.js` 由你的 Ecoku 实例提供，它读取 HTML 上的属性，再加载评论组件。
 
-开始前，请确认已在后台 [注册站点](../self-hosting/admin#sites)，并把博客的来源加入了该站点的允许来源。
+开始前，先在后台 [登记站点](../admin/sites)，并把博客的来源加进允许来源。
 
 ## 接入代码
 
-把下面的代码放在文章模板中评论区的位置，替换三处值：
-
-- `data-server-url`：你的 Ecoku 地址；
-- `data-site-id`：后台注册的站点 ID；
-- `data-page-key`、`data-page-title`：用模板变量输出当前文章的路径和标题。
+把下面的代码放在文章模板里评论区该出现的位置：
 
 ```html
 <section
@@ -21,8 +17,6 @@
   data-site-id="blog"
   data-page-key="/posts/hello-world/"
   data-page-title="你好，世界"
-  data-page-size="10"
-  data-theme="auto"
 >
   <div class="ecoku-loader" data-ecoku-loader hidden>
     <p class="ecoku-loader-status" data-ecoku-status></p>
@@ -33,66 +27,72 @@
 <script src="https://ecoku.example.com/client/ecoku-loader.js" defer></script>
 ```
 
-外壳里的四个带 `data-ecoku-*` 的元素都要保留：`data-ecoku-mount` 是评论区挂载的位置，另外三个用来在加载失败时显示错误信息和重试按钮。按钮文字可以自己改。
+需要替换的是：
+
+- `data-server-url` 和 `<script src>` 里的地址：你的 Ecoku 地址；
+- `data-site-id`：后台登记的站点 ID；
+- `data-page-key` 和 `data-page-title`：用模板变量输出当前文章的路径和标题，写法见 [下文](#page-key)。
+
+四个带 `data-ecoku-*` 的子元素都要保留。`data-ecoku-mount` 是评论区出现的位置，另外三个用来在加载失败时显示错误和「重新加载评论」按钮。按钮文字可以改。
 
 ## 属性
 
 | 属性 | 必填 | 说明 |
 | --- | :---: | --- |
-| `data-server-url` | 是 | Ecoku 的地址，如 `https://ecoku.example.com`，必须是 `http://` 或 `https://` 开头的完整地址。 |
-| `data-site-id` | 是 | 后台注册的站点 ID。 |
-| `data-page-key` | 是 | 当前文章的页面 key，站内相对路径，最多 512 个字符，不能带 `?` 或 `#`。见下文。 |
-| `data-page-title` | 否 | 文章标题，显示在通知邮件中。截取前 200 个 UTF-16 代码单元，与 SDK 构造配置一致。 |
-| `data-page-size` | 否 | 每页显示多少条根评论，1～100，默认 10。填写无效值时按 10 处理。 |
-| `data-theme` | 否 | `auto`（默认）、`light` 或 `dark`。`auto` 优先读取博客定义的颜色变量，未提供时跟随系统的明暗偏好。 |
-| `data-css-url` | 否 | 替换默认样式，只接受 HTTP(S) 绝对地址、以 `/` 开头的路径、`none` 或兼容值 `-`。见 [自定义样式](./custom-css)。 |
-| `data-i18n` | 否 | 评论区语言：`zh-CN`、`zh-Hant` 或 `en`，覆盖后台站点设置的「评论区语言」。不写或写其他值时使用站点设置。 |
+| `data-server-url` | 是 | Ecoku 的地址，`http://` 或 `https://` 开头 |
+| `data-site-id` | 是 | 站点 ID |
+| `data-page-key` | 是 | 页面 key：站内路径，最长 512 个字符，不带 `?` 或 `#` |
+| `data-page-title` | 否 | 文章标题，用于通知，最长 200 个字符 |
+| `data-page-size` | 否 | 每页根评论数，1～100，默认 10 |
+| `data-theme` | 否 | `auto`（默认）、`light` 或 `dark`，见 [明暗模式](./custom-css#theme) |
+| `data-css-url` | 否 | 替换默认样式，见 [自定义样式](./custom-css) |
+| `data-i18n` | 否 | 评论区语言：`zh-CN`、`zh-Hant` 或 `en`，覆盖后台站点设置 |
 
-## 选择页面 key
+## 页面 key 怎么写 {#page-key}
 
-页面 key 决定评论属于哪篇文章，[一旦使用就不要再改](../guide/concepts#page-key)。通常用文章的站内路径。常见生成器的写法：
+页面 key 决定评论属于哪篇文章，[定下来就不要再改](../reference/concepts#page-key)。通常用文章的站内路径：
 
 ::: v-pre
-| 生成器 | `data-page-key` 的值 |
+| 生成器 | `data-page-key` |
 | --- | --- |
 | Hugo | `{{ .RelPermalink }}` |
 | Hexo | `<%- url_for(page.path) %>` |
 | Jekyll | `{{ page.url }}` |
 | Astro | `{Astro.url.pathname}` |
-| VitePress | 在自定义主题中读取 `useRoute().path`，并使用 [SDK](./sdk#vitepress) 接入 |
+| VitePress | 用 [SDK](./sdk#vitepress) 接入，传入 `useRoute().path` |
 :::
 
-以上仅供参考，请在浏览器中查看生成的 HTML，确认输出的是稳定的路径，例如 `/posts/hello-world/`，而不是完整 URL。
+写好后在浏览器里查看生成的 HTML，确认输出的是 `/posts/hello-world/` 这样稳定的路径，而不是完整 URL。
+
+Hugo PaperMod 主题有现成的模板，见 [Hugo PaperMod](./hugo)。
 
 ## 加载过程
 
-1. 页面解析完成后，加载器读取外壳上的属性。缺少 `data-server-url`、`data-site-id`、`data-page-key`，或缺少四个 `data-ecoku-*` 子元素中的任何一个时，它会**静默跳过**，页面上不出现任何内容。
-2. 加载器从自己所在的目录加载 `ecoku.umd.js`，同时并行请求第一页评论，然后初始化评论区。加载期间不显示「正在加载」之类的文字。
-3. `ecoku.umd.js` 加载失败、初始化失败（例如属性值无效），或脚本下载、组件初始化任一阶段超过各自的 12 秒超时时，显示错误信息和「重新加载评论」按钮，访客可以点击重试。错误信息的语言取 `data-i18n`；没写时按页面的 `<html lang>` 选择繁体中文（`zh-Hant`、`zh-TW`、`zh-HK`、`zh-MO`）或英语（`en`、`en-*`），其他情况为简体中文。
-4. 评论区挂载后，评论接口本身出错（例如来源未登记、触发限流或网络中断）时，由评论区显示「评论暂时不可用」和「重新加载」按钮。
+1. 页面解析完后，加载器读取外壳上的属性。缺少必填属性或 `data-ecoku-*` 子元素时，它什么也不做，页面上不出现任何内容。
+2. 加载器从自己所在的目录加载 `ecoku.umd.js`，同时请求第一页评论。
+3. 脚本加载失败、初始化失败或超过 12 秒时，显示错误信息和「重新加载评论」按钮。
+4. 评论区出现后，如果评论接口出错（来源没登记、触发限流、网络中断），评论区自己显示「评论暂时不可用」和重试按钮。
 
-一个页面上可以有多个外壳，各自使用独立的挂载元素和唯一的 HTML `id`。它们共用同一份 SDK；加载器只自动添加第一份非 `none` / `-` 的外链样式表，因此各外壳应使用同一 SDK 版本和同一个 `data-css-url`。不同外观可用各外壳下的 CSS 规则区分。
+加载器只处理启动时已经在页面上的外壳。单页应用切换文章时，用 [SDK](./sdk) 管理评论区。
 
-加载器只扫描启动时已有的外壳，不会自动接管之后插入的内容。单页应用切换文章时使用 [SDK](./sdk) 管理挂载和卸载。
-
-## 使用自己托管的加载器
-
-可以把 `ecoku-loader.js` 放到自己的 CDN 上，只改 `<script src>`。加载器会从**同一目录**加载 `ecoku.umd.js`，所以两个文件要放在一起，并且在升级 Ecoku 时同步更新。
-
-加载器请求的地址是 `ecoku.umd.js?v=<内容哈希>`。由 Ecoku 实例提供且哈希与文件一致时，浏览器会长期缓存这个文件；两个文件来自同一个版本即可满足。
+一个页面上可以放多个外壳，每个用不同的 `id` 和挂载元素，`data-css-url` 要相同。
 
 ## 博客页面的 CSP
 
-如果博客设置了内容安全策略（CSP），需要放行：
+博客设置了内容安全策略（CSP）时，需要放行：
 
 - `script-src` 和 `connect-src`：Ecoku 的来源，如 `https://ecoku.example.com`；
-- 默认样式以 `<style>` 元素注入。CSP 不允许内联样式时，把 `data-css-url` 设为 `https://ecoku.example.com/client/ecoku.css`，改用外链样式表，并在 `style-src` 中放行该来源；
-- 启用了人机验证时，还要放行验证服务，见 [人机验证 · 内容安全策略](../self-hosting/captcha#csp)；
-- 启用了 [Smoji 表情](./smoji) 时，在 `connect-src` 中放行清单来源，在 `img-src` 中放行图片来源。二者分开托管时需要分别填写，见 [清单与图片的托管](./smoji#hosting)。
+- 默认样式以 `<style>` 元素注入。不允许内联样式时，把 `data-css-url` 设为 `https://ecoku.example.com/client/ecoku.css`，并在 `style-src` 里放行这个来源；
+- 启用了人机验证：见 [博客页面的 CSP](../admin/captcha#csp)；
+- 启用了 Smoji：`connect-src` 放行清单来源，`img-src` 放行图片来源。
+
+## 自己托管加载器
+
+可以把 `ecoku-loader.js` 放到自己的 CDN 上，只改 `<script src>`。加载器从同一目录加载 `ecoku.umd.js`，所以两个文件要放在一起，升级 Ecoku 时一起更新。
 
 ## 不用加载器
 
-也可以直接引入 UMD 文件，自己控制初始化时机：
+想自己控制初始化时机的话，直接引入 UMD 文件：
 
 ```html
 <link rel="stylesheet" href="https://ecoku.example.com/client/ecoku.css">
@@ -111,4 +111,4 @@
 </script>
 ```
 
-UMD 文件注册全局变量 `Ecoku`。上例用 `<link>` 引入样式，并通过 `cssURL` 告诉 SDK 不要再注入默认样式；如果去掉这两处，SDK 会自己注入。配置项和方法见 [JavaScript SDK](./sdk)。
+UMD 文件注册全局变量 `Ecoku`。这里用 `<link>` 引入样式，并通过 `cssURL` 告诉 SDK 不必再注入；去掉这两处，SDK 会自己注入默认样式。配置项见 [JavaScript SDK](./sdk)。

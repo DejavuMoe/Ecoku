@@ -1,38 +1,46 @@
-# Docker deployment
+# Docker installation
 
-This guide covers public releases from v0.6.0 onward, using images from GHCR. For an existing instance, read [upgrading](./upgrade) first.
+These are the full production installation steps. Compared with the [quick start](../guide/quick-start), they add resource limits, configuration notes and troubleshooting. For an instance that is already running, see [Upgrading](./upgrade).
 
-This guide starts from an empty Linux host and deploys Ecoku with Docker Compose. A new deployment needs only `compose.yaml`, `app/config.yaml` and the `data/` directory. First startup creates the administrator account and persistent keys; the reset command below prints the temporary password used to sign in. You do not write these credentials into a configuration file.
+<div class="page-meta">
+<div>
 
-## Before you start
+**You will**
 
-You need:
+- Run Ecoku with Docker Compose
+- Get a temporary administrator password and sign in for the first time
 
-- a Linux host with Docker Engine and Compose, with `sudo` access; Compose must support `up --wait --wait-timeout` (check `docker compose up --help`);
-- a domain dedicated to Ecoku, such as `ecoku.example.com`;
-- a reverse proxy that terminates public HTTPS.
+</div>
+<div>
 
-You must set `instance_public_url` yourself. Ecoku never derives the admin origin from an untrusted Host or forwarding header.
+**Before you start**
 
-The deployment directory looks like this:
+- A Linux host with Docker Engine and Compose v2.17+, and `sudo` access
+- A domain used only by Ecoku, not shared with your blog
+- Caddy or Nginx on the same host
+
+</div>
+</div>
+
+When you're done, the deployment directory looks like this:
 
 ```text
 ~/Ecoku/
 ├── compose.yaml
 ├── app/
 │   └── config.yaml
-└── data/
+└── data/                  # created and written by Ecoku
     ├── ecoku.sqlite3
     ├── ecoku.sqlite3-wal
     ├── ecoku.sqlite3-shm
     └── ecoku-secrets.json
 ```
 
-Ecoku creates the files in `data/`. Back up the database and the persistent keys together; see [backup and restore](./backup).
+<div class="steps">
 
-## 1. Prepare the directories
+### Create the directories
 
-The container runs as UID/GID `10001:10001`; only the mounted `data` directory is writable:
+The container runs as UID/GID `10001:10001`. Only `data/` needs to be writable:
 
 ```bash
 mkdir -p ~/Ecoku/app ~/Ecoku/data
@@ -41,7 +49,7 @@ sudo chown -R 10001:10001 data
 sudo chmod 750 data
 ```
 
-## 2. Create compose.yaml
+### Write compose.yaml
 
 ```yaml
 services:
@@ -78,91 +86,83 @@ services:
     stop_grace_period: 30s
 ```
 
-The port is bound to `127.0.0.1` only. To use another host port, change only the part before the colon, such as `"127.0.0.1:8080:12123"`; the container port stays `12123`. To change the port the container listens on, follow the notes in the [configuration template](#config) and update `site.port`, the Compose container port and the health check together. Logs go to standard output. View them with `docker compose logs`; Docker handles retention and rotation.
+- Pin an exact image version. Don't use `latest`.
+- The port is bound to `127.0.0.1` only; outside traffic goes through the reverse proxy. To change the host port, change only the part before the colon.
+- For `TZ` and `ECOKU_ADMIN_LOCALE`, see [Time zone and admin language](#timezone).
 
-## 3. Create app/config.yaml {#config}
+### Write app/config.yaml {#config}
 
-The template below lists every setting with its default, allowed values and examples. Change `instance_public_url` to Ecoku's own HTTPS URL and keep the other uncommented values at their defaults. Commented assignments are optional overrides: uncomment them only when needed, and adjust mounts or ports as their comments describe.
+A new deployment needs only one line:
 
-<div class="config-template">
+```yaml
+notifications:
+  instance_public_url: "https://ecoku.example.com"
+```
 
-<<< ../../../deploy/config.en.yaml.example{yaml}
-
-</div>
-
-Let the container's non-root user read the configuration:
+Replace the URL with Ecoku's own HTTPS URL (not your blog's), then let the container read the file:
 
 ```bash
 chmod 644 ~/Ecoku/app/config.yaml
 ```
 
-## 4. Start and wait for initialization {#start}
+Every other setting has a default. For all options, see [Configuration file](../reference/configuration).
+
+### Start {#start}
 
 ```bash
-(
-set -eu
 cd ~/Ecoku
-sudo docker compose config --quiet
 sudo docker compose pull
 sudo docker compose up -d --wait --wait-timeout 120
 sudo docker compose ps
-)
 ```
 
-After the command succeeds, the container should be `healthy`. `--wait` waits up to 120 seconds for the health check to pass. If it fails or the container is unhealthy, run `sudo docker compose logs --tail=100 ecoku`, fix the error, and retry before resetting the password.
+The last command should show `healthy`. The first start creates the database, the administrator account `admin`, and `data/ecoku-secrets.json`, which holds the keys.
 
-The first start initializes SQLite, creates the administrator `admin`, and saves the session signing key and notification encryption key in `data/ecoku-secrets.json`. Restarting neither resets the administrator password nor replaces the persistent keys.
+If it doesn't become `healthy`, run `sudo docker compose logs --tail=100 ecoku` to see why. For common cases, see the [FAQ](../reference/faq#deploy).
 
-## 5. Obtain the temporary administrator password {#temporary-password}
+### Get the temporary administrator password {#temporary-password}
 
-**This step is required for a new deployment. Since v0.5.2, startup logs do not print an initial password and there is no fixed default password.** Complete [startup and the health check](#start), then run this in a terminal on the deployment host:
+Ecoku has no default password and never prints a password in its logs. Stop the service and generate a temporary password with a one-off command:
 
 ```bash
-(
-set -eu
 cd ~/Ecoku
 sudo docker compose stop ecoku
 sudo docker compose run --rm --no-deps ecoku admin reset-password
 sudo docker compose up -d --wait --wait-timeout 120
-)
 ```
 
-Find `管理员临时密码：…` in this command's terminal output and save the temporary password after the colon. The one-off `docker compose run` container prints it; `docker compose logs ecoku` reads the service container's logs and cannot retrieve it. If you lose it, repeat this step to generate a new password and invalidate the previous password and every administrator session. Do not forward the terminal output to shared logs or tickets.
+Find `管理员临时密码：…` (temporary administrator password) in the output and note what follows the colon. This line appears only in this command's terminal; `docker compose logs` can't show it. If you lose it, run the command again.
 
-If that line is missing, fix the command error before retrying; the command group above stops on failure. If it reports `管理员账户尚未初始化`, check the deployment directory, configuration, and data mounts. A new instance must complete [step 4](#start) first. Do not delete the database or persistent keys to fix this.
+::: details It says 「管理员账户尚未初始化」 (administrator account not initialized)
+The database the command opened has no account yet. Check that the current directory, `config.yaml` and `data/` belong to this instance. A new instance must finish the start step above first. Don't delete the database or `ecoku-secrets.json`.
+:::
 
-An existing instance with a permanent password does not need this step when upgrading. An older instance that has not completed its initial password change does: upgrading alone does not invalidate the temporary password in its old logs.
+### Set up HTTPS
 
-## 6. First sign-in {#first-sign-in}
+Set up Caddy or Nginx as described in [Reverse proxy and HTTPS](./reverse-proxy), and confirm that `https://ecoku.example.com/api/health` opens.
 
-First [obtain the temporary administrator password](#temporary-password), then follow [configure HTTPS reverse proxying for the Ecoku domain](./reverse-proxy) to set up Caddy or Nginx and confirm that the public health endpoint responds. By default the container listens only on the host's loopback port and cannot be reached directly from the internet. `notifications.instance_public_url` must match the actual admin origin; replace the example domain.
+### First sign-in {#first-sign-in}
 
-Open `https://ecoku.example.com/admin/` and sign in as `admin` with the temporary password printed by the command. The console then opens the 「设置你的密码」 (Set your password) page, which you must complete first:
+Open `https://ecoku.example.com/admin/`. The username is `admin` and the password is the temporary password from above.
 
-- keep `admin` as the username or choose your own;
-- the new password needs at least 12 characters and at most 72 UTF-8 bytes;
-- the new password cannot be the temporary password;
-- the sites, comments, notifications and security pages stay closed until you finish.
+After signing in, set a permanent password first: at least 12 characters, no more than 72 UTF-8 bytes, and different from the temporary password. You can change the username at the same time. After you save, the **New site** form opens; continue with [Site settings](../admin/sites).
 
-After you save, Ecoku revokes the temporary session and opens the 「新增站点」 (New site) form on the 「站点」 (Sites) page.
-
-If you lose the temporary or permanent password, follow the same [administrator password reset steps](../reference/cli#admin-reset-password). The username stays as it was; sign in with it and the new temporary password, then set a password again.
+</div>
 
 ## Time zone and admin language {#timezone}
 
-The Compose file above sets `TZ: Asia/Shanghai` and `ECOKU_ADMIN_LOCALE: zh-CN`:
+Both are set under `environment` in `compose.yaml`. After changing them, run `sudo docker compose up -d` to apply.
 
-- `TZ` sets the time zone used for timestamps in the comments, the admin console and notifications. Use an IANA name such as `Asia/Shanghai` or `Europe/Berlin`. The admin console shows comment times and groups comments by day in this time zone, not in the browser's time zone; when `TZ` is not set, `Asia/Shanghai` is used.
-- `ECOKU_ADMIN_LOCALE` sets the admin console language: `zh-CN`, `zh-Hant` or `en`. An unrecognized value is reported in the startup log and falls back to `zh-CN`.
+| Variable | Purpose | Values |
+| --- | --- | --- |
+| `TZ` | Time zone for times shown in the comment section, the admin console and notifications | An IANA time zone name, such as `Asia/Shanghai` or `Europe/Berlin`. Defaults to `Asia/Shanghai`. |
+| `ECOKU_ADMIN_LOCALE` | Admin console language | `zh-CN`, `zh-Hant` or `en`. Unrecognized values fall back to `zh-CN`. |
 
-After changing either value, run `sudo docker compose up -d` to recreate the container. You do not need a separate `ecoku.env`. The comment language is not set here: it comes from 「评论区语言」 (Comment language) in the admin site settings, and the loader's `data-i18n` attribute or the SDK `i18n` option in your embed code can override it.
-
-Existing instances can keep their original `ecoku.env`. To remove the old administrator credentials and key variables, follow [import persistent state, stop and back up, then remove legacy variables](./upgrade#legacy-config). If the time zone is still in that environment file, move `TZ` into Compose before deleting the file.
+The comment section language is set separately for each site in the admin console; see [Site settings](../admin/sites).
 
 ## Next steps
 
-1. [Create the first site](./admin#sites) in the admin console to get the site ID for your embed code.
-2. Follow [HTML integration](../integration/html) to embed the comments in your blog.
-3. Follow [backup and restore](./backup) to back up the configuration, the database and the persistent keys.
-
-To import Twikoo history, create the site first and then follow [Twikoo migration](./twikoo).
+<div class="cards">
+<Card title="Register a site" link="/admin/sites" icon="globe">Add your blog in the admin console and get a site ID.</Card>
+<Card title="Set up backups" link="/self-hosting/backup" icon="database">Back up the database and the key file together.</Card>
+</div>

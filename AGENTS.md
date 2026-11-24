@@ -3,7 +3,7 @@
 ## 事实来源
 
 - 实现以当前源码为准；产品/安全/隐私以 `docs/internal/constraints.md` 为准；面向操作者的部署与接入以
-  VitePress 源文为准（默认简体中文：`docs/guide/`、`docs/self-hosting/`、`docs/integration/`、`docs/reference/`）。
+  VitePress 源文为准（默认简体中文：`docs/guide/`、`docs/self-hosting/`、`docs/admin/`、`docs/integration/`、`docs/reference/`）。
   `docs/progress/` 只是历史验收，不约束当前实现，也不进入文档站点。
 - 评论区基线 `designs/plain-thread-comments/index-v18.html`；管理端登录、评论管理、站点管理、
   通知设置与安全以 `designs/admin-moderation/index-v17.html` 为准（评论区 v17 纸墨 token、系统 CJK/英文字体栈），
@@ -13,8 +13,8 @@
   本地开发见 `docs/contribute/local-dev.md`，文档站点自身的发布见 `docs/contribute/docs-deploy.md`。
   `docs/internal/`、`docs/progress/`、`docs/contribute/` 不进入站点。
 - 改运行时、部署契约、接入 markup、配置键、环境变量或用户可见行为后，按改动同步文档，不要留到发版才补：
-  产品/隐私边界写 `docs/internal/constraints.md`；部署、Compose、备份、升级、通知与人机验证写
-  `docs/self-hosting/`（发版时在 `docs/self-hosting/upgrades/` 增加该 tag 页面）；配置键与环境变量写
+  产品/隐私边界写 `docs/internal/constraints.md`；部署、Compose、备份与升级写
+  `docs/self-hosting/`（发版时在 `docs/self-hosting/upgrades/` 增加该 tag 页面），后台、通知与人机验证写 `docs/admin/`；配置键与环境变量写
   `docs/reference/configuration.md`，CLI 子命令写 `docs/reference/cli.md`，HTTP 接口写 `docs/reference/api.md`；
   以上均同步 `docs/en/`、`docs/zh-hant/` 对应路径与 `deploy/` 模板；公开接入片段写根 `README.md`、
   `examples/` 与 `docs/integration/`；未发版行为只追加 `CHANGELOG.md` 的 `[Unreleased]`，不得改写已发布章节。
@@ -22,7 +22,7 @@
 
 ## 文档写作
 
-- 链接、粗体、斜体、删除线及行内代码与相邻正文之间留一个半角空格；行首、行尾和标记内部不额外加空格。
+- 链接、粗体、斜体、删除线及行内代码与相邻正文之间留一个半角空格；与全角标点（如「，。、：）」）相邻时不加空格；行首、行尾和标记内部不额外加空格。
   VitePress 在 Markdown 解析后统一补齐显示空格；不得用全文正则替换破坏代码块、URL、转义或嵌套标记。
 - 简体、繁体中文正文中，中英文及数字之间留半角空格，中文双引号使用「」。代码、URL、原始输出不套正文替换。
 - `app/config.yaml` 的字段、默认值、可选值、用途与示例集中维护在 `deploy/config.yaml.example` 及对应语言模板中，
@@ -38,7 +38,7 @@
 - 文风：先说读者要做什么、会看到什么，再讲原理；不用营销形容词、emoji 和“强大、极致、无缝、完美”之类空话；
   同一件事只在一处详写，其他页面链接过去。本地若有 `.agents/skills/chinese-writing/`（已 gitignore），改写中文文档时按它执行。
 - 升级说明页统一结构：发布日期 / schema / 镜像 → 变更 → 兼容性 → 升级 → 回滚；通用步骤链接 `upgrade#steps`，
-  不在每页重复整段脚本。发版时同时更新 `upgrade.md` 的版本列表，并把 `shared.ts` 中的“最新”标记移到新版本。
+  不在每页重复整段脚本。发版时同时更新 `upgrade.md` 的版本列表，把上一版本加进 `shared.ts` 的 `versions` 数组，并把三个 locale 配置 `copy` 中的 `versionCurrent` 改为新版本（侧边栏「最新」标记与导航版本号随之移动）。
 - 公开部署从 v0.3.0 开始。v0.2.9 及更早升级页仅归档 tag、变更及升级事项，并标注「内测版本，请勿使用」，不提供旧镜像安装／降级步骤；历史归档集中折叠展示。本次归档整理可改历史升级页，不修改已发布 CHANGELOG 和迁移源码。
 
 ## 产品边界
@@ -85,7 +85,7 @@
 
 Run these steps in order. Stop and report at any failure. Never move, recreate or force-push a published tag.
 
-1. **Master first.** Commit the release prep: the five synced items, the SDK README and package changelog, the three-locale upgrade page, `upgrade.md`, and the latest marker in `shared.ts`. The docs demo stays on the previous published SDK, because the new npm version does not exist yet. Run `node scripts/check-release.mjs v<VERSION>`, push `master`, and wait for its CI to pass.
+1. **Master first.** Commit the release prep: the five synced items, the SDK README and package changelog, the three-locale upgrade page, `upgrade.md`, the `versions` list in `shared.ts`, and `versionCurrent` in the three locale configs. The docs demo stays on the previous published SDK, because the new npm version does not exist yet. Run `node scripts/check-release.mjs v<VERSION>`, push `master`, and wait for its CI to pass.
 2. **Then the tag.** Once master CI is green and the user approves the release, create the annotated tag `v<VERSION>` (message `Ecoku v<VERSION>`) on that commit. Push it and wait for the Release workflow to pass: check, verify, npm, both images, manifest and release.
 3. **Then the SDK pins.** Confirm npm `latest`, the GHCR amd64/arm64 manifest and the GitHub Release. In one commit, move the VitePress docs site to the published SDK: `docs/package.json`, `minimumReleaseAgeExclude` in `pnpm-workspace.yaml`, the lockfile integrity taken from `npm view`, and the demo and install lines in the three-locale `sdk.md`. Record this housekeeping in the commit message, not in the next release’s `[Unreleased]` section. Release notes must identify the SDK and image published by that tag; do not present a prior docs dependency pin as that release’s SDK. Check it with `pnpm install --frozen-lockfile --lockfile-only`, push `master`, and wait for CI.
 4. **Remind the user.** Tell the user to move each deployed instance to the new exact image tag, including the server behind the docs demo. Do not change any deployed instance yourself.

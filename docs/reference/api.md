@@ -1,6 +1,6 @@
 # REST API
 
-本页列出 Ecoku 的 HTTP 接口，供编写自定义前端或自动化脚本时参考。使用官方加载器或 SDK 时，不需要直接调用这些接口。
+这一页列出 Ecoku 的 HTTP 接口，写自定义前端或自动化脚本时参考。用加载器或 SDK 接入的话，不需要直接调用它们。
 
 所有路径都相对于实例地址，例如 `https://ecoku.example.com/api/health`。
 
@@ -280,7 +280,7 @@ Origin: https://blog.example.com
 
 管理接口位于 `/api/admin/`。下文的 `admin.allowed_origins` 没有填写时，取 `notifications.instance_public_url` 的来源。
 
-### 认证方式
+### 认证方式 {#auth}
 
 - **会话 Cookie**：`POST /api/admin/login` 成功后，服务端设置名为 `ecoku_admin_session` 的 Cookie（HttpOnly、SameSite=Strict、Path=`/api/admin`，生产环境带 Secure），有效期 8 小时。登录响应中不包含 token。
 - 登录请求，以及用 Cookie 认证的非 GET 请求，必须带有 `admin.allowed_origins` 中的 `Origin`。
@@ -294,7 +294,7 @@ Origin: https://blog.example.com
 | --- | --- |
 | `GET /api/admin/login-config` | 无需登录。返回登录页需要的人机验证配置（`captcha`、`turnstileSitekey`）、后台语言 `locale`（取自 `ECOKU_ADMIN_LOCALE`）和显示时区 `timeZone`（IANA 名称，取自容器 `TZ`）。 |
 | `POST /api/admin/login` | 请求体 `{"username", "password", "captchaToken"}`。成功返回 `{"expires_at", "expires_in"}` 并设置 Cookie；用临时密码登录时额外返回 `requires_password_change: true` 和当前用户名 `username`。受 `rate_limit.admin_login` 限流。 |
-| `GET /api/admin/session` | 返回当前会话的 `expires_at`、剩余秒数 `expires_in` ；需要首次改密时包含 `requires_password_change: true` 与 `username`，否则省略这两个字段；不延长会话。 |
+| `GET /api/admin/session` | 返回当前会话的 `expires_at`、剩余秒数 `expires_in`；需要首次改密时包含 `requires_password_change: true` 与 `username`，否则省略这两个字段；不延长会话。 |
 | `POST /api/admin/initial-setup` | 只接受首次临时密码会话。请求体为 `{"username", "password"}`，成功后撤销临时会话并设置普通管理员会话。 |
 | `POST /api/admin/logout` | 注销当前会话并清除 Cookie。返回 `503` 时表示注销没有成功。 |
 

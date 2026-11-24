@@ -61,88 +61,48 @@ const enSearch: DefaultTheme.LocalSearchOptions['translations'] = {
   },
 }
 
-export function sidebar(prefix: string, t: SidebarCopy): DefaultTheme.SidebarItem[] {
-  const p = prefix
+const icon = (name: string, text: string) => `<span class="sb-icon sb-icon-${name}" aria-hidden="true"></span>${text}`
+
+const versions = [
+  'v0.6.1', 'v0.6.0', 'v0.5.7', 'v0.5.6', 'v0.5.5', 'v0.5.4', 'v0.5.3', 'v0.5.2', 'v0.5.1', 'v0.5.0',
+  'v0.4.1', 'v0.4.0', 'v0.3.8', 'v0.3.7', 'v0.3.6', 'v0.3.5', 'v0.3.4', 'v0.3.3', 'v0.3.2', 'v0.3.1', 'v0.3.0',
+]
+const internalVersions = [
+  'v0.2.9', 'v0.2.8', 'v0.2.7', 'v0.2.6', 'v0.2.5', 'v0.2.4', 'v0.2.3', 'v0.2.2', 'v0.2.1', 'v0.2.0',
+  'v0.1.9', 'v0.1.8', 'v0.1.7', 'v0.1.6', 'v0.1.5', 'v0.1.4', 'v0.1.3', 'v0.1.2', 'v0.1.1', 'v0.1.0',
+]
+
+function mainSidebar(p: string, t: SidebarCopy): DefaultTheme.SidebarItem[] {
   return [
     {
-      text: t.guide,
+      text: icon('start', t.start),
       items: [
         { text: t.introduction, link: `${p}/guide/introduction` },
-        { text: t.features, link: `${p}/guide/features` },
-        { text: t.concepts, link: `${p}/guide/concepts` },
+        { text: t.quickStart, link: `${p}/guide/quick-start` },
       ],
     },
     {
-      text: t.selfHosting,
+      text: icon('server', t.selfHosting),
       items: [
         { text: t.docker, link: `${p}/self-hosting/docker` },
         { text: t.proxy, link: `${p}/self-hosting/reverse-proxy` },
-        { text: t.admin, link: `${p}/self-hosting/admin` },
-        { text: t.notifications, link: `${p}/self-hosting/notifications` },
-        { text: t.captcha, link: `${p}/self-hosting/captcha` },
         { text: t.backup, link: `${p}/self-hosting/backup` },
-        {
-          text: t.upgrade,
-          link: `${p}/self-hosting/upgrade`,
-          collapsed: true,
-          items: [
-            { text: `${t.versionCurrent}${t.versionLatest}`, link: `${p}/self-hosting/upgrades/v0.6.2` },
-            { text: 'v0.6.1', link: `${p}/self-hosting/upgrades/v0.6.1` },
-            { text: 'v0.6.0', link: `${p}/self-hosting/upgrades/v0.6.0` },
-            { text: 'v0.5.7', link: `${p}/self-hosting/upgrades/v0.5.7` },
-            { text: 'v0.5.6', link: `${p}/self-hosting/upgrades/v0.5.6` },
-            { text: 'v0.5.5', link: `${p}/self-hosting/upgrades/v0.5.5` },
-            { text: 'v0.5.4', link: `${p}/self-hosting/upgrades/v0.5.4` },
-            { text: 'v0.5.3', link: `${p}/self-hosting/upgrades/v0.5.3` },
-            { text: 'v0.5.2', link: `${p}/self-hosting/upgrades/v0.5.2` },
-            { text: 'v0.5.1', link: `${p}/self-hosting/upgrades/v0.5.1` },
-            { text: 'v0.5.0', link: `${p}/self-hosting/upgrades/v0.5.0` },
-            { text: 'v0.4.1', link: `${p}/self-hosting/upgrades/v0.4.1` },
-            { text: 'v0.4.0', link: `${p}/self-hosting/upgrades/v0.4.0` },
-            { text: 'v0.3.8', link: `${p}/self-hosting/upgrades/v0.3.8` },
-            { text: 'v0.3.7', link: `${p}/self-hosting/upgrades/v0.3.7` },
-            { text: 'v0.3.6', link: `${p}/self-hosting/upgrades/v0.3.6` },
-            { text: 'v0.3.5', link: `${p}/self-hosting/upgrades/v0.3.5` },
-            { text: 'v0.3.4', link: `${p}/self-hosting/upgrades/v0.3.4` },
-            { text: 'v0.3.3', link: `${p}/self-hosting/upgrades/v0.3.3` },
-            { text: 'v0.3.2', link: `${p}/self-hosting/upgrades/v0.3.2` },
-            { text: 'v0.3.1', link: `${p}/self-hosting/upgrades/v0.3.1` },
-            { text: 'v0.3.0', link: `${p}/self-hosting/upgrades/v0.3.0` },
-            {
-              text: t.internalVersions,
-              collapsed: true,
-              items: [
-                { text: 'v0.2.9', link: `${p}/self-hosting/upgrades/v0.2.9` },
-                { text: 'v0.2.8', link: `${p}/self-hosting/upgrades/v0.2.8` },
-                { text: 'v0.2.7', link: `${p}/self-hosting/upgrades/v0.2.7` },
-                { text: 'v0.2.6', link: `${p}/self-hosting/upgrades/v0.2.6` },
-                { text: 'v0.2.5', link: `${p}/self-hosting/upgrades/v0.2.5` },
-                { text: 'v0.2.4', link: `${p}/self-hosting/upgrades/v0.2.4` },
-                { text: 'v0.2.3', link: `${p}/self-hosting/upgrades/v0.2.3` },
-                { text: 'v0.2.2', link: `${p}/self-hosting/upgrades/v0.2.2` },
-                { text: 'v0.2.1', link: `${p}/self-hosting/upgrades/v0.2.1` },
-                { text: 'v0.2.0', link: `${p}/self-hosting/upgrades/v0.2.0` },
-                { text: 'v0.1.9', link: `${p}/self-hosting/upgrades/v0.1.9` },
-                { text: 'v0.1.8', link: `${p}/self-hosting/upgrades/v0.1.8` },
-                { text: 'v0.1.7', link: `${p}/self-hosting/upgrades/v0.1.7` },
-                { text: 'v0.1.6', link: `${p}/self-hosting/upgrades/v0.1.6` },
-                { text: 'v0.1.5', link: `${p}/self-hosting/upgrades/v0.1.5` },
-                { text: 'v0.1.4', link: `${p}/self-hosting/upgrades/v0.1.4` },
-                { text: 'v0.1.3', link: `${p}/self-hosting/upgrades/v0.1.3` },
-                { text: 'v0.1.2', link: `${p}/self-hosting/upgrades/v0.1.2` },
-                { text: 'v0.1.1', link: `${p}/self-hosting/upgrades/v0.1.1` },
-                { text: 'v0.1.0', link: `${p}/self-hosting/upgrades/v0.1.0` },
-                { text: t.earlierVersions, link: `${p}/self-hosting/upgrades/earlier` },
-              ],
-            },
-          ],
-        },
+        { text: t.upgrade, link: `${p}/self-hosting/upgrade` },
         { text: t.twikoo, link: `${p}/self-hosting/twikoo` },
-        { text: t.faq, link: `${p}/self-hosting/faq` },
       ],
     },
     {
-      text: t.integration,
+      text: icon('panel', t.admin),
+      items: [
+        { text: t.sites, link: `${p}/admin/sites` },
+        { text: t.comments, link: `${p}/admin/comments` },
+        { text: t.blogger, link: `${p}/admin/blogger` },
+        { text: t.notifications, link: `${p}/admin/notifications` },
+        { text: t.captcha, link: `${p}/admin/captcha` },
+      ],
+    },
+    {
+      text: icon('code', t.integration),
       items: [
         { text: t.html, link: `${p}/integration/html` },
         { text: t.sdk, link: `${p}/integration/sdk` },
@@ -152,68 +112,102 @@ export function sidebar(prefix: string, t: SidebarCopy): DefaultTheme.SidebarIte
       ],
     },
     {
-      text: t.reference,
+      text: icon('book', t.reference),
       items: [
+        { text: t.concepts, link: `${p}/reference/concepts` },
         { text: t.configuration, link: `${p}/reference/configuration` },
         { text: t.cli, link: `${p}/reference/cli` },
         { text: t.api, link: `${p}/reference/api` },
+        { text: t.faq, link: `${p}/reference/faq` },
       ],
     },
   ]
 }
 
+function versionSidebar(p: string, t: SidebarCopy): DefaultTheme.SidebarItem[] {
+  const link = (v: string) => ({ text: v, link: `${p}/self-hosting/upgrades/${v}` })
+  return [
+    {
+      text: icon('tag', t.releases),
+      items: [
+        { text: t.upgradeGuide, link: `${p}/self-hosting/upgrade` },
+        { text: `${t.versionCurrent}${t.versionLatest}`, link: `${p}/self-hosting/upgrades/${t.versionCurrent}` },
+        ...versions.map(link),
+      ],
+    },
+    {
+      text: t.internalVersions,
+      collapsed: true,
+      items: [
+        ...internalVersions.map(link),
+        { text: t.earlierVersions, link: `${p}/self-hosting/upgrades/earlier` },
+      ],
+    },
+  ]
+}
+
+export function sidebar(prefix: string, t: SidebarCopy): DefaultTheme.Sidebar {
+  return {
+    [`${prefix}/self-hosting/upgrades/`]: versionSidebar(prefix, t),
+    [`${prefix}/`]: mainSidebar(prefix, t),
+  }
+}
+
 export function nav(prefix: string, t: NavCopy): DefaultTheme.NavItem[] {
   return [
-    { text: t.guide, link: `${prefix}/guide/introduction`, activeMatch: `${prefix}/guide/` },
+    { text: t.guide, link: `${prefix}/guide/introduction`, activeMatch: `^${prefix}/(guide/|self-hosting/(?!upgrades/)|admin/)` },
+    { text: t.integration, link: `${prefix}/integration/html`, activeMatch: `^${prefix}/integration/` },
+    { text: t.reference, link: `${prefix}/reference/configuration`, activeMatch: `^${prefix}/reference/` },
     {
-      text: t.selfHosting,
-      link: `${prefix}/self-hosting/docker`,
-      activeMatch: `${prefix}/self-hosting/`,
-    },
-    {
-      text: t.integration,
-      link: `${prefix}/integration/html`,
-      activeMatch: `${prefix}/integration/`,
-    },
-    {
-      text: t.reference,
-      link: `${prefix}/reference/configuration`,
-      activeMatch: `${prefix}/reference/`,
+      text: t.versionCurrent,
+      activeMatch: `^${prefix}/self-hosting/upgrades/`,
+      items: [
+        { text: t.releaseNotes, link: `${prefix}/self-hosting/upgrades/${t.versionCurrent}` },
+        { text: t.upgradeGuide, link: `${prefix}/self-hosting/upgrade` },
+        { text: 'GitHub Releases', link: 'https://github.com/DejavuMoe/Ecoku/releases' },
+      ],
     },
   ]
 }
 
 export interface NavCopy {
   guide: string
-  selfHosting: string
   integration: string
   reference: string
+  versionCurrent: string
+  releaseNotes: string
+  upgradeGuide: string
 }
 
 export interface SidebarCopy extends NavCopy {
+  start: string
   introduction: string
-  features: string
-  concepts: string
+  quickStart: string
+  selfHosting: string
   docker: string
   proxy: string
-  admin: string
-  notifications: string
-  captcha: string
   backup: string
   upgrade: string
   twikoo: string
-  faq: string
+  admin: string
+  sites: string
+  comments: string
+  blogger: string
+  notifications: string
+  captcha: string
   html: string
   sdk: string
   hugo: string
   customCss: string
   smoji: string
+  concepts: string
   configuration: string
   cli: string
   api: string
+  faq: string
+  releases: string
   internalVersions: string
   earlierVersions: string
-  versionCurrent: string
   versionLatest: string
 }
 
@@ -240,8 +234,8 @@ export const shared = defineConfig({
           : '/en/'
       if (target !== location.pathname) location.replace(target)
     })()`],
-    ['meta', { name: 'theme-color', content: '#f7f4ee', media: '(prefers-color-scheme: light)' }],
-    ['meta', { name: 'theme-color', content: '#1a1816', media: '(prefers-color-scheme: dark)' }],
+    ['meta', { name: 'theme-color', content: '#ffffff', media: '(prefers-color-scheme: light)' }],
+    ['meta', { name: 'theme-color', content: '#0e0e11', media: '(prefers-color-scheme: dark)' }],
     ['meta', { name: 'og:type', content: 'website' }],
     ['meta', { name: 'og:site_name', content: 'Ecoku' }],
   ] satisfies HeadConfig[],
@@ -250,28 +244,36 @@ export const shared = defineConfig({
       light: {
         name: 'ecoku-light',
         settings: [
-          { settings: { foreground: '#35312b', background: '#ece7de' } },
-          { scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#6b655b' } },
-          { scope: ['string', 'constant.other'], settings: { foreground: '#3d6a4e' } },
-          { scope: ['keyword', 'storage', 'entity.name.tag'], settings: { foreground: '#9a4733' } },
+          { settings: { foreground: '#24242b', background: '#f7f7f8' } },
+          { scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#6b6e73' } },
+          { scope: ['string', 'constant.other'], settings: { foreground: '#2f7a4f' } },
+          { scope: ['keyword', 'storage', 'entity.name.tag'], settings: { foreground: '#b13f26' } },
+          { scope: ['entity.other.attribute-name', 'support.type.property-name', 'variable'], settings: { foreground: '#3b5bb5' } },
         ],
       },
       dark: {
         name: 'ecoku-dark',
         settings: [
-          { settings: { foreground: '#d3ccbf', background: '#2a2723' } },
-          { scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#a29a8c' } },
-          { scope: ['string', 'constant.other'], settings: { foreground: '#9cc3a8' } },
-          { scope: ['keyword', 'storage', 'entity.name.tag'], settings: { foreground: '#d57c64' } },
+          { settings: { foreground: '#dcdce2', background: '#141418' } },
+          { scope: ['comment', 'punctuation.definition.comment'], settings: { foreground: '#979aa0' } },
+          { scope: ['string', 'constant.other'], settings: { foreground: '#8fd1a6' } },
+          { scope: ['keyword', 'storage', 'entity.name.tag'], settings: { foreground: '#f08a6c' } },
+          { scope: ['entity.other.attribute-name', 'support.type.property-name', 'variable'], settings: { foreground: '#8fb0ff' } },
         ],
       },
     },
     // TextMate grammar for ```caddyfile fences (Shiki has no built-in Caddyfile).
     languages: [caddyfileGrammar],
-    config: inlineSpacing,
+    config(md) {
+      inlineSpacing(md)
+      // Wrap tables so they can scroll sideways inside a rounded frame.
+      md.renderer.rules.table_open = () => '<div class="table-wrap"><table>\n'
+      md.renderer.rules.table_close = () => '</table></div>\n'
+    },
   },
   themeConfig: {
     logo: { src: '/logo.svg', alt: 'Ecoku' },
+    socialLinks: [{ icon: 'github', link: 'https://github.com/DejavuMoe/Ecoku' }],
     outline: [2, 3],
     search: {
       provider: 'local',

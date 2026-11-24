@@ -1,44 +1,49 @@
-# 反向代理
+# 反向代理与 HTTPS
 
-Ecoku 容器只在宿主机 `127.0.0.1:12123` 上提供 HTTP。公网访问需要由同一台主机上的 Caddy 或 Nginx 终止 HTTPS，再转发给这个端口。
+Ecoku 只在本机 `127.0.0.1:12123` 上提供 HTTP。你需要用 Caddy 或 Nginx 给它一个 HTTPS 域名，再告诉 Ecoku 哪个地址转发过来的访客 IP 可信。
 
-本页有两件事要完成：
+<div class="page-meta">
+<div>
 
-1. 配置 HTTPS 转发，让 `https://ecoku.example.com` 可以访问；
-2. 让 Ecoku 识别访客的真实 IP，使限流按人计算，而不是所有访客共用一个额度。
+**你会完成**
 
-## 请求经过的路径
+- `https://ecoku.example.com` 可以访问
+- Ecoku 按每个访客的真实 IP 限流
+
+</div>
+<div>
+
+**开始之前**
+
+- 已按 [Docker 安装](./docker) 启动容器
+- 域名已解析到这台主机
+
+</div>
+</div>
 
 <figure class="doc-diagram" tabindex="0" aria-label="请求路径图，可横向滚动">
   <img class="diagram-light" src="/diagrams/reverse-proxy.zh-CN.light.svg" width="984" height="91" loading="lazy" decoding="async" alt="访客通过 HTTPS 直连反向代理或经可选 CDN 回源，再通过 HTTP 127.0.0.1:12123 访问 Ecoku 容器。">
   <img class="diagram-dark" src="/diagrams/reverse-proxy.zh-CN.dark.svg" width="984" height="91" loading="lazy" decoding="async" alt="访客通过 HTTPS 直连反向代理或经可选 CDN 回源，再通过 HTTP 127.0.0.1:12123 访问 Ecoku 容器。">
 </figure>
 
-反向代理连接 `127.0.0.1:12123` 时，Docker 会把网络连接转交给容器。容器看到的对端地址不是访客，而是 Docker 网桥网关（通常形如 `172.18.0.1`）。因此，访客的真实 IP 需要由反向代理写入 `X-Forwarded-For` 请求头；Ecoku 仅在确认请求直连对端与配置的网关匹配时，才会读取该请求头。
+<div class="steps">
 
-## 直接回源
+### 配置反向代理
 
-### Caddy
+::: code-group
 
-Caddy 会自动申请和续期证书。
-
-```caddyfile
+```caddyfile [Caddy]
 ecoku.example.com {
     encode zstd gzip
 
     reverse_proxy 127.0.0.1:12123 {
-        # 用直连对端地址覆盖，丢弃浏览器自带的 X-Forwarded-For
         header_up X-Forwarded-For {remote_host}
         header_up X-Forwarded-Proto {scheme}
     }
 }
 ```
 
-### Nginx
-
-证书路径以 Certbot 默认位置为例。
-
-```nginx
+```nginx [Nginx]
 server {
     listen 443 ssl;
     listen [::]:443 ssl;
@@ -54,20 +59,13 @@ server {
     location / {
         proxy_pass http://127.0.0.1:12123;
         proxy_set_header Host $host;
-        # 覆盖而不是追加：$remote_addr 是当前 TCP 对端
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
 
-两份配置的关键都是**覆盖** `X-Forwarded-For`。如果改成追加（如 Nginx 的 `$proxy_add_x_forwarded_for`），浏览器可以自己带一个伪造的值，限流就能被绕过。
-
-## 经过 CDN 回源
-
-域名接入 Cloudflare 等 CDN 后，反向代理的直连对端变成了 CDN 节点。这时要从 CDN 提供的请求头里取访客 IP。以 Cloudflare 和 Caddy 为例：
-
-```caddyfile
+```caddyfile [Caddy + Cloudflare]
 ecoku.example.com {
     encode zstd gzip
 
@@ -78,24 +76,25 @@ ecoku.example.com {
 }
 ```
 
-`CF-Connecting-IP` 仅在请求确实来自 Cloudflare 节点时可信。建议在防火墙或反向代理中仅放行 Cloudflare 的官方 IP 段，避免绕过 CDN 直连源站伪造该请求头。
+:::
 
-Ecoku 这一侧的配置不变：`trusted_proxies` 仍然只填 Docker 网关，不要把 CDN 的网段填进去。
+`X-Forwarded-For` 必须**覆盖**而不是追加。追加的话（例如 Nginx 的 `$proxy_add_x_forwarded_for`），浏览器可以自己带一个伪造的值来绕过限流。
 
-## 配置 trusted_proxies {#trusted-proxies}
+前面有 Cloudflare 这类 CDN 时，访客 IP 要从 CDN 的请求头取，例如 `CF-Connecting-IP`。这时在防火墙上只放行 CDN 的 IP 段，防止有人绕过 CDN 直连源站伪造请求头。
 
-`app/config.yaml` 里的 `site.trusted_proxies` 决定 Ecoku 信任谁转发的 `X-Forwarded-For`：
+### 配置 trusted_proxies {#trusted-proxies}
 
-- **留空（默认）**：不读取任何转发头，一律按容器看到的对端地址限流。放在反向代理后面时，这个地址就是 Docker 网关，于是所有访客共享同一个限流额度。默认每分钟仅允许 5 次评论提交，连续提交时容易触发 `429` 限制。
-- **填 Docker 网关**：只有直连对端正好是网关时，才从 `X-Forwarded-For` 取访客 IP。
+反向代理连到 `127.0.0.1:12123` 时，Ecoku 看到的对端是 Docker 网桥的网关，而不是访客。只有把这个网关写进 `site.trusted_proxies`，Ecoku 才会读取 `X-Forwarded-For`。
 
-查出 Ecoku 所在网络的网关：
+不配置的话，所有访客都算同一个 IP，共用每分钟 5 次的提交额度，很快就会出现「提交过于频繁」。
+
+查出网关地址：
 
 ```bash
 sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
 ```
 
-假设输出 `172.18.0.1`，在 `app/config.yaml` 中加上：
+假设输出 `172.18.0.1`，写进 `app/config.yaml`：
 
 ```yaml
 site:
@@ -103,19 +102,17 @@ site:
     - "172.18.0.1/32"
 ```
 
-然后重启容器：
+重建容器：
 
 ```bash
 cd ~/Ecoku && sudo docker compose up -d --force-recreate --wait --wait-timeout 120 ecoku
 ```
 
-::: danger
-不要填 `0.0.0.0/0` 或 `::/0`，Ecoku 会拒绝启动。信任任意来源等于允许任何人伪造 IP。
-:::
+用了 CDN 也只填 Docker 网关，不要填 CDN 的网段。`0.0.0.0/0` 这类全网段会让 Ecoku 拒绝启动。
 
-## 检查
+### 检查
 
-在任意一台能上网的机器上执行：
+在任意一台能上网的机器上运行：
 
 ```bash
 for path in /api/health /client/ecoku-loader.js /admin/; do
@@ -123,6 +120,6 @@ for path in /api/health /client/ecoku-loader.js /admin/; do
 done
 ```
 
-三行都应以 `200` 开头。健康接口可以对公网开放，它只返回状态和时间戳。
+三行都以 `200` 开头就对了。之后回到 [首次登录](./docker#first-sign-in)。
 
-确认无误后，按 [首次登录](./docker#first-sign-in) 使用已取得的临时密码登录并设置正式密码，再 [注册站点](./admin#sites)。尚未取得密码时，先完成 [生成临时密码](./docker#temporary-password)。
+</div>

@@ -1,62 +1,43 @@
 # Introduction
 
-Ecoku is a self-hosted comment system engineered for static blogs and personal websites. Deploying a single Docker container and embedding a snippet of HTML into your page template brings live comments to your site.
+Ecoku is a self-hosted comment system for static sites built with Hugo, Hexo, Astro, VitePress and similar tools. You run one Docker container on your own server and add an HTML snippet to your post template, and your posts get a comment section.
 
-The design philosophy emphasizes restraint and simplicity:
+Visitors don't need to sign up. They enter a name and email and post, and the comment appears right away. Replies open under the comment they answer. The bottom of every page on this site is an Ecoku comment section.
 
-- **Plain text conversations**: HTML and Markdown are not parsed, and there is no rich-text editor.
-- **Live on submit**: No moderation queue; inappropriate comments are pruned by administrators after posting.
-- **No visitor accounts**: Visitors post with a nickname, an email (required by default; a site can make it optional) and an optional website.
-- **Unified multi-site hosting**: A single instance supports multiple sites; comment data and per-site settings are isolated between sites.
-- **Embedded storage with separate secrets**: Application data resides in SQLite, while cryptographic secrets persist independently. No external database or Redis is required—a cold backup of the deployment directory restores the full state.
-
-## Who it is for
-
-- Static site creators using Hugo, Hexo, Astro, VitePress, Jekyll, or similar generators who need a lightweight comment section.
-- Site owners who want full ownership of their comment data rather than relying on third-party commercial services.
-- Operators managing multiple websites through a single consolidated backend.
-
-## Who Is Using Ecoku? {#who-is-using}
-
-- [**Dejavu's Blog**](https://blog.dejavu.moe/): The author's personal blog on system architecture, self-hosting practices, and essays. Built with Hugo, using Ecoku for article comments and reader interactions.
-- [**Ecoku Documentation**](https://ecoku.zsh.moe/): The official documentation for Ecoku, built with VitePress. Embeds Ecoku comments at the bottom of each doc page as a live demonstration of self-hosting and client integration.
-- [**Sani Documentation**](https://sani.zsh.moe/): Documentation site for Sani, a self-hosted short link, pastebin, and file sharing tool. Embeds Ecoku across guides and help pages for community discussion and questions.
-- [**vps.gripe**](https://vps.gripe): VPS benchmark reporting platform featuring raw script outputs and parsed summaries. Embeds Ecoku on benchmark detail pages for user discussions on server performance.
-
-## Boundaries and non-goals
-
-The following features fall outside Ecoku's scope:
-
-- Rich text, Markdown rendering, and user image uploads ([Smoji stickers](../integration/smoji) are the sole form of image display);
-- Visitor accounts, third-party social logins, and external avatars;
-- Likes, downvotes, and emoji reaction counters;
-- Pre-publication moderation queues;
-- MySQL, PostgreSQL, or other external databases.
-
-If these features are essential to your workflow, Ecoku may not be the right fit.
-
-## System architecture {#components}
+## What it's made of {#components}
 
 <figure class="doc-diagram" tabindex="0" aria-label="System diagram, horizontally scrollable">
   <img class="diagram-light" src="/diagrams/components.en.light.svg" width="1185" height="304" loading="lazy" decoding="async" alt="Visitor and administrator browsers reach Ecoku through a reverse proxy. The service connects to SQLite and sends SMTP or Telegram notifications.">
   <img class="diagram-dark" src="/diagrams/components.en.dark.svg" width="1185" height="304" loading="lazy" decoding="async" alt="Visitor and administrator browsers reach Ecoku through a reverse proxy. The service connects to SQLite and sends SMTP or Telegram notifications.">
 </figure>
 
-The container runs a single Go binary, `ecoku-server`, which concurrently manages:
+| Part | Description |
+| --- | --- |
+| `ecoku-server` | The only program in the container. Serves the comment API, the admin console `/admin/` and the scripts your blog loads from `/client/`, and sends notifications in the background. |
+| SQLite database | Holds all sites, comments and settings. `ecoku-secrets.json` next to it holds the keys; back up both together. |
+| Reverse proxy | Your own Caddy or Nginx, which handles HTTPS. The container listens only on local `127.0.0.1:12123`. |
+| Comment script | `ecoku-loader.js`, loaded by your blog pages. You can also use the npm package `ecoku`. |
 
-- Comment endpoints `/api/comment/*` and admin endpoints `/api/admin/*`;
-- The `/admin/` management interface;
-- Embeddable scripts and styles under `/client/`;
-- Background asynchronous email and Telegram notification dispatching.
+No MySQL, Redis or other external service is needed.
 
-The container runs as an unprivileged user and listens strictly on host loopback `127.0.0.1:12123`. A co-located reverse proxy terminates HTTPS.
+## What it doesn't do
 
-## Getting started
+- It doesn't render Markdown or HTML, and doesn't accept image uploads. [Smoji stickers](../integration/smoji) are the only content shown as images.
+- There are no visitor accounts, third-party sign-in or avatars.
+- There are no likes and no moderation queue. Comments go public on submission; you delete them in the admin console afterwards.
+- SQLite is the only supported database.
 
-1. [Docker deployment](../self-hosting/docker): Prepare run directories and configuration; startup automatically creates administrator credentials and persistent keys.
-2. [Reverse proxy](../self-hosting/reverse-proxy): Configure a reverse proxy and bind an HTTPS domain.
-3. [Admin console](../self-hosting/admin): Sign in, register your site, and configure blogger credentials and form rules.
-4. [Embed the comment section](../integration/html): Place the embed snippet into your blog template.
+If you need any of these, Ecoku may not be right for you.
 
-Subsequently, you can configure [notifications](../self-hosting/notifications) and [CAPTCHA](../self-hosting/captcha), or [migrate](../self-hosting/twikoo) existing comments from Twikoo.
-Before deploying, review [How it works](./concepts) to understand page keys, deletion semantics, and privacy boundaries.
+## Privacy
+
+Ecoku doesn't store visitor IP addresses, User-Agents or locations. The email a visitor enters is used only for notifications and never appears in any public API. The comment section doesn't request third-party avatar, analytics or IP lookup services. See [Stored and public data](../reference/concepts#data).
+
+## Where to start
+
+<div class="cards">
+<Card title="Quick start" link="/guide/quick-start" icon="rocket">Go from deployment to embedding in under twenty minutes.</Card>
+<Card title="How it works" link="/reference/concepts" icon="book">How page keys, reply depth, deletion and identity work.</Card>
+<Card title="HTML embed" link="/integration/html" icon="code">You already have an Ecoku server and just want comments on your blog.</Card>
+<Card title="Migrate from Twikoo" link="/self-hosting/twikoo" icon="download">Import your Twikoo comment history into Ecoku.</Card>
+</div>

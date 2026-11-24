@@ -1,64 +1,47 @@
 # 升級
 
-公開版本從 v0.3.0 開始。新部署直接使用 [Docker 部署](./docker)；本頁用於既有實例升級。
+升級就是把 `compose.yaml` 裡的映像檔換成新版本，再重建容器。新版本啟動時會檢查資料庫的 schema 版本，必要時依序原地遷移。
 
-目前版本是 **v0.6.2**（2026-11-23 發布，schema v12）。
+目前版本是 **v0.6.2**（2026-11-23，schema v12）。新部署請直接看 [Docker 部署](./docker)。
 
-新映像檔統一發布到 GHCR。使用 Forgejo 映像檔的實例，後續升級請將 `image` 改為 `ghcr.io/dejavumoe/ecoku:v0.6.2` 或目標版本的精確 tag，保留原本的資料與設定掛載；Forgejo registry 不再發布新版本。同版本切換倉庫不必重新初始化實例。
+升級前先在 [版本清單](#versions) 裡讀一遍從你的版本到目標版本之間每個版本的說明。需要特別注意的兩處：
 
-升級至 v0.6.2 前，先閱讀 [本版相容性說明](./upgrades/v0.6.2#compatibility)。從 v0.5.7 或更早版本升級時，須將 Compose 中的 wget 健康檢查替換為二進位探針，見 [distroless 遷移](#distroless)。若目前版本早於 v0.5.0，還需核對 [來源衝突與歷史資料的相容性說明](./upgrades/v0.5.0#compatibility)；管理來源與已儲存站點來源重疊會阻止啟動。
+- 從 v0.5.7 或更早版本升級，要同時替換 Compose 裡的健康檢查，見 [遷移到 distroless 映像檔](#distroless)。
+- 從 v0.5.0 之前的版本升級，管理後台的來源不能和任何站點的允許來源重複，否則新版本拒絕啟動，見 [v0.5.0 相容性說明](./upgrades/v0.5.0#compatibility)。
 
-## 升級時會發生什麼
+## 資料庫遷移
 
-升級就是把 `compose.yaml` 中的映像檔換成新版本再啟動。新版本啟動時會檢查資料庫的 schema 版本，如果低於自己支援的版本，就依序執行遷移：
+- 每一步遷移在一個交易裡完成。某一步失敗時只回滾這一步，服務不會啟動，之前完成的步驟保留。
+- 遷移直接修改原資料庫檔案，不會刪除資料庫、評論、設定或備份。
+- 只能向上遷移。舊版本程式打不開更高 schema 的資料庫。
 
-- 每一步遷移都在一個交易中完成，失敗只回滾目前步驟，先前已成功的遷移不會回退，服務不會啟動；
-- 遷移在原本的資料庫檔案上進行，不會刪除或重建資料庫、評論、設定、WAL 檔案或你的備份；
-- 每完成一步，就在 `schema_migrations` 資料表中新增一筆記錄；
-- **只能向上遷移**。舊版本的程式無法開啟 schema 較新的資料庫，會拒絕啟動。
-
-因此，升級前的備份是回滾到舊 schema 的唯一途徑。
-
-## 遷移至 distroless {#distroless}
-
-自 v0.6.0 起執行映像檔從 Alpine 遷移至 distroless Debian 13 static。從 v0.5.7 或更早版本升級時，需要一次性替換 Compose 中的健康探針；請勿將新探針用於 v0.5.7 及更早映像檔。
-
-新映像檔使用 Debian 13 static，保留 UID/GID `10001:10001`、`/app/config.yaml`、`/data` 和 schema v12，不要求主機升級至 Debian 13。正常運作的既有資料目錄不需要重新變更擁有者；繼續保留自訂資料路徑及掛載。Compose 至少須支援 `up --wait --wait-timeout`（v2.17.0 起提供），Docker Engine 與主機系統應使用受維護版本；尚未承諾最低 Engine 或核心版本。
-
-按 [升級步驟](#steps) 停服冷備份，改成目標版本的精確映像檔 tag，並將 Compose 的 `healthcheck.test` 替換為：
-
-```yaml
-    healthcheck:
-      test: ["CMD", "/app/ecoku-server", "healthcheck"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-```
-
-自訂容器內連接埠時加上 `--port=你的連接埠`，主機連接埠映射不影響探針。舊 Compose 中的 wget 指令會覆蓋映像檔預設探針，必須替換；不能只改映像檔。繼續執行拉取、重建與健康檢查，保留 `read_only`、`cap_drop`、`security_opt` 和 `tmpfs`。單一實例升級會短暫停服，可提前拉取目標映像檔以縮短下載占用的停機時間。
-
-確認後台登入、歷史評論、新評論和已設定的通知或驗證碼正常。健康介面只表示程序能回應，不驗證資料內容。資料庫、持久金鑰必須一起備份，不能刪除金鑰後重新產生。
-
-回滾至 v0.5.7 時，同時恢復舊 Compose 的 wget 健康檢查（或刪除 Compose 中的 `healthcheck` 覆蓋以使用舊映像檔自帶探針）；舊映像檔不支援新子指令。若僅遷移基礎映像檔、schema 保持 v12，可保留升級後的資料；跨 schema 回滾仍按 [備份還原](./backup#restore) 操作。
-
-映像檔不含 shell、wget 或套件管理器。排障在主機使用 `docker compose logs`、`docker inspect`、`docker cp`，維運繼續直接呼叫 [Ecoku CLI](../reference/cli)。依賴 `docker exec … sh` 的自訂腳本須調整。
+所以升級前的冷備份，是回到舊 schema 的唯一辦法。
 
 ## 升級步驟 {#steps}
 
-**1. 閱讀升級說明**。在下方的 [版本清單](#versions) 中找到目標版本，確認是否有設定變更、是否涉及 schema 遷移。
+<div class="steps">
 
-**2. 停止服務後冷備份**。依照 [備份與還原](./backup#cold-backup) 執行，確認輸出 `Verified backup`，並保持服務停止，直到第 4 步啟動目標映像檔。
 
-**3. 修改映像檔版本**。編輯 `~/Ecoku/compose.yaml`，把 `image` 改成目標版本，例如：
+### 讀升級說明
+
+在 [版本清單](#versions) 裡找到目標版本，看有沒有設定變更和資料庫遷移。
+
+### 停服冷備份
+
+依 [備份與還原](./backup#cold-backup) 操作，看到 `Verified backup` 後保持服務停止。
+
+### 改映像檔版本
+
+編輯 `~/Ecoku/compose.yaml`，寫精確的版本號：
 
 ```yaml
     image: "ghcr.io/dejavumoe/ecoku:v0.6.2"
 ```
 
-請寫明確的版本號，不要用 `latest`。從 v0.5.7 或更早版本升級時，必須同時將 Compose 中的 `healthcheck.test` 改為 `["CMD", "/app/ecoku-server", "healthcheck"]`（詳見 [distroless 遷移](#distroless)）。如果升級說明要求修改 `app/config.yaml` 或 `ecoku.env`，請一併修改。
+升級說明要求修改 `app/config.yaml` 的，一併改好。以前從 Forgejo 映像檔倉庫拉取的實例，直接改成上面的 GHCR 位址；Forgejo 不再發布新版本。
 
-**4. 拉取並啟動。**
+### 拉取並啟動
+
 
 ```bash
 (
@@ -70,7 +53,8 @@ sudo docker compose up -d --force-recreate --wait --wait-timeout 120 ecoku
 )
 ```
 
-**5. 檢查。**
+### 檢查
+
 
 ```bash
 sudo docker compose ps
@@ -78,16 +62,23 @@ sudo docker compose logs --tail=100 ecoku
 curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 ```
 
-容器狀態為 `healthy`、日誌中沒有錯誤後，再開啟部落格文章頁和管理後台，確認評論能正常載入、發布，後台能登入。
+容器為 `healthy`、日誌沒有錯誤後，開啟一篇文章確認評論能載入和發布，再登入一次後台。
 
-## 回滾
+</div>
 
-先看新旧兩個版本的 schema 是否相同（見下表）：
+使用 npm 套件 `ecoku` 的網站，同時把相依套件更新到同一版本並重新建置。
 
-- **schema 相同**：停止服務，把 `compose.yaml` 中的映像檔改回舊版本號。若從 distroless 版本回滾至 v0.5.7 或更早版本，同時恢復舊 Compose 的 `wget` 健康檢查（或刪除 `healthcheck` 覆蓋），再拉取並重建容器。資料庫不用動，升級後產生的新評論也會保留。如果升級時依新版本的預設值省略了某些欄位，先補回舊版本要求的設定；如果為新版本加入過舊版本不認得的設定項目，先刪掉，否則舊版本會因未知欄位拒絕啟動。
-- **schema 不同**：只改回映像檔版本號是不夠的，舊版本無法開啟已遷移的資料庫。需要用升級前的冷備份 [還原](./backup#restore)。備份之後產生的評論和設定修改會遺失。
+## 回滾 {#rollback}
+
+先看新舊兩個版本的 schema 是否相同（見下表）。
+
+**schema 相同**：停服，把 `compose.yaml` 裡的映像檔改回舊版本，拉取並重建。資料庫不用動，升級後的新評論會保留。如果為新版本加過舊版本不認得的設定項，先刪掉，否則舊版本會因為未知欄位拒絕啟動。
+
+**schema 不同**：改回映像檔沒有用，舊版本打不開已遷移的資料庫。用升級前的冷備份 [還原](./backup#restore)，備份之後的評論和設定修改會遺失。
 
 ## 版本清單 {#versions}
+
+schema 一欄只有一個版本號的，表示沒有資料庫遷移。
 
 | 版本 | 發布日期 | schema | 重點 |
 | --- | --- | --- | --- |
@@ -114,7 +105,27 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 | [v0.3.1](./upgrades/v0.3.1) | 2026-10-03 | v11 → v12 | 三語後台與評論區、站點語言、文件主題同步。 |
 | [v0.3.0](./upgrades/v0.3.0) | 2026-10-03 | v10 → v11 | Smoji 獨立圖片來源、npm SDK 與 GHCR 發布、設定範本及文件主題更新。 |
 
-表中 schema 欄只寫一個版本號的，表示該版本沒有資料庫遷移。
+
+## 遷移到 distroless 映像檔 {#distroless}
+
+從 v0.6.0 起，執行映像檔從 Alpine 換成了 distroless Debian 13 static，裡面沒有 shell、wget 和套件管理器。從 v0.5.7 或更早版本升級時，必須把 Compose 裡舊的 wget 健康檢查換成：
+
+```yaml
+    healthcheck:
+      test: ["CMD", "/app/ecoku-server", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+```
+
+只換映像檔不換探針，舊探針會一直失敗。改了容器內連接埠的，加上 `--port=你的連接埠`。
+
+其他保持不變：UID/GID `10001:10001`、`/app/config.yaml`、`/data` 掛載和 schema v12 都沒變，資料目錄不需要重新變更擁有者，主機也不需要升級到 Debian 13。
+
+排查問題時改用主機上的 `docker compose logs`、`docker inspect`、`docker cp`。依賴 `docker exec … sh` 的腳本需要調整。
+
+回滾到 v0.5.7 時，同時恢復舊的 wget 健康檢查，或者刪掉 Compose 裡的 `healthcheck` 段，使用舊映像檔內建的探針。
 
 ::: details 內測版本記錄（請勿使用）
 僅保留版本標籤、變更和歷史升級事項。公開部署從 v0.3.0 開始；舊映像檔不再提供部署支援。請使用 [目前部署文件](./docker)。
@@ -145,7 +156,7 @@ curl --fail --silent --show-error http://127.0.0.1:12123/api/health
 :::
 
 <details id="legacy-config" class="details custom-block">
-<summary>內測實例的舊設定遷移</summary>
+<summary>內測實例（v0.2.9 及更早）的舊設定遷移</summary>
 
 v0.2.9 在 schema v9 上新增 v10 管理員帳戶表。既有站點、評論、通知、驗證碼設定和舊管理員憑據都會保留；舊實例不需要在升級前修改設定。
 

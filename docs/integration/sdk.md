@@ -1,21 +1,24 @@
 # JavaScript SDK
 
-[HTML 接入](./html) 适合每篇文章都是独立页面的静态网站。在 Vue、React 这类单页应用中，切换文章时页面不刷新，评论区需要跟着切换，这时直接使用 SDK。
+在 Vue、React、VitePress 这类前端应用里，切换文章时页面不会刷新，评论区要跟着换。这种情况用 npm 包 `ecoku` 自己创建和销毁评论区。普通静态网站用 [HTML 接入](./html) 更简单。
 
-## 获取 SDK {#install}
+SDK 只负责在浏览器里显示评论区，你仍然需要一个部署好的 Ecoku 服务。
 
-[ecoku](https://www.npmjs.com/package/ecoku) 的 `0.6.2` 版本已发布到 npm，提供 ESM、CommonJS 和 TypeScript 类型声明。SDK 在浏览器中挂载评论区，需要连接你部署的 Ecoku 服务；安装 npm 包不会替你部署服务端。
+## 安装 {#install}
 
 ```bash
 pnpm add --save-exact ecoku@0.6.2
 ```
 
-不使用 npm 时，可通过 `<script src="https://ecoku.example.com/client/ecoku.umd.js"></script>` 加载实例提供的 UMD 文件，再使用全局 `Ecoku` 构造函数。静态文章页优先使用 [HTML 加载器](./html)。
+包里有 ESM、CommonJS 和 TypeScript 类型声明。升级 Ecoku 服务端时，把这个依赖也更新到同一版本。
+
+不用 npm 的话，也可以加载实例提供的 `https://ecoku.example.com/client/ecoku.umd.js`，然后使用全局的 `Ecoku`。
 
 ## 创建评论区
 
 ```js
 import Ecoku from 'ecoku'
+
 const comments = new Ecoku({
   container: '#comments',
   serverURL: 'https://ecoku.example.com',
@@ -30,72 +33,58 @@ await comments.init()
 
 | 配置项 | 类型 | 必填 | 默认值 | 说明 |
 | --- | --- | :---: | --- | --- |
-| `container` | `string \| HTMLElement` | 是 | — | 挂载位置，CSS 选择器或 DOM 元素。容器原有内容会被替换。 |
-| `serverURL` | `string` | 是 | — | Ecoku 的地址，`http://` 或 `https://` 开头，可以带路径，不能带用户名密码、查询参数或 `#`。 |
-| `siteId` | `string` | 是 | — | 后台创建的站点 ID。 |
-| `pageKey` | `string` | 是 | — | 当前文章的页面 key，1～512 个字符的站内相对路径，不能带 `?` 或 `#`。SDK 不会自动从网址推断，必须显式传入。 |
-| `pageTitle` | `string` | 否 | `''` | 文章标题，显示在通知中，最多 200 个字符。 |
-| `pageSize` | `number` | 否 | `10` | 每页根评论数，1～100 的整数。 |
-| `theme` | `'auto' \| 'light' \| 'dark'` | 否 | `'auto'` | 配色。`auto` 优先读取宿主颜色变量，未提供时跟随系统偏好；手动主题开关需映射颜色变量，见下方 VitePress 示例。 |
-| `i18n` | `'zh-CN' \| 'zh-Hant' \| 'en'` | 否 | 站点默认值 | 评论区语言。优先级为 SDK 参数 → 站点设置 → `zh-CN`；默认的占位文案、无评论文案和博主标志随语言切换，站点自定义的文案保持原文。 |
-| `cssURL` | `string` | 否 | `''` | 留空时注入默认样式。填写有效值（样式表地址或 `'none'`）都会停止注入，见下文。 |
+| `container` | `string \| HTMLElement` | 是 | — | 挂载位置，CSS 选择器或元素。原有内容会被替换。 |
+| `serverURL` | `string` | 是 | — | Ecoku 的地址，`http://` 或 `https://` 开头，可以带路径，不能带查询参数或 `#`。 |
+| `siteId` | `string` | 是 | — | 站点 ID |
+| `pageKey` | `string` | 是 | — | 页面 key，1～512 个字符的站内路径，不带 `?` 或 `#`。SDK 不会从网址推断，必须传入。 |
+| `pageTitle` | `string` | 否 | `''` | 文章标题，用于通知，超过 200 个字符会截断 |
+| `pageSize` | `number` | 否 | `10` | 每页根评论数，1～100 |
+| `theme` | `'auto' \| 'light' \| 'dark'` | 否 | `'auto'` | 配色，见 [明暗模式](./custom-css#theme) |
+| `i18n` | `'zh-CN' \| 'zh-Hant' \| 'en'` | 否 | 站点设置 | 评论区语言，优先于后台的站点设置 |
+| `cssURL` | `string` | 否 | `''` | 样式，见下文 |
 
-构造函数不校验参数；`init()` 校验挂载元素、服务地址及选项类型和范围，失败时返回拒绝的 Promise。页面 key 的完整路径规则由服务端校验，不能靠 `init()` 成功判断它符合提交要求。
+`init()` 会检查配置，有问题时返回被拒绝的 Promise。页面 key 的完整规则由服务端检查，所以 `init()` 成功不代表评论一定能提交。
 
-- 初始化和 `setPageKey()` 都会去除 `pageTitle` 首尾空白，并截取前 200 个 UTF-16 代码单元。
-- `cssURL` 只接受 HTTP(S) 绝对地址、以 `/` 开头的路径、`none` 或兼容值 `-`。
-- 旧配置项 `apiBaseUrl` 是 `serverURL` 的别名，仍可使用，但已弃用。两者同时填写且指向不同地址时，`init()` 抛出 `TypeError`。
+旧配置项 `apiBaseUrl` 是 `serverURL` 的别名，仍然可用，但已弃用。
 
 ### 样式 {#styles}
 
-- `cssURL` 留空：SDK 在评论区内注入默认样式，不需要额外引入 CSS。
-- `cssURL` 填样式表地址：SDK 不再注入，也**不会**替你加载这个地址，需要自己在页面中加 `<link rel="stylesheet">`。（HTML 加载器会自动添加，SDK 不会。）
-- `cssURL` 为 `'none'`：不注入任何样式，完全由你的 CSS 决定外观。
+| `cssURL` | 结果 |
+| --- | --- |
+| 留空 | SDK 注入默认样式，不需要另外引入 CSS |
+| 样式表地址 | SDK 不注入，也不会替你加载这个地址。你要自己在页面里加 `<link rel="stylesheet">`。 |
+| `'none'` | 不注入任何样式，外观完全由你的 CSS 决定 |
 
-可以使用实例提供的 `/client/ecoku.css`（与默认样式相同）或 `/client/ecoku.unstyled.css`（只有布局）。详见 [自定义样式](./custom-css)。
+实例提供 `/client/ecoku.css`（默认样式）和 `/client/ecoku.unstyled.css`（只有布局）。见 [自定义样式](./custom-css)。
 
 ## 实例方法
 
-### `init(options?)`
+| 方法 | 说明 |
+| --- | --- |
+| `init(options?)` | 挂载评论区并加载第一页。传入 `options` 会替换构造时的配置。已初始化时再次调用不做任何事。 |
+| `setPageKey(pageKey, pageTitle?)` | 切换到另一篇文章的评论区。必须在 `init()` 之后调用。 |
+| `reload()` | 重新加载当前页的评论 |
+| `destroy()` | 卸载评论区，取消请求，清空容器。组件卸载时调用。 |
+| `isInitialized()` | 是否已初始化 |
 
-挂载评论区，并行恢复浏览器保存的访客身份和加载第一页评论。返回的 Promise 等待评论加载流程结束，不等待可选的身份恢复；晚到的身份不会覆盖已经编辑的输入。
+使用时注意：
 
-- 传入 `options` 时替换构造时的配置。
-- 已经初始化的实例再次调用会直接返回，不会重复挂载，传入的 `options` 也不生效。
-- 同一个容器同时只能被一个实例使用，否则抛错。先对旧实例调用 `destroy()`。
-- 挂载失败时实例会自动销毁，可以修正问题后再次调用 `init()`。
-- 评论接口失败由组件显示错误和重试按钮，`init()` 的 Promise 仍可能正常结束；`reload()`、`setPageKey()` 也是如此。不要把 Promise 成功或 `isInitialized()` 当作服务健康检查。
+- 同一个容器同时只能有一个实例。换新实例前，先对旧实例调用 `destroy()`。
+- `setPageKey()` 的第二个参数请传新文章的标题。省略时标题会被清空，新评论的通知里就没有文章名。在路由和标题都更新之后再调用。
+- 页面 key 不变时调用 `setPageKey()`，会重新加载评论但保留正在写的草稿；页面 key 变了，评论框和回复框会被清空。
+- 评论接口出错时，由评论区自己显示错误和重试按钮，`init()`、`reload()`、`setPageKey()` 的 Promise 仍可能正常完成。不要拿它们来判断服务是否健康。
 
-### `setPageKey(pageKey, pageTitle?)`
+## 在框架中使用 {#frameworks}
 
-切换到另一篇文章的评论区，适合在单页应用的路由变化后调用。必须在 `init()` 之后调用，否则抛错。
+下面的示例里，服务地址和站点 ID 都是占位符，换成你自己的，并把网站来源加进站点的允许来源。
 
-- 页面 key 与当前相同时，也会更新标题并重新加载评论，但保留草稿和回复状态。
-- 不同时，取消进行中的请求，关闭打开的回复框，清空评论框，加载新页面的第一页。
-- **第二个参数请传入新文章的标题**。省略时标题被清空，而不是沿用上一篇的标题，否则新评论的通知会显示错误的文章名。请在路由和标题都更新之后再调用。
-- 标题的长度处理与初始化相同，超长部分会被截断。
+### VitePress {#vitepress}
 
-### `reload()`
+本站就是这样接入的。用 VitePress 自带的 `useRoute`（不要从 `vue-router` 导入），以路由路径作页面 key，再把组件放进默认布局的 `doc-after` 插槽。样式部分把评论区颜色映射到 VitePress 的变量上，切换明暗时评论区跟着变。
 
-重新加载当前页的评论，排序不变。若评论删除导致当前页超出范围，会重新加载仍有效的末页；评论全部删除后，页码恢复为 1。必须在 `init()` 之后调用，否则抛错。
+::: code-group
 
-### `destroy()`
-
-卸载评论区：取消所有请求，移除验证组件和事件监听，清空容器。组件卸载时调用。
-
-### `isInitialized()`
-
-返回实例当前是否已初始化。
-
-## VitePress {#vitepress}
-
-下面使用 `ecoku@0.6.2`，服务地址 `https://ecoku.example.com` 和站点 ID `your-site-id` 均为占位符。接入时替换为你部署的 Ecoku 服务地址和后台创建的站点 ID，并把网站来源加入该站点的允许来源。
-
-在 `.vitepress/theme/EcokuComments.vue` 中使用 VitePress 自带的 `useRoute`，不要从 `vue-router` 导入。路由路径作为稳定的页面 key，页面数据提供标题。仅在浏览器挂载时创建实例，切换文章时更新，卸载时销毁。
-
-VitePress 的手动主题开关不会改变系统配色偏好。下面将评论区颜色映射到 VitePress 变量，浅色、暗色和手动切换都会同步，且不会重建实例或清空草稿。
-
-```vue
+```vue [.vitepress/theme/EcokuComments.vue]
 <script setup>
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useData, useRoute } from 'vitepress'
@@ -151,9 +140,7 @@ onBeforeUnmount(() => {
 </style>
 ```
 
-在现有 `.vitepress/theme/index.ts` 中将组件放入默认布局的 `doc-after` 插槽，保留已有主题设置和 CSS 导入。下面是最小写法。首页使用 home 布局时不会显示这个插槽。
-
-```ts
+```ts [.vitepress/theme/index.ts]
 import { h } from 'vue'
 import DefaultTheme from 'vitepress/theme'
 import EcokuComments from './EcokuComments.vue'
@@ -166,13 +153,15 @@ export default {
 }
 ```
 
-## Astro {#astro}
+:::
 
-先按 [获取 SDK](#install) 安装 `ecoku`，再创建 `src/components/EcokuComments.astro`。下面的服务地址和站点 ID 均为占位符；接入前替换它们，并在 Ecoku 后台允许你的网站来源（本地预览也需要加入对应来源）。
+### Astro {#astro}
 
-SDK 放在组件模板的普通 `<script>` 中，由 Astro 打包后在浏览器运行。不要放进顶部的 `---` 代码区，也不要给脚本添加 `is:inline`、`define:vars` 或 `type="module"`，否则 npm 导入和 TypeScript 不会按这个示例处理。页面 key 和标题通过 `data-*` 属性传给脚本，详见 [Astro 脚本处理说明](https://docs.astro.build/en/guides/client-side-scripts/#script-processing)。
+SDK 写在组件模板里普通的 `<script>` 中，由 Astro 打包后在浏览器运行。不要放进顶部的 `---` 区域，也不要加 `is:inline`、`define:vars` 或 `type="module"`。
 
-```astro
+::: code-group
+
+```astro [src/components/EcokuComments.astro]
 ---
 interface Props {
   pageKey: string
@@ -216,9 +205,7 @@ const { pageKey, pageTitle } = Astro.props
 </style>
 ```
 
-在文章页或文章布局中引入组件。例如 `src/pages/posts/hello-world.astro`：
-
-```astro
+```astro [src/pages/posts/hello-world.astro]
 ---
 import EcokuComments from '../../components/EcokuComments.astro'
 
@@ -241,13 +228,15 @@ const title = 'Hello, world'
 </html>
 ```
 
-将 `title` 换成文章数据中的标题。`Astro.url.pathname` 只取路径，不包含查询参数和片段；同一篇文章应始终使用相同的页面 key，包括结尾斜杠。
+:::
 
-该组件适用于静态页面，也适用于启用 [ClientRouter](https://docs.astro.build/en/guides/view-transitions/) 的网站：自定义元素插入页面时初始化，移除时销毁，切换文章后按新页面的数据创建实例。不要为评论组件添加 `transition:persist`，以免沿用旧文章的页面数据。
+`Astro.url.pathname` 只有路径，注意结尾斜杠前后一致。启用了 [ClientRouter](https://docs.astro.build/en/guides/view-transitions/) 也能用，但不要给组件加 `transition:persist`。
 
-## Vue 3
+### Vue 3 与 React {#vue-react}
 
-```vue
+::: code-group
+
+```vue [Comments.vue]
 <script setup>
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -285,11 +274,7 @@ onBeforeUnmount(() => {
 </template>
 ```
 
-`document.title` 需要在路由切换后已经更新为新文章标题。如果标题由其他逻辑异步设置，请改为传入文章数据中的标题。
-
-## React
-
-```jsx
+```jsx [Comments.jsx]
 import { useEffect, useRef } from 'react'
 import Ecoku from 'ecoku'
 
@@ -312,4 +297,7 @@ export function Comments({ pageKey, pageTitle }) {
 }
 ```
 
-这个组件在文章变化时销毁旧实例、创建新实例，写法最简单。也可以只创建一次实例，在 `pageKey` 变化时调用 `setPageKey(pageKey, pageTitle)`，省去重新挂载。
+:::
+
+- Vue 示例里，`document.title` 要在路由切换后已经变成新标题；标题是异步设置的话，改为从文章数据取。
+- React 示例在文章变化时销毁旧实例、再建新实例。也可以只建一次，在 `pageKey` 变化时调用 `setPageKey(pageKey, pageTitle)`。

@@ -62,7 +62,7 @@ async function testTheme(docsURL) {
             }
           })
           assert.deepEqual(colors.actual, colors.expected)
-          assert.equal(colors.background, colors.dark ? 'rgb(33, 31, 28)' : 'rgb(251, 249, 245)')
+          assert.equal(colors.background, colors.dark ? 'rgb(20, 20, 24)' : 'rgb(248, 248, 249)')
           assert.equal(colors.replyBackground, colors.background)
           assert.equal(await original.evaluate(el => el === document.querySelector('.ecoku-doc-comments .ecoku-comments')), true)
           assert.equal(await root.locator('.ecoku-textarea').first().inputValue(), 'Keep this draft')

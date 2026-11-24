@@ -1,33 +1,37 @@
 # 命令行
 
-镜像的入口程序是 `/app/ecoku-server`。不带参数时启动服务；带下面的子命令时执行一次性任务后退出。子命令名写错时不会报错，而是照常启动服务，运行前请核对拼写。
+镜像里的程序是 `/app/ecoku-server`。不带参数时启动服务，带子命令时执行一次性任务后退出。
 
-在部署目录中，用 `docker compose run` 以相同的配置和挂载运行子命令：
+在部署目录里用 `docker compose run`，子命令会使用和服务相同的配置和挂载：
 
 ```bash
 cd ~/Ecoku
 sudo docker compose run --rm --no-deps ecoku <子命令> [参数]
 ```
 
-除 `hash-password` 和 `healthcheck` 外，子命令都会读取 `app/config.yaml` 并打开数据库。写库的子命令（`admin reset-password`、`captcha disable`、`import-twikoo`）请先用 `sudo docker compose stop ecoku` 停止服务再运行，避免和正在运行的实例同时写库；只读取设置的 `captcha status` 可以在服务运行时执行。
+::: warning
+子命令名写错时不会报错，而是照常启动服务。运行前核对拼写。
+:::
 
-打开数据库时会先初始化或迁移 schema，并执行与服务启动相同的 [来源冲突检查](./configuration#reload)。因此 `captcha status` 和 `import-twikoo --dry-run` 也不能一概视为只读；数据库尚未升级时，先停服冷备份，再执行。来源冲突时先修正配置，不能靠这些子命令绕过检查。
+会写数据库的子命令（`admin reset-password`、`captcha disable`、`import-twikoo`），先用 `sudo docker compose stop ecoku` 停掉服务再运行。
+
+除 `healthcheck` 和 `hash-password` 外，子命令都会打开数据库。打开时如果数据库版本较旧，会先执行迁移，也会做和服务启动时相同的 [来源检查](./configuration#reload)。所以刚换了新镜像、还没升级数据库时，先停服冷备份再运行任何子命令。
 
 ## healthcheck {#healthcheck}
 
-用于容器内健康检查，自 v0.6.0 起内置（v0.5.7 及更早基于 Alpine 的镜像不支持）。在正在运行的服务容器中执行：
+检查正在运行的服务是否响应，Compose 的健康检查用的就是它。v0.6.0 起提供。手动执行：
 
 ```bash
 sudo docker compose exec -T ecoku /app/ecoku-server healthcheck
 ```
 
-默认请求 `http://127.0.0.1:12123/api/health`；容器内端口不同时使用 `healthcheck --port=12124`。端口范围为 1～65535。请求总超时为 2 秒，不使用代理、不跟随重定向；HTTP 200 返回退出码 0，其他状态、连接失败、超时或参数错误返回 1。成功时不输出正文。
+它请求 `http://127.0.0.1:12123/api/health`，2 秒超时，返回 200 时退出码为 0，否则为 1，成功时没有输出。容器内端口不是 12123 时加 `--port=端口`。
 
-此命令不读取配置、不访问数据库、不初始化密钥，只检查正在运行的 HTTP 服务。不要用 `docker compose run` 新建一次性容器执行探针：它的回环地址没有正在运行的服务。健康检查通过不代表数据库内容或外部通知服务已验证。
+要用 `exec` 在正在运行的容器里执行。用 `run` 新开的容器里没有运行中的服务，检查必然失败。
 
 ## admin reset-password {#admin-reset-password}
 
-为持久化管理员账户生成新的临时密码，用于首次登录或忘记密码后的恢复。新实例须先启动一次以创建账户；命令不会在空数据库中创建管理员。先停止正在运行的服务：
+给管理员账户生成一个新的临时密码，用于第一次登录或忘记密码。新实例要先启动过一次，账户才存在。
 
 ```bash
 (
@@ -39,13 +43,13 @@ sudo docker compose up -d --wait --wait-timeout 120
 )
 ```
 
-命令输出 `管理员临时密码：…`，并撤销所有管理员会话。用户名保持不变；用它和临时密码登录后，设置页会预填当前用户名，可以保留或修改，再设置正式密码。
+命令输出 `管理员临时密码：…`，同时让所有已登录的会话失效。用户名不变。用临时密码登录后，需要重新设置正式密码，也可以顺便改用户名。
 
-密码只显示在本次一次性命令的终端输出中，不能从 `docker compose logs ecoku` 找回。没有输出 `管理员临时密码：…` 时，先处理报错再重试；上面的命令组遇错会停止。若提示 `管理员账户尚未初始化`，检查部署目录、配置和数据挂载，新实例先按 [启动与健康检查](../self-hosting/docker#start) 完成初始化。不要删除数据库或持久密钥。
+临时密码只出现在这次命令的终端输出里，`docker compose logs` 里没有。提示 `管理员账户尚未初始化` 时，见 [Docker 部署](../self-hosting/docker#temporary-password)。
 
 ## captcha status
 
-显示当前的人机验证设置：
+显示当前的人机验证设置，服务运行时也可以执行：
 
 ```bash
 sudo docker compose run --rm --no-deps ecoku captcha status
@@ -59,7 +63,7 @@ provider=turnstile turnstile_secret_set=true cap_secret_set=false
 
 ## captcha disable {#captcha-disable}
 
-关闭人机验证。用于验证服务配置错误、导致管理员无法登录后台的情况。
+关闭人机验证。验证服务出问题、你登不进后台时用它。
 
 ```bash
 (
@@ -70,15 +74,11 @@ sudo docker compose up -d --wait --wait-timeout 120 ecoku
 )
 ```
 
-已保存的 Turnstile 与 Cap 配置和密钥都会保留，登录后台后可以直接在「安全」页修正并重新启用。已经是关闭状态时输出 `CAPTCHA 已处于关闭状态`，不做任何修改。
+已保存的 Turnstile 和 Cap 配置都会保留，登录后在「安全」页修好再启用。已经是关闭状态时输出 `CAPTCHA 已处于关闭状态`。
 
 ## import-twikoo
 
-把 Twikoo 的 JSON 导出导入到一个没有任何评论的站点。
-
-文件必须是单个 JSON 数组，整个文件不超过 64 MiB（含末尾空白）；数组后的其他内容会导致失败。HTML 会转换成纯文本，具体保留规则见 [从 Twikoo 迁移](../self-hosting/twikoo)。
-
-包含 `isSpam: true` 记录时，预检和正式导入都会停止并报告数量，不保存导入评论。
+把 Twikoo 的 JSON 导出导入到一个还没有评论的站点。完整步骤见 [从 Twikoo 迁移](../self-hosting/twikoo)。
 
 先加 `--dry-run` 预检：
 
@@ -91,7 +91,7 @@ sudo docker compose run --rm --no-deps ecoku \
 )
 ```
 
-预检后保持停服，避免目标站点产生新评论。确认结果后去掉 `--dry-run` 正式导入：
+确认结果后，去掉 `--dry-run` 正式导入：
 
 ```bash
 (
@@ -106,23 +106,21 @@ sudo docker compose up -d --wait --wait-timeout 120 ecoku
 | 参数 | 说明 |
 | --- | --- |
 | `--site` | 目标站点 ID，必须已在后台注册且没有任何评论（包括已删除的）。 |
-| `--file` | 容器内的导出文件路径。文件需要先放进 `data/` 目录（方法见 [从 Twikoo 迁移](../self-hosting/twikoo)），容器内路径为 `/data/...`。 |
-| `--dry-run` | 完整执行一遍导入后回滚，只输出统计，不保存评论。 |
+| `--file` | 容器内的文件路径。把文件放进 `data/` 目录，容器里的路径就是 `/data/...`。 |
+| `--dry-run` | 完整执行一遍后回滚，只输出统计，不保存。 |
 
-成功时最后一行输出统计（行首带日期时间）。预检显示「预检通过」，正式导入显示「完成」，例如：
+成功时最后一行是统计结果：
 
 ```text
 Twikoo 导入预检通过：评论=128 根评论=90 回复=38 页面=24 邮箱=110 网站=45 缺失父记录=0
 Twikoo 导入完成：评论=128 根评论=90 回复=38 页面=24 邮箱=110 网站=45 缺失父记录=0
 ```
 
-完整步骤、字段映射和注意事项见 [从 Twikoo 迁移](../self-hosting/twikoo)。
-
 ::: details 内测配置：密码哈希
 
 ## hash-password {#hash-password}
 
-从标准输入读取一行密码，输出 bcrypt 哈希（cost 10），用于旧实例的 `ECOKU_ADMIN_PASSWORD_HASH`。新实例首次启动会自动生成管理员，不需要执行此命令。不读取配置，也不访问数据库，服务运行中也可以执行。
+从标准输入读一行密码，输出 bcrypt 哈希（cost 10），只用于仍通过 `ECOKU_ADMIN_PASSWORD_HASH` 注入管理员的旧实例。新实例用不到它。
 
 ```bash
 read -rsp '管理员密码: ' P; echo

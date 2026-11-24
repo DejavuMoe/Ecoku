@@ -1,18 +1,18 @@
 # Backup and restore
 
-With the default Compose mounts, persistent state is in the deployment directory. A complete backup includes at least:
+All of Ecoku's state is in the deployment directory:
 
 | Path | Contents |
 | --- | --- |
-| `data/` | The SQLite database with its `-wal` and `-shm` files, plus the persistent keys in `ecoku-secrets.json`. Sites, comments, notification settings, CAPTCHA settings and the administrator account are stored here. |
-| `app/config.yaml` | Instance configuration. |
-| `compose.yaml` | Image version and mounts. |
+| `data/` | The SQLite database (with its `-wal` and `-shm` files) and the key file `ecoku-secrets.json`. Sites, comments, notification and CAPTCHA settings, and the administrator account are all here. |
+| `app/config.yaml` | Instance configuration |
+| `compose.yaml` | Image version and mounts |
 
-If an older instance still uses `ecoku.env`, back it up too: as long as it still holds the legacy administrator credentials or notification encryption key variables, Ecoku reads them on every start.
-
-For a custom SQLite path, back up its actual directory and the keys beside it, and retain the matching mounts. Securely preserve any additional `env_file` or credentials injected from the host environment as well. The script below covers only the default paths above and the optional `ecoku.env`.
+The database and `ecoku-secrets.json` must come from the same point in time. Credentials such as the SMTP password are encrypted with this key; if the two don't match, Ecoku can't start.
 
 ## Cold backup {#cold-backup}
+
+Stop the service before archiving so no data still being written is missed:
 
 ```bash
 (
@@ -30,20 +30,26 @@ printf 'Verified backup: %s\n' "$archive"
 )
 ```
 
-The command includes `ecoku.env` when present and chooses an archive name without overwriting an existing file. Archive the entire `data/`, not only the main SQLite file. `Verified backup` means the archive was written and its entries can be listed; it is not a restore rehearsal.
+`Verified backup` means the archive was written and its file list can be read. If an older instance still has `ecoku.env`, the script includes it.
 
-**The service stays stopped after backup.** Continue with the upgrade, import or restore steps to avoid new writes after the backup. For a routine backup only, resume service after confirming success:
+The service stays stopped when the script finishes, so you can go on to upgrade or import. For a routine backup only, start it again after confirming success:
 
 ```bash
 cd ~/Ecoku
 sudo docker compose up -d --wait --wait-timeout 120 ecoku
 ```
 
-## Restore {#restore}
+Copy the archive to another machine for safekeeping. It is as sensitive as the database: don't commit it to Git or put it in a public directory.
 
-To restore on a new host, first install Docker and Compose, create `~/Ecoku/backups/`, and copy the complete archive there. Do not initialize an empty instance or generate new keys first.
+If you customized the database path, back up the whole directory the database is actually in (the key file is in the same directory).
 
-Choose a complete cold backup you saved and replace `REPLACE-WITH-YOUR-BACKUP.tar.gz` with its filename. The script checks the archive, stops the service, retains current data and configuration in a `before-restore.*` directory, then restores the archive and waits for health. The restored `compose.yaml` also restores the image version recorded in the backup.
+## Restore from backup {#restore}
+
+Restoring discards all comments and settings changes made after the backup.
+
+To restore on a new host, install Docker and Compose first, create `~/Ecoku/backups/` and copy the archive into it. You don't need to start an empty instance first.
+
+Replace `REPLACE-WITH-YOUR-BACKUP.tar.gz` below with your archive's filename. The script checks the archive, stops the service, moves the existing files into a `before-restore.*` directory, then extracts the archive and starts the service. The `compose.yaml` in the archive also restores the image to the version from the time of the backup.
 
 ```bash
 (
@@ -71,12 +77,15 @@ printf '\nPrevious files retained in: %s\n' "$saved"
 )
 ```
 
-Do not overwrite a running database, and do not mix files from different points in time: newer WAL files do not belong with an older database, and a newer `data/` does not belong with an older `ecoku-secrets.json`. When the keys do not match the database, the saved notification credentials cannot be decrypted and the service exits at startup with `通知凭据校验失败`. `ecoku-secrets.json` must grant no permissions to the group or others; otherwise startup fails with `持久密钥文件权限过宽；请设为 600`.
+After restoring, sign in to the admin console and confirm that sites, past comments, notification and CAPTCHA settings are all there. The health endpoint only shows that the process is running; it doesn't check data.
 
-Restoring discards comments and settings changes made after the backup. Confirm that you can sign in, that the site count is right, and that past comments, notification and CAPTCHA settings are present; the health endpoint does not inspect database contents. If any step fails, stop and inspect container logs and the retained `before-restore.*` directory rather than deleting the original data and retrying.
+If any step fails, stop and look at the container logs and the original files in `before-restore.*`. Don't delete the original data and retry.
 
-## Backup rules
+Two common startup errors:
 
-- `ecoku-secrets.json` is as sensitive as the database. Never commit it to Git or place it in a public directory.
-- After legacy variables such as `ECOKU_NOTIFICATION_ENCRYPTION_KEY` have moved into the persistent key file, take a stopped backup first, then remove them from Compose or `ecoku.env`.
-- Read the target version's upgrade notes before rolling back. When the schema differs, only the cold backup taken before the upgrade can restore the instance.
+- `通知凭据校验失败` (notification credential check failed): `ecoku-secrets.json` and the database are not from the same backup.
+- `持久密钥文件权限过宽；请设为 600` (key file permissions too broad; set to 600): `ecoku-secrets.json` must have permissions `600`.
+
+## Rollback and schema
+
+Before rolling back to an older version, read the target version's upgrade notes. If the two versions have different schemas, you can only restore from the cold backup taken before the upgrade; see [Upgrading · Rollback](./upgrade#rollback).

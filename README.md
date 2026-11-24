@@ -55,10 +55,9 @@ For other integration paths — the JavaScript SDK, a Hugo PaperMod template, an
 
 ## Documentation
 
-- [Guide](https://ecoku.zsh.moe/en/guide/introduction): introduction, features, how it works
-- [Self-hosting](https://ecoku.zsh.moe/en/self-hosting/docker): Docker deployment, reverse proxy, admin console, notifications, CAPTCHA, backup & restore, upgrading
+- [Guide](https://ecoku.zsh.moe/en/guide/introduction): introduction, quick start, Docker install, reverse proxy, backup & restore, upgrading, admin console, notifications, CAPTCHA
 - [Integration](https://ecoku.zsh.moe/en/integration/html): HTML, JavaScript SDK, Hugo PaperMod, custom styles
-- [Reference](https://ecoku.zsh.moe/en/reference/configuration): configuration, command line, REST API
+- [Reference](https://ecoku.zsh.moe/en/reference/configuration): how it works, configuration, command line, HTTP API, FAQ
 
 The docs site is also available in [简体中文](https://ecoku.zsh.moe/) and [繁體中文](https://ecoku.zsh.moe/zh-hant/).
 

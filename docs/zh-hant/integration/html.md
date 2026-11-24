@@ -1,16 +1,12 @@
 # HTML 接入
 
-在文章範本中放入一段 HTML 和一個腳本，就能在任何靜態網站上顯示評論區。腳本 `ecoku-loader.js` 由你的 Ecoku 實例提供，讀取 HTML 上的屬性後會自動載入評論元件。
+在文章範本裡加一段 HTML 和一個腳本，就能在任何靜態網站上顯示評論區。腳本 `ecoku-loader.js` 由你的 Ecoku 實例提供，它讀取 HTML 上的屬性，再載入評論元件。
 
-開始前，請確認已在後台 [註冊站點](../self-hosting/admin#sites)，並把部落格的來源加入該站點的允許來源。
+開始前，先在後台 [登記站點](../admin/sites)，並把部落格的來源加進允許來源。
 
 ## 接入程式碼
 
-把下面的程式碼放在文章範本中評論區的位置，並替換三處值：
-
-- `data-server-url`：你的 Ecoku 網址；
-- `data-site-id`：後台註冊的站點 ID；
-- `data-page-key`、`data-page-title`：用範本變數輸出目前文章的路徑和標題。
+把下面的程式碼放在文章範本裡評論區該出現的位置：
 
 ```html
 <section
@@ -21,8 +17,6 @@
   data-site-id="blog"
   data-page-key="/posts/hello-world/"
   data-page-title="你好，世界"
-  data-page-size="10"
-  data-theme="auto"
 >
   <div class="ecoku-loader" data-ecoku-loader hidden>
     <p class="ecoku-loader-status" data-ecoku-status></p>
@@ -33,66 +27,72 @@
 <script src="https://ecoku.example.com/client/ecoku-loader.js" defer></script>
 ```
 
-外層中四個帶有 `data-ecoku-*` 的元素都要保留：`data-ecoku-mount` 是評論區掛載的位置，另外三個用來在載入失敗時顯示錯誤訊息和重試按鈕。按鈕文字可以自行修改。
+需要替換的是：
+
+- `data-server-url` 和 `<script src>` 裡的位址：你的 Ecoku 位址；
+- `data-site-id`：後台登記的站點 ID；
+- `data-page-key` 和 `data-page-title`：用範本變數輸出目前文章的路徑和標題，寫法見 [下文](#page-key)。
+
+四個帶 `data-ecoku-*` 的子元素都要保留。`data-ecoku-mount` 是評論區出現的位置，另外三個用來在載入失敗時顯示錯誤和「重新載入評論」按鈕。按鈕文字可以修改。
 
 ## 屬性
 
 | 屬性 | 必填 | 說明 |
 | --- | :---: | --- |
-| `data-server-url` | 是 | Ecoku 的網址，例如 `https://ecoku.example.com`，必須是以 `http://` 或 `https://` 開頭的完整網址。 |
-| `data-site-id` | 是 | 後台註冊的站點 ID。 |
-| `data-page-key` | 是 | 目前文章的頁面 key，為站內相對路徑，最多 512 個字元，不能帶 `?` 或 `#`。見下文。 |
-| `data-page-title` | 否 | 文章標題，顯示在通知郵件中。截取前 200 個 UTF-16 碼元，與 SDK 建構設定一致。 |
-| `data-page-size` | 否 | 每頁顯示幾則根評論，1～100，預設 10。填寫無效值時以 10 處理。 |
-| `data-theme` | 否 | `auto`（預設）、`light` 或 `dark`。`auto` 優先讀取部落格定義的顏色變數，未提供時跟隨系統的明暗偏好。 |
-| `data-css-url` | 否 | 取代預設樣式，只接受 HTTP(S) 絕對網址、以 `/` 開頭的路徑、`none` 或相容值 `-`。見 [自訂樣式](./custom-css)。 |
-| `data-i18n` | 否 | 評論區語言：`zh-CN`、`zh-Hant` 或 `en`，覆寫後台站點設定的「評論區語言」。未填寫或填寫其他值時使用站點設定。 |
+| `data-server-url` | 是 | Ecoku 的位址，`http://` 或 `https://` 開頭 |
+| `data-site-id` | 是 | 站點 ID |
+| `data-page-key` | 是 | 頁面 key：站內路徑，最長 512 個字元，不帶 `?` 或 `#` |
+| `data-page-title` | 否 | 文章標題，用於通知，最長 200 個字元 |
+| `data-page-size` | 否 | 每頁根評論數，1～100，預設 10 |
+| `data-theme` | 否 | `auto`（預設）、`light` 或 `dark`，見 [明暗模式](./custom-css#theme) |
+| `data-css-url` | 否 | 替換預設樣式，見 [自訂樣式](./custom-css) |
+| `data-i18n` | 否 | 評論區語言：`zh-CN`、`zh-Hant` 或 `en`，覆寫後台站點設定 |
 
-## 選擇頁面 key
+## 頁面 key 怎麼寫 {#page-key}
 
-頁面 key 決定評論屬於哪一篇文章，[一旦使用就不要再更改](../guide/concepts#page-key)。通常使用文章的站內路徑。常見產生器的寫法：
+頁面 key 決定評論屬於哪篇文章，[定下來就不要再改](../reference/concepts#page-key)。通常用文章的站內路徑：
 
 ::: v-pre
-| 產生器 | `data-page-key` 的值 |
+| 產生器 | `data-page-key` |
 | --- | --- |
 | Hugo | `{{ .RelPermalink }}` |
 | Hexo | `<%- url_for(page.path) %>` |
 | Jekyll | `{{ page.url }}` |
 | Astro | `{Astro.url.pathname}` |
-| VitePress | 在自訂主題中讀取 `useRoute().path`，並使用 [SDK](./sdk#vitepress) 接入 |
+| VitePress | 用 [SDK](./sdk#vitepress) 接入，傳入 `useRoute().path` |
 :::
 
-以上僅供參考。請在瀏覽器中檢視產生的 HTML，確認輸出的是穩定的路徑，例如 `/posts/hello-world/`，而不是完整網址。
+寫好後在瀏覽器裡檢視產生的 HTML，確認輸出的是 `/posts/hello-world/` 這樣穩定的路徑，而不是完整 URL。
+
+Hugo PaperMod 主題有現成的範本，見 [Hugo PaperMod](./hugo)。
 
 ## 載入過程
 
-1. 頁面解析完成後，載入器讀取外層元素上的屬性。缺少 `data-server-url`、`data-site-id`、`data-page-key`，或缺少四個 `data-ecoku-*` 子元素中的任何一個時，它會**靜默略過**，頁面上不會出現任何內容。
-2. 載入器從自己所在的目錄載入 `ecoku.umd.js`，同時並行請求第一頁評論，然後初始化評論區。載入期間不會顯示「正在載入」之類的文字。
-3. `ecoku.umd.js` 載入失敗、初始化失敗（例如屬性值無效），或腳本下載、元件初始化任一階段超過各自的 12 秒逾時限制時，會顯示錯誤訊息和「重新載入評論」按鈕，訪客可以點擊重試。錯誤訊息的語言取 `data-i18n`；未填寫時依頁面的 `<html lang>` 選擇繁體中文（`zh-Hant`、`zh-TW`、`zh-HK`、`zh-MO`）或英語（`en`、`en-*`），其他情況為簡體中文。
-4. 評論區掛載後，評論介面本身出錯（例如來源未登記、觸發限流或網路中斷）時，由評論區顯示「评论暂时不可用」和「重新加载」按鈕。
+1. 頁面解析完後，載入器讀取外層元素上的屬性。缺少必填屬性或 `data-ecoku-*` 子元素時，它什麼也不做，頁面上不出現任何內容。
+2. 載入器從自己所在的目錄載入 `ecoku.umd.js`，同時請求第一頁評論。
+3. 腳本載入失敗、初始化失敗或超過 12 秒時，顯示錯誤訊息和「重新載入評論」按鈕。
+4. 評論區出現後，如果評論介面出錯（來源沒登記、觸發限流、網路中斷），評論區自己顯示「評論暫時無法使用」和重試按鈕。
 
-一個頁面上可以有多個外層元素，各自使用獨立的掛載元素與唯一的 HTML `id`。它們共用同一份 SDK；載入器只自動加入第一份非 `none` / `-` 的外鏈樣式表，因此各外層元素應使用同一 SDK 版本與相同的 `data-css-url`。不同外觀可用各外層元素下的 CSS 規則區分。
+載入器只處理啟動時已經在頁面上的外層元素。單頁應用程式切換文章時，用 [SDK](./sdk) 管理評論區。
 
-載入器只掃描啟動時已有的外層元素，不會自動接管之後插入的內容。單頁應用程式切換文章時使用 [SDK](./sdk) 管理掛載與卸載。
-
-## 使用自行託管的載入器
-
-可以把 `ecoku-loader.js` 放到自己的 CDN 上，只修改 `<script src>`。載入器會從**同一個目錄**載入 `ecoku.umd.js`，所以兩個檔案要放在一起，並且在升級 Ecoku 時同步更新。
-
-載入器請求的位址是 `ecoku.umd.js?v=<內容雜湊>`。由 Ecoku 實例提供且雜湊與檔案一致時，瀏覽器會長期快取這個檔案；兩個檔案來自同一個版本即可滿足。
+一個頁面上可以放多個外層元素，每個用不同的 `id` 和掛載元素，`data-css-url` 要相同。
 
 ## 部落格頁面的 CSP
 
-如果部落格設定了內容安全政策（CSP），需要放行：
+部落格設定了內容安全政策（CSP）時，需要放行：
 
-- `script-src` 和 `connect-src`：Ecoku 的來源，例如 `https://ecoku.example.com`；
-- 預設樣式以 `<style>` 元素注入。CSP 不允許內嵌樣式時，把 `data-css-url` 設為 `https://ecoku.example.com/client/ecoku.css`，改用外部樣式表，並在 `style-src` 中放行該來源；
-- 啟用人機驗證時，還要放行驗證服務，見 [人機驗證 · 內容安全政策](../self-hosting/captcha#csp)；
-- 啟用 [Smoji 貼圖包](./smoji) 時，在 `connect-src` 中放行清單來源，在 `img-src` 中放行圖片來源。兩者分別託管時需要分別填寫，見 [清單與圖片的託管](./smoji#hosting)。
+- `script-src` 和 `connect-src`：Ecoku 的來源，如 `https://ecoku.example.com`；
+- 預設樣式以 `<style>` 元素注入。不允許內嵌樣式時，把 `data-css-url` 設為 `https://ecoku.example.com/client/ecoku.css`，並在 `style-src` 裡放行這個來源；
+- 啟用了人機驗證：見 [部落格頁面的 CSP](../admin/captcha#csp)；
+- 啟用了 Smoji：`connect-src` 放行清單來源，`img-src` 放行圖片來源。
 
-## 不使用載入器
+## 自行託管載入器
 
-也可以直接引入 UMD 檔案，自行控制初始化的時機：
+可以把 `ecoku-loader.js` 放到自己的 CDN 上，只改 `<script src>`。載入器從同一目錄載入 `ecoku.umd.js`，所以兩個檔案要放在一起，升級 Ecoku 時一起更新。
+
+## 不用載入器
+
+想自己控制初始化時機的話，直接引入 UMD 檔案：
 
 ```html
 <link rel="stylesheet" href="https://ecoku.example.com/client/ecoku.css">
@@ -111,4 +111,4 @@
 </script>
 ```
 
-UMD 檔案會註冊全域變數 `Ecoku`。上例用 `<link>` 引入樣式，並透過 `cssURL` 告訴 SDK 不要再注入預設樣式；如果去掉這兩處，SDK 會自行注入。設定項目和方法見 [JavaScript SDK](./sdk)。
+UMD 檔案註冊全域變數 `Ecoku`。這裡用 `<link>` 引入樣式，並透過 `cssURL` 告訴 SDK 不必再注入；去掉這兩處，SDK 會自己注入預設樣式。設定項見 [JavaScript SDK](./sdk)。

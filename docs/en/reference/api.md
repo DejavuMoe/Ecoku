@@ -1,6 +1,6 @@
 # REST API
 
-This page lists Ecoku's HTTP endpoints, for reference when you write a custom frontend or automation scripts. If you use the official loader or SDK, you do not need to call these endpoints directly.
+This page lists Ecoku's HTTP endpoints, for reference when you write a custom front end or automation scripts. If you embed comments with the loader or SDK, you don't need to call them directly.
 
 All paths are relative to the instance URL, such as `https://ecoku.example.com/api/health`.
 
@@ -280,7 +280,7 @@ Errors related to submission:
 
 Admin endpoints live under `/api/admin/`. When `admin.allowed_origins` below is not set, it is the origin of `notifications.instance_public_url`.
 
-### Authentication
+### Authentication {#auth}
 
 - **Session cookie**: after a successful `POST /api/admin/login`, the server sets a cookie named `ecoku_admin_session` (HttpOnly, SameSite=Strict, Path=`/api/admin`, with Secure in production), valid for 8 hours. The sign-in response does not contain a token.
 - The sign-in request, and every non-GET request authenticated by cookie, must carry an `Origin` from `admin.allowed_origins`.

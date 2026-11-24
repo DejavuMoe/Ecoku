@@ -1,44 +1,49 @@
-# Reverse proxy
+# Reverse proxy and HTTPS
 
-The Ecoku container serves plain HTTP only, on `127.0.0.1:12123` on the host. For public access, Caddy or Nginx on the same host terminates HTTPS and forwards requests to this port.
+Ecoku serves plain HTTP on local `127.0.0.1:12123` only. Use Caddy or Nginx to give it an HTTPS domain, then tell Ecoku which address it can trust to forward visitor IPs.
 
-This page covers two tasks:
+<div class="page-meta">
+<div>
 
-1. Set up HTTPS forwarding so that `https://ecoku.example.com` is reachable;
-2. Let Ecoku see each visitor's real IP address, so rate limits apply per person instead of all visitors sharing one quota.
+**You will**
 
-## Request path
+- Make `https://ecoku.example.com` reachable
+- Have Ecoku rate-limit by each visitor's real IP
+
+</div>
+<div>
+
+**Before you start**
+
+- Start the container as described in [Docker installation](./docker)
+- Point the domain at this host
+
+</div>
+</div>
 
 <figure class="doc-diagram" tabindex="0" aria-label="Request path, horizontally scrollable">
   <img class="diagram-light" src="/diagrams/reverse-proxy.en.light.svg" width="984" height="91" loading="lazy" decoding="async" alt="Visitors reach the reverse proxy over HTTPS, directly or through an optional CDN. The proxy forwards requests to the Ecoku container over HTTP at 127.0.0.1:12123.">
   <img class="diagram-dark" src="/diagrams/reverse-proxy.en.dark.svg" width="984" height="91" loading="lazy" decoding="async" alt="Visitors reach the reverse proxy over HTTPS, directly or through an optional CDN. The proxy forwards requests to the Ecoku container over HTTP at 127.0.0.1:12123.">
 </figure>
 
-When the reverse proxy connects to `127.0.0.1:12123`, Docker hands the connection over to the container. The peer address the container sees is not the visitor but the gateway of the Docker bridge network (usually something like `172.18.0.1`). The visitor's real IP address can therefore only reach Ecoku through the `X-Forwarded-For` request header written by the reverse proxy, and Ecoku reads that header only when it has confirmed that the request really comes from this gateway.
+<div class="steps">
 
-## Direct to origin
+### Configure the reverse proxy
 
-### Caddy
+::: code-group
 
-Caddy obtains and renews certificates automatically.
-
-```caddyfile
+```caddyfile [Caddy]
 ecoku.example.com {
     encode zstd gzip
 
     reverse_proxy 127.0.0.1:12123 {
-        # Overwrite with the direct peer address, discarding any X-Forwarded-For sent by the browser
         header_up X-Forwarded-For {remote_host}
         header_up X-Forwarded-Proto {scheme}
     }
 }
 ```
 
-### Nginx
-
-The certificate paths use Certbot's default locations as an example.
-
-```nginx
+```nginx [Nginx]
 server {
     listen 443 ssl;
     listen [::]:443 ssl;
@@ -54,20 +59,13 @@ server {
     location / {
         proxy_pass http://127.0.0.1:12123;
         proxy_set_header Host $host;
-        # Overwrite instead of append: $remote_addr is the current TCP peer
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
 
-The key point in both configs is that they **overwrite** `X-Forwarded-For`. If you append instead (such as Nginx's `$proxy_add_x_forwarded_for`), a browser can send its own forged value and bypass rate limiting.
-
-## Through a CDN
-
-Once your domain is behind a CDN such as Cloudflare, the reverse proxy's direct peer becomes a CDN node. You then need to take the visitor IP from a request header provided by the CDN. For example, with Cloudflare and Caddy:
-
-```caddyfile
+```caddyfile [Caddy + Cloudflare]
 ecoku.example.com {
     encode zstd gzip
 
@@ -78,24 +76,25 @@ ecoku.example.com {
 }
 ```
 
-`CF-Connecting-IP` can be trusted only when the request really went through Cloudflare. In your firewall or in Caddy, allow only Cloudflare's IP ranges, so nobody can connect to the origin directly and set this header themselves.
+:::
 
-The Ecoku side of the config does not change: `trusted_proxies` still contains only the Docker gateway. Do not add the CDN's ranges to it.
+`X-Forwarded-For` must be **overwritten**, not appended to. If it's appended (for example with Nginx's `$proxy_add_x_forwarded_for`), a browser can send its own forged value and get around rate limiting.
 
-## Configure trusted_proxies {#trusted-proxies}
+When a CDN such as Cloudflare sits in front, take the visitor IP from the CDN's request header, such as `CF-Connecting-IP`. In that case, allow only the CDN's IP ranges through your firewall so nobody can bypass the CDN, connect to the origin directly and forge the header.
 
-`site.trusted_proxies` in `app/config.yaml` decides whose `X-Forwarded-For` Ecoku trusts:
+### Configure trusted_proxies {#trusted-proxies}
 
-- **Empty (default)**: no forwarding headers are read, and rate limits always use the peer address the container sees. Behind a reverse proxy, that address is the Docker gateway, so all visitors share the same rate limit quota. By default only 5 comment submissions per minute are allowed, so even modest traffic will get some visitors a `429`.
-- **Set to the Docker gateway**: the visitor IP is taken from `X-Forwarded-For` only when the direct peer is exactly the gateway.
+When the reverse proxy connects to `127.0.0.1:12123`, Ecoku sees the Docker bridge gateway as the peer, not the visitor. Ecoku reads `X-Forwarded-For` only after you add this gateway to `site.trusted_proxies`.
 
-Find the gateway of the network Ecoku is on:
+Without it, all visitors count as one IP and share a quota of 5 submissions per minute, so 「提交过于频繁」 (You are posting too quickly) soon appears.
+
+Find the gateway address:
 
 ```bash
 sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
 ```
 
-If the output is `172.18.0.1`, add this to `app/config.yaml`:
+If it prints `172.18.0.1`, add it to `app/config.yaml`:
 
 ```yaml
 site:
@@ -103,17 +102,15 @@ site:
     - "172.18.0.1/32"
 ```
 
-Then restart the container:
+Recreate the container:
 
 ```bash
 cd ~/Ecoku && sudo docker compose up -d --force-recreate --wait --wait-timeout 120 ecoku
 ```
 
-::: danger
-Do not use `0.0.0.0/0` or `::/0`. Ecoku refuses to start with them. Trusting every source means letting anyone forge an IP address.
-:::
+Even with a CDN, list only the Docker gateway, not the CDN's ranges. A catch-all range such as `0.0.0.0/0` makes Ecoku refuse to start.
 
-## Check
+### Check
 
 Run this on any machine with internet access:
 
@@ -123,6 +120,6 @@ for path in /api/health /client/ecoku-loader.js /admin/; do
 done
 ```
 
-All three lines should start with `200`. It is fine to expose the health endpoint publicly; it returns only a status and a timestamp.
+All three lines should start with `200`. Then go back to [First sign-in](./docker#first-sign-in).
 
-After these checks pass, follow [first sign-in](./docker#first-sign-in) to use the temporary password, set a permanent password, and [register your site](./admin#sites). If you have not obtained the password yet, [generate a temporary password](./docker#temporary-password) first.
+</div>

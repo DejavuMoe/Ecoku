@@ -1,21 +1,24 @@
 # JavaScript SDK
 
-[HTML integration](./html) suits static websites where every post is a separate page. In single-page apps built with Vue, React, and similar frameworks, the page does not reload when the reader switches posts, so the comment section has to switch along with it. In that case, use the SDK directly.
+In front-end apps built with Vue, React, VitePress and similar tools, the page doesn't reload when the reader switches posts, so the comment section has to switch along with it. In that case, create and destroy the comment section yourself with the npm package `ecoku`. For ordinary static websites, [HTML embed](./html) is simpler.
 
-## Get the SDK {#install}
+The SDK only displays the comment section in the browser; you still need a deployed Ecoku server.
 
-[ecoku](https://www.npmjs.com/package/ecoku) version `0.6.2` is available on npm, with ESM, CommonJS and TypeScript declarations. It mounts comments in the browser and connects to your Ecoku server; installing the package does not deploy a server.
+## Install {#install}
 
 ```bash
 pnpm add --save-exact ecoku@0.6.2
 ```
 
-Without npm, load the instance UMD file with `<script src="https://ecoku.example.com/client/ecoku.umd.js"></script>` and use the global `Ecoku` constructor. For static article pages prefer the [HTML loader](./html).
+The package includes ESM, CommonJS and TypeScript declarations. When you upgrade the Ecoku server, update this dependency to the same version.
+
+Without npm, you can also load `https://ecoku.example.com/client/ecoku.umd.js` from your instance and use the global `Ecoku`.
 
 ## Create a comment section
 
 ```js
 import Ecoku from 'ecoku'
+
 const comments = new Ecoku({
   container: '#comments',
   serverURL: 'https://ecoku.example.com',
@@ -30,72 +33,58 @@ await comments.init()
 
 | Option | Type | Required | Default | Description |
 | --- | --- | :---: | --- | --- |
-| `container` | `string \| HTMLElement` | Yes | — | Where to mount: a CSS selector or a DOM element. The container's existing content is replaced. |
-| `serverURL` | `string` | Yes | — | The Ecoku address, starting with `http://` or `https://`. It may include a path, but not a username and password, a query string or `#`. |
-| `siteId` | `string` | Yes | — | The site ID created in the admin console. |
-| `pageKey` | `string` | Yes | — | The current post's page key: a site-relative path of 1 to 512 characters, without `?` or `#`. The SDK does not infer it from the URL; you must pass it explicitly. |
-| `pageTitle` | `string` | No | `''` | The post title, shown in notifications, at most 200 characters. |
-| `pageSize` | `number` | No | `10` | Root comments per page, an integer from 1 to 100. |
-| `theme` | `'auto' \| 'light' \| 'dark'` | No | `'auto'` | `auto` reads host color variables, falling back to the system preference. Map variables for manual theme switches, as in the VitePress example below. |
-| `i18n` | `'zh-CN' \| 'zh-Hant' \| 'en'` | No | Site default | Comment language: SDK option → site setting → `zh-CN`. The default placeholder, empty-state message and blogger badge follow the language; text the site customized is shown as written. |
-| `cssURL` | `string` | No | `''` | When empty, the default styles are injected. A valid value (a stylesheet URL or `'none'`) stops the injection. See below. |
+| `container` | `string \| HTMLElement` | Yes | — | Where to mount: a CSS selector or an element. Existing content is replaced. |
+| `serverURL` | `string` | Yes | — | The Ecoku URL, starting with `http://` or `https://`. It may include a path, but not a query string or `#`. |
+| `siteId` | `string` | Yes | — | Site ID |
+| `pageKey` | `string` | Yes | — | Page key: a site path of 1 to 512 characters, without `?` or `#`. The SDK doesn't infer it from the URL; you must pass it. |
+| `pageTitle` | `string` | No | `''` | Post title, used in notifications; truncated beyond 200 characters |
+| `pageSize` | `number` | No | `10` | Root comments per page, 1 to 100 |
+| `theme` | `'auto' \| 'light' \| 'dark'` | No | `'auto'` | Color scheme; see [Light and dark mode](./custom-css#theme) |
+| `i18n` | `'zh-CN' \| 'zh-Hant' \| 'en'` | No | Site setting | Comment section language; takes precedence over the admin site setting |
+| `cssURL` | `string` | No | `''` | Styles; see below |
 
-The constructor does not validate options. `init()` validates the mount element, server URL, option types and ranges, rejecting its Promise on failure. The server enforces the full page-key path rules; successful initialization does not prove that a key is valid for submission.
+`init()` checks the options and returns a rejected Promise if something is wrong. The server checks the full page key rules, so a successful `init()` doesn't guarantee that comments can be submitted.
 
-- Initialization and `setPageKey()` both trim surrounding whitespace from `pageTitle` and keep its first 200 UTF-16 code units.
-- `cssURL` accepts only an absolute HTTP(S) URL, a path starting with `/`, `none` or the legacy value `-`.
-- The old option `apiBaseUrl` is an alias of `serverURL`. It still works but is deprecated. If both are set and point to different addresses, `init()` throws a `TypeError`.
+The old option `apiBaseUrl` is an alias of `serverURL`. It still works but is deprecated.
 
 ### Styles {#styles}
 
-- `cssURL` empty: the SDK injects the default styles into the comment section. You do not need to include any CSS.
-- `cssURL` set to a stylesheet URL: the SDK stops injecting styles and **does not** load that URL for you. Add a `<link rel="stylesheet">` to the page yourself. (The HTML loader adds it automatically; the SDK does not.)
-- `cssURL` set to `'none'`: no styles are injected, and your CSS alone decides the appearance.
+| `cssURL` | Result |
+| --- | --- |
+| Empty | The SDK injects the default styles; no separate CSS is needed |
+| A stylesheet URL | The SDK doesn't inject styles and doesn't load this URL for you. Add `<link rel="stylesheet">` to the page yourself. |
+| `'none'` | No styles are injected; your CSS controls the look entirely |
 
-You can use the instance's `/client/ecoku.css` (the same as the default styles) or `/client/ecoku.unstyled.css` (layout only). See [Custom styles](./custom-css).
+The instance serves `/client/ecoku.css` (default styles) and `/client/ecoku.unstyled.css` (layout only). See [Custom styles](./custom-css).
 
 ## Instance methods
 
-### `init(options?)`
+| Method | Description |
+| --- | --- |
+| `init(options?)` | Mounts the comment section and loads the first page. Passing `options` replaces the constructor options. Calling it again after initialization does nothing. |
+| `setPageKey(pageKey, pageTitle?)` | Switches to another post's comment section. Must be called after `init()`. |
+| `reload()` | Reloads the current page of comments |
+| `destroy()` | Unmounts the comment section, cancels requests and empties the container. Call it when your component unmounts. |
+| `isInitialized()` | Whether it has been initialized |
 
-Mounts the comment section, restores the saved visitor identity and loads the first page of comments concurrently. The returned Promise waits for comment loading to finish, without waiting for optional identity restoration; a late identity result does not overwrite edited inputs.
+Keep in mind:
 
-- If you pass `options`, they replace the options given to the constructor.
-- On an instance that is already initialized, calling it again returns immediately: nothing is mounted twice, and any `options` you pass are ignored.
-- A container can be used by only one instance at a time; otherwise it throws. Call `destroy()` on the old instance first.
-- If mounting fails, the instance destroys itself. You can fix the problem and call `init()` again.
-- Comment API failures are displayed inside the component with a retry button; the `init()` Promise can still resolve. The same applies to `reload()` and `setPageKey()`. Neither a resolved Promise nor `isInitialized()` is a service health check.
+- A container can have only one instance at a time. Before creating a new one, call `destroy()` on the old one.
+- Pass the new post's title as the second argument to `setPageKey()`. If you omit it, the title is cleared and notifications for new comments won't include the post name. Call it after both the route and the title have updated.
+- Calling `setPageKey()` with an unchanged page key reloads comments but keeps the draft being written; if the page key changes, the comment and reply boxes are cleared.
+- When the comment API returns an error, the comment section shows the error and a retry button itself, and the Promises from `init()`, `reload()` and `setPageKey()` may still resolve normally. Don't use them to judge whether the service is healthy.
 
-### `setPageKey(pageKey, pageTitle?)`
+## Using it with frameworks {#frameworks}
 
-Switches to another post's comment section. Call it after a route change in a single-page app. It must be called after `init()`; otherwise it throws.
+In the examples below, the server URL and site ID are placeholders. Replace them with your own, and add your site's origin to the site's allowed origins.
 
-- If the page key is unchanged, the title is still updated and comments are reloaded, while drafts and reply state are preserved.
-- If it differs, in-flight requests are canceled, open reply boxes are closed, the comment box is cleared, and the first page of the new page is loaded.
-- **Pass the new post's title as the second argument.** If you omit it, the title is cleared rather than kept from the previous post; otherwise notifications for new comments would show the wrong post name. Call it after both the route and the title have been updated.
-- Title length is handled the same way as during initialization; excess text is truncated.
+### VitePress {#vitepress}
 
-### `reload()`
+This site embeds comments this way. Use VitePress's own `useRoute` (don't import it from `vue-router`), use the route path as the page key, and put the component in the default layout's `doc-after` slot. The styles map the comment section colors to VitePress variables, so the comment section follows light and dark mode switches.
 
-Reloads the comments on the current page, keeping the sort order. If deletions put the current page out of range, it reloads the last valid page; if all comments are deleted, the page resets to 1. It must be called after `init()`; otherwise it throws.
+::: code-group
 
-### `destroy()`
-
-Unmounts the comment section: cancels all requests, removes the verification widget and event listeners, and empties the container. Call it when your component unmounts.
-
-### `isInitialized()`
-
-Returns whether the instance is currently initialized.
-
-## VitePress {#vitepress}
-
-The example below uses `ecoku@0.6.2`. Both the server address `https://ecoku.example.com` and the site ID `your-site-id` are placeholders. Replace them with your Ecoku server address and the site ID created in the admin console, then add your website's origin to that site's allowed origins.
-
-In `.vitepress/theme/EcokuComments.vue`, import `useRoute` from VitePress, not `vue-router`. Use the route path as the stable page key and page data for the title. Create the instance on browser mount, update it when navigating and destroy it on unmount.
-
-The VitePress theme switch does not change the system color preference. Map comment colors to VitePress variables as shown below to follow light, dark and manual theme changes without recreating the instance or clearing drafts.
-
-```vue
+```vue [.vitepress/theme/EcokuComments.vue]
 <script setup>
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useData, useRoute } from 'vitepress'
@@ -151,9 +140,7 @@ onBeforeUnmount(() => {
 </style>
 ```
 
-Add the component to the default layout's `doc-after` slot in your existing `.vitepress/theme/index.ts`, keeping your theme options and CSS imports. The minimal version is below. Pages using the home layout do not show this slot.
-
-```ts
+```ts [.vitepress/theme/index.ts]
 import { h } from 'vue'
 import DefaultTheme from 'vitepress/theme'
 import EcokuComments from './EcokuComments.vue'
@@ -166,13 +153,15 @@ export default {
 }
 ```
 
-## Astro {#astro}
+:::
 
-Install `ecoku` as described in [Get the SDK](#install), then create `src/components/EcokuComments.astro`. The server address and site ID below are placeholders. Replace them and allow your website's origin in the Ecoku admin console, including the local preview origin when testing locally.
+### Astro {#astro}
 
-Keep the SDK in a plain `<script>` in the component template so Astro bundles it for the browser. Do not put it in the top `---` block or add `is:inline`, `define:vars`, or `type="module"` to the script: those attributes disable the processing needed for npm imports and TypeScript in this example. Pass the page key and title through `data-*` attributes. See [Astro script processing](https://docs.astro.build/en/guides/client-side-scripts/#script-processing).
+Put the SDK in a plain `<script>` in the component template; Astro bundles it and runs it in the browser. Don't put it in the `---` block at the top, and don't add `is:inline`, `define:vars` or `type="module"`.
 
-```astro
+::: code-group
+
+```astro [src/components/EcokuComments.astro]
 ---
 interface Props {
   pageKey: string
@@ -216,9 +205,7 @@ const { pageKey, pageTitle } = Astro.props
 </style>
 ```
 
-Import the component in an article page or layout. For example, `src/pages/posts/hello-world.astro`:
-
-```astro
+```astro [src/pages/posts/hello-world.astro]
 ---
 import EcokuComments from '../../components/EcokuComments.astro'
 
@@ -241,13 +228,15 @@ const title = 'Hello, world'
 </html>
 ```
 
-Replace `title` with the title from your article data. `Astro.url.pathname` contains only the path, without a query string or fragment. Keep the page key consistent for each article, including its trailing slash.
+:::
 
-This component works on static pages and on sites using [ClientRouter](https://docs.astro.build/en/guides/view-transitions/). The custom element initializes when inserted into the page and destroys its instance when removed. Navigating to another article creates an instance with the new page's data. Do not add `transition:persist` to the comments component, to avoid reusing the previous article's page data.
+`Astro.url.pathname` contains only the path; keep trailing slashes consistent. It also works with [ClientRouter](https://docs.astro.build/en/guides/view-transitions/) enabled, but don't add `transition:persist` to the component.
 
-## Vue 3
+### Vue 3 and React {#vue-react}
 
-```vue
+::: code-group
+
+```vue [Comments.vue]
 <script setup>
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
@@ -285,11 +274,7 @@ onBeforeUnmount(() => {
 </template>
 ```
 
-`document.title` must already be updated to the new post's title after the route changes. If the title is set asynchronously by other code, pass the title from your post data instead.
-
-## React
-
-```jsx
+```jsx [Comments.jsx]
 import { useEffect, useRef } from 'react'
 import Ecoku from 'ecoku'
 
@@ -312,4 +297,7 @@ export function Comments({ pageKey, pageTitle }) {
 }
 ```
 
-This component destroys the old instance and creates a new one whenever the post changes, which is the simplest approach. You can also create the instance only once and call `setPageKey(pageKey, pageTitle)` when `pageKey` changes, which avoids remounting.
+:::
+
+- In the Vue example, `document.title` must already be the new title after the route changes. If the title is set asynchronously, take it from the post data instead.
+- The React example destroys the old instance and creates a new one when the post changes. You can also create it once and call `setPageKey(pageKey, pageTitle)` when `pageKey` changes.

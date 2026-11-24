@@ -1,10 +1,10 @@
 # Configuration reference
 
-The annotated template below collects every `app/config.yaml` field, default, allowed value, explanation, and example. The Docker deployment page includes the same template, so there is no separate field table to reconcile.
+Ecoku reads one YAML file, `app/config.yaml`, plus two environment variables in Compose. A new deployment only needs `instance_public_url`; leave everything else at the defaults. Sites, notifications, CAPTCHA and stickers are set in the admin console, not here.
 
-## Complete configuration template {#template}
+## Complete template {#template}
 
-Copy the template and replace `instance_public_url`. Other active values are defaults; uncomment optional assignments as needed. Each top-level YAML section may appear only once, so do not append duplicate `site:` or `admin:` sections. The admin console is always enabled and session duration is fixed, not tunable.
+The default, allowed values and purpose of each setting are in the comments. Commented-out lines are optional overrides; uncomment them when needed. Each top-level section (`site:`, `admin:` and so on) may appear only once.
 
 <div class="config-template">
 
@@ -12,9 +12,9 @@ Copy the template and replace `instance_public_url`. Other active values are def
 
 </div>
 
-## Apply changes {#reload}
+## Applying changes {#reload}
 
-Save the file, then recreate the container from the Compose directory and inspect its logs. Editing the mounted YAML does not hot-reload the service:
+Configuration isn't hot-reloaded. After editing, recreate the container and check the logs:
 
 ```bash
 (
@@ -25,33 +25,35 @@ sudo docker compose up -d --force-recreate --wait --wait-timeout 120 ecoku
 sudo docker compose logs --tail=100 ecoku
 ```
 
-Only one YAML document is allowed. Unknown fields, invalid values, and duplicate fields prevent startup. Correct the reported problem and start again.
+Unknown fields, invalid values or duplicate fields make the service refuse to start, and the log says which one.
 
-Startup also compares admin origins with every site's allowed origins in the database; checking only YAML site seeds is insufficient. An overlap prevents startup and logs 「管理端来源 … 与已存储的公开站点来源重叠」. Default ports, leading zeros in ports, and equivalent IPv6 spellings are treated as the same origin. Before upgrading, correct site origins in the existing console, or adjust the admin domain, `notifications.instance_public_url` / `admin.allowed_origins`, and reverse proxy so the console and public comment pages use separate origins. CLI subcommands that open the database perform the same check.
+Startup also checks one more thing: the admin console origin (`instance_public_url` or `admin.allowed_origins`) can't overlap with any site's allowed origins in the database. On overlap, the log reports 「管理端来源 … 与已存储的公开站点来源重叠」 (admin origin … overlaps a stored public site origin) and the service doesn't start. To fix it, give the admin console and your blog different domains: change the site origins in the admin console, or adjust the admin domain and reverse proxy. CLI subcommands that open the database perform the same check.
 
-## Rate-limit behavior {#rate-limit}
+## Rate limits {#rate-limit}
 
-Defaults, units, and examples for every `rate_limit` field are in the template. Counters are per IP; excess requests return `429` and `Retry-After`, and restart resets counters. `0` restores the default rather than disabling limits. Behind a reverse proxy, also set `site.trusted_proxies` so visitors do not share the proxy IP’s allowance.
+Each setting under `rate_limit` counts per IP; over the limit, requests get `429` and a `Retry-After` header. Counters are kept in memory and reset on restart. `0` means the default; rate limiting can't be turned off.
+
+When Ecoku is behind a reverse proxy, you must configure [`site.trusted_proxies`](../self-hosting/reverse-proxy#trusted-proxies), or all visitors share one quota.
 
 ## Logs {#logs}
 
-Logs go to stdout by default; view them with `docker compose logs`. Docker controls retention and rotation. `site.log_path` optionally enables file logging alongside stdout when set to a real path, requiring a writable mounted directory. See the template for accepted values.
+Logs go to standard output by default; view them with `docker compose logs`, and Docker handles retention and rotation. If you set `site.log_path` to a file path, logs go to both standard output and that file, and you need to mount a directory the container can write to.
 
 ## Environment variables {#env}
 
-New deployments need no `ecoku.env`. The two variables below go in the Compose `environment` section; they are not YAML fields:
+These two go under `environment` in `compose.yaml`:
 
-- `TZ`: the time zone for timestamps in the comments, the admin console and notifications. Use an IANA name such as `Asia/Shanghai`.
-- `ECOKU_ADMIN_LOCALE`: the admin console language, `zh-CN`, `zh-Hant` or `en`. It is case-insensitive and also accepts common forms such as `zh-TW` and `en-US`. An unrecognized value is reported in the startup log and falls back to `zh-CN`.
+| Variable | Description |
+| --- | --- |
+| `TZ` | Time zone for the comment section, admin console and notifications; an IANA time zone name such as `Asia/Shanghai`. |
+| `ECOKU_ADMIN_LOCALE` | Admin console language: `zh-CN`, `zh-Hant` or `en`. Case-insensitive; forms such as `zh-TW` and `en-US` are also accepted. Unrecognized values fall back to `zh-CN`. |
 
-Neither variable sets the comment language. Choose it in 「评论区语言」 (Comment language) in the admin site settings (`i18n` in a YAML site seed); the loader's `data-i18n` attribute or the SDK `i18n` option overrides it.
+They don't affect the comment section language, which is set per site under **Comment language** in the admin console.
 
-The template’s `*_env` fields name environment variables read by the process, not secret values. To supply values yourself, inject the named variables through Compose `environment` or `env_file`. By default the administrator and persistent keys are created automatically. Do not override the image’s `GIN_MODE=release` or `ECOKU_RUNTIME=container`.
+Fields in the template ending in `_env` take the name of an environment variable, not its value. A new deployment creates the administrator and keys automatically, so you don't need to inject these variables. The image already sets `GIN_MODE=release` and `ECOKU_RUNTIME=container`; don't override them.
 
-A new instance creates an account automatically but does not print a password in its logs. After the first startup completes, [obtain the temporary administrator password](../self-hosting/docker#temporary-password) to sign in.
+## Site seeds and the database {#legacy}
 
-## Initialization and persistent data {#legacy}
+The `sites` section is imported only once, when a brand-new database is created; later changes to it don't affect existing sites. For a new deployment, just create sites in the admin console.
 
-The `sites` seeds are imported only when creating a brand-new database and do not overwrite existing sites. Later site edits, SMTP, Telegram, CAPTCHA and Smoji settings belong in the console. Back up the database and its sibling `ecoku-secrets.json` together. Changing the database path does not move data.
-
-Initial setup applies each seed's `i18n`. For a new database, schema creation, migrations, and seed writes share one transaction and roll back together if any of those steps fails. Existing sites always use their stored language; editing YAML and restarting does not overwrite it. Change the language in the console instead. Failed instance-key validation does not write the proposed keys, but upgrading does not repair a previously damaged key file.
+The database and `ecoku-secrets.json` in the same directory must be backed up and moved together. Changing the database path doesn't move data; an empty database is created at the new path.

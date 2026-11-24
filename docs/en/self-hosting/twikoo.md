@@ -1,34 +1,22 @@
 # Migrate from Twikoo
 
-The `import-twikoo` command imports comments exported from Twikoo into one Ecoku site. You can import only once: the target site must already be registered and must have **no comments at all** (including deleted ones). Do this after the new site is set up and before anyone posts a comment.
+The `import-twikoo` command imports comments exported from Twikoo into a registered Ecoku site and keeps their reply relationships.
 
-## What is imported
+Imported comments are public immediately, and no notifications are sent during the import.
 
-| Twikoo field | After import |
-| --- | --- |
-| `_id` / `id`, `pid`, `rid` | Reply relationships are rebuilt using the direct parent identified by `pid`. If `pid` is empty or the record is absent from the export, Ecoku tries the root comment identified by `rid`. If the referenced parent cannot be found, is on a different page, or forms a cycle, the comment becomes a root comment and is counted as a "missing parent". Valid descendants on the same page keep their reply relationships. |
-| `url` | The path part becomes the page key, with the query string and `#` fragment removed. An HTTP(S) homepage URL with no path, such as `https://blog.example`, uses `/`. |
-| `comment` | HTML is converted to plain text: `<br>` and block-level elements become line breaks; tags are removed while preserving indentation, tabs, and internal blank lines in the text inside `<pre>`; images become their alt text or `[图片]` ("image"); and `<script>` and `<style>` are dropped. Markdown is not parsed. |
-| `nick` | Nickname. If empty, it is recorded as "访客" ("Visitor"). |
-| `mail` | Private email address, used for later reply notifications. Addresses longer than 254 characters are not imported. |
-| `link` | Visitor website. Only `http`/`https` URLs are kept; an address without a scheme (such as `example.com`) gets `https://` added. |
-| `created` / `updated` | Creation and update times. |
+::: warning You can import only once
+The target site must have no comments at all, including deleted ones. Finish the import before you open the new site for comments.
+:::
 
-Not imported: IP addresses, User-Agents, avatars, likes, Twikoo user IDs, and the blogger flags in the export file.
+<div class="steps">
 
-Imported comments are public immediately, and the import does not send any notifications.
+### Prepare
 
-Imported content still appears as ordinary comment text, without code-block styling or syntax highlighting. Conversion rules apply only to this import; they do not automatically change previously imported text or reply relationships.
+1. [Register the target site](../admin/sites) in the admin console. If you want your own past comments to carry the blogger badge, set up the [blogger name and email](../admin/blogger) first.
+2. Export your comments from Twikoo. You get a file containing a JSON array (64 MiB at most).
+3. Take a cold backup as described in [Backup and restore](./backup#cold-backup), and keep the service stopped until the import is done.
 
-**Blogger marks** are backfilled from the target site's blogger nickname and email at the time of import: comments whose nickname matches exactly and whose email matches (case-insensitive) are marked as blogger comments. If you want this, set up the blogger identity in the admin console before importing.
-
-## 1. Prepare
-
-1. [Register the target site](./admin#sites) in the admin console. If you want blogger markers backfilled, set both the blogger nickname and the blogger email.
-2. Export your comments from Twikoo. The file must contain one JSON array and be no larger than 64 MiB, including trailing whitespace. Only whitespace may follow the array; a second array or other trailing content is rejected.
-3. Take a cold backup as described in [Backup and restore](./backup#cold-backup). Keep the service stopped after backup until the import succeeds.
-
-Copy the export file into the `data/` directory so the container user can read it (replace `/path/to/twikoo.json` with the actual path; the original file is left untouched):
+Copy the export file into `data/` so the container can read it (replace `/path/to/twikoo.json` with the actual path):
 
 ```bash
 cd ~/Ecoku
@@ -36,34 +24,32 @@ sudo docker compose stop ecoku
 sudo install -o 10001 -g 10001 -m 600 /path/to/twikoo.json data/twikoo.json
 ```
 
-## 2. Dry run
+### Dry run
 
-Replace `blog` with the target site ID and run with `--dry-run` first:
+Replace `blog` with your site ID and run with `--dry-run`:
 
 ```bash
 sudo docker compose run --rm --no-deps ecoku \
   import-twikoo --site=blog --file=/data/twikoo.json --dry-run
 ```
 
-The dry run performs the complete import and then rolls it back, so no comments are saved. The output looks like this (in Chinese: dry run passed, with counts of comments, root comments, replies, pages, emails, websites, and missing parents):
+The dry run goes through the whole import and then rolls it back, saving no comments. The output looks like this (dry run passed, with counts of comments, root comments, replies, pages, emails, websites and missing parents):
 
 ```text
 Twikoo 导入预检通过：评论=128 根评论=90 回复=38 页面=24 邮箱=110 网站=45 缺失父记录=0
 ```
 
-Check that these numbers match what you have in Twikoo. If "missing parents" (缺失父记录) is not 0, some replies will become root comments; they are not skipped.
+Check that the numbers roughly match what you have in Twikoo. If 「缺失父记录」 (missing parents) is not 0, some replies can't find their original comment and become root comments (they are not dropped).
 
-If the export contains records marked `isSpam: true`, both the dry run and the import stop before saving any comments and report the count, for example `Twikoo export contains 2 comments with isSpam=true`. Keep the original file, remove those records from a copy, and check whether any related replies should also be excluded. Run the dry run again with the filtered copy.
+If the export has records with `isSpam: true`, the command stops and reports how many. Delete those records from a copy of the export file and run the dry run again.
 
-If the JSON is malformed, the file exceeds 64 MiB, the export is an empty array, there are duplicate IDs, a body exceeds 10000 characters, a nickname exceeds 80 characters, a page key is empty or exceeds 512 characters, or the target site does not exist or already has comments, the command exits with an error and saves no imported comments.
-
-::: info
-The dry run does not save comments, but the command still opens the database when it starts. If the database is on an older version, it is migrated first, so this is not a fully read-only operation. The command also checks for [overlapping admin and site origins](../reference/configuration#reload). Correct any conflict before running the dry run again.
+::: details Other cases that make the command fail
+Malformed JSON, a file over 64 MiB, an empty array, duplicate IDs, a body over 10000 characters, a name over 80 characters, an empty page key or one over 512 characters, or a site that doesn't exist or already has comments. On error, no comments are saved.
 :::
 
-## 3. Import
+### Import
 
-Once the dry-run results and the backup both look right, run the command again without `--dry-run`. The import runs in one transaction, and an error in any single record rolls back the whole import. After it succeeds, delete the temporary copy and start the service:
+Run the command again without `--dry-run`. The import runs in one transaction; an error in any record rolls back the whole import. After it succeeds, delete the temporary copy and start the service:
 
 ```bash
 (
@@ -76,10 +62,28 @@ sudo docker compose up -d --wait --wait-timeout 120 ecoku
 )
 ```
 
-Open a few posts and confirm that the existing comments and their reply relationships look right. Keep or delete the original export file and the backup as you see fit.
+Open a few posts and confirm that past comments and reply relationships are right.
+
+</div>
 
 ## Page keys must match
 
-On import, the page key comes from the path of the `url` in each Twikoo record, such as `/posts/hello-world/`. Chinese and other non-ASCII characters in the path are stored in percent-encoded form, such as `/posts/%E4%BD%A0%E5%A5%BD/`.
+On import, the page key comes from the path of the `url` in each Twikoo record, such as `/posts/hello-world/`. Chinese and other non-ASCII characters are stored percent-encoded, such as `/posts/%E4%BD%A0%E5%A5%BD/`.
 
-When you embed the comment section, `data-page-key` must produce exactly the same string, or the existing comments will not appear under the right posts. After importing, you can see each comment's page key in the comment details in the admin console and compare it with the value your blog template outputs. If they differ (for example, a trailing `/` or encoding), adjust the embed code; do not change the imported data.
+The `data-page-key` your embed code generates must match it exactly, or past comments won't appear under the right posts. The admin comment list shows each comment's page key; compare it with what your blog template outputs. If a trailing slash or the encoding differs, adjust the embed code, not the imported data.
+
+## Field mapping
+
+| Twikoo field | After import |
+| --- | --- |
+| `_id` / `id`, `pid`, `rid` | Reply relationships are rebuilt, preferring the direct parent identified by `pid`. If `pid` is empty or the record is not in the export, Ecoku tries to attach the comment under the root comment identified by `rid`. If the referenced parent can't be found, is on another page, or forms a cycle, the comment becomes a root comment and counts toward 「缺失父记录」 (missing parents). Valid descendants on the same page keep their reply relationships. |
+| `url` | The path becomes the page key, with the query string and `#` fragment removed. An HTTP(S) homepage URL with no path (such as `https://blog.example`) uses `/`. |
+| `comment` | HTML becomes plain text: `<br>` and block-level elements become line breaks; when tags are removed, indentation, tabs and internal blank lines of text inside `<pre>` are kept; images become their alt text or `[图片]` ("image"); `<script>` and `<style>` are dropped. Markdown is not parsed. |
+| `nick` | Name. If empty, it is recorded as 「访客」 ("Visitor"). |
+| `mail` | Private email, used for later reply notifications. Addresses over 254 characters are not imported. |
+| `link` | Visitor website. Only `http`/`https` URLs are kept; an address without a scheme (such as `example.com`) gets `https://` added. |
+| `created` / `updated` | Creation and update times. |
+
+Not imported: IP addresses, User-Agents, avatars, likes, Twikoo user IDs, and the blogger flags in the export file.
+
+Blogger marks are backfilled from the target site's current blogger name and email: comments whose name matches exactly and whose email matches (case-insensitive) are marked as blogger comments.

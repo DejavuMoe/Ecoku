@@ -1,8 +1,10 @@
 # Hugo PaperMod
 
-The [PaperMod](https://github.com/adityatelange/hugo-PaperMod) theme has a placeholder for a comments template, so you can integrate Ecoku by overriding one partial. The repository's `examples/hugo-papermod/` directory has a complete example.
+The [PaperMod](https://github.com/adityatelange/hugo-PaperMod) theme leaves a partial template for comments; override it to embed Ecoku. A complete example is in the repository's `examples/hugo-papermod/` directory.
 
-## 1. Add the comments template
+<div class="steps">
+
+### Add the comments template
 
 In your Hugo site, create `layouts/_partials/comments.html` (Hugo versions before 0.146 use `layouts/partials/comments.html`):
 
@@ -38,9 +40,9 @@ In your Hugo site, create `layouts/_partials/comments.html` (Hugo versions befor
 {{- end -}}
 ```
 
-The template uses `.RelPermalink` as the page key (such as `/posts/my-first-post/`) and `.Title` as the post title. If `server_url` or `site_id` is not set, it shows "Comments are not configured." so you notice the missing configuration.
+The page key uses `.RelPermalink` (such as `/posts/my-first-post/`), and the title uses `.Title`. If you forget to set `server_url` or `site_id`, the page shows "Comments are not configured."
 
-## 2. Add the site config
+### Add the site configuration
 
 Add this to `hugo.yaml`:
 
@@ -57,7 +59,7 @@ params:
     # css_url: "https://ecoku.example.com/client/ecoku.unstyled.css"
 ```
 
-`params.comments: true` turns on the comment section for all posts. For a post that should not have comments, write `comments: false` in its front matter:
+`params.comments: true` turns on the comment section for all posts. For a post that shouldn't have comments, write `comments: false` in its front matter:
 
 ```yaml
 ---
@@ -66,17 +68,19 @@ comments: false
 ---
 ```
 
-## 3. Register the origin
+### Register the origin
 
 In the Ecoku admin console, add an allowed origin for this site, such as `https://blog.example.com`. If you preview locally with `hugo server`, add `http://localhost:1313` as well.
 
-Hugo’s `.RelPermalink` includes the subdirectory in `baseURL`. For example, `baseURL: https://example.com/blog/` produces `/blog/posts/…`; set the Ecoku site URL to `https://example.com` to avoid repeating `/blog` in notification and admin links. See [Site URL and page paths](../self-hosting/admin#site-url).
+`.RelPermalink` includes the subdirectory in `baseURL`. For example, `baseURL: https://example.com/blog/` produces `/blog/posts/…`; in that case, set the Ecoku site URL to `https://example.com`. See [Site URL and page paths](../admin/sites#site-url).
+
+</div>
 
 ## Appearance
 
-The default styles read PaperMod's color variables (`--theme`, `--entry`, `--primary`, `--secondary`, `--content`, `--border`) and follow the theme's light/dark switch, so you usually do not need any extra setup.
+Ecoku's default styles read PaperMod's color variables directly (`--theme`, `--entry`, `--primary`, `--secondary`, `--content`, `--border`) and follow light/dark switches too, so you usually don't need any extra setup.
 
-To further match corner radius, font size, or accent color, create a CSS file under `assets/css/extended/`. PaperMod bundles it into the site styles automatically:
+To adjust corner radius, font size or accent color, create a CSS file under `assets/css/extended/`. PaperMod bundles it automatically:
 
 ```css
 .ecoku-comments {
@@ -86,6 +90,6 @@ To further match corner radius, font size, or accent color, create a CSS file un
 }
 ```
 
-See [Custom styles](./custom-css#variables) for all available variables.
+For all available variables, see [Custom styles](./custom-css#variables).
 
-The `assets/css/extended/ecoku.css` in the example directory only styles the wrapper, the loading failure message and the retry button; it does not affect the comment section itself. Copy it if you need it.
+The `assets/css/extended/ecoku.css` in the example directory only styles the wrapper, the loading failure message and the retry button. Copy it if you need it.

@@ -55,10 +55,9 @@
 
 ## 文件
 
-- [指南](https://ecoku.zsh.moe/zh-hant/guide/introduction)：簡介、功能、運作方式
-- [部署](https://ecoku.zsh.moe/zh-hant/self-hosting/docker)：Docker 部署、反向代理、管理後台、通知、人機驗證、備份與還原、升級
+- [指南](https://ecoku.zsh.moe/zh-hant/guide/introduction)：介紹、快速上手、Docker 安裝、反向代理、備份與還原、升級、管理後台、通知、人機驗證
 - [接入](https://ecoku.zsh.moe/zh-hant/integration/html)：HTML、JavaScript SDK、Hugo PaperMod、自訂樣式
-- [參考](https://ecoku.zsh.moe/zh-hant/reference/configuration)：設定、命令列、REST API
+- [參考](https://ecoku.zsh.moe/zh-hant/reference/configuration)：運作原理、設定檔、命令列、HTTP API、常見問題
 
 文件站另提供 [English](https://ecoku.zsh.moe/en/) 與 [简体中文](https://ecoku.zsh.moe/) 版本。
 

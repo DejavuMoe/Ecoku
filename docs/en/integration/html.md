@@ -1,16 +1,12 @@
-# HTML integration
+# HTML embed
 
-Put a snippet of HTML and one script in your post template, and any static website can show a comment section. The script `ecoku-loader.js` is served by your Ecoku instance. It reads the attributes on the HTML and loads the comment component automatically.
+Add an HTML snippet and a script to your post template, and any static website can show a comment section. The script `ecoku-loader.js` is served by your Ecoku instance. It reads the attributes on the HTML and then loads the comment component.
 
-Before you start, make sure you have [registered the site](../self-hosting/admin#sites) in the admin console and added your blog's origin to the site's allowed origins.
+Before you start, [register the site](../admin/sites) in the admin console and add your blog's origin to its allowed origins.
 
 ## Embed code
 
-Put the code below where the comment section should go in your post template, and replace three values:
-
-- `data-server-url`: your Ecoku address;
-- `data-site-id`: the site ID registered in the admin console;
-- `data-page-key`, `data-page-title`: output the current post's path and title with template variables.
+Put the code below where the comment section should appear in your post template:
 
 ```html
 <section
@@ -21,8 +17,6 @@ Put the code below where the comment section should go in your post template, an
   data-site-id="blog"
   data-page-key="/posts/hello-world/"
   data-page-title="Hello, world"
-  data-page-size="10"
-  data-theme="auto"
 >
   <div class="ecoku-loader" data-ecoku-loader hidden>
     <p class="ecoku-loader-status" data-ecoku-status></p>
@@ -33,66 +27,72 @@ Put the code below where the comment section should go in your post template, an
 <script src="https://ecoku.example.com/client/ecoku-loader.js" defer></script>
 ```
 
-Keep all four elements with `data-ecoku-*` inside the wrapper: `data-ecoku-mount` is where the comment section is mounted, and the other three show an error message and a retry button if loading fails. You can change the button text.
+Replace:
+
+- The URL in `data-server-url` and `<script src>`: your Ecoku URL;
+- `data-site-id`: the site ID registered in the admin console;
+- `data-page-key` and `data-page-title`: output the current post's path and title with template variables; see [below](#page-key).
+
+Keep all four child elements with `data-ecoku-*`. `data-ecoku-mount` is where the comment section appears; the other three show an error and the **Reload comments** button when loading fails. You can change the button text.
 
 ## Attributes
 
 | Attribute | Required | Description |
 | --- | :---: | --- |
-| `data-server-url` | Yes | The Ecoku address, such as `https://ecoku.example.com`. It must be a full URL starting with `http://` or `https://`. |
-| `data-site-id` | Yes | The site ID registered in the admin console. |
-| `data-page-key` | Yes | The current post's page key: a relative path on the site, at most 512 characters, without `?` or `#`. See below. |
-| `data-page-title` | No | The post title, shown in notification emails. Truncated to the first 200 UTF-16 code units, as in the SDK constructor options. |
-| `data-page-size` | No | How many root comments to show per page, 1 to 100, default 10. Invalid values are treated as 10. |
-| `data-theme` | No | `auto` (default), `light`, or `dark`. `auto` reads the colour variables defined by the blog first, and falls back to the system light/dark preference. |
-| `data-css-url` | No | Replaces the default styles. Accepts an absolute HTTP(S) URL, a path starting with `/`, `none`, or the compatible value `-`. See [Custom styles](./custom-css). |
-| `data-i18n` | No | The comment language: `zh-CN`, `zh-Hant`, or `en`. Overrides 「评论区语言」 (Comment language) in the admin site settings. If it is missing or has any other value, the site setting is used. |
+| `data-server-url` | Yes | The Ecoku URL, starting with `http://` or `https://` |
+| `data-site-id` | Yes | Site ID |
+| `data-page-key` | Yes | Page key: a path on the site, at most 512 characters, without `?` or `#` |
+| `data-page-title` | No | Post title, used in notifications, at most 200 characters |
+| `data-page-size` | No | Root comments per page, 1 to 100, default 10 |
+| `data-theme` | No | `auto` (default), `light` or `dark`; see [Light and dark mode](./custom-css#theme) |
+| `data-css-url` | No | Replaces the default styles; see [Custom styles](./custom-css) |
+| `data-i18n` | No | Comment section language: `zh-CN`, `zh-Hant` or `en`. Overrides the admin site setting |
 
-## Choose a page key
+## Choosing a page key {#page-key}
 
-The page key decides which post a comment belongs to. [Do not change it once it is in use](../guide/concepts#page-key). It is usually the post's path on the site. Here is how common generators write it:
+The page key decides which post a comment belongs to. [Don't change it once it's set](../reference/concepts#page-key). It's usually the post's path on the site:
 
 ::: v-pre
-| Generator | Value of `data-page-key` |
+| Generator | `data-page-key` |
 | --- | --- |
 | Hugo | `{{ .RelPermalink }}` |
 | Hexo | `<%- url_for(page.path) %>` |
 | Jekyll | `{{ page.url }}` |
 | Astro | `{Astro.url.pathname}` |
-| VitePress | Read `useRoute().path` in a custom theme and integrate with the [SDK](./sdk#vitepress) |
+| VitePress | Embed with the [SDK](./sdk#vitepress) and pass `useRoute().path` |
 :::
 
-These are for reference only. Look at the generated HTML in your browser and confirm that it outputs a stable path, such as `/posts/hello-world/`, rather than a full URL.
+After writing it, view the generated HTML in your browser and confirm that it outputs a stable path such as `/posts/hello-world/`, not a full URL.
 
-## Loading process
+The Hugo PaperMod theme has a ready-made template; see [Hugo PaperMod](./hugo).
 
-1. After the page is parsed, the loader reads the attributes on the wrapper. If `data-server-url`, `data-site-id`, or `data-page-key` is missing, or any of the four `data-ecoku-*` child elements is missing, it **skips silently**, and nothing appears on the page.
-2. The loader loads `ecoku.umd.js` from its own directory while requesting the first page of comments in parallel, then initializes the comment section. No "Loading" text is shown while it loads.
-3. If `ecoku.umd.js` fails to load, initialization fails (for example because of an invalid attribute value), or either script loading or component initialization exceeds its own 12-second timeout, an error message and the **Reload comments** button are shown, and the visitor can click to retry. The error message follows `data-i18n`. Without it, the page's `<html lang>` selects Traditional Chinese (`zh-Hant`, `zh-TW`, `zh-HK`, `zh-MO`) or English (`en`, `en-*`); anything else gives Simplified Chinese.
-4. Once the comment section is mounted, errors from the comment API itself (for example an unregistered origin, rate limiting or a network outage) are shown by the comment section as 「评论暂时不可用」 (Comments are temporarily unavailable) with a 「重新加载」 (Reload) button.
+## How loading works
 
-A page can contain multiple wrappers, each with its own mount element and unique HTML `id`. They share one SDK. The loader automatically adds only the first external stylesheet whose value is neither `none` nor `-`, so use the same SDK version and `data-css-url` for every wrapper. Scope CSS rules under each wrapper to vary their appearance.
+1. After the page is parsed, the loader reads the attributes on the wrapper. If a required attribute or a `data-ecoku-*` child element is missing, it does nothing and nothing appears on the page.
+2. The loader loads `ecoku.umd.js` from its own directory and requests the first page of comments at the same time.
+3. If the script fails to load, initialization fails, or it takes longer than 12 seconds, an error and the **Reload comments** button are shown.
+4. Once the comment section appears, errors from the comment API (an unregistered origin, rate limiting, a network outage) are shown by the comment section itself as 「评论暂时不可用」 (Comments are temporarily unavailable) with a retry button.
 
-The loader scans wrappers present at startup only; it does not automatically mount content inserted later. Use the [SDK](./sdk) to manage mounting and cleanup when an SPA changes posts.
+The loader only handles wrappers already on the page when it starts. When a single-page app switches posts, manage the comment section with the [SDK](./sdk).
+
+A page can have several wrappers, each with a different `id` and mount element; `data-css-url` must be the same for all of them.
+
+## CSP for blog pages
+
+If your blog sets a Content Security Policy (CSP), allow:
+
+- `script-src` and `connect-src`: the Ecoku origin, such as `https://ecoku.example.com`;
+- The default styles are injected as a `<style>` element. If inline styles aren't allowed, set `data-css-url` to `https://ecoku.example.com/client/ecoku.css` and allow that origin in `style-src`;
+- With CAPTCHA enabled: see [CSP for blog pages](../admin/captcha#csp);
+- With Smoji enabled: allow the manifest origin in `connect-src` and the image origin in `img-src`.
 
 ## Host the loader yourself
 
-You can put `ecoku-loader.js` on your own CDN and change only `<script src>`. The loader loads `ecoku.umd.js` from the **same directory**, so keep the two files together and update both when you upgrade Ecoku.
-
-The loader requests `ecoku.umd.js?v=<content hash>`. When an Ecoku instance serves the file and the hash matches it, browsers cache the file long-term; two files from the same release always match.
-
-## CSP on blog pages
-
-If your blog sets a Content Security Policy (CSP), you need to allow:
-
-- `script-src` and `connect-src`: the Ecoku origin, such as `https://ecoku.example.com`;
-- The default styles are injected as a `<style>` element. If your CSP does not allow inline styles, set `data-css-url` to `https://ecoku.example.com/client/ecoku.css` to use an external stylesheet instead, and allow that origin in `style-src`;
-- When CAPTCHA is enabled, you also need to allow the verification service. See [CAPTCHA · Content Security Policy](../self-hosting/captcha#csp);
-- When [Smoji stickers](./smoji) are enabled, allow the manifest origin in `connect-src` and the image origin in `img-src`. Set both when hosted separately; see [manifest and image hosting](./smoji#hosting).
+You can put `ecoku-loader.js` on your own CDN and change only `<script src>`. The loader loads `ecoku.umd.js` from the same directory, so keep the two files together and update both when you upgrade Ecoku.
 
 ## Without the loader
 
-You can also include the UMD file directly and control when initialization happens:
+To control when initialization happens yourself, include the UMD file directly:
 
 ```html
 <link rel="stylesheet" href="https://ecoku.example.com/client/ecoku.css">
@@ -111,4 +111,4 @@ You can also include the UMD file directly and control when initialization happe
 </script>
 ```
 
-The UMD file registers the global variable `Ecoku`. The example above includes the styles with `<link>` and uses `cssURL` to tell the SDK not to inject the default styles again. If you remove both, the SDK injects the styles itself. See [JavaScript SDK](./sdk) for the options and methods.
+The UMD file registers the global variable `Ecoku`. Here the styles are included with `<link>`, and `cssURL` tells the SDK it doesn't need to inject them; remove both and the SDK injects the default styles itself. For options, see [JavaScript SDK](./sdk).

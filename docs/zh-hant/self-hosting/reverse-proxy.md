@@ -1,44 +1,49 @@
-# 反向代理
+# 反向代理與 HTTPS
 
-Ecoku 容器只在主機的 `127.0.0.1:12123` 上提供 HTTP。要從公開網路存取，需要由同一台主機上的 Caddy 或 Nginx 終止 HTTPS，再轉送到這個連接埠。
+Ecoku 只在本機 `127.0.0.1:12123` 上提供 HTTP。你需要用 Caddy 或 Nginx 給它一個 HTTPS 網域，再告訴 Ecoku 哪個位址轉送過來的訪客 IP 可信。
 
-本頁要完成兩件事：
+<div class="page-meta">
+<div>
 
-1. 設定 HTTPS 轉送，讓 `https://ecoku.example.com` 可以存取；
-2. 讓 Ecoku 辨識訪客的真實 IP，使速率限制依個人計算，而不是所有訪客共用同一份額度。
+**你會完成**
 
-## 請求經過的路徑
+- `https://ecoku.example.com` 可以存取
+- Ecoku 依每個訪客的真實 IP 限流
+
+</div>
+<div>
+
+**開始之前**
+
+- 已依 [Docker 安裝](./docker) 啟動容器
+- 網域已解析到這台主機
+
+</div>
+</div>
 
 <figure class="doc-diagram" tabindex="0" aria-label="請求路徑圖，可橫向捲動">
   <img class="diagram-light" src="/diagrams/reverse-proxy.zh-Hant.light.svg" width="984" height="91" loading="lazy" decoding="async" alt="訪客透過 HTTPS 直連反向代理或經可選 CDN 回源，再透過 HTTP 127.0.0.1:12123 存取 Ecoku 容器。">
   <img class="diagram-dark" src="/diagrams/reverse-proxy.zh-Hant.dark.svg" width="984" height="91" loading="lazy" decoding="async" alt="訪客透過 HTTPS 直連反向代理或經可選 CDN 回源，再透過 HTTP 127.0.0.1:12123 存取 Ecoku 容器。">
 </figure>
 
-反向代理連到 `127.0.0.1:12123` 時，Docker 會把連線轉交給容器。容器看到的對端位址不是訪客，而是 Docker 橋接網路的閘道（通常形如 `172.18.0.1`）。因此訪客的真實 IP 只能由反向代理寫進 `X-Forwarded-For` 請求標頭傳過去，而 Ecoku 只有在確認請求確實來自這個閘道時才會讀取它。
+<div class="steps">
 
-## 直接回源
+### 設定反向代理
 
-### Caddy
+::: code-group
 
-Caddy 會自動申請和續期憑證。
-
-```caddyfile
+```caddyfile [Caddy]
 ecoku.example.com {
     encode zstd gzip
 
     reverse_proxy 127.0.0.1:12123 {
-        # 以直連對端位址覆寫，捨棄瀏覽器自帶的 X-Forwarded-For
         header_up X-Forwarded-For {remote_host}
         header_up X-Forwarded-Proto {scheme}
     }
 }
 ```
 
-### Nginx
-
-憑證路徑以 Certbot 的預設位置為例。
-
-```nginx
+```nginx [Nginx]
 server {
     listen 443 ssl;
     listen [::]:443 ssl;
@@ -54,20 +59,13 @@ server {
     location / {
         proxy_pass http://127.0.0.1:12123;
         proxy_set_header Host $host;
-        # 覆寫而不是附加：$remote_addr 是目前的 TCP 對端
         proxy_set_header X-Forwarded-For $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
 
-兩份設定的關鍵都是**覆寫** `X-Forwarded-For`。如果改成附加（例如 Nginx 的 `$proxy_add_x_forwarded_for`），瀏覽器就可以自己帶一個偽造的值，繞過速率限制。
-
-## 經過 CDN 回源
-
-網域接上 Cloudflare 等 CDN 後，反向代理的直連對端就變成 CDN 節點。這時要從 CDN 提供的請求標頭取得訪客 IP。以 Cloudflare 和 Caddy 為例：
-
-```caddyfile
+```caddyfile [Caddy + Cloudflare]
 ecoku.example.com {
     encode zstd gzip
 
@@ -78,24 +76,25 @@ ecoku.example.com {
 }
 ```
 
-`CF-Connecting-IP` 只有在請求確實經過 Cloudflare 時才可信。請在防火牆或 Caddy 中只放行 Cloudflare 的 IP 範圍，避免有人直連來源伺服器並自行填入這個請求標頭。
+:::
 
-Ecoku 這一端的設定不變：`trusted_proxies` 仍然只填 Docker 閘道，不要把 CDN 的網段填進去。
+`X-Forwarded-For` 必須 **覆寫** 而不是附加。附加的話（例如 Nginx 的 `$proxy_add_x_forwarded_for`），瀏覽器可以自己帶一個偽造的值來繞過限流。
 
-## 設定 trusted_proxies {#trusted-proxies}
+前面有 Cloudflare 這類 CDN 時，訪客 IP 要從 CDN 的請求標頭取得，例如 `CF-Connecting-IP`。這時在防火牆上只放行 CDN 的 IP 範圍，防止有人繞過 CDN 直連來源伺服器並偽造請求標頭。
 
-`app/config.yaml` 中的 `site.trusted_proxies` 決定 Ecoku 信任誰轉送的 `X-Forwarded-For`：
+### 設定 trusted_proxies {#trusted-proxies}
 
-- **留空（預設）**：不讀取任何轉送標頭，一律依容器看到的對端位址進行速率限制。放在反向代理後面時，這個位址就是 Docker 閘道，於是所有訪客共用同一份速率限制額度。預設每分鐘只允許 5 次評論送出，流量稍大就會有人收到 `429`。
-- **填入 Docker 閘道**：只有直連對端正好是閘道時，才從 `X-Forwarded-For` 取得訪客 IP。
+反向代理連到 `127.0.0.1:12123` 時，Ecoku 看到的對端是 Docker 橋接網路的閘道，而不是訪客。只有把這個閘道寫進 `site.trusted_proxies`，Ecoku 才會讀取 `X-Forwarded-For`。
 
-查出 Ecoku 所在網路的閘道：
+不設定的話，所有訪客都算同一個 IP，共用每分鐘 5 次的送出額度，很快就會出現「提交過於頻繁」。
+
+查出閘道位址：
 
 ```bash
 sudo docker inspect ecoku --format '{{range .NetworkSettings.Networks}}{{.Gateway}}{{"\n"}}{{end}}'
 ```
 
-假設輸出為 `172.18.0.1`，在 `app/config.yaml` 中加上：
+假設輸出 `172.18.0.1`，寫進 `app/config.yaml`：
 
 ```yaml
 site:
@@ -103,17 +102,15 @@ site:
     - "172.18.0.1/32"
 ```
 
-然後重新啟動容器：
+重建容器：
 
 ```bash
 cd ~/Ecoku && sudo docker compose up -d --force-recreate --wait --wait-timeout 120 ecoku
 ```
 
-::: danger
-不要填 `0.0.0.0/0` 或 `::/0`，Ecoku 會拒絕啟動。信任任意來源等於允許任何人偽造 IP。
-:::
+用了 CDN 也只填 Docker 閘道，不要填 CDN 的網段。`0.0.0.0/0` 這類全網段會讓 Ecoku 拒絕啟動。
 
-## 檢查
+### 檢查
 
 在任何一台能連上網路的機器上執行：
 
@@ -123,6 +120,6 @@ for path in /api/health /client/ecoku-loader.js /admin/; do
 done
 ```
 
-三行都應以 `200` 開頭。健康檢查端點可以對公開網路開放，它只回傳狀態和時間戳記。
+三行都以 `200` 開頭就對了。之後回到 [首次登入](./docker#first-sign-in)。
 
-確認無誤後，依 [首次登入](./docker#first-sign-in) 使用已取得的臨時密碼登入並設定正式密碼，再 [註冊站點](./admin#sites)。尚未取得密碼時，先完成 [產生臨時密碼](./docker#temporary-password)。
+</div>

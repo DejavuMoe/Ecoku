@@ -2,6 +2,11 @@ import type { MarkdownRenderer } from 'vitepress'
 
 // Add real ASCII spaces between formatted spans and surrounding prose.
 // Work on parsed tokens so URLs, code, escapes and Markdown delimiters stay intact.
+// Full-width punctuation already carries its own spacing, so no ASCII space is added next to it.
+const fullWidthPunctuation = /[　-〿！-／：-＠［-｀｛-･—‘’“”…]/u
+const startsWithPunctuation = (text: string) => fullWidthPunctuation.test(text.charAt(0))
+const endsWithPunctuation = (text: string) => fullWidthPunctuation.test(text.charAt(text.length - 1))
+
 export function inlineSpacing(md: MarkdownRenderer) {
   const starts = new Set(['link_open', 'strong_open', 'em_open', 's_open', 'code_inline', 'image'])
   const ends = new Set(['link_close', 'strong_close', 'em_close', 's_close', 'code_inline', 'image'])
@@ -29,8 +34,8 @@ export function inlineSpacing(md: MarkdownRenderer) {
         const afterSpan = previous && ends.has(previous.type)
         const beforeSpan = starts.has(current.type)
         if ((afterSpan && beforeSpan)
-          || (afterSpan && current.type === 'text' && /^\S/u.test(current.content))
-          || (beforeSpan && previous?.type === 'text' && /\S$/u.test(previous.content))) {
+          || (afterSpan && current.type === 'text' && /^\S/u.test(current.content) && !startsWithPunctuation(current.content))
+          || (beforeSpan && previous?.type === 'text' && /\S$/u.test(previous.content) && !endsWithPunctuation(previous.content))) {
           const space = new state.Token('text', '', 0)
           space.content = ' '
           spaced.push(space)

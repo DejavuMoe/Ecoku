@@ -55,10 +55,9 @@
 
 ## 文档
 
-- [指南](https://ecoku.zsh.moe/guide/introduction)：简介、功能、工作方式
-- [部署](https://ecoku.zsh.moe/self-hosting/docker)：Docker 部署、反向代理、管理后台、通知、人机验证、备份与升级
+- [指南](https://ecoku.zsh.moe/guide/introduction)：介绍、快速上手、Docker 安装、反向代理、备份与升级、管理后台、通知、人机验证
 - [接入](https://ecoku.zsh.moe/integration/html)：HTML、JavaScript SDK、Hugo PaperMod、自定义样式
-- [参考](https://ecoku.zsh.moe/reference/configuration)：配置、命令行、REST API
+- [参考](https://ecoku.zsh.moe/reference/configuration)：工作原理、配置文件、命令行、HTTP API、常见问题
 
 文档站另有 [English](https://ecoku.zsh.moe/en/) 与 [繁體中文](https://ecoku.zsh.moe/zh-hant/) 版本。
 

@@ -1,33 +1,37 @@
 # Command line
 
-The image's entry program is `/app/ecoku-server`. Without arguments, it starts the service. With one of the subcommands below, it runs a one-off task and exits. A misspelled subcommand name does not cause an error; the service starts as usual instead, so check the spelling before running.
+The program in the image is `/app/ecoku-server`. Without arguments, it starts the service; with a subcommand, it runs a one-off task and exits.
 
-In the deployment directory, use `docker compose run` to run a subcommand with the same config and mounts:
+Use `docker compose run` in the deployment directory so subcommands use the same configuration and mounts as the service:
 
 ```bash
 cd ~/Ecoku
 sudo docker compose run --rm --no-deps ecoku <subcommand> [arguments]
 ```
 
-Except for `hash-password` and `healthcheck`, every subcommand reads `app/config.yaml` and opens the database. Stop the service with `sudo docker compose stop ecoku` before running a subcommand that writes (`admin reset-password`, `captcha disable`, `import-twikoo`), so it does not write to the database at the same time as the running instance; `captcha status` only reads the settings and can run while the service is up.
+::: warning
+A misspelled subcommand name doesn't cause an error; the service starts as usual instead. Check the spelling before running.
+:::
 
-Opening the database first initializes or migrates its schema and performs the same [origin-conflict check](./configuration#reload) as service startup. Consequently, neither `captcha status` nor `import-twikoo --dry-run` is unconditionally read-only. If the database has not yet been upgraded, stop the service and make a cold backup first. Correct origin conflicts in the configuration; these subcommands do not bypass the check.
+For subcommands that write to the database (`admin reset-password`, `captcha disable`, `import-twikoo`), stop the service with `sudo docker compose stop ecoku` first.
+
+Except for `healthcheck` and `hash-password`, every subcommand opens the database. If the database is on an older version, opening it runs migrations first and performs the same [origin check](./configuration#reload) as service startup. So if you've just switched to a new image and haven't upgraded the database yet, stop the service and take a cold backup before running any subcommand.
 
 ## healthcheck {#healthcheck}
 
-Built-in container healthcheck probe starting in v0.6.0 (not supported in v0.5.7 or earlier Alpine images). Run inside the running service container:
+Checks whether the running service responds; Compose's health check uses it. Available since v0.6.0. To run it manually:
 
 ```bash
 sudo docker compose exec -T ecoku /app/ecoku-server healthcheck
 ```
 
-The default URL is `http://127.0.0.1:12123/api/health`. For a different container port, use `healthcheck --port=12124`; valid ports are 1–65535. The request has a total timeout of 2 seconds, uses no proxy and follows no redirects. HTTP 200 exits with code 0; other statuses, connection failures, timeouts and invalid arguments exit with code 1. Success produces no output.
+It requests `http://127.0.0.1:12123/api/health` with a 2-second timeout. It exits with code 0 on a 200 response and 1 otherwise, and prints nothing on success. If the container port isn't 12123, add `--port=PORT`.
 
-This command does not read configuration, access SQLite or initialize keys. It only checks the running HTTP service. Do not use `docker compose run` to start a separate probe container: its loopback address has no running service. A successful probe does not verify database contents or external notification services.
+Run it with `exec` in the running container. A new container started with `run` has no running service, so the check always fails.
 
 ## admin reset-password {#admin-reset-password}
 
-Generate a new temporary password for the persistent administrator account, for first sign-in or password recovery. Start a new instance once to create its account first; this command does not create an administrator in an empty database. Stop the running service first:
+Generates a new temporary password for the administrator account, for first sign-in or a forgotten password. A new instance must have started once for the account to exist.
 
 ```bash
 (
@@ -39,13 +43,13 @@ sudo docker compose up -d --wait --wait-timeout 120
 )
 ```
 
-The command prints `管理员临时密码：…` and revokes every administrator session. The username stays the same; after signing in with it and the temporary password, the setup page fills in the current username, which you can keep or change, and you set a permanent password.
+The command prints `管理员临时密码：…` (temporary administrator password) and invalidates all signed-in sessions. The username stays the same. After signing in with the temporary password, you set a permanent password again, and can change the username at the same time.
 
-The password appears only in this one-off command's terminal output; `docker compose logs ecoku` cannot retrieve it. If `管理员临时密码：…` is missing, fix the error before retrying; the command group above stops on failure. If it reports `管理员账户尚未初始化`, check the deployment directory, configuration, and data mounts. For a new instance, complete [startup and the health check](../self-hosting/docker#start) first. Do not delete the database or persistent keys.
+The temporary password appears only in this command's terminal output, not in `docker compose logs`. If it reports `管理员账户尚未初始化` (administrator account not initialized), see [Docker installation](../self-hosting/docker#temporary-password).
 
 ## captcha status
 
-Shows the current CAPTCHA settings:
+Shows the current CAPTCHA settings. It can also run while the service is running:
 
 ```bash
 sudo docker compose run --rm --no-deps ecoku captcha status
@@ -59,7 +63,7 @@ provider=turnstile turnstile_secret_set=true cap_secret_set=false
 
 ## captcha disable {#captcha-disable}
 
-Turns CAPTCHA off. Use it when a misconfigured verification service keeps the admin from signing in to the admin console.
+Turns CAPTCHA off. Use it when the verification service is broken and you can't sign in to the admin console.
 
 ```bash
 (
@@ -70,17 +74,13 @@ sudo docker compose up -d --wait --wait-timeout 120 ecoku
 )
 ```
 
-The saved Turnstile and Cap settings and keys are all kept. After signing in to the admin console, you can fix them on the **Security** (安全) page and enable CAPTCHA again. If CAPTCHA is already off, the command prints `CAPTCHA 已处于关闭状态` (CAPTCHA is already off) and changes nothing.
+The saved Turnstile and Cap settings are all kept; after signing in, fix them on the **Security** page and enable CAPTCHA again. If CAPTCHA is already off, it prints `CAPTCHA 已处于关闭状态` (CAPTCHA is already off).
 
 ## import-twikoo
 
-Imports a Twikoo JSON export into a site that has no comments.
+Imports a Twikoo JSON export into a site that has no comments yet. For the full steps, see [Migrate from Twikoo](../self-hosting/twikoo).
 
-The file must be a single JSON array, with the entire file no larger than 64 MiB, including trailing whitespace. Any other content after the array causes failure. HTML is converted to plain text; see [migrating from Twikoo](../self-hosting/twikoo) for conversion rules.
-
-If the file contains records marked `isSpam: true`, both the dry run and the import stop before saving comments and report the count.
-
-First run a dry run with `--dry-run`:
+Do a dry run with `--dry-run` first:
 
 ```bash
 (
@@ -91,7 +91,7 @@ sudo docker compose run --rm --no-deps ecoku \
 )
 ```
 
-Keep the service stopped after the dry run so the target site cannot receive new comments. After checking the result, drop `--dry-run` to run the real import:
+After checking the result, remove `--dry-run` to run the real import:
 
 ```bash
 (
@@ -105,24 +105,22 @@ sudo docker compose up -d --wait --wait-timeout 120 ecoku
 
 | Argument | Description |
 | --- | --- |
-| `--site` | Target site ID. The site must already be registered in the admin console and have no comments at all (including deleted ones). |
-| `--file` | Path of the export file inside the container. Put the file in the `data/` directory first (see [Migrate from Twikoo](../self-hosting/twikoo) for how); its path inside the container is `/data/...`. |
-| `--dry-run` | Runs the complete import and then rolls it back. It only prints the statistics and saves no comments. |
+| `--site` | Target site ID. It must be registered in the admin console and have no comments at all (including deleted ones). |
+| `--file` | File path inside the container. Put the file in the `data/` directory, and its path in the container is `/data/...`. |
+| `--dry-run` | Runs the whole import and then rolls it back; prints only the statistics and saves nothing. |
 
-On success, its last line prints the statistics in Chinese (prefixed with the date and time): counts of comments, root comments, replies, pages, emails, websites, and missing parents. A dry run reports 「预检通过」 (dry run passed); a real import reports 「完成」 (done), for example:
+On success, the last line is the statistics (dry run passed / import done, with counts of comments, root comments, replies, pages, emails, websites and missing parents):
 
 ```text
 Twikoo 导入预检通过：评论=128 根评论=90 回复=38 页面=24 邮箱=110 网站=45 缺失父记录=0
 Twikoo 导入完成：评论=128 根评论=90 回复=38 页面=24 邮箱=110 网站=45 缺失父记录=0
 ```
 
-See [Migrate from Twikoo](../self-hosting/twikoo) for the full steps, field mapping, and caveats.
-
 ::: details Internal test configuration: password hashing
 
 ## hash-password {#hash-password}
 
-Reads one line of password from standard input and prints a bcrypt hash (cost 10) for the legacy `ECOKU_ADMIN_PASSWORD_HASH` variable. New instances generate the administrator during first start and do not need this command. It does not read the config or touch the database, so you can run it while the service is running.
+Reads one line of password from standard input and prints a bcrypt hash (cost 10). It is used only by older instances that still inject the administrator through `ECOKU_ADMIN_PASSWORD_HASH`. New instances don't need it.
 
 ```bash
 read -rsp 'Admin password: ' P; echo
@@ -130,7 +128,7 @@ printf '%s\n' "$P" | sudo docker run --rm -i ghcr.io/dejavumoe/ecoku:v0.6.2 hash
 unset P
 ```
 
-The password cannot be empty and cannot exceed 72 bytes in UTF-8 (the bcrypt limit). If it does, the command exits with an error.
+The password can't be empty or exceed 72 bytes in UTF-8 (the bcrypt limit); otherwise the command exits with an error.
 
 When you write the output into `ecoku.env`, wrap it in single quotes:
 
