@@ -50,7 +50,7 @@ docker pull "$previous"
 sh scripts/verify-image.sh ecoku:distroless-migration "$previous"
 ```
 
-腳本檢查非 root、唯讀根檔案系統、憑證、時區、靜態資源、管理員登入及安全停止；第二次執行在 v0.5.7 中產生臨時評論與加密通知憑據，升級後新增評論，再回滾並比對原資料、schema 和持久金鑰。結束時刪除自建容器、卷和臨時目錄。根 Compose 已更新至 v0.6.2 並使用內建二進位 healthcheck 探針；本地建置候選映像檔驗證時同樣使用新探針。
+腳本檢查非 root、唯讀根檔案系統、憑證、時區、靜態資源、管理員登入及安全停止；第二次執行在 v0.5.7 中產生臨時評論與加密通知憑據，升級後新增評論，再回滾並比對原資料、schema 和持久金鑰。結束時刪除自建容器、卷和臨時目錄。根 Compose 已更新至 v0.6.3 並使用內建二進位 healthcheck 探針；本地建置候選映像檔驗證時同樣使用新探針。
 
 ## 文件流程圖 {#documentation-diagrams}
 

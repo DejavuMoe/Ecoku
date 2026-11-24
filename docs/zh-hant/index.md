@@ -11,7 +11,7 @@ titleTemplate: 自託管評論系統
 <div class="landing-wrap">
 <div>
 
-<a class="hero-pill" href="/zh-hant/self-hosting/upgrades/v0.6.2"><b>v0.6.2</b>回覆改為樹狀連線</a>
+<a class="hero-pill" href="/zh-hant/self-hosting/upgrades/v0.6.3"><b>v0.6.3</b>後台顯示目前版本號</a>
 
 <h1>給靜態部落格的自託管評論系統</h1>
 
@@ -63,7 +63,7 @@ titleTemplate: 自託管評論系統
 ```yaml [compose.yaml]
 services:
   ecoku:
-    image: "ghcr.io/dejavumoe/ecoku:v0.6.2"
+    image: "ghcr.io/dejavumoe/ecoku:v0.6.3"
     restart: unless-stopped
     ports:
       - "127.0.0.1:12123:12123"

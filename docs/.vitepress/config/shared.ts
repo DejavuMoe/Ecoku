@@ -64,7 +64,7 @@ const enSearch: DefaultTheme.LocalSearchOptions['translations'] = {
 const icon = (name: string, text: string) => `<span class="sb-icon sb-icon-${name}" aria-hidden="true"></span>${text}`
 
 const versions = [
-  'v0.6.1', 'v0.6.0', 'v0.5.7', 'v0.5.6', 'v0.5.5', 'v0.5.4', 'v0.5.3', 'v0.5.2', 'v0.5.1', 'v0.5.0',
+  'v0.6.2', 'v0.6.1', 'v0.6.0', 'v0.5.7', 'v0.5.6', 'v0.5.5', 'v0.5.4', 'v0.5.3', 'v0.5.2', 'v0.5.1', 'v0.5.0',
   'v0.4.1', 'v0.4.0', 'v0.3.8', 'v0.3.7', 'v0.3.6', 'v0.3.5', 'v0.3.4', 'v0.3.3', 'v0.3.2', 'v0.3.1', 'v0.3.0',
 ]
 const internalVersions = [

@@ -5,7 +5,7 @@ const copy: SidebarCopy & NavCopy = {
   guide: '指南',
   integration: '接入',
   reference: '參考',
-  versionCurrent: 'v0.6.2',
+  versionCurrent: 'v0.6.3',
   releaseNotes: '本版說明',
   upgradeGuide: '升級指南',
   start: '開始',

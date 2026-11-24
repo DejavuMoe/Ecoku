@@ -124,7 +124,7 @@ Reads one line of password from standard input and prints a bcrypt hash (cost 10
 
 ```bash
 read -rsp 'Admin password: ' P; echo
-printf '%s\n' "$P" | sudo docker run --rm -i ghcr.io/dejavumoe/ecoku:v0.6.2 hash-password
+printf '%s\n' "$P" | sudo docker run --rm -i ghcr.io/dejavumoe/ecoku:v0.6.3 hash-password
 unset P
 ```
 

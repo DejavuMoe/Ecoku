@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-11-24
+
 ### 新增
 
 - 默认评论区右下角显示「Powered by Ecoku」，Ecoku 按评论区语言链接到文档站首页。署名在评论列表加载完成后出现，有分页时位于分页下方；首次加载失败时不显示。「Powered by」比时间等次要文字更淡，「Ecoku」略深，都低于正文对比度，颜色随 `--ecoku-secondary`、`--ecoku-primary` 变化，可用 `.ecoku-powered-by` 自定义样式。
@@ -832,4 +834,5 @@
 [0.6.0]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.6.0
 [0.6.1]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.6.1
 [0.6.2]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.6.2
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.6.2...master
+[0.6.3]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.6.3
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.6.3...master

@@ -2,7 +2,7 @@
 
 升級就是把 `compose.yaml` 裡的映像檔換成新版本，再重建容器。新版本啟動時會檢查資料庫的 schema 版本，必要時依序原地遷移。
 
-目前版本是 **v0.6.2**（2026-11-23，schema v12）。新部署請直接看 [Docker 部署](./docker)。
+目前版本是 **v0.6.3**（2026-11-24，schema v12）。新部署請直接看 [Docker 部署](./docker)。
 
 升級前先在 [版本清單](#versions) 裡讀一遍從你的版本到目標版本之間每個版本的說明。需要特別注意的兩處：
 
@@ -35,7 +35,7 @@
 編輯 `~/Ecoku/compose.yaml`，寫精確的版本號：
 
 ```yaml
-    image: "ghcr.io/dejavumoe/ecoku:v0.6.2"
+    image: "ghcr.io/dejavumoe/ecoku:v0.6.3"
 ```
 
 升級說明要求修改 `app/config.yaml` 的，一併改好。以前從 Forgejo 映像檔倉庫拉取的實例，直接改成上面的 GHCR 位址；Forgejo 不再發布新版本。
@@ -82,6 +82,7 @@ schema 一欄只有一個版本號的，表示沒有資料庫遷移。
 
 | 版本 | 發布日期 | schema | 重點 |
 | --- | --- | --- | --- |
+| [v0.6.3](./upgrades/v0.6.3) | 2026-11-24 | v12 | 評論區右下角顯示「Powered by Ecoku」；管理後台底部顯示署名與目前版本號。無資料庫遷移。 |
 | [v0.6.2](./upgrades/v0.6.2) | 2026-11-23 | v12 | 評論區預設樣式的回覆改為樹狀連線，新增 `--ecoku-thread-*` 變數。無資料庫遷移。 |
 | [v0.6.1](./upgrades/v0.6.1) | 2026-11-19 | v12 | 修復 Twikoo 匯入、後台評論清單一致性與信任代理驗證，改善評論清單讀取。無資料庫遷移。 |
 | [v0.6.0](./upgrades/v0.6.0) | 2026-11-17 | v12 | 執行映像檔遷移至 distroless Debian 13 static，映像檔不含 shell/wget；新增二進位 healthcheck 探針，舊 Compose 須替換探針。無資料庫遷移。 |

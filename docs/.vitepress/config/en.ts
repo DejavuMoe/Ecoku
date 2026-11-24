@@ -5,7 +5,7 @@ const copy: SidebarCopy & NavCopy = {
   guide: 'Guide',
   integration: 'Embed',
   reference: 'Reference',
-  versionCurrent: 'v0.6.2',
+  versionCurrent: 'v0.6.3',
   releaseNotes: 'Release notes',
   upgradeGuide: 'Upgrade guide',
   start: 'Get started',
