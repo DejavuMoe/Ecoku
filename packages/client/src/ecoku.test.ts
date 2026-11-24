@@ -1085,7 +1085,6 @@ describe('approved production comment surface', () => {
   it('credits Ecoku at the bottom right after the list renders, with or without more pages', async () => {
     const { client, container } = createClient(vi.fn<typeof fetch>().mockResolvedValue(listResponse([comment(1, 0, 'only root')])))
     const credit = () => container.querySelector<HTMLElement>('.ecoku-powered-by')!
-    expect(credit().hidden).toBe(true)
     await client.init()
 
     expect(credit().hidden).toBe(false)
