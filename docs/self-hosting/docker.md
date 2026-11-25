@@ -54,7 +54,7 @@ sudo chmod 750 data
 ```yaml
 services:
   ecoku:
-    image: "ghcr.io/dejavumoe/ecoku:v0.6.3"
+    image: "ghcr.io/dejavumoe/ecoku:v0.6.4"
     init: true
     restart: unless-stopped
     container_name: ecoku

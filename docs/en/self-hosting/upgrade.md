@@ -2,7 +2,7 @@
 
 To upgrade, change the image in `compose.yaml` to the new version and recreate the container. On startup, the new version checks the database schema version and, if needed, migrates it in place, in order.
 
-The current version is **v0.6.3** (2026-11-24, schema v12). For a new deployment, go straight to [Docker installation](./docker).
+The current version is **v0.6.4** (2026-11-26, schema v12). For a new deployment, go straight to [Docker installation](./docker).
 
 Before upgrading, read the notes in the [version list](#versions) for every version between yours and the target. Two things need special attention:
 
@@ -35,7 +35,7 @@ Follow [Backup and restore](./backup#cold-backup). After you see `Verified backu
 Edit `~/Ecoku/compose.yaml` and write an exact version number:
 
 ```yaml
-    image: "ghcr.io/dejavumoe/ecoku:v0.6.3"
+    image: "ghcr.io/dejavumoe/ecoku:v0.6.4"
 ```
 
 If the upgrade notes ask you to change `app/config.yaml`, do it now. Instances that used to pull from the Forgejo registry should switch to the GHCR address above; Forgejo no longer publishes new versions.
@@ -82,6 +82,7 @@ A single version number in the Schema column means that release has no database 
 
 | Version | Release date | Schema | Highlights |
 | --- | --- | --- | --- |
+| [v0.6.4](./upgrades/v0.6.4) | 2026-11-26 | v12 | Search admin comments by name, email, body, page or number, with matches highlighted. No database migration. |
 | [v0.6.3](./upgrades/v0.6.3) | 2026-11-24 | v12 | "Powered by Ecoku" at the bottom right of the comment area; the admin footer shows the credit and the running version. No database migration. |
 | [v0.6.2](./upgrades/v0.6.2) | 2026-11-23 | v12 | Replies in the default comment style hang off tree connectors; new `--ecoku-thread-*` variables. No database migration. |
 | [v0.6.1](./upgrades/v0.6.1) | 2026-11-19 | v12 | Fix Twikoo import, admin comment list consistency and trusted proxy validation. Improve comment list reads. No database migration. |

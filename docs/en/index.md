@@ -11,7 +11,7 @@ titleTemplate: Self-hosted comments
 <div class="landing-wrap">
 <div>
 
-<a class="hero-pill" href="/en/self-hosting/upgrades/v0.6.3"><b>v0.6.3</b>Admin shows the running version</a>
+<a class="hero-pill" href="/en/self-hosting/upgrades/v0.6.4"><b>v0.6.4</b>Search comments in the admin</a>
 
 <h1>Self-hosted comments for static blogs</h1>
 
@@ -63,7 +63,7 @@ titleTemplate: Self-hosted comments
 ```yaml [compose.yaml]
 services:
   ecoku:
-    image: "ghcr.io/dejavumoe/ecoku:v0.6.3"
+    image: "ghcr.io/dejavumoe/ecoku:v0.6.4"
     restart: unless-stopped
     ports:
       - "127.0.0.1:12123:12123"

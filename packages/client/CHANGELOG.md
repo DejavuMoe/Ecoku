@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.6.4 - 2026-11-26
+
+- SDK 版本随 Ecoku v0.6.4 发布，运行时代码与 0.6.3 相同；本版变更为管理后台的评论搜索。
+
 ## 0.6.3 - 2026-11-24
 
 - 默认样式的评论区右下角显示「Powered by Ecoku」，Ecoku 按评论区语言链接到文档站首页。署名在评论列表加载完成后出现，类名 `.ecoku-powered-by`；颜色由 `--ecoku-secondary` 与 `--ecoku-primary` 推算，低于正文对比度。

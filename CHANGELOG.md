@@ -5,6 +5,8 @@
 
 ## [Unreleased]
 
+## [0.6.4] - 2026-11-26
+
 ### 新增
 
 - 管理后台评论页在「已发布 / 已删除」右侧加入搜索框，在当前站点、当前一栏内按昵称、邮箱、访客网站、正文、文章标题或页面 key 查找。空格分隔的多个词须全部命中，`#123` 按评论编号查找；已删除评论只能按文章标题、页面 key 和编号查找。停止输入片刻后自动搜索，Enter 立即搜索，Esc 清除。搜索时标题与两栏计数改为匹配条数，命中的词以底色标出；翻页、排序、切换栏目和刷新保留搜索，切换站点时清空。
@@ -840,4 +842,5 @@
 [0.6.1]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.6.1
 [0.6.2]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.6.2
 [0.6.3]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.6.3
-[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.6.3...master
+[0.6.4]: https://github.com/DejavuMoe/Ecoku/releases/tag/v0.6.4
+[Unreleased]: https://github.com/DejavuMoe/Ecoku/compare/v0.6.4...master

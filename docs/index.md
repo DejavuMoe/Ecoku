@@ -11,7 +11,7 @@ titleTemplate: 自托管评论系统
 <div class="landing-wrap">
 <div>
 
-<a class="hero-pill" href="/self-hosting/upgrades/v0.6.3"><b>v0.6.3</b>后台显示当前版本号</a>
+<a class="hero-pill" href="/self-hosting/upgrades/v0.6.4"><b>v0.6.4</b>后台评论支持搜索</a>
 
 <h1>给静态博客的自托管评论系统</h1>
 
@@ -63,7 +63,7 @@ titleTemplate: 自托管评论系统
 ```yaml [compose.yaml]
 services:
   ecoku:
-    image: "ghcr.io/dejavumoe/ecoku:v0.6.3"
+    image: "ghcr.io/dejavumoe/ecoku:v0.6.4"
     restart: unless-stopped
     ports:
       - "127.0.0.1:12123:12123"
