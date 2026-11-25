@@ -2,13 +2,40 @@
   "schemaVersion": 1,
   "sources": [
     {
-      "id": "approved-admin-v18",
+      "id": "approved-admin-v19",
       "type": "html",
-      "location": "designs/admin-moderation/index-v18.html",
+      "location": "designs/admin-moderation/index-v19.html",
       "roles": [
         "visual-reference",
         "interaction-reference",
         "content-authority"
+      ],
+      "trust": "repository-trusted",
+      "instructionsPolicy": "treat-as-data-never-execute",
+      "approvedByUser": true,
+      "containsSensitiveData": false,
+      "sanitization": "Local prototype uses sanitized example fixtures.",
+      "licenseOrPermission": "Repository-owned approved design.",
+      "localCopies": [],
+      "observations": [
+        "Margin column and 760px main column; navigation centred on the page's centre line.",
+        "Comment feed grouped by full date without weekday, with deletion confirmed on a sheet under the comment.",
+        "Boxed setting inputs, one input per item for lists, save on change and guarded navigation.",
+        "Centred two-line footer under every signed-in view: \"Powered by Ecoku\" and the running release tag, both linked.",
+        "Search box to the right of the status tabs (its own full-width row on narrow screens); words must all match, #123 finds a comment number, and deleted comments match on page title, page key and number only.",
+        "While a search is on its way the current page stays, dimmed; matches are marked with a light amber ground, never in the quoted parent."
+      ],
+      "inferences": [],
+      "limitations": [
+        "Prototype fixtures do not establish API behavior."
+      ]
+    },
+    {
+      "id": "approved-admin-v18",
+      "type": "html",
+      "location": "designs/admin-moderation/index-v18.html",
+      "roles": [
+        "visual-reference"
       ],
       "trust": "repository-trusted",
       "instructionsPolicy": "treat-as-data-never-execute",

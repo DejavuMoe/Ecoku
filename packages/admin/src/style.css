@@ -21,6 +21,7 @@
   --success: #3d6a4e;
   --warn: #7a5812;
   --warn-bg: color-mix(in srgb, #b8862a 12%, var(--paper));
+  --hit: color-mix(in srgb, #d9a93a 34%, transparent);
   --seal: #b8472f;
   --danger-rule: #9a4733;
   --danger-line: color-mix(in srgb, var(--danger) 24%, transparent);
@@ -62,6 +63,7 @@ html[data-theme="dark"] {
   --code-bg: #2a2723;
   --success: #9cc3a8;
   --warn: #e2c07e;
+  --hit: color-mix(in srgb, #c9a24a 34%, transparent);
   --seal: #c55a40;
   --danger-rule: #d57c64;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -8px rgb(0 0 0 / 0.55);
@@ -81,6 +83,7 @@ html[data-theme="dark"] {
     --code-bg: #2a2723;
     --success: #9cc3a8;
     --warn: #e2c07e;
+    --hit: color-mix(in srgb, #c9a24a 34%, transparent);
     --seal: #c55a40;
     --danger-rule: #d57c64;
     --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -8px rgb(0 0 0 / 0.55);
@@ -328,6 +331,18 @@ cap-widget.admin-cap-widget {
 .tab-sep, .pager-sep { width: 1px; height: 12px; flex: 0 0 auto; background: var(--line); }
 .tab-sep { margin: 0 14px; }
 
+/* The status tabs and the search share one row; the search sits at the right edge of the column. */
+.filter-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 24px; margin-top: 12px; }
+.filter-row .tabs { margin-top: 0; }
+.search { position: relative; flex: 0 1 264px; min-width: 0; }
+.search-input { --search-h: 32px; height: var(--search-h); padding: 0 32px 0 31px; font-size: 13.5px; }
+.search-input::-webkit-search-cancel-button, .search-input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+.search-icon { position: absolute; top: 50%; left: 10px; width: 14px; height: 14px; color: var(--muted); transform: translateY(-50%); pointer-events: none; transition: color 0.15s ease; }
+.search:focus-within .search-icon, .search.is-active .search-icon { color: var(--ink); }
+.search-clear { position: absolute; top: 50%; right: 4px; display: inline-grid; width: 24px; height: 24px; place-items: center; padding: 0; border: 0; border-radius: var(--radius-sm); color: var(--muted); background: transparent; transform: translateY(-50%); transition: color 0.15s ease, background-color 0.15s ease; }
+.search-clear:hover { color: var(--ink); background: var(--wash); }
+.search-clear .icon { width: 12px; height: 12px; }
+
 /* Site context: the site's name, with its ID beneath, like a letterhead. */
 .site-switch { position: relative; }
 .site-trigger, .site-static { display: grid; max-width: 100%; margin: -5px -8px; padding: 5px 8px; border: 0; border-radius: var(--radius); background: transparent; text-align: left; }
@@ -405,6 +420,12 @@ a.entry-quote:hover .quote-ref { color: var(--accent); }
 .feed-state { padding: 36px 0 44px; }
 .feed-empty { color: var(--muted); font-size: 15px; line-height: 1.75; white-space: pre-line; }
 .feed-empty .quiet-link { margin-left: 8px; font-size: 14px; }
+/* While a search is on its way the current results stay in place, dimmed; a quick answer never flickers. */
+.feed.is-pending { opacity: 0.55; transition: opacity 0.15s ease 0.12s; }
+.feed-hint { margin-top: 6px; color: var(--muted); font-size: 13px; line-height: 1.7; }
+.search-empty .quiet-link { margin-top: 10px; font-size: 14px; }
+/* A find is marked like a highlighter stroke: tinted ground, the text's own colour, no padding so nothing moves. */
+mark.hit { padding: 0; border-radius: 2px; color: inherit; background: var(--hit); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .service-error { padding: 18px 20px; border: 1px solid var(--line-soft); border-radius: var(--radius); color: var(--ink-soft); background: var(--surface); }
 .service-error h3 { margin-bottom: 4px; color: var(--ink); font-size: 15px; font-weight: 600; line-height: 1.5; }
 .service-error p { margin-bottom: 14px; color: var(--muted); font-size: 13px; line-height: 1.6; }
@@ -528,6 +549,7 @@ body:has(.savebar-dock) .toast { bottom: calc(var(--savebar-bottom) + 66px); }
   .site-trigger, .site-static { margin: -5px -8px; }
   .site-menu { width: min(300px, calc(100vw - 32px)); }
   .page-title { font-size: 20px; }
+  .search { flex-basis: 100%; }
 
   /* One full-bleed bar per day, ruled above and below; the inset rule between days would double it.
      When stuck, its top rule tucks under the masthead's. */
@@ -583,6 +605,8 @@ body:has(.savebar-dock) .toast { bottom: calc(var(--savebar-bottom) + 66px); }
   .row-remove { opacity: 1; }
   .list-add { min-height: 40px; }
   .entry-actions .quiet-link { min-height: 32px; }
+  .search-input { --search-h: 40px; }
+  .search-clear { width: 32px; height: 32px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

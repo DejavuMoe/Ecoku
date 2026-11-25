@@ -111,3 +111,30 @@ it('marks the document language and chooses the count noun per locale', () => {
   setAdminLocale(undefined)
   expect(commentCountNoun(3, true)).toBe('条已删除评论')
 })
+
+it('counts matches while searching and echoes the search word for word', () => {
+  setAdminLocale('en')
+  expect(commentCountNoun(1, false, true)).toBe('matching comment')
+  expect(commentCountNoun(2, true, true)).toBe('matching deleted comments')
+  expect(translateAdminText('找到 1 条匹配的评论')).toBe('Found 1 matching comment')
+  expect(translateAdminText('没有与「上海 #12」匹配的已删除评论')).toBe('No deleted comments match “上海 #12”')
+  expect(translateAdminText('搜索昵称、邮箱、正文或页面')).toBe('Search names, emails, text or pages')
+  setAdminLocale('zh-Hant')
+  expect(commentCountNoun(3, false, true)).toBe('則符合的評論')
+  expect(commentCountNoun(3, true, true)).toBe('則符合的已刪除評論')
+  expect(translateAdminText('找到 3 条匹配的评论')).toBe('找到 3 則符合的評論')
+  expect(translateAdminText('没有与「Alice」匹配的已发布评论')).toBe('沒有與「Alice」符合的已發布評論')
+  setAdminLocale('zh-CN')
+  expect(commentCountNoun(3, true, true)).toBe('条匹配的已删除评论')
+  expect(translateAdminText('没有与「Alice」匹配的已发布评论')).toBe('没有与「Alice」匹配的已发布评论')
+})
+
+it('keeps a dollar sign in echoed text literal', () => {
+  const root = document.createElement('p')
+  root.textContent = "没有与「$& $1 $'」匹配的已发布评论"
+  setAdminLocale('en')
+  const stop = install(root)
+  try {
+    expect(root.textContent).toBe("No published comments match “$& $1 $'”")
+  } finally { stop() }
+})

@@ -321,12 +321,14 @@ Origin: https://blog.example.com
 
 | 方法与路径 | 说明 |
 | --- | --- |
-| `GET /api/admin/sites/:siteId/comments` | 评论列表。参数：`status`（`published` 或 `deleted`，默认 `published`）、`page`（最大 1000000）、`pageSize`（默认 20，最大 100）、`sort`（`newest` 或 `oldest`，默认 `newest`）。响应含 `total`、`pageCount` 和各状态数量 `counts`。 |
+| `GET /api/admin/sites/:siteId/comments` | 评论列表。参数：`status`（`published` 或 `deleted`，默认 `published`）、`page`（最大 1000000）、`pageSize`（默认 20，最大 100）、`sort`（`newest` 或 `oldest`，默认 `newest`）、`q`（可选，见下文）。响应含 `total`、`pageCount` 和各状态数量 `counts`。 |
 | `GET /api/admin/sites/:siteId/comments/:commentId` | 单条评论，含私有邮箱。 |
 | `DELETE /api/admin/sites/:siteId/comments/:commentId` | 墓碑删除。已删除的评论再次删除时返回成功，`unchanged` 为 `true`。 |
 | `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent` | 彻底删除。只能用于没有回复的墓碑，否则返回 `409`。 |
 
 每次列表响应的状态计数、分页数据和 `has_children` 来自同一个 SQLite 快照。
+
+`q` 按空白分词，只取前 8 个不同的词，整段最多 100 个字符。每个词都要命中，可以出现在昵称、邮箱、网站、正文、文章标题或页面 key 中；英文字母不区分大小写，`%`、`_` 按字面匹配。写作 `#123` 的词匹配编号为 123 的评论。`status=deleted` 时只匹配文章标题、页面 key 和编号。带 `q` 时，`counts` 中两种状态各自统计匹配的评论，`total` 和 `pageCount` 也只按匹配的评论计算。`q` 超过 100 个字符返回 `400`「q 不能超过 100 个字符」，不是合法的 UTF-8 返回 `400`「q 参数无效」。
 
 两个删除接口都受 `rate_limit.comment_delete` 限流。
 

@@ -1,25 +1,29 @@
 <script lang="ts">
   import { tokenizeAdminSmoji } from '../smoji'
+  import HitText from './HitText.svelte'
 
   let {
     content,
     enabled,
     manifestUrl,
     imageOrigin,
-    compact = false
+    compact = false,
+    words = []
   }: {
     content: string
     enabled: boolean
     manifestUrl: string
     imageOrigin?: string
     compact?: boolean
+    // Search finds are marked in the text only; a sticker is never marked.
+    words?: readonly string[]
   } = $props()
 
   let tokens = $derived.by(() => tokenizeAdminSmoji(content, enabled, manifestUrl, imageOrigin))
 </script>
 
 <span class={['admin-smoji-content', { 'is-compact': compact }]}
-  >{#each tokens as token, index (index)}{#if token.type === 'text'}<span>{token.value}</span>{:else}<img
+  >{#each tokens as token, index (index)}{#if token.type === 'text'}<span><HitText text={token.value} {words} /></span>{:else}<img
         src={token.src}
         alt={`[表情：${token.label}]`}
         loading="lazy"

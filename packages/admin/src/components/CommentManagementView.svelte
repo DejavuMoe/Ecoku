@@ -5,8 +5,10 @@
   import { formatDate, previousDayKey, safeWebsite } from '../ui'
   import { adminTimeZone } from '../timezone.svelte'
   import { smojiPlainText } from '../smoji'
+  import { COMMENT_SEARCH_MAX, commentSearchTerms } from '../search'
   import type { CommentReview, CommentStatus } from '../types'
   import AdminIcon from './AdminIcon.svelte'
+  import HitText from './HitText.svelte'
   import SitePicker from './SitePicker.svelte'
   import SmojiContent from './SmojiContent.svelte'
   import { adminLocale, commentCountNoun, translateAdminText } from '../i18n.svelte'
@@ -22,6 +24,12 @@
   let flashId = $state<number | null>(null)
   let leavingId = $state<number | null>(null)
   let flashTimer: ReturnType<typeof setTimeout> | undefined
+  let searchInput = $state<HTMLInputElement | null>(null)
+  let searchDraft = $state('')
+  let searchAnnouncement = $state('')
+  let searchTimer: ReturnType<typeof setTimeout> | undefined
+  // Finds are marked for the search the shown page answers; the quoted parent is context, not a find.
+  let found = $derived(commentSearchTerms(store.resultQuery))
   let rows = $derived.by(() =>
     store.comments.map((c) => (store.selectedComment?.id === c.id ? (store.selectedComment ?? c) : c))
   )
@@ -188,6 +196,39 @@
       event.key === 'Home' ? 0 : event.key === 'End' ? options.length - 1 : (current + 1) % options.length
     ]?.focus()
   }
+  // Typing searches after a short pause and Enter searches at once; an input method finishes
+  // its word first. The current page stays, dimmed, until the results arrive.
+  async function applySearch(raw: string) {
+    clearTimeout(searchTimer)
+    searchTimer = undefined
+    if (!(await store.searchComments(raw))) return
+    searchAnnouncement = ''
+    await tick()
+    searchAnnouncement = store.resultQuery ? `找到 ${store.total} 条匹配的评论` : '已清除搜索'
+  }
+  function scheduleSearch() {
+    clearTimeout(searchTimer)
+    searchTimer = setTimeout(() => {
+      void applySearch(searchDraft)
+    }, 300)
+  }
+  function searchInputChanged(event: Event) {
+    if ((event as InputEvent).isComposing) {
+      clearTimeout(searchTimer)
+      return
+    }
+    scheduleSearch()
+  }
+  function clearSearch() {
+    searchDraft = ''
+    void applySearch('')
+    searchInput?.focus()
+  }
+  function searchKeydown(event: KeyboardEvent) {
+    if (event.key !== 'Escape' || event.isComposing || !searchDraft) return
+    event.preventDefault()
+    clearSearch()
+  }
   function outside(event: PointerEvent) {
     if (!sortPicker?.contains(event.target as Node)) sortOpen = false
   }
@@ -211,12 +252,28 @@
       }
     })
   })
+  // A search belongs to one site: switching site drops what was typed.
+  $effect.pre(() => {
+    store.selectedSiteId
+    untrack(() => {
+      clearTimeout(searchTimer)
+      searchDraft = store.query
+    })
+  })
+  // Never rewrite what is being typed.
+  $effect.pre(() => {
+    const query = store.query
+    untrack(() => {
+      if (document.activeElement !== searchInput) searchDraft = query
+    })
+  })
   onMount(() => {
     document.addEventListener('pointerdown', outside)
   })
   onDestroy(() => {
     document.removeEventListener('pointerdown', outside)
     if (flashTimer !== undefined) clearTimeout(flashTimer)
+    clearTimeout(searchTimer)
   })
 </script>
 
@@ -227,7 +284,7 @@
       <div class="title-row">
         <h1 id="comments-title" tabindex="-1" class="page-title">
           <span class="visually-hidden">评论管理：</span><span class="num">{store.total}</span>
-          <span>{commentCountNoun(store.total, store.status === 'deleted')}</span>
+          <span>{commentCountNoun(store.total, store.status === 'deleted', Boolean(store.resultQuery))}</span>
         </h1>
         {#if store.selectedSite}<div class="head-tools">
             <div bind:this={sortPicker} class="menu-anchor">
@@ -266,7 +323,8 @@
             >
           </div>{/if}
       </div>
-      {#if store.selectedSite}<div role="tablist" aria-label="评论状态" class="tabs">
+      {#if store.selectedSite}<div class="filter-row">
+          <div role="tablist" aria-label="评论状态" class="tabs">
           <button
             type="button"
             role="tab"
@@ -289,11 +347,49 @@
             class="tab"
             ><span data-label={translateAdminText('已删除')} class="tab-label">已删除</span>
             <span class="count">{store.counts.deleted}</span></button
+            >
+          </div>
+          <form
+            role="search"
+            aria-label="搜索评论"
+            onsubmit={(event) => {
+              event.preventDefault()
+              void applySearch(searchDraft)
+            }}
+            class={['search', { 'is-active': Boolean(store.resultQuery) }]}
           >
+            <AdminIcon name="search" class="search-icon" /><input
+              bind:this={searchInput}
+              bind:value={searchDraft}
+              type="search"
+              name="q"
+              maxlength={COMMENT_SEARCH_MAX}
+              autocomplete="off"
+              spellcheck="false"
+              enterkeyhint="search"
+              aria-label="搜索评论"
+              placeholder="搜索昵称、邮箱、正文或页面"
+              oninput={searchInputChanged}
+              oncompositionend={scheduleSearch}
+              onkeydown={searchKeydown}
+              class="input search-input"
+            />{#if searchDraft}<button
+                type="button"
+                aria-label="清除搜索"
+                title="清除搜索"
+                onclick={clearSearch}
+                class="search-clear"><AdminIcon name="close" /></button
+              >{/if}
+          </form>
         </div>{/if}
     </div>
   </header>
-  <div bind:this={feed} aria-busy={store.queueBusy || store.siteBusy} class="feed">
+  <p aria-live="polite" class="visually-hidden">{searchAnnouncement}</p>
+  <div
+    bind:this={feed}
+    aria-busy={store.queueBusy || store.siteBusy}
+    class={['feed', { 'is-pending': store.queueBusy && store.queueDim }]}
+  >
     {#if store.siteMessage || store.queueMessage}<div class="layout feed-state">
         <section role="alert" class="in-main service-error">
           <h3>评论列表没有加载出来</h3>
@@ -355,9 +451,12 @@
               >
                 <header class="entry-head">
                   <div class="entry-who">
-                    <span class="entry-author">{comment.deleted ? '已删除' : comment.username}</span
+                    <span class="entry-author"
+                      >{#if comment.deleted}已删除{:else}<HitText text={comment.username} words={found.words} />{/if}</span
                     >{#if !comment.deleted && comment.email}<span title="私有邮箱" class="entry-mail"
-                        ><span class="visually-hidden">私有邮箱 </span><span translate="no">{comment.email}</span></span
+                        ><span class="visually-hidden">私有邮箱 </span><span translate="no"
+                          ><HitText text={comment.email} words={found.words} /></span
+                        ></span
                       >{/if}{#if !comment.deleted && safeWebsite(comment.url)}<a
                         href={safeWebsite(comment.url)}
                         target="_blank"
@@ -365,7 +464,10 @@
                         title={`访客网站 ${comment.url}`}
                         class="entry-site"
                         ><span class="visually-hidden">访客网站 </span><span translate="no"
-                          >{comment.url?.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span
+                          ><HitText
+                            text={comment.url?.replace(/^https?:\/\//, '').replace(/\/$/, '') ?? ''}
+                            words={found.words}
+                          /></span
                         ></a
                       >{/if}
                   </div>
@@ -393,6 +495,7 @@
                       enabled={store.selectedSite?.smojiEnabled === true}
                       manifestUrl={store.selectedSite?.smojiManifestUrl || ''}
                       imageOrigin={store.selectedSite?.smojiImageOrigin}
+                      words={found.words}
                     />{/if}
                 </p>
                 <footer class="entry-foot">
@@ -401,13 +504,17 @@
                     class="entry-page"
                     >{#if comment.pageTitle}<span class="entry-title"
                         ><span class="visually-hidden">文章标题 </span><span translate="no"
-                          >《{comment.pageTitle}》</span
+                          >《<HitText text={comment.pageTitle} words={found.words} />》</span
                         ></span
                       >{/if}<span class="entry-key"
-                      ><span class="visually-hidden">页面 key </span><span translate="no">{comment.mark}</span></span
+                      ><span class="visually-hidden">页面 key </span><span translate="no"
+                        ><HitText text={comment.mark} words={found.words} /></span
+                      ></span
                     ></span
                   ><span class="entry-actions"
-                    ><span class="entry-id">#{comment.id}</span>{#if sourceURL(comment)}<a
+                    ><span class="entry-id"
+                      >{#if found.ids.has(comment.id)}<mark class="hit">#{comment.id}</mark>{:else}#{comment.id}{/if}</span
+                    >{#if sourceURL(comment)}<a
                         href={sourceURL(comment)}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -467,7 +574,15 @@
                   </div>{/if}
               </article>{/each}
           </div>
-        </section>{/each}{:else}<div class="layout feed-state">
+        </section>{/each}{:else if store.resultQuery}<div class="layout feed-state">
+        <div class="in-main search-empty">
+          <p class="feed-empty">没有与「{store.resultQuery}」匹配的{store.status === 'published' ? '已发布' : '已删除'}评论</p>
+          {#if store.status === 'deleted'}<p class="feed-hint">
+              已删除的评论只保留文章标题、页面 key 和编号，只能按这几项搜索。
+            </p>{/if}
+          <button type="button" onclick={clearSearch} class="quiet-link">清除搜索</button>
+        </div>
+      </div>{:else}<div class="layout feed-state">
         <p class="in-main feed-empty">当前没有{store.status === 'published' ? '已发布' : '已删除'}评论</p>
       </div>{/if}
   </div>

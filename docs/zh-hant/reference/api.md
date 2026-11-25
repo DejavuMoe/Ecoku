@@ -321,12 +321,14 @@ Origin: https://blog.example.com
 
 | 方法與路徑 | 說明 |
 | --- | --- |
-| `GET /api/admin/sites/:siteId/comments` | 評論清單。參數：`status`（`published` 或 `deleted`，預設 `published`）、`page`（最大 1000000）、`pageSize`（預設 20，最大 100）、`sort`（`newest` 或 `oldest`，預設 `newest`）。回應含 `total`、`pageCount` 和各狀態數量 `counts`。 |
+| `GET /api/admin/sites/:siteId/comments` | 評論清單。參數：`status`（`published` 或 `deleted`，預設 `published`）、`page`（最大 1000000）、`pageSize`（預設 20，最大 100）、`sort`（`newest` 或 `oldest`，預設 `newest`）、`q`（選填，見下文）。回應含 `total`、`pageCount` 和各狀態數量 `counts`。 |
 | `GET /api/admin/sites/:siteId/comments/:commentId` | 單則評論，含私人信箱。 |
 | `DELETE /api/admin/sites/:siteId/comments/:commentId` | 墓碑刪除。已刪除的評論再次刪除時回傳成功，`unchanged` 為 `true`。 |
 | `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent` | 徹底刪除。只能用於沒有回覆的墓碑，否則回傳 `409`。 |
 
 每次清單回應的狀態計數、分頁資料和 `has_children` 來自同一個 SQLite 快照。
+
+`q` 依空白分詞，只取前 8 個不同的詞，整段最多 100 個字元。每個詞都要符合，可以出現在暱稱、信箱、網站、內文、文章標題或頁面 key 中；英文字母不分大小寫，`%`、`_` 依字面比對。寫作 `#123` 的詞比對編號為 123 的評論。`status=deleted` 時只比對文章標題、頁面 key 和編號。帶 `q` 時，`counts` 中兩種狀態各自統計符合的評論，`total` 和 `pageCount` 也只依符合的評論計算。`q` 超過 100 個字元回傳 `400`「q 不能超过 100 个字符」，不是合法的 UTF-8 回傳 `400`「q 参数无效」。
 
 兩個刪除端點都受 `rate_limit.comment_delete` 速率限制。
 

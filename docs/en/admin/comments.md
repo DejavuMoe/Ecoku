@@ -12,6 +12,17 @@ The **Comments** page has two tabs, **Published** and **Deleted**, with 20 comme
 
 **View original comment** opens the post in a new tab and jumps to that comment.
 
+## Search comments {#search}
+
+When there are many comments, use the search box to the right of **Published** and **Deleted**. A search covers the current site and the current tab only:
+
+- It looks in the name, email, visitor website, body, post title and page key. English letters match regardless of case.
+- Separate words with spaces to require all of them; each word may match a different field, such as `上海 Alice`. Only the first 8 distinct words count, and a search is at most 100 characters.
+- Enter `#123` to find comment number 123. The number is shown at the bottom right of each comment.
+- A deleted comment keeps only its post title, page key and number, so only those three can find it.
+
+The search runs once you pause typing, or at once when you press Enter. Press Esc or the clear button at the right of the search box to see all comments again. While searching, the heading and both tab counts show matching comments only, and each match is highlighted. Changing pages, the sort order or the tab, and refreshing keep the search; switching sites clears it.
+
 ## Delete comments {#delete}
 
 There are two kinds of deletion, and neither **can be undone**.

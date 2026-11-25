@@ -61,6 +61,15 @@ func ListComments(c *gin.Context) {
 		utils.SendError(c, http.StatusBadRequest, "pageSize 参数无效")
 		return
 	}
+	search, err := parseCommentSearch(c.Query("q"))
+	if errors.Is(err, errCommentSearchTooLong) {
+		utils.SendError(c, http.StatusBadRequest, "q 不能超过 100 个字符")
+		return
+	}
+	if err != nil {
+		utils.SendError(c, http.StatusBadRequest, "q 参数无效")
+		return
+	}
 	sortOrder := strings.ToLower(strings.TrimSpace(c.Query("sort")))
 	if sortOrder == "" {
 		sortOrder = "newest"
@@ -79,7 +88,7 @@ func ListComments(c *gin.Context) {
 	failureMessage := "查询管理评论失败"
 	err = model.ReadDB().WithContext(c.Request.Context()).Transaction(func(tx *gorm.DB) error {
 		var err error
-		counts, err = commentManagementCounts(tx, siteID)
+		counts, err = commentManagementCounts(tx, siteID, search)
 		if err != nil {
 			failureMessage = "统计管理评论失败"
 			return err
@@ -89,6 +98,10 @@ func ListComments(c *gin.Context) {
 			query = query.Where("deleted_at IS NOT NULL")
 		} else {
 			query = query.Where("deleted_at IS NULL")
+		}
+		if search.active() {
+			clause, args := search.clause(status == "deleted")
+			query = query.Where(clause, args...)
 		}
 		if err := query.Order(orderClause).Limit(pageSize).Offset((page - 1) * pageSize).Find(&comments).Error; err != nil {
 			return err
@@ -118,13 +131,25 @@ func ListComments(c *gin.Context) {
 	})
 }
 
-func commentManagementCounts(db *gorm.DB, siteID string) (map[string]int64, error) {
+// commentManagementCounts counts both states in one query. While searching, each
+// state counts only its matches, judged by that state's searchable fields.
+func commentManagementCounts(db *gorm.DB, siteID string, search commentSearch) (map[string]int64, error) {
 	var totals struct {
 		Published int64
 		Deleted   int64
 	}
-	err := db.Raw(`SELECT COUNT(*) - COUNT(deleted_at) AS published, COUNT(deleted_at) AS deleted
+	var err error
+	if search.active() {
+		published, publishedArgs := search.clause(false)
+		deleted, deletedArgs := search.clause(true)
+		args := append(append(publishedArgs, deletedArgs...), siteID)
+		err = db.Raw(`SELECT COUNT(CASE WHEN deleted_at IS NULL AND `+published+` THEN 1 END) AS published,
+COUNT(CASE WHEN deleted_at IS NOT NULL AND `+deleted+` THEN 1 END) AS deleted
+FROM comments WHERE site_id = ?`, args...).Scan(&totals).Error
+	} else {
+		err = db.Raw(`SELECT COUNT(*) - COUNT(deleted_at) AS published, COUNT(deleted_at) AS deleted
 FROM comments WHERE site_id = ?`, siteID).Scan(&totals).Error
+	}
 	if err != nil {
 		return nil, err
 	}

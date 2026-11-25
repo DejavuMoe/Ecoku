@@ -1,6 +1,6 @@
 <script lang="ts">
   type AdminIconName =
-    'refresh' | 'chevron' | 'check' | 'plus' | 'close' | 'comments' | 'sites' | 'notifications' | 'security'
+    'refresh' | 'chevron' | 'check' | 'plus' | 'close' | 'search' | 'comments' | 'sites' | 'notifications' | 'security'
 
   let { name, class: className = '' }: { name: AdminIconName; class?: string } = $props()
 
@@ -10,6 +10,7 @@
     check: ['m3 8.5 3 3 7-7'],
     plus: ['M8 3.5v9M3.5 8h9'],
     close: ['m4.5 4.5 7 7M11.5 4.5l-7 7'],
+    search: ['M11.5 7a4.5 4.5 0 1 1-9 0a4.5 4.5 0 1 1 9 0', 'm10.4 10.4 3.1 3.1'],
     comments: ['M4.5 5.5h15v10.5h-8.2L7 19.5V16H4.5Z', 'M8.5 9.5h7M8.5 12.5h4.5'],
     sites: ['M3.5 5h17v14h-17Z', 'M3.5 9h17M6.5 7h.01M8.8 7h.01'],
     notifications: ['M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 1.5H5Z', 'M10 20.5h4'],

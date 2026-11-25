@@ -1,7 +1,8 @@
 # Ecoku 管理端设计基线
 
 本目录保存 Ecoku 管理端的已批准设计证据、脱敏 fixture 与发送模板设计基线。
-`index-v18.html` 是当前已批准并实施的管理端基线（2026-11-24 批准）：它在 v17 上只加了登录后各页面底部居中的页脚，其余与 v17 相同。
+`index-v19.html` 是当前已批准并实施的管理端基线（2026-11-25 批准）：它在 v18 上只给评论管理加了搜索与命中词高亮，其余与 v18 相同。
+`index-v18.html`（2026-11-24 批准）在 v17 上只加了登录后各页面底部居中的页脚，其余与 v17 相同。
 `index-v17.html`（2026-10-19 批准）覆盖登录、评论管理、站点管理、通知设置与安全：
 它在 v16 上只做视觉打磨，功能、接口与文案范围不变。颜色、圆角与深色 token 与评论区 v17「纸与墨」一致，界面使用操作系统自带的 CJK 与英文无衬线字体栈，不加载网络字体。
 2026-10-09 按用户要求移除后台全局快捷键及提示，保留表单、菜单和按钮的基本键盘操作。
@@ -47,7 +48,18 @@
 
 ## 文件
 
-- `index-v18.html`、`styles-v18.css`、`prototype-v18.js`、`index-v18.test.mjs`：已批准并实施，在 v17 上只加一个页脚。
+- `index-v19.html`、`styles-v19.css`、`prototype-v19.js`、`index-v19.test.mjs`：已批准并实施（2026-11-25），在 v18 上只给评论管理加搜索。
+  状态切换右侧放一个搜索框（窄屏另起一行占满宽度），在当前站点、当前状态内查找：昵称、私有邮箱、访客网站、正文、文章标题与页面 key，
+  不区分英文大小写；空格分隔的多个词须同时命中（最多取前 8 个词，整串最多 100 个字符），`#编号` 按评论编号查找。
+  已删除评论的昵称、邮箱、网站和正文已被清除，只能按文章标题、页面 key 与编号查找，没有结果时说明这一点。
+  输入停顿 300ms 后自动搜索，输入法组词期间不搜索；Enter 立即搜索，Esc 或框内清除按钮清空并把焦点留在框内。
+  搜索时标题改为「N 条匹配的评论」，两个状态计数也改为匹配数；结果回到第 1 页，排序、分页、刷新与删除沿用当前搜索；
+  等待结果时保留当前列表并调暗，不闪骨架屏。切换站点清空搜索。原型场景新增「评论搜索」一组。
+  命中的词在昵称、私有邮箱、访客网站、正文、文章标题与页面 key 中以浅琥珀底色标出，重叠的命中合并为一处，`#编号` 标出该评论的编号；
+  引用的父评论只作上下文，不标。高亮不处理表情：实施时只在文字片段内标出，跨表情的命中不标。
+  生产实现：服务端 `GET /api/admin/sites/:siteId/comments` 的 `q` 参数做同样的匹配（SQLite `LIKE` 只折叠 ASCII 大小写，`%`、`_` 按字面匹配），
+  管理端高亮也只折叠 ASCII 大小写，与服务端一致。
+- `index-v18.html`、`styles-v18.css`、`prototype-v18.js`、`index-v18.test.mjs`：上一版已批准基线，在 v17 上只加一个页脚。
   登录后每个页面底部居中两行：「Powered by Ecoku」（Ecoku 链接文档站，按后台语言进入 `/`、`/zh-hant/` 或 `/en/`）和当前实例版本号
   （链接 GitHub 上该 tag 的 Release）。内容较少时页脚仍贴在视口底部。版本号由镜像构建写入服务端，只随登录后的会话响应返回，
   登录页不显示；非发布构建显示 `dev` 且不加链接。
@@ -114,6 +126,7 @@ http://127.0.0.1:4311/admin-moderation/index-v15.html
 http://127.0.0.1:4311/admin-moderation/index-v16.html
 http://127.0.0.1:4311/admin-moderation/index-v17.html
 http://127.0.0.1:4311/admin-moderation/index-v18.html
+http://127.0.0.1:4311/admin-moderation/index-v19.html
 http://127.0.0.1:4311/brand/index-v2.html
 http://127.0.0.1:4311/admin-moderation/email-notification-v6.html
 http://127.0.0.1:4311/admin-moderation/email-notification-v7.html
@@ -131,6 +144,7 @@ node designs/admin-moderation/index-v15.test.mjs
 node designs/admin-moderation/index-v16.test.mjs
 node designs/admin-moderation/index-v17.test.mjs
 node designs/admin-moderation/index-v18.test.mjs
+node designs/admin-moderation/index-v19.test.mjs
 node designs/admin-moderation/notifications-v6.test.mjs
 node designs/admin-moderation/notifications-v7.test.mjs
 ```

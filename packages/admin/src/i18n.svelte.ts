@@ -65,6 +65,9 @@ for (const [source, values] of Object.entries({
   '当前没有站点': ['目前沒有站點', 'No sites are configured'], '尚未保存': ['尚未儲存', 'Not saved'],
   '不在当前页': ['不在目前頁面', 'Not on this page'], '已发布': ['已發布', 'Published'], '已删除': ['已刪除', 'Deleted'],
   '当前没有已发布评论': ['目前沒有已發布評論', 'No published comments'], '当前没有已删除评论': ['目前沒有已刪除評論', 'No deleted comments'],
+  '搜索评论': ['搜尋評論', 'Search comments'], '搜索昵称、邮箱、正文或页面': ['搜尋暱稱、信箱、內文或頁面', 'Search names, emails, text or pages'],
+  '清除搜索': ['清除搜尋', 'Clear search'], '已清除搜索': ['已清除搜尋', 'Search cleared'],
+  '已删除的评论只保留文章标题、页面 key 和编号，只能按这几项搜索。': ['已刪除的評論只保留文章標題、頁面 key 和編號，只能依這幾項搜尋。', 'Deleted comments keep only the article title, page key and number, so only those can be searched.'],
   '通知设置': ['通知設定', 'Notification settings'], '对所有站点生效，保存后立即使用新配置。': ['對所有站點生效，儲存後立即使用新設定。', 'Applies to all sites after saving.'],
   '有新评论时发给通知收件人；访客留下邮箱后，评论被他人回复时也会收到邮件。': ['有新評論時傳送給通知收件人；訪客留下信箱後，評論被他人回覆時也會收到郵件。','Send new comments to the recipients. Visitors who leave an email also receive replies to their comments.'],
   'SMTP 服务器': ['SMTP 伺服器', 'SMTP server'], '加密方式': ['加密方式', 'Encryption'], '发件人地址': ['寄件人地址', 'From address'],
@@ -172,6 +175,15 @@ export function translateAdminText(source: string): string {
   if (match) return adminLocale.value === 'en' ? `${match[1]} deleted comments` : adminLocale.value === 'zh-Hant' ? `${match[1]} 則已刪除評論` : source
   match = source.match(/^(\d+) 条评论$/)
   if (match) return adminLocale.value === 'en' ? `${match[1]} comments` : adminLocale.value === 'zh-Hant' ? `${match[1]} 則評論` : source
+  // A search echoes the administrator's own words back unchanged.
+  match = source.match(/^没有与「(.+)」匹配的(已发布|已删除)评论$/)
+  if (match) {
+    const deleted = match[2] === '已删除'
+    if (adminLocale.value === 'en') return `No ${deleted ? 'deleted' : 'published'} comments match “${match[1]}”`
+    return adminLocale.value === 'zh-Hant' ? `沒有與「${match[1]}」符合的${deleted ? '已刪除' : '已發布'}評論` : source
+  }
+  match = source.match(/^找到 (\d+) 条匹配的评论$/)
+  if (match) return adminLocale.value === 'en' ? `Found ${match[1]} matching comment${match[1] === '1' ? '' : 's'}` : adminLocale.value === 'zh-Hant' ? `找到 ${match[1]} 則符合的評論` : source
   match = source.match(/^查看原评论 #(.+)$/)
   if (match) return adminLocale.value === 'en' ? `View original comment #${match[1]}` : adminLocale.value === 'zh-Hant' ? `查看原評論 #${match[1]}` : source
   match = source.match(/^回复 (.+)$/)
@@ -189,10 +201,11 @@ export function translateAdminText(source: string): string {
 }
 
 // The comment count heading keeps the number in its own element, so the noun is chosen here.
-export function commentCountNoun(count: number, deleted: boolean): string {
-  if (adminLocale.value === 'en') return `${deleted ? 'deleted ' : ''}comment${count === 1 ? '' : 's'}`
-  if (adminLocale.value === 'zh-Hant') return deleted ? '則已刪除評論' : '則評論'
-  return deleted ? '条已删除评论' : '条评论'
+// While searching, the heading counts matches.
+export function commentCountNoun(count: number, deleted: boolean, matching = false): string {
+  if (adminLocale.value === 'en') return `${matching ? 'matching ' : ''}${deleted ? 'deleted ' : ''}comment${count === 1 ? '' : 's'}`
+  if (adminLocale.value === 'zh-Hant') return `則${matching ? '符合的' : ''}${deleted ? '已刪除評論' : '評論'}`
+  return `条${matching ? '匹配的' : ''}${deleted ? '已删除评论' : '评论'}`
 }
 
 // Visitor content (names, emails, page titles, quoted comments, site names) is marked
@@ -220,7 +233,8 @@ export function installAdminTranslations(root: HTMLElement = document.body): () 
       const current = node.textContent ?? ''
       const source = sourceOf(current, texts.get(node))
       const trimmed = source.trim()
-      const rendered = trimmed ? source.replace(trimmed, translateAdminText(trimmed)) : source
+      // A function replacement keeps a "$" in echoed text literal.
+      const rendered = trimmed ? source.replace(trimmed, () => translateAdminText(trimmed)) : source
       texts.set(node, { source, rendered })
       if (current !== rendered) node.textContent = rendered
     }

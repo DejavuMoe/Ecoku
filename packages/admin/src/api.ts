@@ -323,8 +323,9 @@ export const adminApi = {
     return mapped
   },
 
-  async listComments(siteId: string, status: CommentStatus, page: number, pageSize: number, sort: 'oldest' | 'newest', signal?: AbortSignal): Promise<CommentPage> {
+  async listComments(siteId: string, status: CommentStatus, page: number, pageSize: number, sort: 'oldest' | 'newest', q = '', signal?: AbortSignal): Promise<CommentPage> {
     const query = new URLSearchParams({ status, page: String(page), pageSize: String(pageSize), sort })
+    if (q) query.set('q', q)
     const raw = await request<Record<string, unknown>>(`/api/admin/sites/${encodeURIComponent(siteId)}/comments?${query}`, { method: 'GET', signal })
     const rows = Array.isArray(raw.data) ? raw.data : []
     const rawCounts = raw.counts && typeof raw.counts === 'object' ? raw.counts as Record<string, unknown> : {}

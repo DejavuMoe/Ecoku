@@ -321,12 +321,14 @@ Creating a site whose ID already exists, or whose `allowed_origins` duplicates `
 
 | Method and path | Description |
 | --- | --- |
-| `GET /api/admin/sites/:siteId/comments` | Comment list. Parameters: `status` (`published` or `deleted`, default `published`), `page` (max 1000000), `pageSize` (default 20, max 100), `sort` (`newest` or `oldest`, default `newest`). The response includes `total`, `pageCount`, and the per-status counts `counts`. |
+| `GET /api/admin/sites/:siteId/comments` | Comment list. Parameters: `status` (`published` or `deleted`, default `published`), `page` (max 1000000), `pageSize` (default 20, max 100), `sort` (`newest` or `oldest`, default `newest`), `q` (optional, see below). The response includes `total`, `pageCount`, and the per-status counts `counts`. |
 | `GET /api/admin/sites/:siteId/comments/:commentId` | A single comment, including the private email. |
 | `DELETE /api/admin/sites/:siteId/comments/:commentId` | Tombstone delete. Deleting an already deleted comment again returns success, with `unchanged` set to `true`. |
 | `DELETE /api/admin/sites/:siteId/comments/:commentId/permanent` | Permanent delete. Only works on a tombstone with no replies; otherwise returns `409`. |
 
 The status counts, page of comments, and `has_children` values in each list response come from the same SQLite snapshot.
+
+`q` is split on whitespace; only the first 8 distinct words count, and it is at most 100 characters. Every word must match, in the name, email, website, body, post title or page key; English letters match regardless of case, and `%` and `_` match literally. A word written as `#123` matches the comment numbered 123. With `status=deleted`, only the post title, page key and number are matched. With `q`, each status in `counts` counts its own matching comments, and `total` and `pageCount` count matching comments only. A `q` longer than 100 characters returns `400` 「q 不能超过 100 个字符」 (q must be at most 100 characters); one that is not valid UTF-8 returns `400` 「q 参数无效」 (invalid q parameter).
 
 Both delete endpoints are rate limited by `rate_limit.comment_delete`.
 

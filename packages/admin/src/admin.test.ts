@@ -20,6 +20,7 @@ import { formatDate, previousDayKey } from './ui'
 import { setAdminTimeZone } from './timezone.svelte'
 import type { CommentPage, CommentReview, NotificationSettings, SiteSummary } from './types'
 import { smojiPlainText, tokenizeAdminSmoji } from './smoji'
+import { commentSearchTerms, highlightSegments, normalizeCommentSearch } from './search'
 import { installAdminTranslations, setAdminLocale } from './i18n.svelte'
 
 let testStore = createAdminStore()
@@ -1383,6 +1384,189 @@ describe('persistent administrator session', () => {
     await flushPromises()
     expect(reload).toHaveBeenCalledTimes(1)
     expect(history.state).toBeNull()
+    wrapper.unmount()
+  })
+})
+
+describe('comment search', () => {
+  it('reads a search the way the server does', () => {
+    expect(normalizeCommentSearch('  上海　 工作\n')).toBe('上海 工作')
+    expect(Array.from(normalizeCommentSearch('评'.repeat(120)))).toHaveLength(100)
+    // Repeats differing only in ASCII case count once; other letters keep their case, as in SQLite.
+    expect(commentSearchTerms('Alice alice #12 Ü ü a b c d e')).toEqual({ words: ['alice', 'Ü', 'ü', 'a', 'b', 'c', 'd'], ids: new Set([12]) })
+    expect(highlightSegments('Hello hello WORLD', ['hello', 'lo w'])).toEqual([
+      { text: 'Hello', hit: true }, { text: ' ', hit: false }, { text: 'hello W', hit: true }, { text: 'ORLD', hit: false },
+    ])
+    expect(highlightSegments('ÜBER über', ['über'])).toEqual([{ text: 'ÜBER ', hit: false }, { text: 'über', hit: true }])
+    expect(highlightSegments('', ['a'])).toEqual([])
+  })
+
+  it('sends the search only when there is one', async () => {
+    const fetchMock = vi.fn(async () => response(200, { data: [], counts: { published: 0, deleted: 0 }, total: 0, page: 1, pageSize: 20, pageCount: 0 }))
+    vi.stubGlobal('fetch', fetchMock)
+    await adminApi.listComments('site-a', 'deleted', 1, 20, 'oldest', '上海 #12')
+    await adminApi.listComments('site-a', 'published', 1, 20, 'newest')
+    const searched = new URL(String((fetchMock.mock.calls[0] as unknown[])[0]), 'https://admin.example.test')
+    expect(searched.searchParams.get('q')).toBe('上海 #12')
+    expect(searched.searchParams.get('status')).toBe('deleted')
+    expect(String((fetchMock.mock.calls[1] as unknown[])[0])).not.toContain('q=')
+  })
+
+  it('searches from page 1, keeps the page dimmed until results arrive and keeps the search until the site changes', async () => {
+    const store = useAdminStore()
+    store.authenticated = true; store.sites = [site(), site({ id: 'site-b' })]; store.selectedSiteId = 'site-a'
+    store.page = 3; store.pageCount = 3; store.comments = [comment()]
+    let release: ((value: CommentPage) => void) | undefined
+    const list = vi.spyOn(adminApi, 'listComments')
+      .mockImplementationOnce(() => new Promise((resolve) => { release = resolve }))
+      .mockResolvedValue(page([comment()]))
+    const searching = store.searchComments('  Alice 　 上海 ')
+    expect(list).toHaveBeenLastCalledWith('site-a', 'published', 1, 20, 'newest', 'Alice 上海', expect.any(AbortSignal))
+    expect([store.queueBusy, store.queueQuiet, store.queueDim]).toEqual([true, true, true])
+    expect(store.comments).toHaveLength(1)
+    expect(store.resultQuery).toBe('')
+    release?.(page([comment({ id: 9 })]))
+    expect(await searching).toBe(true)
+    expect(store.resultQuery).toBe('Alice 上海')
+    expect(store.comments.map((item) => item.id)).toEqual([9])
+    expect(store.queueDim).toBe(false)
+    expect(await store.searchComments('Alice  上海')).toBe(false)
+    expect(list).toHaveBeenCalledTimes(1)
+    await store.selectStatus('deleted')
+    await store.toggleSort()
+    expect(list.mock.calls.slice(1).map((call) => call[5])).toEqual(['Alice 上海', 'Alice 上海'])
+    await store.selectSite('site-b')
+    expect([store.query, store.resultQuery]).toEqual(['', ''])
+    expect(list).toHaveBeenLastCalledWith('site-b', 'deleted', 1, 20, 'oldest', '', expect.any(AbortSignal))
+  })
+
+  it('searches after a pause, waits for the input method, searches at once on Enter and clears on Escape', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      const store = useAdminStore()
+      store.authenticated = true; store.sites = [site()]; store.selectedSiteId = 'site-a'; store.comments = [comment()]
+      const list = vi.spyOn(adminApi, 'listComments').mockResolvedValue(page([comment()]))
+      vi.spyOn(adminApi, 'getComment').mockResolvedValue(comment())
+      const wrapper = mount(CommentManagementView, { attachTo: document.body })
+      const input = wrapper.get<HTMLInputElement>('.search-input').element
+      const type = async (value: string, composing = false) => {
+        input.value = value
+        input.dispatchEvent(new InputEvent('input', { bubbles: true, isComposing: composing }))
+        await nextTick()
+      }
+      input.focus()
+      await type('shang', true)
+      await vi.advanceTimersByTimeAsync(400)
+      expect(list).not.toHaveBeenCalled()
+      await type('上海', true)
+      input.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: '上海' }))
+      await vi.advanceTimersByTimeAsync(299)
+      expect(list).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1)
+      expect(list).toHaveBeenLastCalledWith('site-a', 'published', 1, 20, 'newest', '上海', expect.any(AbortSignal))
+      await flushPromises()
+      expect(wrapper.get('p[aria-live="polite"]').text()).toBe('找到 1 条匹配的评论')
+      expect(wrapper.get('#comments-title').text()).toContain('条匹配的评论')
+      expect(wrapper.get('.search').classes()).toContain('is-active')
+      // Enter does not wait for the pause.
+      await type('上海 Alice')
+      await wrapper.get('form[role="search"]').trigger('submit')
+      expect(list).toHaveBeenCalledTimes(2)
+      expect(list.mock.calls[1]?.[5]).toBe('上海 Alice')
+      await vi.advanceTimersByTimeAsync(400)
+      expect(list).toHaveBeenCalledTimes(2)
+      expect(wrapper.find('.search-clear').exists()).toBe(true)
+      await wrapper.get('.search-input').trigger('keydown', { key: 'Escape' })
+      expect(input.value).toBe('')
+      expect(document.activeElement).toBe(input)
+      expect(list.mock.calls[2]?.[5]).toBe('')
+      await flushPromises()
+      expect(wrapper.find('.search-clear').exists()).toBe(false)
+      expect(wrapper.get('p[aria-live="polite"]').text()).toBe('已清除搜索')
+      expect(wrapper.get('#comments-title').text()).not.toContain('匹配')
+      // A search belongs to one site: what was typed is dropped with it.
+      await type('Bob')
+      input.blur()
+      store.sites = [site(), site({ id: 'site-b' })]
+      await store.selectSite('site-b')
+      await nextTick()
+      expect(input.value).toBe('')
+      await vi.advanceTimersByTimeAsync(400)
+      expect(list.mock.calls.map((call) => call[5])).toEqual(['上海', '上海 Alice', '', ''])
+      wrapper.unmount()
+    } finally { vi.useRealTimers() }
+  })
+
+  it('keeps the current page on screen, dimmed, while a search is on its way', async () => {
+    const store = useAdminStore()
+    store.authenticated = true; store.sites = [site()]; store.selectedSiteId = 'site-a'; store.comments = [comment()]; store.total = 1
+    let release: ((value: CommentPage) => void) | undefined
+    vi.spyOn(adminApi, 'listComments').mockImplementation(() => new Promise((resolve) => { release = resolve }))
+    const wrapper = mount(CommentManagementView, {})
+    await wrapper.get('.search-input').setValue('访客')
+    await wrapper.get('form[role="search"]').trigger('submit')
+    expect(wrapper.get('.feed').classes()).toContain('is-pending')
+    expect(wrapper.find('#c-7').exists()).toBe(true)
+    expect(wrapper.find('.skeleton-entry').exists()).toBe(false)
+    expect(wrapper.get('.icon-button').classes()).not.toContain('is-spinning')
+    release?.(page([comment({ id: 8 })]))
+    await flushPromises()
+    expect(wrapper.get('.feed').classes()).not.toContain('is-pending')
+    expect(wrapper.find('#c-8').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('marks each find in the comment itself but never in the quoted parent', async () => {
+    const store = useAdminStore()
+    store.authenticated = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
+    const parent = comment({ username: 'Alice', email: 'alice@example.com', url: 'https://alice.example/', content: 'Hello <b>alice</b>, aliCE!', pageTitle: 'Alice 的文章', mark: '/alice/' })
+    const reply = comment({ id: 8, parent: 7, username: 'Bob', email: 'bob@example.com', url: '', content: 'alice 说得对', pageTitle: '', mark: '/alice/' })
+    vi.spyOn(adminApi, 'listComments').mockResolvedValue(page([reply, parent]))
+    await store.searchComments('ALICE #8 $&')
+    const wrapper = mount(CommentManagementView, {})
+    const marks = (selector: string) => wrapper.findAll(`${selector} mark.hit`).map((mark) => mark.text())
+    expect(marks('#c-7 .entry-author')).toEqual(['Alice'])
+    expect(marks('#c-7 .entry-mail')).toEqual(['alice'])
+    expect(marks('#c-7 .entry-site')).toEqual(['alice'])
+    expect(marks('#c-7 .entry-copy')).toEqual(['alice', 'aliCE'])
+    expect(wrapper.find('#c-7 .entry-copy b').exists()).toBe(false)
+    expect(wrapper.get('#c-7 .entry-copy').text()).toBe('Hello <b>alice</b>, aliCE!')
+    expect(marks('#c-7 .entry-title')).toEqual(['Alice'])
+    expect(marks('#c-7 .entry-key')).toEqual(['alice'])
+    expect(marks('#c-7 .entry-id')).toEqual([])
+    expect(marks('#c-8 .entry-id')).toEqual(['#8'])
+    expect(marks('#c-8 .entry-copy')).toEqual(['alice'])
+    expect(marks('#c-8 .entry-quote')).toEqual([])
+    expect(wrapper.get('#c-8 .quote-text').text()).toBe('Hello <b>alice</b>, aliCE!')
+    wrapper.unmount()
+  })
+
+  it('marks finds in text but not in stickers', () => {
+    const manifestUrl = 'https://static.example.test/smoji.json'
+    const wrapper = mount(SmojiContent, { props: { content: '上海 ![smoji:上海](https://static.example.test/sh.webp) 上海', enabled: true, manifestUrl, words: ['上海'] } })
+    expect(wrapper.findAll('mark.hit').map((mark) => mark.text())).toEqual(['上海', '上海'])
+    expect(wrapper.get('img').attributes('alt')).toBe('[表情：上海]')
+  })
+
+  it('says when nothing matches, explains what a deleted comment can be found by and offers a way out', async () => {
+    const store = useAdminStore()
+    store.authenticated = true; store.sites = [site()]; store.selectedSiteId = 'site-a'
+    const list = vi.spyOn(adminApi, 'listComments').mockResolvedValue(page([]))
+    await store.searchComments('<script>$&</script>')
+    const wrapper = mount(CommentManagementView, { attachTo: document.body })
+    expect(wrapper.get('.search-empty .feed-empty').text()).toBe('没有与「<script>$&</script>」匹配的已发布评论')
+    expect(wrapper.find('.search-empty script').exists()).toBe(false)
+    expect(wrapper.find('.feed-hint').exists()).toBe(false)
+    expect(wrapper.get<HTMLInputElement>('.search-input').element.value).toBe('<script>$&</script>')
+    await store.selectStatus('deleted')
+    await nextTick()
+    expect(wrapper.get('.search-empty .feed-empty').text()).toBe('没有与「<script>$&</script>」匹配的已删除评论')
+    expect(wrapper.get('.feed-hint').text()).toBe('已删除的评论只保留文章标题、页面 key 和编号，只能按这几项搜索。')
+    await wrapper.get('.search-empty .quiet-link').trigger('click')
+    expect(list).toHaveBeenLastCalledWith('site-a', 'deleted', 1, 20, 'newest', '', expect.any(AbortSignal))
+    expect(document.activeElement).toBe(wrapper.get('.search-input').element)
+    await flushPromises()
+    expect(wrapper.get('.feed-empty').text()).toBe('当前没有已删除评论')
     wrapper.unmount()
   })
 })

@@ -1,6 +1,7 @@
 import { getContext } from 'svelte'
 import { adminApi, ApiError, cancelAdminRequests } from '../api'
 import { messages } from '../messages'
+import { normalizeCommentSearch } from '../search'
 import type { CaptchaSettings, CommentReview, CommentStatus, EmailNotificationSettings, MainView, NotificationSettings, SiteSummary, SiteWrite, TelegramNotificationSettings } from '../types'
 
 function failureMessage(error: unknown, login = false): string {
@@ -77,6 +78,11 @@ export function createAdminStore() {
     queueBusy: false,
     // Keep the page visible while a deletion reloads its contents.
     queueQuiet: false,
+    // A search keeps the current page on screen, dimmed, until its results arrive.
+    queueDim: false,
+    // The search being asked for, and the one the shown page answers.
+    query: '',
+    resultQuery: '',
     detailBusy: false,
     actionBusy: false,
     queueMessage: '',
@@ -113,11 +119,11 @@ export function createAdminStore() {
     if (expiryTimer) clearTimeout(expiryTimer)
     queueController?.abort(); detailController?.abort()
     ++queueGeneration; ++detailGeneration
-    state.queueBusy = false; state.queueQuiet = false; state.detailBusy = false
+    state.queueBusy = false; state.queueQuiet = false; state.queueDim = false; state.detailBusy = false
     cancelAdminRequests()
     state.authenticated = false; state.expiresAt = ''; state.serverVersion = ''; state.sites = []; state.selectedSiteId = ''
     state.passwordSetupRequired = false; state.setupUsername = ''; state.passwordSetupMessage = ''
-    state.comments = []; state.selectedComment = null; state.counts = emptyCounts()
+    state.comments = []; state.selectedComment = null; state.counts = emptyCounts(); state.query = ''; state.resultQuery = ''
     state.notificationSettings = null; state.captchaSettings = null
     state.view = 'comments'; state.dirtyView = null; state.discardRequested = false; pendingNavigation = null; state.loginMessage = reason
   }
@@ -230,26 +236,27 @@ export function createAdminStore() {
     } catch (error) { fail(error, 'site'); return null }
     finally { state.siteBusy = false }
   }
-  async function loadComments(announce = false, quiet = false): Promise<void> {
+  async function loadComments(announce = false, quiet = false, dim = false): Promise<void> {
     if (!state.authenticated || !state.selectedSiteId) return
     detailController?.abort(); ++detailGeneration; state.detailBusy = false
     queueController?.abort(); queueController = new AbortController(); const generation = ++queueGeneration
-    state.queueBusy = true; state.queueQuiet = quiet; state.queueMessage = ''; state.actionMessage = ''
+    state.queueBusy = true; state.queueQuiet = quiet || dim; state.queueDim = dim; state.queueMessage = ''; state.actionMessage = ''
+    const query = state.query
     try {
-      const result = await adminApi.listComments(state.selectedSiteId, state.status, state.page, state.pageSize, state.sort, queueController.signal)
+      const result = await adminApi.listComments(state.selectedSiteId, state.status, state.page, state.pageSize, state.sort, query, queueController.signal)
       if (generation !== queueGeneration) return
       if (!result.data.length && result.page > 1 && result.pageCount > 0 && result.page > result.pageCount) {
         // The last comment of the last page is gone: show the new last page rather than an empty one.
         state.page = result.pageCount
-        return await loadComments(announce, quiet)
+        return await loadComments(announce, quiet, dim)
       }
-      state.comments = result.data; state.counts = result.counts; state.total = result.total
+      state.comments = result.data; state.counts = result.counts; state.total = result.total; state.resultQuery = query
       state.page = result.pageCount === 0 ? 1 : result.page; state.pageSize = result.pageSize; state.pageCount = result.pageCount
       const next = state.comments.find((item) => item.id === state.selectedComment?.id) ?? null
       state.selectedComment = next; if (next) void loadDetail(next.id)
       if (announce) toast(messages.refreshed)
     } catch (error) { if (generation === queueGeneration && !(error instanceof DOMException && error.name === 'AbortError')) fail(error, 'queue') }
-    finally { if (generation === queueGeneration) { state.queueBusy = false; state.queueQuiet = false } }
+    finally { if (generation === queueGeneration) { state.queueBusy = false; state.queueQuiet = false; state.queueDim = false } }
   }
   async function loadDetail(id: number) {
     detailController?.abort(); detailController = new AbortController(); const generation = ++detailGeneration; state.detailBusy = true
@@ -259,9 +266,19 @@ export function createAdminStore() {
     } catch (error) { if (generation === detailGeneration && !(error instanceof DOMException && error.name === 'AbortError')) fail(error, 'action') }
     finally { if (generation === detailGeneration) state.detailBusy = false }
   }
-  async function selectSite(id: string) { state.selectedSiteId = id; state.page = 1; state.selectedComment = null; if (state.view === 'comments') await loadComments() }
+  // A search belongs to one site; switching site starts over.
+  async function selectSite(id: string) { state.selectedSiteId = id; state.page = 1; state.selectedComment = null; state.query = ''; state.resultQuery = ''; if (state.view === 'comments') await loadComments() }
   async function selectStatus(next: CommentStatus) { state.status = next; state.page = 1; state.selectedComment = null; await loadComments() }
   async function toggleSort() { state.sort = state.sort === 'oldest' ? 'newest' : 'oldest'; state.page = 1; await loadComments() }
+  // Searching starts again from page 1 and keeps the current page, dimmed, until the results arrive.
+  // Resolves true once the results for this search are on screen.
+  async function searchComments(raw: string): Promise<boolean> {
+    const next = normalizeCommentSearch(raw)
+    if (next === state.query) return false
+    state.query = next; state.page = 1; state.selectedComment = null
+    await loadComments(false, true, true)
+    return state.resultQuery === next && !state.queueMessage && !state.queueBusy
+  }
   async function selectPage(next: number) { if (next < 1 || next > state.pageCount) return; state.page = next; await loadComments() }
   function selectComment(id: number) { const value = state.comments.find((item) => item.id === id); if (value) { state.selectedComment = value; void loadDetail(id) } }
   async function mutateCurrent(kind: 'tombstone' | 'permanent', id = state.selectedComment?.id, leave?: (id: number) => Promise<void>) {
@@ -339,7 +356,7 @@ export function createAdminStore() {
     } catch (error) { fail(error, 'security'); return null }
     finally { state.captchaBusy = false }
   }
-  return Object.assign(state, { login, completeInitialSetup, consumeCreateSiteRequest, logout, restoreSession, switchView, loadSites, saveSite, loadComments, loadDetail, selectSite, selectStatus, toggleSort, selectPage, selectComment, mutateCurrent, loadNotifications, saveEmail, saveTelegram, testEmail, testTelegram, loadCaptcha, saveCaptcha, setDirty, requestNavigation, resolveNavigation })
+  return Object.assign(state, { login, completeInitialSetup, consumeCreateSiteRequest, logout, restoreSession, switchView, loadSites, saveSite, loadComments, loadDetail, selectSite, selectStatus, searchComments, toggleSort, selectPage, selectComment, mutateCurrent, loadNotifications, saveEmail, saveTelegram, testEmail, testTelegram, loadCaptcha, saveCaptcha, setDirty, requestNavigation, resolveNavigation })
 }
 
 export type AdminStore = ReturnType<typeof createAdminStore>
