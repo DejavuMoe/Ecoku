@@ -7,7 +7,7 @@ The SDK only displays the comment section in the browser; you still need a deplo
 ## Install {#install}
 
 ```bash
-pnpm add --save-exact ecoku@0.6.3
+pnpm add --save-exact ecoku@0.6.4
 ```
 
 The package includes ESM, CommonJS and TypeScript declarations. When you upgrade the Ecoku server, update this dependency to the same version.
